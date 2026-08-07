@@ -42,10 +42,6 @@ flutter build ios --release   # ios, needs macOS
 
 Requires [Flutter](https://docs.flutter.dev/get-started/install) 3.41+.
 
-Releases are built by GitHub Actions: push a `v1.2.3` tag and the APK and the
-unsigned IPA land in a release. Signing keys and secrets are described in the
-comments of [`.github/workflows/release.yml`](.github/workflows/release.yml).
-
 ## 📄 License
 
 [MIT](LICENSE)
