@@ -1,0 +1,146 @@
+name: Сборки
+
+# Собирает Android и iOS. Запускается двумя способами:
+#   * тег вида v1.2.3 — собирает всё и выкладывает готовое в GitHub Release;
+#   * кнопка «Run workflow» на вкладке Actions — просто собирает, файлы лежат
+#     артефактами прогона (90 дней) и никакого релиза не создаётся. Там же
+#     выбирается платформа: в приватном репозитории минуты платные, а раннеры
+#     идут с множителями (Linux ×1, macOS ×10) — гонять macOS ради правки в
+#     Android незачем.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: Что собирать
+        type: choice
+        default: all
+        options: [all, android, ios]
+
+env:
+  FLUTTER_VERSION: 3.41.9
+
+jobs:
+  android:
+    name: Android (APK)
+    if: github.event_name == 'push' || contains(fromJSON('["all","android"]'), inputs.platforms)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      # Без ключа Gradle подписывает релиз отладочным, и APK разных прогонов не
+      # ставятся друг поверх друга (см. android/app/build.gradle.kts).
+      - name: Ключ подписи
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then
+            echo "::warning::ANDROID_KEYSTORE_BASE64 не задан — APK будет подписан отладочным ключом и не встанет обновлением поверх прошлой версии"
+            exit 0
+          fi
+          echo "$KEYSTORE" | base64 -d > android/upload-keystore.jks
+          printf "storeFile=upload-keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" \
+            "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > android/key.properties
+
+      # Версия берётся из тега: v1.2.3 → 1.2.3. Номер сборки — счётчик прогонов,
+      # он обязан расти от релиза к релизу (для Android это versionCode).
+      - name: Версия из тега
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "VERSION_ARGS=--build-name=${GITHUB_REF_NAME#v} --build-number=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+          fi
+
+      - run: flutter pub get
+
+      # Универсальный APK, а не --split-per-abi: со всеми архитектурами он
+      # весит заметно больше, зато файл в релизе один и встаёт на что угодно —
+      # так решено сознательно, ради простоты раздачи.
+      - name: flutter build apk
+        run: flutter build apk --release $VERSION_ARGS
+
+      - name: Переименовать
+        run: mv build/app/outputs/flutter-apk/app-release.apk bloom.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bloom-android-apk
+          path: bloom.apk
+          if-no-files-found: error
+
+  ios:
+    name: iOS (без подписи)
+    if: github.event_name == 'push' || contains(fromJSON('["all","ios"]'), inputs.platforms)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Версия из тега
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "VERSION_ARGS=--build-name=${GITHUB_REF_NAME#v} --build-number=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+          fi
+
+      - run: flutter pub get
+
+      # Без подписи: сертификата разработчика Apple у проекта нет, а собрать и
+      # проверить, что всё компилируется, можно и так. Полученный .ipa ставится
+      # на устройство только после переподписи (Sideloadly, AltStore, Xcode).
+      - name: flutter build ios
+        run: flutter build ios --release --no-codesign $VERSION_ARGS
+
+      # .ipa — это zip, внутри которого папка Payload с бандлом .app. Xcode
+      # собирает её сам только при экспорте с подписью, поэтому пакуем руками.
+      - name: Упаковать .ipa
+        run: |
+          mkdir -p Payload
+          mv build/ios/iphoneos/Runner.app Payload/
+          zip -qry bloom.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bloom-ios-unsigned
+          path: bloom.ipa
+          if-no-files-found: error
+
+  release:
+    name: GitHub Release
+    # Только по тегу: ручной прогон — это просто сборка «посмотреть».
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [android, ios]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Создать релиз
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/*/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes

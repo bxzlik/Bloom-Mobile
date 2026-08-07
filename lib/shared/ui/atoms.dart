@@ -1,0 +1,324 @@
+/// Мелкие общие элементы: круглая icon-кнопка и обложка.
+///
+/// Круглая кнопка — базовый элемент раскладки из референса: шапки экранов,
+/// оверлей на обложке, кнопки площадки. Подложка — плёнка `iconBg`, штрих —
+/// `iconFg`, как в десктопном Bloom.
+library;
+
+import 'dart:ui' show ImageFilter;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+import '../../app/theme/tokens.dart';
+import '../../core/store/cover_store.dart';
+import 'bloom_mark.dart';
+
+/// Высота управляющих элементов шапки: круглых кнопок, пилюли профиля, поля
+/// поиска и пилюли-заголовка подстраницы. В референсе шапка заметно крупнее,
+/// чем была у нас (42), — держим все элементы шапки ровно этой высоты.
+const double kHeaderControl = 48;
+
+/// Высота чипа-фильтра (библиотека, поиск) и круглых кнопок в том же ряду.
+const double kChipHeight = 44;
+
+/// Иконка из SVG-ассета, перекрашенная в цвет темы. Нужна там, где глиф из
+/// шрифта Solar нарисован криво (library, user-circle) и берётся настоящий
+/// Solar-SVG.
+class SvgIcon extends StatelessWidget {
+  const SvgIcon(this.asset, {super.key, this.size = 22, this.color});
+
+  final String asset;
+  final double size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SvgPicture.asset(
+      asset,
+      width: size,
+      height: size,
+      colorFilter: ColorFilter.mode(
+        color ?? context.bloom.iconFg,
+        BlendMode.srcIn,
+      ),
+    );
+  }
+}
+
+class CircleIconButton extends StatelessWidget {
+  const CircleIconButton({
+    super.key,
+    required this.icon,
+    this.onTap,
+    this.size = kHeaderControl,
+    this.iconSize = 22,
+    this.background,
+    this.color,
+    this.tooltip,
+  });
+
+  final IconData icon;
+  final VoidCallback? onTap;
+  final double size;
+  final double iconSize;
+  final Color? background;
+  final Color? color;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final button = Material(
+      color: background ?? t.pill,
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Icon(icon, size: iconSize, color: color ?? t.iconFg),
+        ),
+      ),
+    );
+    return tooltip == null ? button : Tooltip(message: tooltip!, child: button);
+  }
+}
+
+/// Матовое стекло под элементами, стоящими ПОВЕРХ обложки: круглые кнопки
+/// шапки, ряд действий, поле поиска по списку.
+///
+/// Кружок здесь светлый, а не тёмный: читаемость даёт размытие того, что под
+/// ним, поэтому подложке хватает почти прозрачной белой плёнки, и кнопка
+/// подхватывает цвет обложки вместо чёрной нашлёпки.
+const double kGlassBlur = 14;
+const Color kGlassFilm = Color(0x2BFFFFFF);
+
+/// Обернуть в стекло произвольную форму: [shape] и обрезает размытие, и задаёт
+/// границу плёнки.
+class GlassSurface extends StatelessWidget {
+  const GlassSurface({super.key, required this.shape, required this.child});
+
+  final BorderRadius shape;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: shape,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: kGlassBlur, sigmaY: kGlassBlur),
+        child: Material(
+          color: kGlassFilm,
+          borderRadius: shape,
+          clipBehavior: Clip.antiAlias,
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// Круглая кнопка ПОВЕРХ картинки: светлое стекло, белый штрих. Под ней
+/// обложка, а не поверхность темы, поэтому `pill` и `iconFg` не годятся —
+/// на баннере они читаются как серая заплатка.
+class GlassIconButton extends StatelessWidget {
+  const GlassIconButton({
+    super.key,
+    required this.icon,
+    required this.onTap,
+    this.size = kHeaderControl,
+    this.iconSize = 22,
+    this.background,
+    this.color,
+  });
+
+  final IconData icon;
+  final VoidCallback? onTap;
+  final double size;
+  final double iconSize;
+
+  /// Своя подложка — для «включённых» состояний (подписка, сет сохранён).
+  /// Кружок при этом сплошной: размывать под заливкой нечего.
+  final Color? background;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    if (background case final fill?) {
+      return CircleIconButton(
+        icon: icon,
+        size: size,
+        iconSize: iconSize,
+        background: fill,
+        color: color ?? Colors.white,
+        onTap: onTap,
+      );
+    }
+    return GlassSurface(
+      shape: BorderRadius.circular(size / 2),
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Icon(icon, size: iconSize, color: color ?? Colors.white),
+        ),
+      ),
+    );
+  }
+}
+
+/// Нижний край обложки в hero-шапках.
+///
+/// Обложка идёт на всю высоту шапки — под название, счётчик и ряд кнопок — и
+/// ОБРЕЗАЕТСЯ скруглёнными нижними углами, а не растворяется в фоне: в
+/// референсе граница видна, картинка просто кончается. Плёнка поверх нужна
+/// только чтобы белый текст и кнопки не тонули на светлом снимке, поэтому она
+/// не доходит до полной непрозрачности — иначе сам край станет не виден.
+class HeroCover extends StatelessWidget {
+  const HeroCover({super.key, required this.child, this.start = 0.20});
+
+  /// Сама картинка: одна обложка, коллаж или заглушка.
+  final Widget child;
+
+  /// Доля высоты шапки, до которой картинка не затемняется вовсе.
+  final double start;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final rest = 1 - start;
+    return ClipRRect(
+      borderRadius: BorderRadius.vertical(
+        bottom: Radius.circular(t.radius * 1.5),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          child,
+          // Верх: на светлом снимке белые кнопки и часы системной строки
+          // исчезают, поэтому им нужна тёмная подложка независимо от обложки.
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.55),
+                  Colors.black.withValues(alpha: 0),
+                ],
+                stops: const [0, 0.28],
+              ),
+            ),
+          ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  t.bg.withValues(alpha: 0),
+                  t.bg.withValues(alpha: 0.45),
+                  t.bg.withValues(alpha: 0.70),
+                  t.bg.withValues(alpha: 0.80),
+                ],
+                stops: [start, start + rest * 0.40, start + rest * 0.72, 1],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Та же круглая кнопка, но со Solar-SVG вместо глифа.
+class CircleSvgButton extends StatelessWidget {
+  const CircleSvgButton({
+    super.key,
+    required this.asset,
+    this.onTap,
+    this.size = kHeaderControl,
+    this.iconSize = 22,
+  });
+
+  final String asset;
+  final VoidCallback? onTap;
+  final double size;
+  final double iconSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return Material(
+      color: t.pill,
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Center(child: SvgIcon(asset, size: iconSize)),
+        ),
+      ),
+    );
+  }
+}
+
+/// Обложка: скруглённая картинка с заглушкой на месте отсутствующей.
+class Cover extends StatelessWidget {
+  const Cover({
+    super.key,
+    required this.url,
+    required this.size,
+    this.radius,
+    this.circle = false,
+  });
+
+  final String? url;
+  final double size;
+  final double? radius;
+  final bool circle;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final shape = circle
+        ? BorderRadius.circular(size / 2)
+        : BorderRadius.circular(radius ?? t.radius * 0.72);
+
+    // Пустая обложка — приглушённый знак bloom, как `.ps-cover-empty` на
+    // десктопе (там глиф с opacity .12).
+    Widget placeholder() => DecoratedBox(
+      decoration: BoxDecoration(color: t.ovlBg, borderRadius: shape),
+      child: Center(
+        child: BloomMark(size: size * 0.34, color: t.text, opacity: 0.16),
+      ),
+    );
+
+    final image = coverImage(url);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: image == null
+          ? placeholder()
+          : ClipRRect(
+              borderRadius: shape,
+              child: Image(
+                image: image,
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => placeholder(),
+                frameBuilder: (context, child, frame, wasSync) {
+                  if (wasSync || frame != null) return child;
+                  return placeholder();
+                },
+              ),
+            ),
+    );
+  }
+}
