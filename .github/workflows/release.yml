@@ -53,17 +53,30 @@ jobs:
             echo "::warning::ANDROID_KEYSTORE_BASE64 не задан — APK будет подписан отладочным ключом и не встанет обновлением поверх прошлой версии"
             exit 0
           fi
-          echo "$KEYSTORE" | base64 -d > android/upload-keystore.jks
+          # tr убирает переносы строк и пробелы: при вставке секрета через
+          # веб-форму они приезжают вместе со строкой, а base64(1) на них
+          # отвечает «invalid input».
+          printf '%s' "$KEYSTORE" | tr -d '[:space:]' | base64 -d > android/upload-keystore.jks
+          if [ ! -s android/upload-keystore.jks ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 не разворачивается в файл — секрет обрезан, перезалей его"
+            exit 1
+          fi
           printf "storeFile=upload-keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" \
             "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > android/key.properties
 
       # Версия берётся из тега: v1.2.3 → 1.2.3. Номер сборки — счётчик прогонов,
       # он обязан расти от релиза к релизу (для Android это versionCode).
-      - name: Версия из тега
+      # У ручного прогона тега нет — там версия из pubspec, только чтобы файл
+      # как-то назывался.
+      - name: Версия
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            echo "VERSION_ARGS=--build-name=${GITHUB_REF_NAME#v} --build-number=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+            version="${GITHUB_REF_NAME#v}"
+            echo "VERSION_ARGS=--build-name=$version --build-number=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+          else
+            version="$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)"
           fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
 
       - run: flutter pub get
 
@@ -74,12 +87,15 @@ jobs:
         run: flutter build apk --release $VERSION_ARGS
 
       - name: Переименовать
-        run: mv build/app/outputs/flutter-apk/app-release.apk bloom.apk
+        run: mv build/app/outputs/flutter-apk/app-release.apk "bloom-$VERSION.apk"
 
+      # Имя артефакта — это имя zip'а, в который GitHub заворачивает файлы при
+      # скачивании со страницы прогона (обойти нельзя). В релиз по тегу
+      # содержимое ложится как есть, без обёртки.
       - uses: actions/upload-artifact@v4
         with:
-          name: bloom-android-apk
-          path: bloom.apk
+          name: bloom-${{ env.VERSION }}-android
+          path: bloom-${{ env.VERSION }}.apk
           if-no-files-found: error
 
   ios:
@@ -95,11 +111,15 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Версия из тега
+      - name: Версия
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            echo "VERSION_ARGS=--build-name=${GITHUB_REF_NAME#v} --build-number=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+            version="${GITHUB_REF_NAME#v}"
+            echo "VERSION_ARGS=--build-name=$version --build-number=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+          else
+            version="$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)"
           fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
 
       - run: flutter pub get
 
@@ -115,12 +135,12 @@ jobs:
         run: |
           mkdir -p Payload
           mv build/ios/iphoneos/Runner.app Payload/
-          zip -qry bloom.ipa Payload
+          zip -qry "bloom-$VERSION.ipa" Payload
 
       - uses: actions/upload-artifact@v4
         with:
-          name: bloom-ios-unsigned
-          path: bloom.ipa
+          name: bloom-${{ env.VERSION }}-ios
+          path: bloom-${{ env.VERSION }}.ipa
           if-no-files-found: error
 
   release:
