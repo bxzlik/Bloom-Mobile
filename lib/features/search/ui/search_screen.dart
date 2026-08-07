@@ -17,6 +17,11 @@ import '../../../core/providers/music_provider.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/platform_logo.dart';
+import '../../../shared/ui/skeleton.dart';
+
+/// Просвет под чипами-фильтрами: без него ряд чипов слипался с первой строкой
+/// выдачи и читался как её часть.
+const double _chipsGap = 14;
 
 enum SearchFilter {
   all('Всё', SolarIconsOutline.widget_4),
@@ -92,7 +97,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     return SafeArea(
       bottom: false,
       child: Column(
@@ -129,14 +133,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             active: _filter,
             onPick: (f) => setState(() => _filter = f),
           ),
-          if (_loading)
-            LinearProgressIndicator(
-              minHeight: 2,
-              color: t.accent,
-              backgroundColor: t.track,
-            )
-          else
-            const SizedBox(height: 2),
+          const SizedBox(height: _chipsGap),
           Expanded(child: _body(context)),
         ],
       ),
@@ -147,6 +144,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
 
+    // Заготовка вместо полоски прогресса: она сразу занимает высоту будущей
+    // выдачи, поэтому при ответе ничего не дёргается. Старые результаты при
+    // новом запросе прячем — иначе непонятно, что показано.
+    if (_loading) return _SearchSkeleton(filter: _filter);
     if (_error != null) {
       return Center(
         child: Padding(
@@ -160,11 +161,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       );
     }
     if (_results.isEmpty) {
-      final text = _loading
-          ? 'Ищем…'
-          : _searched
-          ? 'Ничего не нашлось'
-          : 'Найди что-нибудь';
+      final text = _searched ? 'Ничего не нашлось' : 'Найди что-нибудь';
       return Center(
         child: Text(text, style: theme.bodyMedium?.copyWith(color: t.muted)),
       );
@@ -494,6 +491,232 @@ class _ResultsView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
       children: sections,
+    );
+  }
+}
+
+/// Заготовка выдачи на время запроса: та же раскладка, что покажет активный
+/// чип, поэтому при ответе плашки просто сменяются содержимым.
+///
+/// Заготовки не листаются: их ровно столько, сколько влезает в экран, и
+/// скроллить пустые плашки незачем.
+class _SearchSkeleton extends StatelessWidget {
+  const _SearchSkeleton({required this.filter});
+
+  final SearchFilter filter;
+
+  @override
+  Widget build(BuildContext context) {
+    return SkeletonPulse(
+      child: switch (filter) {
+        SearchFilter.all => const _AllSkeleton(),
+        SearchFilter.tracks => const _TracksSkeleton(count: 9),
+        SearchFilter.playlists ||
+        SearchFilter.albums => const _GridSkeleton(columns: 2, count: 6),
+        SearchFilter.artists => const _GridSkeleton(
+          columns: 3,
+          count: 9,
+          circle: true,
+        ),
+      },
+    );
+  }
+}
+
+/// Ширины «строк» подписей — по кругу, чтобы плашки не выстраивались в
+/// одинаковую линейку.
+const List<double> _titleWidths = [0.62, 0.48, 0.71, 0.55];
+const List<double> _subWidths = [0.34, 0.42, 0.28, 0.38];
+
+/// Плашка на месте [TrackRow]: те же отступы и обложка 48, поэтому высота
+/// строки совпадает с настоящей.
+class _TrackRowSkeleton extends StatelessWidget {
+  const _TrackRowSkeleton({required this.index});
+
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Row(
+        children: [
+          const SkeletonBox(width: 48, height: 48),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SkeletonLine(
+                  widthFactor: _titleWidths[index % _titleWidths.length],
+                  height: 13,
+                ),
+                const SizedBox(height: 7),
+                SkeletonLine(
+                  widthFactor: _subWidths[index % _subWidths.length],
+                  height: 11,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          const SkeletonBox(width: 30, height: 11, radius: 6),
+        ],
+      ),
+    );
+  }
+}
+
+class _TracksSkeleton extends StatelessWidget {
+  const _TracksSkeleton({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: count,
+      itemBuilder: (context, i) => _TrackRowSkeleton(index: i),
+    );
+  }
+}
+
+/// Плашка на месте [SetCard]/[ArtistCard]: обложка на всю ширину ячейки и две
+/// строки подписи (у артиста — одна, как и в карточке без счётчика).
+class _CardSkeleton extends StatelessWidget {
+  const _CardSkeleton({required this.circle, this.width});
+
+  final bool circle;
+
+  /// `null` — на всю ширину ячейки сетки; число — фиксированная ширина
+  /// карточки в карусели.
+  final double? width;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = LayoutBuilder(
+      builder: (context, box) => Column(
+        crossAxisAlignment: circle
+            ? CrossAxisAlignment.center
+            : CrossAxisAlignment.start,
+        children: [
+          SkeletonBox(
+            width: box.maxWidth,
+            height: box.maxWidth,
+            circle: circle,
+          ),
+          const SizedBox(height: 10),
+          SkeletonBox(width: box.maxWidth * (circle ? 0.7 : 0.8), height: 12),
+          if (!circle) ...[
+            const SizedBox(height: 6),
+            SkeletonBox(width: box.maxWidth * 0.5, height: 10),
+          ],
+        ],
+      ),
+    );
+    return width == null ? content : SizedBox(width: width, child: content);
+  }
+}
+
+/// Сетка заготовок — геометрия [_SetGrid] и [_ArtistGrid] один в один.
+class _GridSkeleton extends StatelessWidget {
+  const _GridSkeleton({
+    required this.columns,
+    required this.count,
+    this.circle = false,
+  });
+
+  final int columns;
+  final int count;
+  final bool circle;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final cell = (width - _gridPad * 2 - _gridGap * (columns - 1)) / columns;
+
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(_gridPad, 8, _gridPad, 16),
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: columns,
+        crossAxisSpacing: _gridGap,
+        mainAxisSpacing: 20,
+        mainAxisExtent: cell + 48,
+      ),
+      itemCount: count,
+      itemBuilder: (context, _) => _CardSkeleton(circle: circle),
+    );
+  }
+}
+
+/// Заготовка «Всё»: заголовок и превью треков, затем ленты артистов и сетов —
+/// тот же порядок секций, что в [_ResultsView].
+class _AllSkeleton extends StatelessWidget {
+  const _AllSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        const _SectionTitleSkeleton(width: 84),
+        for (var i = 0; i < _tracksPreview; i++) _TrackRowSkeleton(index: i),
+        const _SectionTitleSkeleton(width: 104),
+        const _CarouselSkeleton(height: 168, card: 104, circle: true),
+        const _SectionTitleSkeleton(width: 128),
+        const _CarouselSkeleton(height: 194, card: 132),
+      ],
+    );
+  }
+}
+
+/// Плашка на месте [SectionTitle] — с его же отступами.
+class _SectionTitleSkeleton extends StatelessWidget {
+  const _SectionTitleSkeleton({required this.width});
+
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 18, 8, 10),
+      child: SkeletonBox(width: width, height: 18, radius: 9),
+    );
+  }
+}
+
+/// Лента заготовок вместо [EntityCarousel]: карточек ровно столько, чтобы
+/// ряд был заполнен до правого края.
+class _CarouselSkeleton extends StatelessWidget {
+  const _CarouselSkeleton({
+    required this.height,
+    required this.card,
+    this.circle = false,
+  });
+
+  final double height;
+  final double card;
+  final bool circle;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final count = (width / (card + 12)).ceil();
+
+    return SizedBox(
+      height: height,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: count,
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        itemBuilder: (context, _) => _CardSkeleton(circle: circle, width: card),
+      ),
     );
   }
 }

@@ -50,9 +50,14 @@ ThemeData buildBloomTheme(BloomTokens t) {
     scaffoldBackgroundColor: t.bg,
     canvasColor: t.bg,
     fontFamily: kFontFamily,
-    // Обычная сдержанная рябь, а не «искры» из Android 12: у десктопного
-    // Bloom нажатие показывается плёнкой, а не спецэффектом.
-    splashFactory: InkRipple.splashFactory,
+    // Нажатие НЕ подсвечивается вообще: ни ряби, ни плёнки под пальцем.
+    // Гасим сразу три источника — фабрику всплеска, цвет всплеска и цвет
+    // подсветки удержания, — иначе material вернёт заливку через любой из них.
+    // Новые кнопки тоже не должны её заводить: если понадобится отклик на
+    // нажатие, он делается движением самого элемента, а не заливкой.
+    splashFactory: NoSplash.splashFactory,
+    splashColor: Colors.transparent,
+    highlightColor: Colors.transparent,
     extensions: [t],
     textTheme: TextTheme(
       // Заголовок экрана / название трека в плеере.
@@ -108,5 +113,18 @@ ThemeData buildBloomTheme(BloomTokens t) {
       overlayShape: SliderComponentShape.noOverlay,
       thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
     ),
+    // Кнопки material берут подсветку нажатия из своего `overlayColor`, мимо
+    // `highlightColor` темы, — гасим её отдельно для каждого вида.
+    textButtonTheme: const TextButtonThemeData(style: _flatButton),
+    filledButtonTheme: const FilledButtonThemeData(style: _flatButton),
+    elevatedButtonTheme: const ElevatedButtonThemeData(style: _flatButton),
+    outlinedButtonTheme: const OutlinedButtonThemeData(style: _flatButton),
+    iconButtonTheme: const IconButtonThemeData(style: _flatButton),
   );
 }
+
+/// Кнопка без заливки под пальцем.
+const ButtonStyle _flatButton = ButtonStyle(
+  splashFactory: NoSplash.splashFactory,
+  overlayColor: WidgetStatePropertyAll(Colors.transparent),
+);

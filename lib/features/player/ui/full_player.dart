@@ -17,6 +17,7 @@ import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/track_actions.dart';
 import '../../../shared/util/format.dart';
 import '../player_controller.dart';
+import 'queue_sheet.dart';
 
 /// Радиус обложки в плеере — заметно круглее блоков (как в референсе).
 const double _coverRadius = 20;
@@ -492,6 +493,7 @@ class _Tools extends StatelessWidget {
           _FlatIcon(
             icon: SolarIconsOutline.playlistMinimalistic,
             badge: queueCount > 0 ? queueCount : null,
+            onTap: queueCount > 0 ? () => showQueueSheet(context) : null,
           ),
         ],
       ),

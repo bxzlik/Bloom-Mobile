@@ -42,6 +42,7 @@ dependencies:
   flutter_svg: ^2.3.0
   path_provider: ^2.1.6
   image_picker: ^1.2.3
+  audio_service: ^0.18.19
 
 dev_dependencies:
   flutter_test:
