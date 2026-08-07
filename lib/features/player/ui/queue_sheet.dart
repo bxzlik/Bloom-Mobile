@@ -95,7 +95,9 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
         child: Stack(
           children: [
             if (image != null)
-              Positioned.fill(child: Image(image: image, fit: BoxFit.cover)),
+              Positioned.fill(
+                child: Image(image: image, fit: BoxFit.cover),
+              ),
             Positioned.fill(
               child: ColoredBox(
                 color: image == null

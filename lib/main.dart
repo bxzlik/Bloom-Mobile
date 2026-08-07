@@ -45,10 +45,7 @@ Future<void> main() async {
   container.read(playbackProvider);
 
   runApp(
-    UncontrolledProviderScope(
-      container: container,
-      child: const BloomApp(),
-    ),
+    UncontrolledProviderScope(container: container, child: const BloomApp()),
   );
 }
 

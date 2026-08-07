@@ -295,7 +295,8 @@ class PlaybackController extends Notifier<PlaybackState>
   Future<void> commandPlay() async {
     // После stop() (смахнули шторку) источник у just_audio уже отпущен —
     // «играть» должно перезапустить трек, а не молча ничего не сделать.
-    if (_player.processingState == ProcessingState.idle && state.track != null) {
+    if (_player.processingState == ProcessingState.idle &&
+        state.track != null) {
       await _load(state.index);
       return;
     }

@@ -78,9 +78,10 @@ class _SkeletonPulseState extends State<SkeletonPulse>
     duration: const Duration(milliseconds: 850),
   )..repeat(reverse: true);
 
-  late final _opacity = Tween(begin: 1.0, end: 0.45).animate(
-    CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-  );
+  late final _opacity = Tween(
+    begin: 1.0,
+    end: 0.45,
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
   @override
   void dispose() {

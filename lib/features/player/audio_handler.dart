@@ -131,12 +131,10 @@ class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
   // подключился.
 
   @override
-  Future<void> play() =>
-      commands?.commandPlay() ?? player.play();
+  Future<void> play() => commands?.commandPlay() ?? player.play();
 
   @override
-  Future<void> pause() =>
-      commands?.commandPause() ?? player.pause();
+  Future<void> pause() => commands?.commandPause() ?? player.pause();
 
   @override
   Future<void> skipToNext() async => commands?.commandNext();
