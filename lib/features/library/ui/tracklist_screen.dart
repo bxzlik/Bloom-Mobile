@@ -2,7 +2,8 @@
 /// «История» и пользовательские плейлисты — один экран на всё.
 ///
 /// Раскладка: hero-обложка во всю ширину, название и счётчик поверх неё, ряд
-/// «Воспроизвести» + шафл + правка, ниже трек-лист.
+/// «Воспроизвести» + шафл + правка, ниже трек-лист. Карандаш переводит экран в
+/// режим правки — он живёт в [ListEditor] и заменяет собой всю страницу.
 ///
 /// У встроенных разделов своей обложки нет, поэтому берётся коллаж 2×2 из
 /// первых треков (как `.home-quick-card` на десктопе), а если и их не хватает —
@@ -27,6 +28,8 @@ import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/util/format.dart';
+import 'list_edit.dart';
+import 'list_hero.dart';
 
 /// Сортировка трек-листа — те же режимы, что на десктопе.
 enum TrackSort {
@@ -60,6 +63,9 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
   bool _searchOpen = false;
   String _query = '';
 
+  /// Экран отдан [ListEditor]: список правится, а не листается.
+  bool _editing = false;
+
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
@@ -84,6 +90,18 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
         playlist == null ? <Track>[] : lib.tracksOf(playlist),
       ),
     };
+
+    if (_editing) {
+      return ListEditor(
+        listId: widget.listId,
+        title: title,
+        playlist: playlist,
+        // Правится ВЕСЬ список в его собственном порядке: сортировка и поиск
+        // на входе в режим сбрасываются.
+        tracks: source,
+        onClose: () => setState(() => _editing = false),
+      );
+    }
 
     final tracks = _apply(source);
     final width = MediaQuery.of(context).size.width;
@@ -110,6 +128,12 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
               if (!_searchOpen) _query = '';
             }),
             onQuery: (q) => setState(() => _query = q),
+            onEdit: () => setState(() {
+              _editing = true;
+              _searchOpen = false;
+              _query = '';
+              _sort = TrackSort.manual;
+            }),
           ),
         ),
         // Ход пакетной загрузки — под шапкой, а не в ней: у hero фиксированная
@@ -200,6 +224,7 @@ class _Hero extends ConsumerWidget {
     required this.query,
     required this.onToggleSearch,
     required this.onQuery,
+    required this.onEdit,
   });
 
   final String listId;
@@ -223,6 +248,9 @@ class _Hero extends ConsumerWidget {
   final VoidCallback onToggleSearch;
   final ValueChanged<String> onQuery;
 
+  /// Уйти в режим правки — карандаш в ряду действий.
+  final VoidCallback onEdit;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
@@ -245,9 +273,9 @@ class _Hero extends ConsumerWidget {
                 shape: BorderRadius.vertical(
                   bottom: Radius.circular(t.radius * 1.5),
                 ),
-                child: _HeroBackground(
+                child: ListHeroBackground(
                   listId: listId,
-                  playlist: playlist,
+                  cover: playlist?.cover,
                   tracks: tracks,
                 ),
               ),
@@ -323,7 +351,7 @@ class _Hero extends ConsumerWidget {
                     _Actions(
                       listId: listId,
                       tracks: visible.isEmpty ? tracks : visible,
-                      playlist: playlist,
+                      onEdit: onEdit,
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -333,74 +361,6 @@ class _Hero extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Фон hero: обложка плейлиста → коллаж 2×2 из треков → тинт раздела.
-class _HeroBackground extends StatelessWidget {
-  const _HeroBackground({
-    required this.listId,
-    required this.playlist,
-    required this.tracks,
-  });
-
-  final String listId;
-  final UserPlaylist? playlist;
-  final List<Track> tracks;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-
-    final cover = coverImage(playlist?.cover);
-    if (cover != null) {
-      return Image(
-        image: cover,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _tint(t),
-      );
-    }
-
-    final covers = tracks
-        .map((x) => x.cover)
-        .whereType<String>()
-        .take(4)
-        .toList();
-    if (covers.length == 4) {
-      return GridView.count(
-        crossAxisCount: 2,
-        physics: const NeverScrollableScrollPhysics(),
-        children: [
-          for (final c in covers)
-            Image.network(
-              c,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => _tint(t),
-            ),
-        ],
-      );
-    }
-    if (covers.isNotEmpty) {
-      return Image.network(
-        covers.first,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _tint(t),
-      );
-    }
-    return _tint(t);
-  }
-
-  Widget _tint(BloomTokens t) {
-    final (Color tint, Color color, IconData icon) = switch (listId) {
-      'fav' => (t.sysFavTint, t.sysFavIco, SolarIconsBold.heart),
-      'history' => (t.sysHistTint, t.sysHistIco, SolarIconsOutline.clockCircle),
-      'all' => (t.sysAllTint, t.sysAllIco, SolarIconsOutline.musicNote),
-      _ => (t.ovlBg, t.muted, SolarIconsBold.musicNote),
-    };
-    return ColoredBox(
-      color: tint,
-      child: Center(child: Icon(icon, size: 64, color: color)),
     );
   }
 }
@@ -511,14 +471,17 @@ class _Actions extends ConsumerWidget {
   const _Actions({
     required this.listId,
     required this.tracks,
-    required this.playlist,
+    required this.onEdit,
   });
 
   /// `all` / `fav` / `history` / id плейлиста — он же источник очереди.
   final String listId;
 
   final List<Track> tracks;
-  final UserPlaylist? playlist;
+
+  /// Карандаш есть у ЛЮБОГО списка библиотеки: править состав и порядок можно
+  /// и во встроенных разделах, просто имя с обложкой там не свои.
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -569,14 +532,12 @@ class _Actions extends ConsumerWidget {
                 }
               : null,
         ),
-        if (playlist case final pl?) ...[
-          const SizedBox(width: 10),
-          GlassIconButton(
-            icon: SolarIconsOutline.penNewSquare,
-            size: 46,
-            onTap: () => _rename(context, ref, pl),
-          ),
-        ],
+        const SizedBox(width: 10),
+        GlassIconButton(
+          icon: SolarIconsOutline.penNewSquare,
+          size: 46,
+          onTap: onEdit,
+        ),
       ],
     );
   }

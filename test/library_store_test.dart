@@ -167,6 +167,105 @@ void main() {
     );
   });
 
+  test('правка плейлиста: новый состав и порядок разом', () {
+    final c = _container(JsonStore.memory());
+    final lib = c.read(libraryProvider.notifier);
+    final pl = lib.createPlaylist(
+      'Мой',
+      tracks: [
+        _track('sc_1', name: 'A'),
+        _track('sc_2', name: 'B'),
+        _track('sc_3', name: 'C'),
+      ],
+    );
+
+    lib.setPlaylistTracks(pl.id, ['sc_3', 'sc_1']);
+
+    final saved = c.read(libraryProvider).playlists.single;
+    expect(saved.trackIds, ['sc_3', 'sc_1']);
+    // Выпавший из плейлиста трек остаётся в библиотеке — из «Всех треков» его
+    // никто не выкидывал.
+    expect(c.read(libraryProvider).isInLib('sc_2'), isTrue);
+  });
+
+  test('правка «Всех треков»: порядок сохраняется, убранное уходит насквозь', () {
+    final c = _container(JsonStore.memory());
+    final lib = c.read(libraryProvider.notifier);
+    final gone = _track('sc_2', name: 'B');
+    lib.toggleFav(gone);
+    lib.pushHistory(gone);
+    final pl = lib.createPlaylist(
+      'Мой',
+      tracks: [
+        _track('sc_1', name: 'A'),
+        gone,
+        _track('sc_3', name: 'C'),
+      ],
+    );
+
+    lib.setLibraryTracks(['sc_3', 'sc_1']);
+
+    final after = c.read(libraryProvider);
+    expect(after.allTracks.map((t) => t.name).toList(), ['C', 'A']);
+    // Убранный из библиотеки не должен остаться ни лайком, ни строкой плейлиста.
+    expect(after.isFav('sc_2'), isFalse);
+    expect(after.historyTracks, isEmpty);
+    expect(after.tracks.containsKey('sc_2'), isFalse);
+    expect(after.playlists.singleWhere((p) => p.id == pl.id).trackIds, [
+      'sc_1',
+      'sc_3',
+    ]);
+  });
+
+  test('правка «Любимых»: снятый лайк не выкидывает трек из библиотеки', () {
+    final c = _container(JsonStore.memory());
+    final lib = c.read(libraryProvider.notifier);
+    lib.toggleFav(_track('sc_1', name: 'A'));
+    lib.toggleFav(_track('sc_2', name: 'B'));
+
+    lib.setFavTracks(['sc_2']);
+
+    final after = c.read(libraryProvider);
+    expect(after.favTracks.map((t) => t.name).toList(), ['B']);
+    expect(after.isInLib('sc_1'), isTrue);
+  });
+
+  test('правка «Истории»: время прослушивания уцелевших не переписывается', () {
+    final c = _container(JsonStore.memory());
+    final lib = c.read(libraryProvider.notifier);
+    lib.pushHistory(_track('sc_1', name: 'A'));
+    lib.pushHistory(_track('sc_2', name: 'B'));
+    final wasAt = c
+        .read(libraryProvider)
+        .history
+        .singleWhere((h) => h.trackId == 'sc_1')
+        .at;
+
+    lib.setHistoryTracks(['sc_1']);
+
+    final after = c.read(libraryProvider).history;
+    expect(after.map((h) => h.trackId).toList(), ['sc_1']);
+    expect(after.single.at, wasAt);
+  });
+
+  test('пачка в плейлист: порядок внутри сохраняется, дубли пропускаются', () {
+    final c = _container(JsonStore.memory());
+    final lib = c.read(libraryProvider.notifier);
+    final pl = lib.createPlaylist('Мой', tracks: [_track('sc_1', name: 'A')]);
+
+    lib.addTracksToPlaylist(pl.id, [
+      _track('sc_2', name: 'B'),
+      _track('sc_1', name: 'A'),
+      _track('sc_3', name: 'C'),
+    ]);
+
+    expect(c.read(libraryProvider).playlists.single.trackIds, [
+      'sc_2',
+      'sc_3',
+      'sc_1',
+    ]);
+  });
+
   test('пустое имя плейлиста не создаёт безымянный', () {
     final c = _container(JsonStore.memory());
     final pl = c.read(libraryProvider.notifier).createPlaylist('   ');

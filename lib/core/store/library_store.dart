@@ -355,6 +355,47 @@ class LibraryController extends Notifier<LibraryState> {
     _savePlaylists();
   }
 
+  /// Правка «Всех треков» целиком: [ids] — новый состав И порядок, первый
+  /// сверху. Выпавшее из списка удаляется НАСКВОЗЬ, как [deleteTrack]: трек вне
+  /// библиотеки, но в плейлисте — состояние, которого больше нигде не бывает.
+  void setLibraryTracks(List<String> ids) {
+    final gone = state.inLib.keys.toSet()..removeAll(ids);
+    // Порядок раздела держится временем добавления, свежие сверху, — значит
+    // первому в списке достаётся наибольшее время.
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final inLib = <String, int>{
+      for (var i = 0; i < ids.length; i++) ids[i]: now - i,
+    };
+    if (gone.isEmpty) {
+      state = state.copyWith(inLib: inLib);
+      _saveLib();
+      return;
+    }
+    state = state.copyWith(
+      inLib: inLib,
+      tracks: Map<String, Track>.from(state.tracks)
+        ..removeWhere((id, _) => gone.contains(id)),
+      favs: Map<String, int>.from(state.favs)
+        ..removeWhere((id, _) => gone.contains(id)),
+      history: state.history.where((h) => !gone.contains(h.trackId)).toList(),
+      playlists: [
+        for (final p in state.playlists)
+          p.trackIds.any(gone.contains)
+              ? p.copyWith(
+                  trackIds: p.trackIds
+                      .where((id) => !gone.contains(id))
+                      .toList(),
+                )
+              : p,
+      ],
+    );
+    _saveTracks();
+    _saveLib();
+    _saveFavs();
+    _saveHistory();
+    _savePlaylists();
+  }
+
   // ── Любимые ─────────────────────────────────────────────────────────────
 
   /// Переключить лайк. Лайкнутый трек заодно попадает в библиотеку — как на
@@ -373,6 +414,17 @@ class LibraryController extends Notifier<LibraryState> {
     return on;
   }
 
+  /// Правка «Любимых» целиком: [ids] — новый состав И порядок. Снятый лайк из
+  /// библиотеки трек не выкидывает — как и [toggleFav], только наоборот.
+  void setFavTracks(List<String> ids) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    state = state.copyWith(
+      favs: {for (var i = 0; i < ids.length; i++) ids[i]: now - i},
+    );
+    _saveFavs();
+    _prune();
+  }
+
   // ── История ─────────────────────────────────────────────────────────────
 
   /// Отметить прослушивание: трек уезжает наверх истории без дублей. В
@@ -388,6 +440,15 @@ class LibraryController extends Notifier<LibraryState> {
     }
     _remember([track]);
     state = state.copyWith(history: history);
+    _saveHistory();
+    _prune();
+  }
+
+  /// Правка «Истории» целиком: [ids] — что осталось и в каком порядке. Время
+  /// прослушивания у уцелевших записей сохраняется: это их единственный смысл.
+  void setHistoryTracks(List<String> ids) {
+    final byId = {for (final h in state.history) h.trackId: h};
+    state = state.copyWith(history: [for (final id in ids) ?byId[id]]);
     _saveHistory();
     _prune();
   }
@@ -452,11 +513,21 @@ class LibraryController extends Notifier<LibraryState> {
   }
 
   /// Новый трек уходит НАВЕРХ плейлиста (как на десктопе), дубли игнорируются.
-  void addTrackToPlaylist(String id, Track track) {
-    addToLibrary([track]);
+  void addTrackToPlaylist(String id, Track track) =>
+      addTracksToPlaylist(id, [track]);
+
+  /// То же для пачки — выделение из режима правки списка. Порядок внутри пачки
+  /// сохраняется, уже лежащие в плейлисте треки пропускаются.
+  void addTracksToPlaylist(String id, List<Track> batch) {
+    addToLibrary(batch);
     _updatePlaylist(id, (p) {
-      if (p.trackIds.contains(track.id)) return p;
-      return p.copyWith(trackIds: [track.id, ...p.trackIds]);
+      final have = p.trackIds.toSet();
+      final add = [
+        for (final t in batch)
+          if (!have.contains(t.id)) t.id,
+      ];
+      if (add.isEmpty) return p;
+      return p.copyWith(trackIds: [...add, ...p.trackIds]);
     });
   }
 
@@ -464,6 +535,15 @@ class LibraryController extends Notifier<LibraryState> {
     id,
     (p) => p.copyWith(trackIds: p.trackIds.where((t) => t != trackId).toList()),
   );
+
+  /// Правка плейлиста целиком: [trackIds] — новый состав И порядок. В отличие
+  /// от [replacePlaylistTracks] сюда приходят только id: треки уже в
+  /// хранилище, добавлять нечего, а вот выпавшие из состава могут стать
+  /// никому не нужными.
+  void setPlaylistTracks(String id, List<String> trackIds) {
+    _updatePlaylist(id, (p) => p.copyWith(trackIds: trackIds));
+    _prune();
+  }
 
   /// Заменить состав плейлиста целиком — «обновить треки» из источника.
   void replacePlaylistTracks(String id, List<Track> tracks) {

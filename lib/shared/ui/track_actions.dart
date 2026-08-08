@@ -17,6 +17,7 @@ import '../../features/detail/detail_nav.dart';
 import '../../features/offline/file_download.dart';
 import '../../features/offline/offline_actions.dart';
 import '../../features/offline/offline_store.dart';
+import '../util/format.dart';
 import 'atoms.dart';
 import 'bloom_sheet.dart';
 
@@ -154,14 +155,29 @@ Future<void> showAddToPlaylistSheet(
   BuildContext context,
   WidgetRef ref,
   Track track,
-) async {
+) => showAddTracksToPlaylistSheet(context, ref, [track]);
+
+/// Та же шторка для пачки треков — выделение из режима правки списка.
+///
+/// [newName] — имя, которое подставится в «Новый плейлист»: у одного трека это
+/// его название, у пачки — имя списка, откуда её взяли.
+Future<void> showAddTracksToPlaylistSheet(
+  BuildContext context,
+  WidgetRef ref,
+  List<Track> tracks, {
+  String? newName,
+}) async {
+  if (tracks.isEmpty) return;
+  final one = tracks.length == 1 ? tracks.first : null;
+  final cover = tracks.first.cover;
+
   await showBloomSheetChild(
     context: context,
-    backdrop: track.cover,
+    backdrop: cover,
     header: SheetLineHeader(
-      cover: track.cover,
+      cover: cover,
       title: 'Добавить в плейлист',
-      subtitle: track.name,
+      subtitle: one?.name ?? tracksCount(tracks.length),
     ),
     child: Consumer(
       builder: (context, ref, _) {
@@ -170,14 +186,17 @@ Future<void> showAddToPlaylistSheet(
         // Импортированные альбомы в список не идут: дописывать в них треки
         // руками смысла нет, они перетягиваются из источника целиком.
         final playlists = lib.playlists.where((p) => !p.isAlbum).toList();
-        final inLib = lib.isInLib(track.id);
+        final outside = [
+          for (final track in tracks)
+            if (!lib.isInLib(track.id)) track,
+        ];
 
         return SheetPanel(
           children: [
-            // Трека уже в библиотеке пункт не касается — он там и прячется
-            // (`canAddToLib` на десктопе). Убрать трек можно только
-            // «Удалить трек» из шторки действий, насквозь.
-            if (!inLib) ...[
+            // Того, что уже в библиотеке, пункт не касается — он прячется,
+            // когда добавлять нечего (`canAddToLib` на десктопе). Убрать трек
+            // можно только «Удалить трек» из шторки действий, насквозь.
+            if (outside.isNotEmpty) ...[
               _SimpleRow(
                 icon: SolarIconsOutline.download,
                 label: 'В библиотеку',
@@ -186,7 +205,7 @@ Future<void> showAddToPlaylistSheet(
                   // Мессенджер берём до pop: после него context шторки уже
                   // отвязан от дерева и до Scaffold по нему не дойти.
                   final messenger = ScaffoldMessenger.of(context);
-                  ref.read(libraryProvider.notifier).addToLibrary([track]);
+                  ref.read(libraryProvider.notifier).addToLibrary(outside);
                   Navigator.of(context).pop();
                   messenger.showSnackBar(
                     const SnackBar(content: Text('Добавлено в библиотеку')),
@@ -202,13 +221,13 @@ Future<void> showAddToPlaylistSheet(
               onTap: () {
                 ref
                     .read(libraryProvider.notifier)
-                    .createPlaylist(track.name, tracks: [track]);
+                    .createPlaylist(newName ?? one?.name ?? '', tracks: tracks);
                 Navigator.of(context).pop();
               },
             ),
             for (final pl in playlists) ...[
               sheetDivider(),
-              _PlaylistRow(playlist: pl, track: track),
+              _PlaylistRow(playlist: pl, tracks: tracks),
             ],
           ],
         );
@@ -255,21 +274,24 @@ class _SimpleRow extends StatelessWidget {
 }
 
 class _PlaylistRow extends ConsumerWidget {
-  const _PlaylistRow({required this.playlist, required this.track});
+  const _PlaylistRow({required this.playlist, required this.tracks});
 
   final UserPlaylist playlist;
-  final Track track;
+  final List<Track> tracks;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
-    final has = playlist.trackIds.contains(track.id);
+    // Галочка — «всё это уже здесь»: у пачки половина треков в плейлисте ещё
+    // не отметка, добавить остальные по-прежнему есть смысл.
+    final ids = playlist.trackIds.toSet();
+    final has = tracks.every((track) => ids.contains(track.id));
 
     return InkWell(
       onTap: () {
         ref
             .read(libraryProvider.notifier)
-            .addTrackToPlaylist(playlist.id, track);
+            .addTracksToPlaylist(playlist.id, tracks);
         Navigator.of(context).pop();
       },
       child: Padding(

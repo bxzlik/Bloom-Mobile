@@ -102,7 +102,7 @@ class TrackRow extends ConsumerWidget {
             ),
             _OfflineMark(trackId: track.id),
             const SizedBox(width: 10),
-            _DurationPill(track: track, active: active),
+            DurationPill(track: track, active: active),
           ],
         ),
       ),
@@ -164,8 +164,8 @@ class _OfflineMark extends ConsumerWidget {
 /// самая тихая (`ovlLine`): на мобилке рамка не должна спорить с названием.
 /// У играющего трека вместо цифр в той же рамке стоит эквалайзер: строка сама
 /// показывает, что играет.
-class _DurationPill extends ConsumerWidget {
-  const _DurationPill({required this.track, required this.active});
+class DurationPill extends ConsumerWidget {
+  const DurationPill({super.key, required this.track, required this.active});
 
   final Track track;
   final bool active;
