@@ -116,8 +116,7 @@ Future<void> main() async {
   // Те же магические байты, по которым офлайн-стор выбирает расширение: `ftyp`
   // с четвёртого байта — m4a, иначе mp3.
   final isM4a =
-      first.length > 8 &&
-      String.fromCharCodes(first.sublist(4, 8)) == 'ftyp';
+      first.length > 8 && String.fromCharCodes(first.sublist(4, 8)) == 'ftyp';
   check(first.isNotEmpty, 'файл: пустое тело');
   print(
     'resolveDownload: status ${dlResp.statusCode}, '

@@ -215,8 +215,9 @@ class PlaybackController extends Notifier<PlaybackState>
         await _player.setFilePath(offlinePath);
       } else {
         final provider = ref.read(registryProvider).forEntity(track.id);
-        if (provider == null)
+        if (provider == null) {
           throw StateError('нет провайдера для ${track.id}');
+        }
         final stream = await provider.resolveStream(track);
         if (stream == null) throw StateError('search.err.noStream');
         if (gen != _generation) return; // пользователь уже переключил трек
