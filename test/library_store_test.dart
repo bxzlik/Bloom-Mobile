@@ -58,6 +58,78 @@ void main() {
     ]);
   });
 
+  test('прослушивание не кладёт трек в «Все треки»', () {
+    final c = _container(JsonStore.memory());
+    final lib = c.read(libraryProvider.notifier);
+    lib.pushHistory(_track('sc_1'));
+
+    // В истории есть, в библиотеке — нет: на десктопе так же.
+    expect(c.read(libraryProvider).historyTracks.single.id, 'sc_1');
+    expect(c.read(libraryProvider).isInLib('sc_1'), isFalse);
+    expect(c.read(libraryProvider).allTracks, isEmpty);
+  });
+
+  test('прослушанное уходит из хранилища вместе с историей', () {
+    final c = _container(JsonStore.memory());
+    final lib = c.read(libraryProvider.notifier);
+    lib.pushHistory(_track('sc_1'));
+    lib.pushHistory(_track('sc_2'));
+    lib.toggleFav(_track('sc_2'));
+    lib.clearHistory();
+
+    // sc_1 больше никому не нужен, sc_2 держит лайк.
+    expect(c.read(libraryProvider).tracks.keys, ['sc_2']);
+  });
+
+  test(
+    'в библиотеку добавляют явно, свежие сверху, дубли не двигают порядок',
+    () {
+      final c = _container(JsonStore.memory());
+      final lib = c.read(libraryProvider.notifier);
+
+      expect(lib.addToLibrary([_track('sc_1', name: 'A')]), 1);
+      expect(lib.addToLibrary([_track('sc_2', name: 'B')]), 1);
+      expect(lib.addToLibrary([_track('sc_1', name: 'A')]), 0);
+
+      expect(c.read(libraryProvider).allTracks.map((t) => t.name).toList(), [
+        'B',
+        'A',
+      ]);
+    },
+  );
+
+  test('удаление трека вычищает его отовсюду', () {
+    final c = _container(JsonStore.memory());
+    final lib = c.read(libraryProvider.notifier);
+    final track = _track('sc_1');
+    lib.toggleFav(track); // лайк заодно кладёт в библиотеку
+    lib.pushHistory(track);
+    final pl = lib.createPlaylist('Мой', tracks: [track, _track('sc_2')]);
+
+    lib.deleteTrack('sc_1');
+
+    final after = c.read(libraryProvider);
+    expect(after.isInLib('sc_1'), isFalse);
+    expect(after.isFav('sc_1'), isFalse);
+    expect(after.historyTracks, isEmpty);
+    expect(after.tracks.containsKey('sc_1'), isFalse);
+    // Висячий id в плейлисте показывал бы счётчик без строки.
+    expect(after.playlists.singleWhere((p) => p.id == pl.id).trackIds, [
+      'sc_2',
+    ]);
+  });
+
+  test('старое хранилище без набора библиотеки: в ней остаётся всё', () {
+    // Файл, записанный до разделения хранилища и «Всех треков».
+    final store = JsonStore.memory({
+      'tracks': [_track('sc_1', name: 'A').toJson(), _track('sc_2').toJson()],
+    });
+    final restored = _container(store).read(libraryProvider);
+
+    expect(restored.allTracks.length, 2);
+    expect(restored.allTracks.first.id, 'sc_2'); // свежий сверху
+  });
+
   test('история без дублей: повтор поднимает трек наверх', () {
     final c = _container(JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);

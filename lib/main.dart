@@ -9,6 +9,7 @@ import 'core/store/cover_store.dart';
 import 'core/store/json_store.dart';
 import 'core/store/library_store.dart';
 import 'core/store/settings_store.dart';
+import 'features/offline/offline_store.dart';
 import 'features/player/audio_handler.dart';
 import 'features/player/player_controller.dart';
 
@@ -18,6 +19,7 @@ Future<void> main() async {
   // пустыми, а экраны придётся городить с состояниями загрузки.
   final store = await JsonStore.open();
   await initCoverStore();
+  await initOfflineStore();
   final handler = await AudioService.init(
     builder: BloomAudioHandler.new,
     config: const AudioServiceConfig(

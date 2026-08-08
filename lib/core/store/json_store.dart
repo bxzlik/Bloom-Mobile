@@ -13,7 +13,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:path_provider/path_provider.dart';
+import 'app_dirs.dart';
 
 const Duration _saveDelay = Duration(milliseconds: 400);
 
@@ -25,7 +25,7 @@ class JsonStore {
   Timer? _debounce;
 
   static Future<JsonStore> open({String name = 'bloom.json'}) async {
-    final dir = await getApplicationDocumentsDirectory();
+    final dir = await appPrivateDir();
     final file = File('${dir.path}/$name');
     Map<String, dynamic> data = {};
     try {

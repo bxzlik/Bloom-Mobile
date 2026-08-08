@@ -247,4 +247,14 @@ abstract class MusicProvider {
 
   /// Играбельный URL трека этой площадки.
   Future<PlayableStream?> resolveStream(Track track) async => null;
+
+  /// Умеет ли площадка отдавать трек ФАЙЛОМ — порт `isDownloadable` с
+  /// десктопа. Отдельно от [resolveStream]: играть можно и HLS, а сохранить
+  /// на диск — нет.
+  bool canDownload(Track track) => false;
+
+  /// Ссылка на файл трека для офлайн-копии. Отличается от [resolveStream] тем,
+  /// что обязана вернуть цельный файл (progressive), а не плейлист кусков;
+  /// бросает, если у трека такого варианта нет.
+  Future<PlayableStream?> resolveDownload(Track track) async => null;
 }

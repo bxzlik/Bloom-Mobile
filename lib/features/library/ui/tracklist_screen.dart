@@ -18,28 +18,38 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
+import '../../../features/offline/file_download.dart';
+import '../../../features/offline/offline_actions.dart';
+import '../../../features/offline/offline_store.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
+import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/util/format.dart';
 
 /// Сортировка трек-листа — те же режимы, что на десктопе.
 enum TrackSort {
-  manual('По порядку'),
-  name('По названию'),
-  artist('По исполнителю'),
-  duration('По длительности');
+  manual('По порядку', SolarIconsOutline.playlistMinimalistic),
+  name('По названию', SolarIconsOutline.sortByAlphabet),
+  artist('По исполнителю', SolarIconsOutline.userRounded),
+  duration('По длительности', SolarIconsOutline.sortByTime);
 
-  const TrackSort(this.label);
+  const TrackSort(this.label, this.icon);
   final String label;
+  final IconData icon;
 }
 
 class TracklistScreen extends ConsumerStatefulWidget {
-  const TracklistScreen({super.key, required this.listId});
+  const TracklistScreen({super.key, required this.listId, this.flight});
 
   /// `all` / `fav` / `history` либо id пользовательского плейлиста.
   final String listId;
+
+  /// Обложка плитки библиотеки, с которой сюда пришли: она перелетает в шапку.
+  /// `null` — у плитки обложки не было (в шапке коллаж или тинт раздела) или
+  /// список открыт не с плитки.
+  final CoverFlight? flight;
 
   @override
   ConsumerState<TracklistScreen> createState() => _TracklistScreenState();
@@ -87,6 +97,9 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
             playlist: playlist,
             tracks: source,
             visible: tracks,
+            // Летим только на свою обложку: коллаж 2×2 собирается из чужих
+            // картинок, и обложке плитки в нём места нет.
+            flight: playlist?.cover == null ? null : widget.flight,
             height: width * 0.62,
             sort: _sort,
             onSort: (s) => setState(() => _sort = s),
@@ -99,6 +112,9 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
             onQuery: (q) => setState(() => _query = q),
           ),
         ),
+        // Ход пакетной загрузки — под шапкой, а не в ней: у hero фиксированная
+        // высота, лишняя строка внутри его переполнила бы.
+        const SliverToBoxAdapter(child: OfflineBatchBar()),
         if (tracks.isEmpty)
           SliverFillRemaining(
             hasScrollBody: false,
@@ -126,8 +142,12 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
             padding: const EdgeInsets.fromLTRB(8, 10, 8, 12),
             sliver: SliverList.builder(
               itemCount: tracks.length,
-              itemBuilder: (context, i) =>
-                  TrackRow(track: tracks[i], queue: tracks, index: i),
+              itemBuilder: (context, i) => TrackRow(
+                track: tracks[i],
+                queue: tracks,
+                index: i,
+                sourceId: widget.listId,
+              ),
             ),
           ),
       ],
@@ -172,6 +192,7 @@ class _Hero extends ConsumerWidget {
     required this.playlist,
     required this.tracks,
     required this.visible,
+    required this.flight,
     required this.height,
     required this.sort,
     required this.onSort,
@@ -190,6 +211,10 @@ class _Hero extends ConsumerWidget {
 
   /// То, что реально показано (после поиска и сортировки).
   final List<Track> visible;
+
+  /// Обложка плитки, с которой пришли, — цель перелёта.
+  final CoverFlight? flight;
+
   final double height;
   final TrackSort sort;
   final ValueChanged<TrackSort> onSort;
@@ -200,7 +225,12 @@ class _Hero extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.bloom;
     final theme = Theme.of(context).textTheme;
+    // Обложка для шторок: у плейлиста своя, у встроенных разделов её роль
+    // играет первый трек — так же, как в фоне hero.
+    final cover =
+        playlist?.cover ?? (tracks.isEmpty ? null : tracks.first.cover);
 
     return SizedBox(
       height: height + 76,
@@ -210,65 +240,94 @@ class _Hero extends ConsumerWidget {
           // край и есть граница со списком.
           Positioned.fill(
             child: HeroCover(
-              child: _HeroBackground(
-                listId: listId,
-                playlist: playlist,
-                tracks: tracks,
+              child: CoverHero(
+                tag: flight?.tag,
+                shape: BorderRadius.vertical(
+                  bottom: Radius.circular(t.radius * 1.5),
+                ),
+                child: _HeroBackground(
+                  listId: listId,
+                  playlist: playlist,
+                  tracks: tracks,
+                ),
               ),
             ),
           ),
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      GlassIconButton(
-                        icon: SolarIconsOutline.arrowLeft,
-                        onTap: () => context.go('/library'),
-                      ),
-                      const SizedBox(width: 8),
-                      _SortButton(sort: sort, onSort: onSort),
-                      const Spacer(),
-                      GlassIconButton(
-                        icon: searchOpen
-                            ? SolarIconsOutline.closeCircle
-                            : SolarIconsOutline.magnifier,
-                        onTap: onToggleSearch,
-                      ),
-                      if (playlist != null) ...[
-                        const SizedBox(width: 8),
+          HeroContent(
+            flying: flight != null,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
                         GlassIconButton(
-                          icon: SolarIconsOutline.menuDots,
-                          onTap: () =>
-                              showPlaylistMenu(context, ref, playlist!, tracks),
+                          icon: SolarIconsOutline.arrowLeft,
+                          onTap: () => context.go('/library'),
                         ),
+                        const SizedBox(width: 8),
+                        _SortButton(
+                          sort: sort,
+                          onSort: onSort,
+                          title: title,
+                          cover: cover,
+                        ),
+                        const Spacer(),
+                        GlassIconButton(
+                          icon: searchOpen
+                              ? SolarIconsOutline.closeCircle
+                              : SolarIconsOutline.magnifier,
+                          onTap: onToggleSearch,
+                        ),
+                        if (playlist != null) ...[
+                          const SizedBox(width: 8),
+                          GlassIconButton(
+                            icon: SolarIconsOutline.menuDots,
+                            onTap: () => showPlaylistMenu(
+                              context,
+                              ref,
+                              playlist!,
+                              tracks,
+                            ),
+                          ),
+                        ],
                       ],
+                    ),
+                    if (searchOpen) ...[
+                      const SizedBox(height: 10),
+                      _InlineSearch(query: query, onQuery: onQuery),
                     ],
-                  ),
-                  if (searchOpen) ...[
-                    const SizedBox(height: 10),
-                    _InlineSearch(query: query, onQuery: onQuery),
+                    const Spacer(),
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.headlineSmall?.copyWith(fontSize: 30),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          tracksCount(tracks.length),
+                          style: theme.bodyMedium,
+                        ),
+                        // Сколько из списка уже на устройстве — та же подпись,
+                        // что в шапке плейлиста на десктопе.
+                        OfflineTag(tracks: tracks),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _Actions(
+                      listId: listId,
+                      tracks: visible.isEmpty ? tracks : visible,
+                      playlist: playlist,
+                    ),
+                    const SizedBox(height: 12),
                   ],
-                  const Spacer(),
-                  Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.headlineSmall?.copyWith(fontSize: 30),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(tracksCount(tracks.length), style: theme.bodyMedium),
-                  const SizedBox(height: 14),
-                  _Actions(
-                    tracks: visible.isEmpty ? tracks : visible,
-                    playlist: playlist,
-                  ),
-                  const SizedBox(height: 12),
-                ],
+                ),
               ),
             ),
           ),
@@ -347,44 +406,58 @@ class _HeroBackground extends StatelessWidget {
 }
 
 class _SortButton extends StatelessWidget {
-  const _SortButton({required this.sort, required this.onSort});
+  const _SortButton({
+    required this.sort,
+    required this.onSort,
+    required this.title,
+    required this.cover,
+  });
 
   final TrackSort sort;
   final ValueChanged<TrackSort> onSort;
 
+  /// Название списка — уходит в подпись шапки шторки.
+  final String title;
+  final String? cover;
+
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
-    return PopupMenuButton<TrackSort>(
-      onSelected: onSort,
-      color: t.blockColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(t.radius),
-        side: BorderSide(color: t.ovlLine),
-      ),
-      itemBuilder: (context) => [
-        for (final s in TrackSort.values)
-          PopupMenuItem(
-            value: s,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    s.label,
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                ),
-                if (s == sort)
-                  Icon(SolarIconsBold.checkCircle, size: 16, color: t.accent),
-              ],
-            ),
-          ),
-      ],
-      child: IgnorePointer(
-        child: GlassIconButton(icon: SolarIconsOutline.tuning_2, onTap: () {}),
-      ),
+    return GlassIconButton(
+      icon: SolarIconsOutline.tuning_2,
+      onTap: () => showSortSheet(context, title, cover, sort, onSort),
     );
   }
+}
+
+/// Выбор сортировки списка — такая же нижняя шторка, как по удержанию трека, а
+/// не всплывающее меню: на телефоне до низа экрана рука достаёт, до угла шапки
+/// нет.
+Future<void> showSortSheet(
+  BuildContext context,
+  String title,
+  String? cover,
+  TrackSort sort,
+  ValueChanged<TrackSort> onSort,
+) {
+  final t = context.bloom;
+  return showBloomSheet(
+    context: context,
+    backdrop: cover,
+    header: SheetLineHeader(cover: cover, title: 'Сортировка', subtitle: title),
+    groups: [
+      [
+        for (final s in TrackSort.values)
+          SheetAction(
+            icon: s.icon,
+            label: s.label,
+            onTap: () => onSort(s),
+            trailing: s == sort
+                ? Icon(SolarIconsBold.checkCircle, size: 18, color: t.accent)
+                : null,
+          ),
+      ],
+    ],
+  );
 }
 
 class _InlineSearch extends StatelessWidget {
@@ -435,7 +508,14 @@ class _InlineSearch extends StatelessWidget {
 }
 
 class _Actions extends ConsumerWidget {
-  const _Actions({required this.tracks, required this.playlist});
+  const _Actions({
+    required this.listId,
+    required this.tracks,
+    required this.playlist,
+  });
+
+  /// `all` / `fav` / `history` / id плейлиста — он же источник очереди.
+  final String listId;
 
   final List<Track> tracks;
   final UserPlaylist? playlist;
@@ -454,8 +534,9 @@ class _Actions extends ConsumerWidget {
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: enabled
-                  ? () =>
-                        ref.read(playbackProvider.notifier).playQueue(tracks, 0)
+                  ? () => ref
+                        .read(playbackProvider.notifier)
+                        .playQueue(tracks, 0, sourceId: listId)
                   : null,
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 13),
@@ -484,7 +565,7 @@ class _Actions extends ConsumerWidget {
               ? () {
                   final ctrl = ref.read(playbackProvider.notifier);
                   if (!ref.read(playbackProvider).shuffle) ctrl.toggleShuffle();
-                  ctrl.playQueue(tracks, 0);
+                  ctrl.playQueue(tracks, 0, sourceId: listId);
                 }
               : null,
         ),
@@ -513,12 +594,21 @@ Future<void> showPlaylistMenu(
     if (tracks.isEmpty) return;
     final ctrl = ref.read(playbackProvider.notifier);
     if (shuffle && !ref.read(playbackProvider).shuffle) ctrl.toggleShuffle();
-    ctrl.playQueue(tracks, 0);
+    ctrl.playQueue(tracks, 0, sourceId: playlist.id);
   }
 
   // У плейлиста без своей обложки её роль играет первый трек — так же, как в
   // hero экрана.
   final cover = playlist.cover ?? (tracks.isEmpty ? null : tracks.first.cover);
+
+  // Офлайн-состав считаем до открытия шторки: в её обработчиках `watch` уже
+  // недоступен, а `read` внутри пункта дал бы состояние на момент нажатия.
+  final offlineStatus = listOfflineState(
+    ref.read(offlineProvider),
+    ref.read(offlineProvider.notifier),
+    tracks,
+  );
+  final messenger = ScaffoldMessenger.of(context);
 
   await showBloomSheet(
     context: context,
@@ -542,6 +632,35 @@ Future<void> showPlaylistMenu(
         ),
       ],
       [
+        // Пакет качается прямо сейчас — единственное, что здесь уместно, это
+        // его остановить.
+        if (ref.read(offlineProvider).batch != null)
+          SheetAction(
+            icon: SolarIconsOutline.closeCircle,
+            label: 'Прервать сохранение',
+            onTap: () => ref.read(offlineProvider.notifier).cancelBatch(),
+          )
+        // Скачать целиком есть смысл, пока в списке остались несохранённые
+        // треки; когда всё на устройстве — пункт становится «убрать».
+        else if (offlineStatus.total > 0) ...[
+          SheetAction(
+            icon: offlineStatus.all
+                ? SolarIconsBold.checkCircle
+                : SolarIconsOutline.diskette,
+            label: offlineStatus.all
+                ? 'Убрать из офлайна'
+                : 'Слушать офлайн (${offlineStatus.total - offlineStatus.cached})',
+            onTap: () => offlineStatus.all
+                ? removeListOffline(messenger, ref, tracks)
+                : downloadListOffline(messenger, ref, playlist.name, tracks),
+          ),
+          if (canSaveFiles)
+            SheetAction(
+              icon: SolarIconsOutline.downloadMinimalistic,
+              label: 'Скачать файлами (${offlineStatus.total})',
+              onTap: () => saveListFiles(messenger, ref, playlist.name, tracks),
+            ),
+        ],
         SheetAction(
           icon: SolarIconsOutline.penNewSquare,
           label: 'Переименовать',

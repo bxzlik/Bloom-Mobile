@@ -50,6 +50,17 @@ ThemeData buildBloomTheme(BloomTokens t) {
     scaffoldBackgroundColor: t.bg,
     canvasColor: t.bg,
     fontFamily: kFontFamily,
+    // Переход между страницами. Дефолт Android — предиктивный: пока тянешь
+    // системный жест «назад», страница сжимается в карточку и в щель видно
+    // предыдущий экран. Ставим сдвиг с растворением (переход Android U):
+    // ничего не «подглядывает», анимация играет целиком по факту ухода.
+    // Фон перехода — цвет темы, иначе между страницами мигает чёрное.
+    pageTransitionsTheme: PageTransitionsTheme(
+      builders: {
+        for (final p in TargetPlatform.values)
+          p: FadeForwardsPageTransitionsBuilder(backgroundColor: t.bg),
+      },
+    ),
     // Нажатие НЕ подсвечивается вообще: ни ряби, ни плёнки под пальцем.
     // Гасим сразу три источника — фабрику всплеска, цвет всплеска и цвет
     // подсветки удержания, — иначе material вернёт заливку через любой из них.

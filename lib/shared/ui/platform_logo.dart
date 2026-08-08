@@ -1,14 +1,21 @@
-/// Логотипы площадок и сервисов — те же SVG, что в десктопном Bloom
-/// (`src/shared/assets/`).
+/// Логотипы площадок и бейджи источника — порт `entities/track/ui/SourceBadge`
+/// с десктопа.
 ///
-/// Рисуются В СВОИХ ФИРМЕННЫХ ЦВЕТАХ: бренды не перекрашиваются под тему — то
-/// же правило, по которому их названия не переводятся.
+/// Логотип сам по себе рисуется В СВОИХ ФИРМЕННЫХ ЦВЕТАХ: бренды не
+/// перекрашиваются под тему — то же правило, по которому их названия не
+/// переводятся. В бейджах знак одноцветный: по умолчанию брендовый цвет
+/// площадки, а по настройке «бейджи в цвете акцента» — акцент.
 library;
 
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../app/theme/tokens.dart';
 import '../../core/entities/entities.dart';
+import '../../core/store/settings_store.dart';
 
 const Map<MusicSource, String> _assets = {
   MusicSource.soundcloud: 'assets/platform/soundcloud.svg',
@@ -16,29 +23,100 @@ const Map<MusicSource, String> _assets = {
   MusicSource.yandex: 'assets/platform/yandex_music.svg',
 };
 
-/// Фирменный цвет площадки — для акцентов там, где логотип не влезает.
+/// Одноцветные версии — для перекраски в один цвет. Отдельный файл нужен только
+/// YouTube: в цветном ассете треугольник нарисован белой заливкой поверх
+/// прямоугольника, и при `srcIn` знак схлопнулся бы в сплошное пятно. У
+/// SoundCloud и Яндекса силуэт и так одной заливкой.
+const Map<MusicSource, String> _monoAssets = {
+  MusicSource.ytmusic: 'assets/platform/youtube_mono.svg',
+};
+
+/// Фирменный цвет площадки — тот же, что в `BRAND` на десктопе.
 const Map<MusicSource, Color> platformColor = {
   MusicSource.soundcloud: Color(0xFFFF5500),
-  MusicSource.ytmusic: Color(0xFFFF0000),
-  MusicSource.yandex: Color(0xFFFFCC00),
+  MusicSource.ytmusic: Color(0xFFFF0033),
+  MusicSource.yandex: Color(0xFFFED42B),
 };
 
 /// Логотип площадки. У локальных файлов логотипа нет — рисуем пустоту.
 class PlatformLogo extends StatelessWidget {
-  const PlatformLogo(this.source, {super.key, this.size = 16});
+  const PlatformLogo(this.source, {super.key, this.size = 16, this.color});
 
   final MusicSource source;
   final double size;
 
+  /// Перекрасить знак в один цвет (бейджи). `null` — фирменные цвета ассета.
+  final Color? color;
+
   @override
   Widget build(BuildContext context) {
-    final asset = _assets[source];
+    final mono = color != null;
+    final asset = (mono ? _monoAssets[source] : null) ?? _assets[source];
     if (asset == null) return SizedBox(width: size, height: size);
     return SvgPicture.asset(
       asset,
       width: size,
       height: size,
       fit: BoxFit.contain,
+      colorFilter: mono ? ColorFilter.mode(color!, BlendMode.srcIn) : null,
+    );
+  }
+}
+
+/// Доля бейджа, которую занимает знак площадки, — те же коэффициенты, что на
+/// десктопе (у каждого лого своя «воздушность»).
+const Map<MusicSource, double> _logoScale = {
+  MusicSource.soundcloud: 0.60,
+  MusicSource.yandex: 0.58,
+  MusicSource.ytmusic: 0.62,
+};
+
+/// Бейдж источника поверх обложки — круглая полупрозрачная «стеклянная» плашка
+/// (затемнение + размытие фона), чтобы знак читался на любой картинке и не
+/// перекрывал её. Ставится в угол обложки: `Positioned` снаружи, отступы 3 у
+/// строк и 6 у крупных карточек — как `.cov-badge` на десктопе.
+///
+/// Цвет знака: фирменный цвет площадки, а при включённой настройке
+/// [SettingsState.accentBadges] — акцент. У локальных треков площадки нет,
+/// бейдж не рисуется вовсе.
+class SourceBadge extends ConsumerWidget {
+  const SourceBadge(this.source, {super.key, this.size = 16});
+
+  final MusicSource source;
+  final double size;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final brand = platformColor[source];
+    if (brand == null) return const SizedBox.shrink();
+
+    final t = context.bloom;
+    final accentBadges = ref.watch(
+      settingsProvider.select((s) => s.accentBadges),
+    );
+    // Плёнка обводки: белая на тёмных темах, чёрная на светлых (`--ovl-rgb`).
+    final ovl = t.isLight ? Colors.black : Colors.white;
+
+    return ClipOval(
+      child: BackdropFilter(
+        // CSS `blur(3px)` — это σ 1.5, а не 3.
+        filter: ImageFilter.blur(sigmaX: 1.5, sigmaY: 1.5),
+        child: Container(
+          width: size,
+          height: size,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.black.withValues(alpha: 0.38),
+            border: Border.all(color: ovl.withValues(alpha: 0.14)),
+          ),
+          child: PlatformLogo(
+            source,
+            size: size * (_logoScale[source] ?? 0.6),
+            color: accentBadges ? t.accent : brand,
+          ),
+        ),
+      ),
     );
   }
 }

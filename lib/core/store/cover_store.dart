@@ -13,7 +13,8 @@ import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
+
+import 'app_dirs.dart';
 
 const String _prefix = 'local:';
 
@@ -22,8 +23,8 @@ Directory? _dir;
 /// Готовит каталог обложек. Зовётся из `main()` до первого кадра — дальше путь
 /// нужен синхронно, прямо в `build`.
 Future<void> initCoverStore() async {
-  final docs = await getApplicationDocumentsDirectory();
-  final dir = Directory('${docs.path}/covers');
+  final root = await appPrivateDir();
+  final dir = Directory('${root.path}/covers');
   try {
     if (!dir.existsSync()) await dir.create(recursive: true);
     _dir = dir;

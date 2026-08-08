@@ -151,13 +151,20 @@ class SoundCloudProvider extends MusicProvider {
 
   @override
   Future<ResolvedUrl?> resolveUrl(String url) async {
+    // Чужую ссылку отдаём дальше по реестру, не гоняя через SC `/resolve`:
+    // площадки опрашиваются по очереди, и лишний запрос — это лишние секунды
+    // ожидания перед той, что ссылку действительно понимает.
+    final u = url.trim().toLowerCase();
+    if (!u.contains('soundcloud.com') && !u.contains('snd.sc')) return null;
     final r = await sc.resolveUrl(url);
     if (r == null) return null;
     switch (r.kind) {
       case 'track':
         return ResolvedTrack(trackFromSc(r.track!));
       case 'artist':
-        return ResolvedArtist(artistFromSc(r.artist!));
+        // Ссылка на аккаунт (`/username`) — не одинокая карточка артиста, а
+        // профиль: шапка, плейлисты аккаунта и лайки. Так же на десктопе.
+        return ResolvedProfile(await _profile(r.artist!));
       case 'album':
         return ResolvedSet(setFromSc(r.playlist!, isAlbum: true));
       case 'playlist':
@@ -165,6 +172,27 @@ class SoundCloudProvider extends MusicProvider {
       default:
         return null;
     }
+  }
+
+  /// Профиль аккаунта: артист, обогащённый `getUser`, его плейлисты и лайки.
+  /// Три эндпоинта параллельно; каждый гасит свою ошибку в пустоту, поэтому
+  /// недоступные лайки не уносят с собой всю шапку.
+  Future<ProfileData> _profile(ScRawArtist raw) async {
+    final userId = '${raw.id}';
+    final parts = await Future.wait([
+      sc.getUser(userId).then<Object?>((v) => v, onError: (_) => null),
+      sc.userPlaylists(userId).then<Object?>((v) => v, onError: (_) => null),
+      sc.userLikes(userId).then<Object?>((v) => v, onError: (_) => null),
+    ]);
+    final user = parts[0] as ScRawUser?;
+    final playlists = (parts[1] as List<ScRawPlaylist>?) ?? const [];
+    final likes = (parts[2] as List<ScRawTrack>?) ?? const [];
+
+    return ProfileData(
+      artist: user == null ? artistFromSc(raw) : _artistFromUser(user),
+      playlists: playlists.map((p) => setFromSc(p, isAlbum: false)).toList(),
+      likes: likes.map(trackFromSc).toList(),
+    );
   }
 
   @override
@@ -258,6 +286,17 @@ class SoundCloudProvider extends MusicProvider {
   @override
   Future<PlayableStream?> resolveStream(Track track) async {
     final stream = await sc.streamUrl(track.sourceData);
+    return PlayableStream(url: stream.url, isHls: stream.isHls);
+  }
+
+  /// Скачать можно всё, у чего осталось сырьё площадки: есть ли среди
+  /// транскодингов progressive — выяснится только при резолве.
+  @override
+  bool canDownload(Track track) => track.sourceData != null;
+
+  @override
+  Future<PlayableStream?> resolveDownload(Track track) async {
+    final stream = await sc.streamUrl(track.sourceData, progressiveOnly: true);
     return PlayableStream(url: stream.url, isHls: stream.isHls);
   }
 }

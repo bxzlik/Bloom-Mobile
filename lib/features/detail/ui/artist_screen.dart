@@ -22,18 +22,27 @@ import '../../../core/store/library_store.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
+import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/detail_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/util/format.dart';
 
 class ArtistScreen extends ConsumerStatefulWidget {
-  const ArtistScreen({super.key, required this.artistId, this.initial});
+  const ArtistScreen({
+    super.key,
+    required this.artistId,
+    this.initial,
+    this.flight,
+  });
 
   /// Сквозной id артиста («sc_artist_123»).
   final String artistId;
 
   /// Артист из карточки, с которой пришли: шапка рисуется до ответа сети.
   final Artist? initial;
+
+  /// Аватарка карточки, с которой пришли: она перелетает в шапку.
+  final CoverFlight? flight;
 
   @override
   ConsumerState<ArtistScreen> createState() => _ArtistScreenState();
@@ -176,6 +185,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
               image: artist?.avatar,
               title: artist?.name ?? 'Артист',
               subtitle: _subtitle(artist),
+              flight: widget.flight,
               onMenu: artist == null ? null : () => _menu(artist),
               actions: HeroActions(
                 onPlay: queue.isEmpty ? null : _play,

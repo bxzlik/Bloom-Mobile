@@ -4,10 +4,12 @@
 /// флаги на самом треке (у смешанных источников флаг некуда положить), плейлист
 /// хранит только id треков, сами треки лежат общим словарём.
 ///
-/// Отличие от десктопа: там «все треки» приходят от folder_watcher'а, здесь
-/// локальных файлов пока нет, поэтому в библиотеку трек попадает в момент
-/// действия — лайк, добавление в плейлист, прослушивание. Иначе от лайкнутого
-/// трека остался бы один id, и заиграть его было бы нечем.
+/// Словарь `tracks` — это ХРАНИЛИЩЕ, а не раздел «Все треки»: там лежит всё, на
+/// что кто-то ссылается (лайк, плейлист, история), иначе от лайкнутого трека
+/// остался бы один id и заиграть его было бы нечем. Членство в библиотеке —
+/// отдельный набор [LibraryState.inLib], как на десктопе: туда трек попадает
+/// только явным действием (пункт «В библиотеку», лайк, плейлист, импорт).
+/// Прослушивание в библиотеку НЕ кладёт — только в историю.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -127,8 +129,11 @@ class HistoryEntry {
 }
 
 class LibraryState {
-  /// Все известные библиотеке треки: id → трек.
+  /// Хранилище: все треки, на которые кто-то ссылается. id → трек.
   final Map<String, Track> tracks;
+
+  /// Раздел «Все треки»: id → время добавления. Свежие сверху.
+  final Map<String, int> inLib;
 
   /// id → время лайка. Порядок «Любимого» — по нему, свежие сверху.
   final Map<String, int> favs;
@@ -140,6 +145,7 @@ class LibraryState {
 
   const LibraryState({
     this.tracks = const {},
+    this.inLib = const {},
     this.favs = const {},
     this.history = const [],
     this.playlists = const [],
@@ -147,11 +153,16 @@ class LibraryState {
   });
 
   bool isFav(String trackId) => favs.containsKey(trackId);
+  bool isInLib(String trackId) => inLib.containsKey(trackId);
   bool isFollowing(String artistId) =>
       follows.any((f) => f.artist.id == artistId);
 
   /// Все треки библиотеки. Порядок — как добавляли, свежие сверху.
-  List<Track> get allTracks => tracks.values.toList().reversed.toList();
+  List<Track> get allTracks {
+    final entries = inLib.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return entries.map((e) => tracks[e.key]).whereType<Track>().toList();
+  }
 
   List<Track> get favTracks {
     final entries = favs.entries.toList()
@@ -167,12 +178,14 @@ class LibraryState {
 
   LibraryState copyWith({
     Map<String, Track>? tracks,
+    Map<String, int>? inLib,
     Map<String, int>? favs,
     List<HistoryEntry>? history,
     List<UserPlaylist>? playlists,
     List<FollowedArtist>? follows,
   }) => LibraryState(
     tracks: tracks ?? this.tracks,
+    inLib: inLib ?? this.inLib,
     favs: favs ?? this.favs,
     history: history ?? this.history,
     playlists: playlists ?? this.playlists,
@@ -205,8 +218,25 @@ class LibraryController extends Notifier<LibraryState> {
     store.readMap('favs').forEach((id, at) {
       if (at is num) favs[id] = at.toInt();
     });
+
+    final inLib = <String, int>{};
+    if (store.read('lib') == null) {
+      // Данные, записанные до разделения хранилища и «Всех треков»: тогда в
+      // библиотеке лежало ровно содержимое `tracks`, в порядке добавления.
+      var i = 0;
+      for (final id in tracks.keys) {
+        inLib[id] = i++;
+      }
+      store.write('lib', inLib);
+    } else {
+      store.readMap('lib').forEach((id, at) {
+        if (at is num) inLib[id] = at.toInt();
+      });
+    }
+
     return LibraryState(
       tracks: tracks,
+      inLib: inLib,
       favs: favs,
       history: store
           .readList('history')
@@ -230,6 +260,7 @@ class LibraryController extends Notifier<LibraryState> {
     'tracks',
     state.tracks.values.map((t) => t.toJson()).toList(),
   );
+  void _saveLib() => _store.write('lib', state.inLib);
   void _saveFavs() => _store.write('favs', state.favs);
   void _saveHistory() =>
       _store.write('history', state.history.map((h) => h.toJson()).toList());
@@ -251,18 +282,89 @@ class LibraryController extends Notifier<LibraryState> {
     _saveTracks();
   }
 
-  void addTracks(Iterable<Track> batch) => _remember(batch);
+  /// Выбросить из хранилища треки, на которые больше никто не ссылается —
+  /// иначе прослушанное копилось бы вечно, оставаясь невидимым.
+  void _prune() {
+    final keep = <String>{
+      ...state.inLib.keys,
+      ...state.favs.keys,
+      ...state.history.map((h) => h.trackId),
+      for (final p in state.playlists) ...p.trackIds,
+    };
+    if (keep.length == state.tracks.length) return;
+    final next = <String, Track>{
+      for (final e in state.tracks.entries)
+        if (keep.contains(e.key)) e.key: e.value,
+    };
+    state = state.copyWith(tracks: next);
+    _saveTracks();
+  }
+
+  // ── Библиотека («Все треки») ────────────────────────────────────────────
+
+  /// Положить треки в библиотеку. Идемпотентно: у тех, что уже там, время
+  /// добавления не переписывается, иначе повторный импорт перетасовал бы
+  /// раздел. Возвращает число реально добавленных.
+  int addToLibrary(Iterable<Track> batch) {
+    _remember(batch);
+    final next = Map<String, int>.from(state.inLib);
+    // Время добавления обязано строго расти: два добавления подряд попадают в
+    // одну миллисекунду, а сортировка по равным ключам порядок не сохраняет.
+    var at = DateTime.now().millisecondsSinceEpoch;
+    for (final prev in next.values) {
+      if (prev >= at) at = prev + 1;
+    }
+    var added = 0;
+    for (final t in batch) {
+      if (next.containsKey(t.id)) continue;
+      next[t.id] = at + added; // порядок внутри пачки сохраняем
+      added++;
+    }
+    if (added == 0) return 0;
+    state = state.copyWith(inLib: next);
+    _saveLib();
+    return added;
+  }
+
+  /// Удалить трек отовсюду — порт `deleteUploadedTrack` + `cascadePurgeTrackRefs`.
+  ///
+  /// Именно насквозь, а не только из «Всех треков»: лайк и плейлист сами кладут
+  /// трек в библиотеку, так что «в любимых, но не в библиотеке» — состояние,
+  /// которого нигде больше не бывает, а оставшийся id висел бы в плейлисте
+  /// счётчиком без строки.
+  void deleteTrack(String trackId) {
+    state = state.copyWith(
+      tracks: Map<String, Track>.from(state.tracks)..remove(trackId),
+      inLib: Map<String, int>.from(state.inLib)..remove(trackId),
+      favs: Map<String, int>.from(state.favs)..remove(trackId),
+      history: state.history.where((h) => h.trackId != trackId).toList(),
+      playlists: state.playlists
+          .map(
+            (p) => p.trackIds.contains(trackId)
+                ? p.copyWith(
+                    trackIds: p.trackIds.where((id) => id != trackId).toList(),
+                  )
+                : p,
+          )
+          .toList(),
+    );
+    _saveTracks();
+    _saveLib();
+    _saveFavs();
+    _saveHistory();
+    _savePlaylists();
+  }
 
   // ── Любимые ─────────────────────────────────────────────────────────────
 
-  /// Переключить лайк. Трек кладём в библиотеку целиком: от одного id в
-  /// «Любимом» толку нет — его нечем ни показать, ни заиграть.
+  /// Переключить лайк. Лайкнутый трек заодно попадает в библиотеку — как на
+  /// десктопе, где fav сперва персистит трек площадки (`saveTrackToLibrary`).
   bool toggleFav(Track track) {
     final favs = Map<String, int>.from(state.favs);
     final on = !favs.containsKey(track.id);
     if (on) {
       favs[track.id] = DateTime.now().millisecondsSinceEpoch;
-      _remember([track]);
+      addToLibrary([track]);
     } else {
       favs.remove(track.id);
     }
@@ -273,7 +375,9 @@ class LibraryController extends Notifier<LibraryState> {
 
   // ── История ─────────────────────────────────────────────────────────────
 
-  /// Отметить прослушивание: трек уезжает наверх истории без дублей.
+  /// Отметить прослушивание: трек уезжает наверх истории без дублей. В
+  /// библиотеку он при этом НЕ попадает (как и на десктопе) — только в
+  /// хранилище, чтобы историю было чем показать и заиграть.
   void pushHistory(Track track) {
     final history = [
       HistoryEntry(track.id, DateTime.now().millisecondsSinceEpoch),
@@ -285,11 +389,13 @@ class LibraryController extends Notifier<LibraryState> {
     _remember([track]);
     state = state.copyWith(history: history);
     _saveHistory();
+    _prune();
   }
 
   void clearHistory() {
     state = state.copyWith(history: const []);
     _saveHistory();
+    _prune();
   }
 
   // ── Плейлисты ───────────────────────────────────────────────────────────
@@ -311,7 +417,7 @@ class LibraryController extends Notifier<LibraryState> {
       isAlbum: isAlbum,
       createdAt: now,
     );
-    _remember(tracks);
+    addToLibrary(tracks);
     state = state.copyWith(playlists: [...state.playlists, pl]);
     _savePlaylists();
     return pl;
@@ -347,7 +453,7 @@ class LibraryController extends Notifier<LibraryState> {
 
   /// Новый трек уходит НАВЕРХ плейлиста (как на десктопе), дубли игнорируются.
   void addTrackToPlaylist(String id, Track track) {
-    _remember([track]);
+    addToLibrary([track]);
     _updatePlaylist(id, (p) {
       if (p.trackIds.contains(track.id)) return p;
       return p.copyWith(trackIds: [track.id, ...p.trackIds]);
@@ -361,7 +467,7 @@ class LibraryController extends Notifier<LibraryState> {
 
   /// Заменить состав плейлиста целиком — «обновить треки» из источника.
   void replacePlaylistTracks(String id, List<Track> tracks) {
-    _remember(tracks);
+    addToLibrary(tracks);
     _updatePlaylist(
       id,
       (p) => p.copyWith(trackIds: tracks.map((t) => t.id).toList()),

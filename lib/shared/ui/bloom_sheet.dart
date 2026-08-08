@@ -168,10 +168,13 @@ class _Handle extends StatelessWidget {
   }
 }
 
-class _SheetGroup extends StatelessWidget {
-  const _SheetGroup({required this.actions});
+/// Блок пунктов шторки. Один на все шторки — свой такой же собирать руками
+/// нельзя: заливка тут не токен-плёнка (`t.pill` кроет обложку насмерть), а
+/// чёрный с прозрачностью, чтобы фон шторки просвечивал.
+class SheetPanel extends StatelessWidget {
+  const SheetPanel({super.key, required this.children});
 
-  final List<SheetAction> actions;
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
@@ -184,25 +187,36 @@ class _SheetGroup extends StatelessWidget {
         color: Colors.black.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(t.radius),
         clipBehavior: Clip.antiAlias,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var i = 0; i < actions.length; i++) ...[
-              if (i > 0)
-                // Разделитель начинается там же, где текст: под иконками
-                // сплошная линия режет колонку глифов пополам. Цвет светлый, а
-                // не токен-плёнка: блок лежит на тёмном, а не на фоне темы.
-                Divider(
-                  height: 1,
-                  thickness: 1,
-                  indent: 54,
-                  color: Colors.white.withValues(alpha: 0.08),
-                ),
-              _SheetTile(action: actions[i]),
-            ],
-          ],
-        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: children),
       ),
+    );
+  }
+}
+
+/// Разделитель внутри [SheetPanel]. Начинается там же, где текст: под иконками
+/// сплошная линия режет колонку глифов пополам. Цвет светлый, а не
+/// токен-плёнка: блок лежит на тёмном, а не на фоне темы.
+Widget sheetDivider() => Divider(
+  height: 1,
+  thickness: 1,
+  indent: 54,
+  color: Colors.white.withValues(alpha: 0.08),
+);
+
+class _SheetGroup extends StatelessWidget {
+  const _SheetGroup({required this.actions});
+
+  final List<SheetAction> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return SheetPanel(
+      children: [
+        for (var i = 0; i < actions.length; i++) ...[
+          if (i > 0) sheetDivider(),
+          _SheetTile(action: actions[i]),
+        ],
+      ],
     );
   }
 }

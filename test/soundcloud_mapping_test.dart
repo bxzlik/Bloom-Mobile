@@ -78,4 +78,22 @@ void main() {
       throwsA(predicate((e) => e.toString() == 'search.err.noStream')),
     );
   });
+
+  // Скачивание берёт только progressive: HLS это плейлист кусков, файлом его не
+  // сохранить. Играть такой трек по-прежнему можно — падать должно ровно
+  // сохранение, и с понятным кодом, а не «нет стрима».
+  test('скачивание: HLS-only трек отдаёт код sc.err.hlsOnly', () async {
+    final media = {
+      'transcodings': [
+        {
+          'url': 'https://x',
+          'format': {'protocol': 'hls'},
+        },
+      ],
+    };
+    await expectLater(
+      streamUrl(media, progressiveOnly: true),
+      throwsA(predicate((e) => e.toString() == 'sc.err.hlsOnly')),
+    );
+  });
 }

@@ -76,6 +76,14 @@ class MiniPlayer extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
+                    CircleIconButton(
+                      icon: SolarIconsOutline.skipPrevious,
+                      size: 38,
+                      iconSize: 20,
+                      background: Colors.transparent,
+                      onTap: ref.read(playbackProvider.notifier).prev,
+                    ),
+                    const SizedBox(width: 4),
                     if (state.loading)
                       // Кружок тот же, что у play — на переходе трека кнопка не
                       // должна пропадать из строки.
@@ -139,28 +147,22 @@ class _Hairline extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
-    final player = ref.watch(audioPlayerProvider);
-    return StreamBuilder<Duration>(
-      stream: player.positionStream,
-      initialData: player.position,
-      builder: (context, snap) {
-        final total = player.duration?.inMilliseconds ?? 0;
-        final pos = snap.data?.inMilliseconds ?? 0;
-        final frac = total <= 0 ? 0.0 : (pos / total).clamp(0.0, 1.0);
-        return SizedBox(
-          height: 2,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: FractionallySizedBox(
-              widthFactor: frac,
-              child: ColoredBox(
-                color: t.accent,
-                child: const SizedBox(height: 2),
-              ),
-            ),
-          ),
-        );
-      },
+    final head =
+        ref.watch(playheadProvider).value ??
+        (position: Duration.zero, total: Duration.zero);
+    final total = head.total.inMilliseconds;
+    final frac = total <= 0
+        ? 0.0
+        : (head.position.inMilliseconds / total).clamp(0.0, 1.0);
+    return SizedBox(
+      height: 2,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: FractionallySizedBox(
+          widthFactor: frac,
+          child: ColoredBox(color: t.accent, child: const SizedBox(height: 2)),
+        ),
+      ),
     );
   }
 }

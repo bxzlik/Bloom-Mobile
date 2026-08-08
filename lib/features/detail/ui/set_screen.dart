@@ -18,15 +18,19 @@ import '../../../core/store/library_store.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
+import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/detail_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/util/format.dart';
 
 class SetScreen extends ConsumerStatefulWidget {
-  const SetScreen({super.key, required this.set});
+  const SetScreen({super.key, required this.set, this.flight});
 
   /// Сет из карточки: шапка рисуется до ответа сети.
   final Playlist set;
+
+  /// Обложка карточки, с которой пришли: она перелетает в шапку.
+  final CoverFlight? flight;
 
   @override
   ConsumerState<SetScreen> createState() => _SetScreenState();
@@ -97,14 +101,16 @@ class _SetScreenState extends ConsumerState<SetScreen> {
 
   void _play() {
     if (_tracks.isEmpty) return;
-    ref.read(playbackProvider.notifier).playQueue(_tracks, 0);
+    ref
+        .read(playbackProvider.notifier)
+        .playQueue(_tracks, 0, sourceId: _set.id);
   }
 
   void _shuffle() {
     if (_tracks.isEmpty) return;
     final ctrl = ref.read(playbackProvider.notifier);
     if (!ref.read(playbackProvider).shuffle) ctrl.toggleShuffle();
-    ctrl.playQueue(_tracks, 0);
+    ctrl.playQueue(_tracks, 0, sourceId: _set.id);
   }
 
   /// Есть ли уже сохранённая копия — ищем по ссылке источника, тому же полю, по
@@ -139,6 +145,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
               title: _set.title,
               owner: _set.ownerName,
               subtitle: _subtitle(),
+              flight: widget.flight,
               onMenu: _menu,
               actions: HeroActions(
                 onPlay: queue.isEmpty ? null : _play,
@@ -209,8 +216,12 @@ class _SetScreenState extends ConsumerState<SetScreen> {
               padding: const EdgeInsets.fromLTRB(8, 4, 8, 16),
               sliver: SliverList.builder(
                 itemCount: _tracks.length,
-                itemBuilder: (context, i) =>
-                    TrackRow(track: _tracks[i], queue: _tracks, index: i),
+                itemBuilder: (context, i) => TrackRow(
+                  track: _tracks[i],
+                  queue: _tracks,
+                  index: i,
+                  sourceId: _set.id,
+                ),
               ),
             ),
         ],

@@ -1,5 +1,9 @@
-/// Библиотека. Раскладка из референса: лента системных плиток, строка импорта,
-/// ряд чипов (`+`, `↻`, фильтры) и сетка в две колонки.
+/// Библиотека. Раскладка из референса: лента системных плиток, ряд чипов
+/// (`+`, `↻`, фильтры) и сетка в две колонки.
+///
+/// Своей кнопки импорта здесь нет: как и на десктопе, ссылка вставляется в
+/// поле поиска — он же и разбирает её (плейлист, альбом, трек, аккаунт).
+/// Кнопка `↻` рядом с `+` — не импорт, а обновление уже импортированного.
 ///
 /// Состав — как в десктопном Bloom: три встроенных раздела (Все треки /
 /// Любимые / История) плюс плейлисты и подписки. Отдельных «Альбомов» нет и на
@@ -19,9 +23,11 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/cover_hero.dart';
+import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/util/format.dart';
 import '../../detail/detail_nav.dart';
-import 'import_sheet.dart';
+import 'refresh_imported.dart';
 import 'tracklist_screen.dart';
 
 enum LibFilter { all, playlists, artists }
@@ -63,7 +69,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(child: _SystemTiles(lib: lib)),
-          const SliverToBoxAdapter(child: _ImportRow()),
+          // Просвет вместо снятой строки импорта: чипы иначе липнут к плиткам.
+          const SliverToBoxAdapter(child: SizedBox(height: 8)),
           SliverToBoxAdapter(
             child: _Chips(
               active: _filter,
@@ -82,7 +89,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   crossAxisSpacing: 14,
-                  mainAxisSpacing: 18,
+                  mainAxisSpacing: 10,
                   childAspectRatio: 0.78,
                 ),
                 delegate: SliverChildBuilderDelegate(
@@ -115,7 +122,7 @@ class _SystemTiles extends StatelessWidget {
           // Иконки — те же, что в десктопном сайдбаре: нота, сердце, часы.
           _SystemTile(
             title: 'Все треки',
-            count: lib.tracks.length,
+            count: lib.inLib.length,
             icon: SolarIconsOutline.musicNote,
             tint: t.sysAllTint,
             color: t.sysAllIco,
@@ -190,50 +197,6 @@ class _SystemTile extends StatelessWidget {
                 ],
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ImportRow extends StatelessWidget {
-  const _ImportRow();
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
-      child: Material(
-        color: t.pill,
-        borderRadius: BorderRadius.circular(t.radius),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => showImportSheet(context),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Icon(SolarIconsOutline.download, size: 22, color: t.iconFg),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Импортировать из сервиса', style: theme.titleSmall),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Плейлист, альбом или профиль',
-                        style: theme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(SolarIconsOutline.altArrowRight, size: 18, color: t.muted),
-              ],
-            ),
           ),
         ),
       ),
@@ -542,25 +505,51 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-class _SetTile extends ConsumerWidget {
+class _SetTile extends ConsumerStatefulWidget {
   const _SetTile({required this.playlist, required this.lib});
 
   final UserPlaylist playlist;
   final LibraryState lib;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_SetTile> createState() => _SetTileState();
+}
+
+class _SetTileState extends ConsumerState<_SetTile> {
+  /// Метка перелёта обложки в шапку плейлиста — своя у каждой плитки.
+  final _tag = UniqueKey();
+
+  @override
+  Widget build(BuildContext context) {
+    final playlist = widget.playlist;
+    final lib = widget.lib;
+    final t = context.bloom;
     final theme = Theme.of(context).textTheme;
+    // Своей обложки нет — в шапке списка стоит коллаж из треков, и лететь туда
+    // заглушке незачем.
+    final cover = playlist.cover;
+    final flight = cover == null || cover.isEmpty
+        ? null
+        : CoverFlight(tag: _tag, image: cover);
+
     return LayoutBuilder(
       builder: (context, box) => GestureDetector(
-        onTap: () => context.go('/library/list/${playlist.id}'),
+        onTap: () => context.go('/library/list/${playlist.id}', extra: flight),
         // Длинный тап — та же шторка «трёх точек», что на странице плейлиста.
         onLongPress: () =>
             showPlaylistMenu(context, ref, playlist, lib.tracksOf(playlist)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Cover(url: playlist.cover, size: box.maxWidth),
+            // Плитки библиотеки крупные — на них скругление обложки заметно
+            // острее, чем в каруселях, поэтому радиус здесь свой, побольше.
+            Cover(
+              url: playlist.cover,
+              size: box.maxWidth,
+              radius: t.radius * 1.3,
+              flight: flight,
+              overlay: SetEqualizer(setId: playlist.id),
+            ),
             const SizedBox(height: 8),
             Text(
               playlist.name,
@@ -581,23 +570,41 @@ class _SetTile extends ConsumerWidget {
   }
 }
 
-class _ArtistTile extends StatelessWidget {
+class _ArtistTile extends StatefulWidget {
   const _ArtistTile({required this.followed});
 
   final FollowedArtist followed;
 
   @override
+  State<_ArtistTile> createState() => _ArtistTileState();
+}
+
+class _ArtistTileState extends State<_ArtistTile> {
+  final _tag = UniqueKey();
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context).textTheme;
-    final artist = followed.artist;
+    final artist = widget.followed.artist;
+    final avatar = artist.avatar;
+    final flight = avatar == null || avatar.isEmpty
+        ? null
+        : CoverFlight(tag: _tag, image: avatar);
+
     return GestureDetector(
-      onTap: () => openArtist(context, artist.id, initial: artist),
+      onTap: () =>
+          openArtist(context, artist.id, initial: artist, flight: flight),
       behavior: HitTestBehavior.opaque,
       child: LayoutBuilder(
         builder: (context, box) => Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Cover(url: artist.avatar, size: box.maxWidth, circle: true),
+            Cover(
+              url: artist.avatar,
+              size: box.maxWidth,
+              circle: true,
+              flight: flight,
+            ),
             const SizedBox(height: 8),
             Text(
               artist.name,
@@ -624,7 +631,7 @@ class _Empty extends StatelessWidget {
     final text = switch (filter) {
       LibFilter.artists => 'Подписок пока нет',
       LibFilter.playlists => 'Плейлистов пока нет',
-      LibFilter.all => 'Создай плейлист или импортируй из сервиса',
+      LibFilter.all => 'Создай плейлист или вставь ссылку в поиск',
     };
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),

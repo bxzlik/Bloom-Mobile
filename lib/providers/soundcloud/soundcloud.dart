@@ -892,7 +892,14 @@ Future<ScResolved?> resolveUrl(String url) async {
 
 /// Играбельный signed CDN-URL из `media.transcodings`: progressive (mp3) → hls →
 /// любой не-DRM; одна повторная попытка через 500мс.
-Future<ScStream> streamUrl(Map<String, dynamic>? media) async {
+///
+/// [progressiveOnly] — для скачивания: HLS это плейлист с кусками, файлом его
+/// не сохранить, а «любой не-DRM» может оказаться тем же HLS под другим именем.
+/// Такой трек честно падает `sc.err.hlsOnly`, как и на десктопе.
+Future<ScStream> streamUrl(
+  Map<String, dynamic>? media, {
+  bool progressiveOnly = false,
+}) async {
   final tcs = _varr(media, 'transcodings');
   if (tcs.isEmpty) throw const ScException('search.err.noStream');
 
@@ -907,12 +914,13 @@ Future<ScStream> streamUrl(Map<String, dynamic>? media) async {
   );
 
   final order = <Object?>[];
-  for (final tc in [prog, hls, fallback]) {
+  for (final tc in progressiveOnly ? [prog] : [prog, hls, fallback]) {
     if (tc == null) continue;
     if (!isDrm(tc) && !order.any((o) => identical(o, tc))) order.add(tc);
   }
   final hasDrm = tcs.any(isDrm);
   if (order.isEmpty) {
+    if (progressiveOnly && !hasDrm) throw const ScException('sc.err.hlsOnly');
     throw ScException(hasDrm ? 'sc.err.drm' : 'sc.err.noStream');
   }
 

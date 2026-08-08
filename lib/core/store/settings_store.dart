@@ -105,11 +105,16 @@ class SettingsState {
   /// Ручной client_id SoundCloud (пусто — авто-подбор).
   final String? scClientId;
 
+  /// Бейджи источника в цвете акцента. По умолчанию выключено — бейджи в
+  /// фирменных цветах площадок (то же поведение и дефолт, что на десктопе).
+  final bool accentBadges;
+
   const SettingsState({
     this.themeId = 'dark',
     this.accent,
     this.radius = 14,
     this.scClientId,
+    this.accentBadges = false,
   });
 
   ThemePreset get preset => kThemePresets.firstWhere(
@@ -127,11 +132,13 @@ class SettingsState {
     double? radius,
     String? scClientId,
     bool clearClientId = false,
+    bool? accentBadges,
   }) => SettingsState(
     themeId: themeId ?? this.themeId,
     accent: clearAccent ? null : (accent ?? this.accent),
     radius: radius ?? this.radius,
     scClientId: clearClientId ? null : (scClientId ?? this.scClientId),
+    accentBadges: accentBadges ?? this.accentBadges,
   );
 }
 
@@ -150,6 +157,7 @@ class SettingsController extends Notifier<SettingsState> {
       accent: accent is num ? Color(accent.toInt()) : null,
       radius: (raw['radius'] as num?)?.toDouble() ?? 14,
       scClientId: clientId is String && clientId.isNotEmpty ? clientId : null,
+      accentBadges: raw['accentBadges'] as bool? ?? false,
     );
     // Провайдер SoundCloud держит client_id в модульном состоянии — при старте
     // ему надо отдать сохранённый, иначе ручной ключ забудется до перезапуска.
@@ -163,6 +171,7 @@ class SettingsController extends Notifier<SettingsState> {
       if (state.accent != null) 'accent': state.accent!.toARGB32(),
       'radius': state.radius,
       if (state.scClientId != null) 'scClientId': state.scClientId,
+      'accentBadges': state.accentBadges,
     });
   }
 
@@ -181,6 +190,11 @@ class SettingsController extends Notifier<SettingsState> {
 
   void setRadius(double radius) {
     state = state.copyWith(radius: radius);
+    _save();
+  }
+
+  void setAccentBadges(bool value) {
+    state = state.copyWith(accentBadges: value);
     _save();
   }
 

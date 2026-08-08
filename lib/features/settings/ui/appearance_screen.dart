@@ -13,6 +13,7 @@ import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/store/settings_store.dart';
+import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/subpage_header.dart';
 
 class AppearanceScreen extends ConsumerWidget {
@@ -119,6 +120,40 @@ class AppearanceScreen extends ConsumerWidget {
                       Text('и второстепенный текст', style: theme.bodySmall),
                     ],
                   ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 26),
+          Text('БЕЙДЖИ', style: theme.labelSmall),
+          const SizedBox(height: 10),
+          // Тексты — из десктопного `dict.ts` (`settings.interface.accentBadges`).
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            decoration: BoxDecoration(
+              color: t.pill,
+              borderRadius: BorderRadius.circular(t.radius),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Бейджи в цвете акцента', style: theme.titleSmall),
+                      const SizedBox(height: 3),
+                      Text(
+                        'По умолчанию бейджи источников в своих фирменных '
+                        'цветах; включи — красить в акцент',
+                        style: theme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+                BloomSwitch(
+                  value: settings.accentBadges,
+                  onChanged: controller.setAccentBadges,
                 ),
               ],
             ),

@@ -4,7 +4,8 @@
 /// Плеер о площадках не знает: берёт провайдера по префиксу id трека и просит
 /// [MusicProvider.resolveStream]. Стрим резолвится в момент перехода, а не
 /// заранее — у SoundCloud подписанный URL протухает, поэтому
-/// `ConcatenatingAudioSource` тут не годится.
+/// `ConcatenatingAudioSource` тут не годится. У трека со скачанной копией
+/// площадку не спрашиваем вовсе — играем файл с диска (см. `offline_store`).
 ///
 /// Фон, шторка и гарнитура — в [BloomAudioHandler]; он владеет [AudioPlayer] и
 /// заворачивает команды извне обратно сюда (см. [PlaybackCommands]), чтобы
@@ -20,6 +21,7 @@ import 'package:just_audio/just_audio.dart';
 import '../../app/providers.dart';
 import '../../core/entities/entities.dart';
 import '../../core/store/library_store.dart';
+import '../offline/offline_store.dart';
 import 'audio_handler.dart';
 import 'notification_permission.dart';
 
@@ -34,6 +36,44 @@ final audioPlayerProvider = Provider<AudioPlayer>(
   (ref) => ref.watch(audioHandlerProvider).player,
 );
 
+/// Головка воспроизведения: где стоим и сколько всего.
+typedef Playhead = ({Duration position, Duration total});
+
+/// Позиция и длительность одним потоком.
+///
+/// По отдельности они разъезжаются: на смене трека позиция тикает уже от
+/// нового, а `player.duration`, прочитанная мимо стрима, ещё от старого — доля
+/// прыгает. Плюс длительность приходит без тика позиции (пауза, загрузка), и
+/// подписчик на одну только позицию про неё не узнаёт.
+final playheadProvider = StreamProvider<Playhead>((ref) {
+  final player = ref.watch(audioPlayerProvider);
+  final out = StreamController<Playhead>();
+  var position = player.position;
+  var total = player.duration ?? Duration.zero;
+  void emit() {
+    if (!out.isClosed) out.add((position: position, total: total));
+  }
+
+  final subs = [
+    player.positionStream.listen((p) {
+      position = p;
+      emit();
+    }),
+    player.durationStream.listen((d) {
+      total = d ?? Duration.zero;
+      emit();
+    }),
+  ];
+  ref.onDispose(() {
+    for (final s in subs) {
+      s.cancel();
+    }
+    out.close();
+  });
+  emit(); // первое значение — сразу, до первого тика
+  return out.stream;
+});
+
 class PlaybackState {
   final List<Track> queue;
   final int index;
@@ -42,6 +82,15 @@ class PlaybackState {
   final PlayerRepeat repeat;
   final bool shuffle;
 
+  /// Откуда набрана очередь: id плейлиста/альбома площадки, id библиотечного
+  /// списка (`all` / `fav` / `history` / `pl_…`). `null` — очередь ниоткуда:
+  /// один трек из поиска, «Популярные» артиста.
+  ///
+  /// Нужен только карточкам: по нему плитка сета показывает эквалайзер, как
+  /// строка трека — вместо длительности. Вычислить его из очереди нельзя: один
+  /// и тот же состав легко лежит сразу в двух списках.
+  final String? sourceId;
+
   const PlaybackState({
     this.queue = const [],
     this.index = -1,
@@ -49,6 +98,7 @@ class PlaybackState {
     this.error,
     this.repeat = PlayerRepeat.off,
     this.shuffle = false,
+    this.sourceId,
   });
 
   Track? get track =>
@@ -62,6 +112,8 @@ class PlaybackState {
     bool clearError = false,
     PlayerRepeat? repeat,
     bool? shuffle,
+    String? sourceId,
+    bool clearSource = false,
   }) => PlaybackState(
     queue: queue ?? this.queue,
     index: index ?? this.index,
@@ -69,6 +121,7 @@ class PlaybackState {
     error: clearError ? null : (error ?? this.error),
     repeat: repeat ?? this.repeat,
     shuffle: shuffle ?? this.shuffle,
+    sourceId: clearSource ? null : (sourceId ?? this.sourceId),
   );
 }
 
@@ -118,10 +171,22 @@ class PlaybackController extends Notifier<PlaybackState>
   BloomAudioHandler get _handler => ref.read(audioHandlerProvider);
   AudioPlayer get _player => _handler.player;
 
-  /// Поставить очередь и заиграть с [index].
-  Future<void> playQueue(List<Track> tracks, int index) async {
+  /// Поставить очередь и заиграть с [index]. [sourceId] — список, из которого
+  /// она набрана (см. [PlaybackState.sourceId]); не передали — считаем, что
+  /// очередь ниоткуда, и старый источник сбрасываем.
+  Future<void> playQueue(
+    List<Track> tracks,
+    int index, {
+    String? sourceId,
+  }) async {
     if (tracks.isEmpty) return;
-    state = state.copyWith(queue: tracks, index: index, clearError: true);
+    state = state.copyWith(
+      queue: tracks,
+      index: index,
+      clearError: true,
+      sourceId: sourceId,
+      clearSource: sourceId == null,
+    );
     _handler.setQueue(tracks);
     await _load(index);
   }
@@ -142,15 +207,24 @@ class PlaybackController extends Notifier<PlaybackState>
       unawaited(ensureNotificationPermission());
     }
     try {
-      final provider = ref.read(registryProvider).forEntity(track.id);
-      if (provider == null) throw StateError('нет провайдера для ${track.id}');
-      final stream = await provider.resolveStream(track);
-      if (stream == null) throw StateError('search.err.noStream');
-      if (gen != _generation) return; // пользователь уже переключил трек
-      await _player.setUrl(
-        stream.url,
-        headers: stream.headers.isEmpty ? null : stream.headers,
-      );
+      // Офлайн-копия выигрывает у сетевого стрима — как резолвер офлайна,
+      // который на десктопе стоит первым в очереди. Заодно это единственный
+      // способ заиграть без сети.
+      final offlinePath = ref.read(offlineProvider.notifier).pathOf(track.id);
+      if (offlinePath != null) {
+        await _player.setFilePath(offlinePath);
+      } else {
+        final provider = ref.read(registryProvider).forEntity(track.id);
+        if (provider == null)
+          throw StateError('нет провайдера для ${track.id}');
+        final stream = await provider.resolveStream(track);
+        if (stream == null) throw StateError('search.err.noStream');
+        if (gen != _generation) return; // пользователь уже переключил трек
+        await _player.setUrl(
+          stream.url,
+          headers: stream.headers.isEmpty ? null : stream.headers,
+        );
+      }
       if (gen != _generation) return;
       state = state.copyWith(loading: false);
       _handler.setResolving(false);

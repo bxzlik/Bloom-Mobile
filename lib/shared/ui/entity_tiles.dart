@@ -5,15 +5,26 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:solar_icons/solar_icons.dart';
 
 import '../../app/theme/tokens.dart';
 import '../../core/entities/entities.dart';
 import '../../features/detail/detail_nav.dart';
+import '../../features/offline/offline_store.dart';
 import '../../features/player/player_controller.dart';
 import '../util/format.dart';
 import 'atoms.dart';
+import 'cover_hero.dart';
 import 'platform_logo.dart';
 import 'track_actions.dart';
+
+/// Метка перелёта обложки — своя у КАЖДОГО экземпляра карточки. Считать её из
+/// id нельзя: один альбом легко стоит сразу в двух секциях выдачи, а два `Hero`
+/// с одинаковой меткой в одном дереве — исключение на старте перехода.
+///
+/// Обложки нет — перелёта нет: заглушке лететь некуда.
+CoverFlight? _flightFor(String? cover, Object tag) =>
+    cover == null || cover.isEmpty ? null : CoverFlight(tag: tag, image: cover);
 
 /// Строка трека: обложка, название/артист, длительность. Тап ставит [queue]
 /// целиком, чтобы работали «дальше»/«назад», а не один трек.
@@ -23,11 +34,17 @@ class TrackRow extends ConsumerWidget {
     required this.track,
     required this.queue,
     required this.index,
+    this.sourceId,
   });
 
   final Track track;
   final List<Track> queue;
   final int index;
+
+  /// Список, из которого взята [queue] — см. [PlaybackState.sourceId]. Строка
+  /// внутри плейлиста заводит его целиком, поэтому плитка этого плейлиста тоже
+  /// должна показать эквалайзер.
+  final String? sourceId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -36,7 +53,9 @@ class TrackRow extends ConsumerWidget {
     final active = ref.watch(playbackProvider).track?.id == track.id;
 
     return InkWell(
-      onTap: () => ref.read(playbackProvider.notifier).playQueue(queue, index),
+      onTap: () => ref
+          .read(playbackProvider.notifier)
+          .playQueue(queue, index, sourceId: sourceId),
       // Длинный тап — то же, что контекстное меню трека на десктопе.
       onLongPress: () => showTrackActions(context, ref, track),
       borderRadius: BorderRadius.circular(t.radius * 0.85),
@@ -48,18 +67,11 @@ class TrackRow extends ConsumerWidget {
             // из разных источников, и по обложке этого не понять.
             Stack(
               children: [
-                Cover(url: track.cover, size: 48),
+                Cover(url: track.cover, size: 52),
                 Positioned(
-                  right: 2,
-                  bottom: 2,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.55),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: PlatformLogo(track.source, size: 11),
-                  ),
+                  right: 3,
+                  bottom: 3,
+                  child: SourceBadge(track.source, size: 18),
                 ),
               ],
             ),
@@ -81,17 +93,156 @@ class TrackRow extends ConsumerWidget {
                     track.artist,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.bodySmall,
+                    // Ярче обычной подписи: в строке трека артист читается
+                    // наравне с названием, а не как второстепенная мелочь.
+                    style: theme.bodySmall?.copyWith(color: t.text2),
                   ),
                 ],
               ),
             ),
+            _OfflineMark(trackId: track.id),
             const SizedBox(width: 10),
-            Text(
-              mmss(track.duration),
-              style: theme.bodySmall?.copyWith(color: t.muted),
-            ),
+            _DurationPill(track: track, active: active),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Отметка «трек лежит на устройстве» — стрелка перед длительностью, аналог
+/// десктопной иконки `save` в строке. Пока трек качается, на её месте кольцо
+/// прогресса (или бесконечное, если CDN не сказал размер).
+///
+/// Подписка через `select`: строк в списке сотни, и перерисовывать их все на
+/// каждый тик прогресса чужого трека незачем.
+class _OfflineMark extends ConsumerWidget {
+  const _OfflineMark({required this.trackId});
+
+  final String trackId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.bloom;
+    final status = ref.watch(
+      offlineProvider.select(
+        (s) => (
+          saved: s.has(trackId),
+          pending: s.isPending(trackId),
+          progress: s.progressOf(trackId),
+        ),
+      ),
+    );
+
+    if (status.pending) {
+      return Padding(
+        padding: const EdgeInsets.only(left: 8),
+        child: SizedBox(
+          width: 14,
+          height: 14,
+          child: CircularProgressIndicator(
+            value: status.progress,
+            strokeWidth: 1.6,
+            color: t.accent,
+            backgroundColor: t.ovlLine,
+          ),
+        ),
+      );
+    }
+    if (!status.saved) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      // Дискета и приглушённый цвет — как `.tr-offline` на десктопе (там
+      // `Ico name="save"` = solar/diskette-linear, color: var(--text2)).
+      child: Icon(SolarIconsOutline.diskette, size: 14, color: t.text2),
+    );
+  }
+}
+
+/// Длительность трека в рамке — десктопный `.trd` (прозрачный фон, тонкая
+/// линия), но скругление круче десктопного (0.85 от темы вместо 0.45) и линия
+/// самая тихая (`ovlLine`): на мобилке рамка не должна спорить с названием.
+/// У играющего трека вместо цифр в той же рамке стоит эквалайзер: строка сама
+/// показывает, что играет.
+class _DurationPill extends ConsumerWidget {
+  const _DurationPill({required this.track, required this.active});
+
+  final Track track;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+
+    // Поток play/pause спрашиваем только у играющей строки — остальным он не
+    // нужен и лишние подписки в длинном списке ни к чему.
+    final child = active
+        ? StreamBuilder<bool>(
+            stream: ref.watch(audioPlayerProvider).playingStream,
+            initialData: ref.read(audioPlayerProvider).playing,
+            builder: (context, snap) =>
+                EqualizerBars(playing: snap.data ?? false),
+          )
+        : Text(
+            mmss(track.duration),
+            style: theme.bodySmall?.copyWith(
+              color: t.text2,
+              fontWeight: FontWeight.w600,
+            ),
+          );
+
+    return Container(
+      constraints: const BoxConstraints(minWidth: 48),
+      height: 30,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        border: Border.all(color: t.ovlLine),
+        borderRadius: BorderRadius.circular(t.radius * 0.85),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Эквалайзер играющего сета — оверлей для обложки его карточки. То же, что
+/// полоски вместо длительности в строке трека: список сам показывает, что
+/// играет именно он. Обложка под полосками слегка притемняется — на пёстрой
+/// картинке их иначе не разглядеть.
+///
+/// Неиграющий сет отдаёт пустоту, а не отсутствие оверлея: решать, показывать
+/// ли полоски, должен сам оверлей — иначе подписку на плеер пришлось бы
+/// заводить каждой плитке сетки.
+class SetEqualizer extends ConsumerWidget {
+  const SetEqualizer({super.key, required this.setId});
+
+  /// Тот же id, что уходит в `playQueue(sourceId:)`: id сета площадки или
+  /// id библиотечного списка.
+  final String setId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final playingSet = ref.watch(
+      playbackProvider.select((s) => s.sourceId == setId),
+    );
+    if (!playingSet) return const SizedBox.shrink();
+
+    return LayoutBuilder(
+      builder: (context, box) => ColoredBox(
+        color: Colors.black.withValues(alpha: 0.32),
+        child: Center(
+          child: StreamBuilder<bool>(
+            stream: ref.watch(audioPlayerProvider).playingStream,
+            initialData: ref.read(audioPlayerProvider).playing,
+            // Полоски заданы в пикселях строки трека — на крупной обложке
+            // плитки их надо увеличить, на мелкой (строка сета) оставить как
+            // есть.
+            builder: (context, snap) => EqualizerBars(
+              playing: snap.data ?? false,
+              scale: (box.maxWidth / 56).clamp(1.0, 3.0),
+            ),
+          ),
         ),
       ),
     );
@@ -100,15 +251,24 @@ class TrackRow extends ConsumerWidget {
 
 /// Строка альбома или плейлиста: обложка, название, владелец. Нужна там, где
 /// сет стоит в списке, а не в карусели — в репостах артиста.
-class SetRow extends StatelessWidget {
+class SetRow extends StatefulWidget {
   const SetRow({super.key, required this.set});
 
   final Playlist set;
 
   @override
+  State<SetRow> createState() => _SetRowState();
+}
+
+class _SetRowState extends State<SetRow> {
+  final _tag = UniqueKey();
+
+  @override
   Widget build(BuildContext context) {
+    final set = widget.set;
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
+    final flight = _flightFor(set.cover, _tag);
     final sub = [
       set.isAlbum ? 'Альбом' : 'Плейлист',
       set.ownerName,
@@ -116,13 +276,18 @@ class SetRow extends StatelessWidget {
     ].whereType<String>().where((s) => s.isNotEmpty).join(' · ');
 
     return InkWell(
-      onTap: () => openSet(context, set),
+      onTap: () => openSet(context, set, flight: flight),
       borderRadius: BorderRadius.circular(t.radius * 0.85),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Row(
           children: [
-            Cover(url: set.cover, size: 48),
+            Cover(
+              url: set.cover,
+              size: 48,
+              flight: flight,
+              overlay: SetEqualizer(setId: set.id),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -182,7 +347,18 @@ class TrackCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Cover(url: track.cover, size: size),
+            // Бейдж крупнее и с большим отступом от угла, чем в строке, — как
+            // `.sp-tc-cover .cov-badge` на десктопе.
+            Stack(
+              children: [
+                Cover(url: track.cover, size: size),
+                Positioned(
+                  right: 6,
+                  bottom: 6,
+                  child: SourceBadge(track.source, size: 22),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
             Text(
               track.name,
@@ -211,7 +387,7 @@ class TrackCard extends ConsumerWidget {
 ///
 /// [size] `null` — карточка занимает всю ширину ячейки (сетка выдачи); число —
 /// фиксированная ширина (карусель).
-class ArtistCard extends StatelessWidget {
+class ArtistCard extends StatefulWidget {
   const ArtistCard({
     super.key,
     required this.artist,
@@ -226,10 +402,21 @@ class ArtistCard extends StatelessWidget {
   final bool centerLabel;
 
   @override
+  State<ArtistCard> createState() => _ArtistCardState();
+}
+
+class _ArtistCardState extends State<ArtistCard> {
+  final _tag = UniqueKey();
+
+  @override
   Widget build(BuildContext context) {
+    final artist = widget.artist;
+    final size = widget.size;
+    final centerLabel = widget.centerLabel;
     final theme = Theme.of(context).textTheme;
     final followers = artist.followers;
     final align = centerLabel ? TextAlign.center : TextAlign.start;
+    final flight = _flightFor(artist.avatar, _tag);
 
     final content = LayoutBuilder(
       builder: (context, box) => Column(
@@ -237,7 +424,12 @@ class ArtistCard extends StatelessWidget {
             ? CrossAxisAlignment.center
             : CrossAxisAlignment.start,
         children: [
-          Cover(url: artist.avatar, size: box.maxWidth, circle: true),
+          Cover(
+            url: artist.avatar,
+            size: box.maxWidth,
+            circle: true,
+            flight: flight,
+          ),
           const SizedBox(height: 8),
           Text(
             artist.name,
@@ -261,7 +453,8 @@ class ArtistCard extends StatelessWidget {
     );
 
     return GestureDetector(
-      onTap: () => openArtist(context, artist.id, initial: artist),
+      onTap: () =>
+          openArtist(context, artist.id, initial: artist, flight: flight),
       behavior: HitTestBehavior.opaque,
       child: size == null ? content : SizedBox(width: size, child: content),
     );
@@ -272,15 +465,25 @@ class ArtistCard extends StatelessWidget {
 ///
 /// [size] `null` — на всю ширину ячейки сетки, число — фиксированная ширина
 /// карусели.
-class SetCard extends StatelessWidget {
+class SetCard extends StatefulWidget {
   const SetCard({super.key, required this.set, this.size = 132});
 
   final Playlist set;
   final double? size;
 
   @override
+  State<SetCard> createState() => _SetCardState();
+}
+
+class _SetCardState extends State<SetCard> {
+  final _tag = UniqueKey();
+
+  @override
   Widget build(BuildContext context) {
+    final set = widget.set;
+    final size = widget.size;
     final theme = Theme.of(context).textTheme;
+    final flight = _flightFor(set.cover, _tag);
     // Год и счётчик есть не всегда — пустые части просто выпадают, вместо
     // «0 треков» и пустых разделителей.
     final sub = [
@@ -293,7 +496,12 @@ class SetCard extends StatelessWidget {
       builder: (context, box) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Cover(url: set.cover, size: box.maxWidth),
+          Cover(
+            url: set.cover,
+            size: box.maxWidth,
+            flight: flight,
+            overlay: SetEqualizer(setId: set.id),
+          ),
           const SizedBox(height: 8),
           Text(
             set.title,
@@ -313,7 +521,7 @@ class SetCard extends StatelessWidget {
     );
 
     return GestureDetector(
-      onTap: () => openSet(context, set),
+      onTap: () => openSet(context, set, flight: flight),
       behavior: HitTestBehavior.opaque,
       child: size == null ? content : SizedBox(width: size, child: content),
     );

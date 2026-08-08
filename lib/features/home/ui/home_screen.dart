@@ -70,7 +70,7 @@ class _TopBar extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          CircleIconButton(icon: SolarIconsOutline.soundwave, onTap: () {}),
+          CircleIconButton(icon: SolarIconsOutline.bell, onTap: () {}),
           const SizedBox(width: 8),
           CircleIconButton(
             icon: SolarIconsOutline.magnifier,

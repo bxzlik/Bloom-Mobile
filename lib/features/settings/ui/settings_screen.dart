@@ -34,13 +34,24 @@ class SettingsScreen extends StatelessWidget {
         // а первая группа начинается со своего капсового заголовка.
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
         children: [
-          const SettingsGroup(
+          SettingsGroup(
             title: 'ОСНОВНОЕ',
             rows: [
-              SettingsRow(icon: SolarIconsOutline.smartphone, title: 'Система'),
-              SettingsRow(icon: SolarIconsOutline.tuning, title: 'Аудио'),
-              SettingsRow(icon: SolarIconsOutline.cpu, title: 'Эффективность'),
-              SettingsRow(icon: SolarIconsOutline.database, title: 'Хранилище'),
+              const SettingsRow(
+                icon: SolarIconsOutline.smartphone,
+                title: 'Система',
+              ),
+              const SettingsRow(icon: SolarIconsOutline.tuning, title: 'Аудио'),
+              const SettingsRow(
+                icon: SolarIconsOutline.cpu,
+                title: 'Эффективность',
+              ),
+              SettingsRow(
+                icon: SolarIconsOutline.database,
+                title: 'Хранилище',
+                subtitle: 'Офлайн-кеш скачанных треков',
+                onTap: () => context.go('/settings/storage'),
+              ),
             ],
           ),
           SettingsGroup(

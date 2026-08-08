@@ -16,6 +16,7 @@ import '../../app/theme/tokens.dart';
 import '../../core/store/cover_store.dart';
 import 'atoms.dart';
 import 'bloom_mark.dart';
+import 'cover_hero.dart';
 
 class DetailHero extends StatelessWidget {
   const DetailHero({
@@ -26,6 +27,7 @@ class DetailHero extends StatelessWidget {
     required this.actions,
     this.owner,
     this.onMenu,
+    this.flight,
   });
 
   /// Картинка фона: аватар артиста или обложка сета. Баннер профиля площадки
@@ -47,6 +49,11 @@ class DetailHero extends StatelessWidget {
   /// Меню «…» справа сверху; `null` — кнопки нет.
   final VoidCallback? onMenu;
 
+  /// Обложка карточки, с которой сюда пришли: она перелетает в [image].
+  /// `null` — пришли не с карточки (у карточки не было обложки, переход из
+  /// шторки), и шапка просто проявляется вместе со страницей.
+  final CoverFlight? flight;
+
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
@@ -65,61 +72,72 @@ class DetailHero extends StatelessWidget {
           // Картинка идёт и под рядом действий, а кончается скруглённым краем:
           // граница со списком видна, а не размазана в фон.
           Positioned.fill(
-            child: HeroCover(child: _Background(url: image)),
+            child: HeroCover(
+              child: CoverHero(
+                tag: flight?.tag,
+                shape: BorderRadius.vertical(
+                  bottom: Radius.circular(t.radius * 1.5),
+                ),
+                child: _Background(url: image, previous: flight?.image),
+              ),
+            ),
           ),
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      GlassIconButton(
-                        icon: SolarIconsOutline.arrowLeft,
-                        onTap: () => Navigator.of(context).maybePop(),
-                      ),
-                      const Spacer(),
-                      if (onMenu != null)
+          HeroContent(
+            flying: flight != null,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
                         GlassIconButton(
-                          icon: SolarIconsOutline.menuDots,
-                          onTap: onMenu,
+                          icon: SolarIconsOutline.arrowLeft,
+                          onTap: () => Navigator.of(context).maybePop(),
                         ),
+                        const Spacer(),
+                        if (onMenu != null)
+                          GlassIconButton(
+                            icon: SolarIconsOutline.menuDots,
+                            onTap: onMenu,
+                          ),
+                      ],
+                    ),
+                    const Spacer(),
+                    Text(
+                      title,
+                      maxLines: 2,
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.headlineSmall?.copyWith(fontSize: 28),
+                    ),
+                    if (owner case final name? when name.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        name,
+                        maxLines: 1,
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.titleMedium?.copyWith(color: t.text2),
+                      ),
                     ],
-                  ),
-                  const Spacer(),
-                  Text(
-                    title,
-                    maxLines: 2,
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.headlineSmall?.copyWith(fontSize: 28),
-                  ),
-                  if (owner case final name? when name.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      name,
-                      maxLines: 1,
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.titleMedium?.copyWith(color: t.text2),
-                    ),
+                    if (subtitle.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.bodyMedium,
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    actions,
+                    const SizedBox(height: 12),
                   ],
-                  if (subtitle.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.bodyMedium,
-                    ),
-                  ],
-                  const SizedBox(height: 14),
-                  actions,
-                  const SizedBox(height: 12),
-                ],
+                ),
               ),
             ),
           ),
@@ -132,9 +150,14 @@ class DetailHero extends StatelessWidget {
 /// Фон шапки: картинка либо приглушённый знак bloom на плёнке — как у пустой
 /// обложки в [Cover], чтобы «нет картинки» выглядело одинаково везде.
 class _Background extends StatelessWidget {
-  const _Background({required this.url});
+  const _Background({required this.url, this.previous});
 
   final String? url;
+
+  /// Обложка карточки, с которой прилетели. Площадка ту же картинку отдаёт
+  /// другой ссылкой (крупнее), и ответ сети приходит посреди перелёта — без
+  /// подмены шапка на полкадра мигнула бы заглушкой ровно в момент посадки.
+  final String? previous;
 
   @override
   Widget build(BuildContext context) {
@@ -144,14 +167,23 @@ class _Background extends StatelessWidget {
       child: Center(child: BloomMark(size: 96, color: t.text, opacity: 0.16)),
     );
 
+    final earlier = coverImage(previous);
+    Widget waiting() => earlier == null
+        ? empty()
+        : Image(
+            image: earlier,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => empty(),
+          );
+
     final image = coverImage(url);
-    if (image == null) return empty();
+    if (image == null) return waiting();
     return Image(
       image: image,
       fit: BoxFit.cover,
-      errorBuilder: (_, _, _) => empty(),
+      errorBuilder: (_, _, _) => waiting(),
       frameBuilder: (context, child, frame, wasSync) =>
-          wasSync || frame != null ? child : empty(),
+          wasSync || frame != null ? child : waiting(),
     );
   }
 }

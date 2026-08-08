@@ -5,6 +5,7 @@
 /// `iconFg`, как в десктопном Bloom.
 library;
 
+import 'dart:math' show cos, pi;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../app/theme/tokens.dart';
 import '../../core/store/cover_store.dart';
 import 'bloom_mark.dart';
+import 'cover_hero.dart';
 
 /// Высота управляющих элементов шапки: круглых кнопок, пилюли профиля, поля
 /// поиска и пилюли-заголовка подстраницы. В референсе шапка заметно крупнее,
@@ -268,6 +270,149 @@ class CircleSvgButton extends StatelessWidget {
   }
 }
 
+/// Эквалайзер играющего трека — порт десктопного `.bars`: три полоски шириной
+/// 3 с зазором 2, высоты 8/12/6, каждая следующая со сдвигом фазы на 0.2s.
+///
+/// Одна анимация на все три полоски, фаза берётся сдвигом по косинусу — цикл
+/// замкнут, «отката» в начале нет. На паузе полоски замирают там, где стояли, и
+/// гаснут вполовину (десктопное `body.audio-paused`).
+class EqualizerBars extends StatefulWidget {
+  const EqualizerBars({
+    super.key,
+    required this.playing,
+    this.color,
+    this.scale = 1,
+  });
+
+  final bool playing;
+  final Color? color;
+
+  /// Множитель размера — полоски заданы в тех же пикселях, что на десктопе.
+  final double scale;
+
+  @override
+  State<EqualizerBars> createState() => _EqualizerBarsState();
+}
+
+class _EqualizerBarsState extends State<EqualizerBars>
+    with SingleTickerProviderStateMixin {
+  static const List<double> _heights = [8, 12, 6];
+
+  /// Сдвиги фазы: 0 / 0.2s / 0.4s от цикла в 1.6s.
+  static const List<double> _phases = [0, 0.125, 0.25];
+
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.playing) _c.repeat();
+  }
+
+  @override
+  void didUpdateWidget(EqualizerBars old) {
+    super.didUpdateWidget(old);
+    if (widget.playing == old.playing) return;
+    if (widget.playing) {
+      _c.repeat();
+    } else {
+      _c.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.color ?? context.bloom.accent;
+    final k = widget.scale;
+    return Opacity(
+      opacity: widget.playing ? 1 : 0.5,
+      child: SizedBox(
+        height: 14 * k,
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (context, _) => Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              for (var i = 0; i < _heights.length; i++) ...[
+                if (i > 0) SizedBox(width: 2 * k),
+                Container(
+                  width: 3 * k,
+                  // scaleY .3 → 1 по косинусу: то же ease-in-out alternate.
+                  height:
+                      _heights[i] *
+                      k *
+                      (0.3 +
+                          0.35 * (1 - cos(2 * pi * (_c.value + _phases[i])))),
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(2 * k),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Тумблер настроек — порт десктопного `.tele-sw`: дорожка 44×24 цвета
+/// `border`, кружок 18 у левого края, включённый — дорожка акцентом, кружок
+/// `accentText`. Свой, а не material `Switch`: тому не отключить заливку под
+/// пальцем и он тянет за собой свою палитру.
+class BloomSwitch extends StatelessWidget {
+  const BloomSwitch({super.key, required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  static const _duration = Duration(milliseconds: 200);
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: _duration,
+        curve: Curves.easeOut,
+        width: 44,
+        height: 24,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: value ? t.accent : t.border,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: AnimatedAlign(
+          duration: _duration,
+          curve: Curves.easeOut,
+          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            width: 18,
+            height: 18,
+            decoration: BoxDecoration(
+              color: value ? t.accentText : Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Обложка: скруглённая картинка с заглушкой на месте отсутствующей.
 class Cover extends StatelessWidget {
   const Cover({
@@ -276,12 +421,25 @@ class Cover extends StatelessWidget {
     required this.size,
     this.radius,
     this.circle = false,
+    this.flight,
+    this.overlay,
   });
 
   final String? url;
   final double size;
   final double? radius;
   final bool circle;
+
+  /// Слой поверх картинки — эквалайзер играющего сета. Стоит РЯДОМ с перелётом,
+  /// а не внутри: летит одна обложка, полоски остаются на карточке.
+  final Widget? overlay;
+
+  /// Метка перелёта в шапку страницы, которую откроет эта карточка. `null` —
+  /// обложка никуда не летит (строка трека, шапка шторки, превью выбора).
+  ///
+  /// Летит только НАСТОЯЩАЯ картинка: заглушке лететь некуда — на той стороне
+  /// её место занимает коллаж или тинт раздела.
+  final CoverFlight? flight;
 
   @override
   Widget build(BuildContext context) {
@@ -299,26 +457,52 @@ class Cover extends StatelessWidget {
       ),
     );
 
+    // Оверлей обрезаем той же формой, что и картинку, — иначе плёнка вылезет
+    // за скруглённые углы.
+    Widget withOverlay(Widget child) => overlay == null
+        ? child
+        : Stack(
+            fit: StackFit.expand,
+            children: [
+              child,
+              ClipRRect(borderRadius: shape, child: overlay),
+            ],
+          );
+
     final image = coverImage(url);
+    if (image == null) {
+      return SizedBox(
+        width: size,
+        height: size,
+        child: withOverlay(placeholder()),
+      );
+    }
+
     return SizedBox(
       width: size,
       height: size,
-      child: image == null
-          ? placeholder()
-          : ClipRRect(
-              borderRadius: shape,
-              child: Image(
-                image: image,
-                width: size,
-                height: size,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => placeholder(),
-                frameBuilder: (context, child, frame, wasSync) {
-                  if (wasSync || frame != null) return child;
-                  return placeholder();
-                },
-              ),
+      child: withOverlay(
+        // Скругление внутри перелёта, а не снаружи: обрезка родителя на летящую
+        // копию не действует, форму ей задаёт сам [CoverHero].
+        CoverHero(
+          tag: flight?.tag,
+          shape: shape,
+          child: ClipRRect(
+            borderRadius: shape,
+            child: Image(
+              image: image,
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => placeholder(),
+              frameBuilder: (context, child, frame, wasSync) {
+                if (wasSync || frame != null) return child;
+                return placeholder();
+              },
             ),
+          ),
+        ),
+      ),
     );
   }
 }

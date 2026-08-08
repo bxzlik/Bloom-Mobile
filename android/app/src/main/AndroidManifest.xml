@@ -8,6 +8,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- «Скачать файлом» в общую папку «Музыка/Bloom». С Android 10 своя папка
+         внутри Музыки пишется через MediaStore без разрешений — поэтому
+         maxSdkVersion, иначе система ругается на лишнее право. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28"/>
     <application
         android:label="Bloom"
         android:name="${applicationName}"

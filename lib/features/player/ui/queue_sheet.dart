@@ -18,6 +18,7 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/track_actions.dart';
 import '../../../shared/util/format.dart';
 import '../player_controller.dart';
@@ -290,6 +291,14 @@ class _QueueRow extends ConsumerWidget {
                 Stack(
                   children: [
                     Cover(url: track.cover, size: 44),
+                    // Бейдж площадки — как в строках треков; под оверлеем
+                    // играющего его не показываем (он бы торчал из-под заливки).
+                    if (!current)
+                      Positioned(
+                        right: 3,
+                        bottom: 3,
+                        child: SourceBadge(track.source),
+                      ),
                     // Играющий трек отмечаем прямо на обложке: в длинном списке
                     // одного цвета названия мало.
                     if (current)

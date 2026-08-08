@@ -28,6 +28,16 @@
 	<string>Чтобы поставить свою обложку на плейлист.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- «Скачать файлом»: без этой пары папка приложения не появляется в
+	     системных «Файлах», и скачанный трек человеку негде взять. Общей
+	     медиатеки, как «Музыка/Bloom» на Android, у iOS нет.
+	     Служебные файлы (библиотека, обложки, офлайн-копии) сюда НЕ кладутся —
+	     на iOS они живут в Application Support, который «Файлам» не виден
+	     (см. lib/core/store/app_dirs.dart). -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<!-- Без этого iOS глушит звук при уходе приложения в фон. -->
 	<key>UIBackgroundModes</key>
 	<array>

@@ -65,7 +65,7 @@ class FullPlayerPage extends ConsumerWidget {
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                   child: Column(
                     children: [
-                      _Header(source: track.source),
+                      _Header(track: track),
                       const SizedBox(height: 16),
                       // Обложка по центру свободного места.
                       Flexible(
@@ -76,15 +76,20 @@ class FullPlayerPage extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      // Отступы вокруг названия одинаковые: оно должно стоять
+                      // ровно посередине между обложкой и прогрессом.
+                      const SizedBox(height: 24),
                       _TitleBlock(state: state),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
                       const _Progress(),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       const _Transport(),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       _Tools(queueCount: state.queue.length),
-                      const SizedBox(height: 8),
+                      // Воздух до края экрана: вся связка прогресс — транспорт
+                      // — инструменты стоит выше кромки, обложка подожмётся
+                      // сама (она во `Flexible`).
+                      const SizedBox(height: 22),
                     ],
                   ),
                 ),
@@ -94,14 +99,19 @@ class FullPlayerPage extends ConsumerWidget {
   }
 }
 
-class _Header extends StatelessWidget {
-  const _Header({required this.source});
+class _Header extends ConsumerWidget {
+  const _Header({required this.track});
 
-  /// Площадка текущего трека — её логотип стоит в пилюле «Играет из».
-  final MusicSource source;
+  /// Текущий трек: его площадка стоит в пилюле «Играет из», он же уходит в
+  /// меню под тремя точками.
+  final Track track;
+
+  /// Пилюля «Играет из» — та же плёнка, что у круглых кнопок по краям, только
+  /// чуть ниже них: в шапке она подпись, а не орган управления.
+  static const double _pillHeight = 40;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
     return Row(
       children: [
@@ -113,10 +123,11 @@ class _Header extends StatelessWidget {
         Expanded(
           child: Center(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              height: _pillHeight,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
                 color: t.pill,
-                borderRadius: BorderRadius.circular(999),
+                borderRadius: BorderRadius.circular(_pillHeight / 2),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -129,13 +140,16 @@ class _Header extends StatelessWidget {
                   // Логотип площадки — тот же SVG, что на десктопе; берётся из
                   // самого трека, поэтому переключение площадок ничего тут не
                   // потребует.
-                  PlatformLogo(source, size: 15),
+                  PlatformLogo(track.source, size: 15),
                 ],
               ),
             ),
           ),
         ),
-        CircleIconButton(icon: SolarIconsOutline.menuDots, onTap: () {}),
+        CircleIconButton(
+          icon: SolarIconsOutline.menuDots,
+          onTap: () => showTrackActions(context, ref, track),
+        ),
       ],
     );
   }
@@ -174,7 +188,7 @@ class _Cover extends ConsumerWidget {
               bottom: 16,
               child: _CoverButton(
                 icon: SolarIconsOutline.addCircle,
-                iconSize: 22,
+                iconSize: 28,
                 onTap: () => showAddToPlaylistSheet(context, ref, track),
               ),
             ),
@@ -191,7 +205,7 @@ class _Cover extends ConsumerWidget {
 class _CoverButton extends StatelessWidget {
   const _CoverButton({
     required this.icon,
-    this.iconSize = 20,
+    this.iconSize = 26,
     this.color,
     this.onTap,
   });
@@ -211,7 +225,7 @@ class _CoverButton extends StatelessWidget {
       child: CircleIconButton(
         icon: icon,
         iconSize: iconSize,
-        size: 44,
+        size: 56,
         background: Colors.black.withValues(alpha: 0.45),
         color: color ?? Colors.white,
         onTap: onTap,
@@ -239,76 +253,102 @@ class _TitleBlock extends StatelessWidget {
           textAlign: TextAlign.center,
           style: theme.headlineSmall,
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 5),
         Text(
           state.error ?? track.artist,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
-          style: state.error != null
-              ? theme.bodyMedium?.copyWith(color: t.sysFavIco)
-              : theme.bodyMedium,
+          // Крупнее общей подписи (13): в плеере под названием стоит одна
+          // строка, и она должна читаться с руки.
+          style: theme.bodyMedium?.copyWith(
+            fontSize: 16,
+            color: state.error != null ? t.sysFavIco : null,
+          ),
         ),
       ],
     );
   }
 }
 
-class _Progress extends ConsumerWidget {
+class _Progress extends ConsumerStatefulWidget {
   const _Progress();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
-    final player = ref.watch(audioPlayerProvider);
-    final theme = Theme.of(context).textTheme;
+  ConsumerState<_Progress> createState() => _ProgressState();
+}
 
-    return StreamBuilder<Duration>(
-      stream: player.positionStream,
-      initialData: player.position,
-      builder: (context, snap) {
-        final total = player.duration ?? Duration.zero;
-        final pos = snap.data ?? Duration.zero;
-        final max = total.inMilliseconds.toDouble();
-        final value = max <= 0
-            ? 0.0
-            : pos.inMilliseconds.clamp(0, total.inMilliseconds).toDouble();
-        return Column(
-          children: [
-            SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                trackShape: const RoundedRectSliderTrackShape(),
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+class _ProgressState extends ConsumerState<_Progress> {
+  /// Позиция под пальцем, пока тянут (мс). Пока она не null — дорожка и время
+  /// слева живут от неё, а не от плеера.
+  ///
+  /// Иначе `Slider` (он управляемый) рисует то, что пришло из стрима, и
+  /// заливка отпрыгивает назад к фактической позиции — резинка. Перематываем
+  /// один раз, на отпускании: seek по сетевому стриму дорогой, а на каждый
+  /// кадр перетаскивания их набегают десятки.
+  double? _drag;
+
+  Future<void> _commit(double v) async {
+    await ref
+        .read(playbackProvider.notifier)
+        .seek(Duration(milliseconds: v.round()));
+    // Отпускаем только после самой перемотки: до неё стрим отдаёт ещё старую
+    // позицию, и полоска моргнула бы назад.
+    if (mounted) setState(() => _drag = null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context).textTheme;
+    final head =
+        ref.watch(playheadProvider).value ??
+        (position: Duration.zero, total: Duration.zero);
+
+    final max = head.total.inMilliseconds.toDouble();
+    final live = max <= 0
+        ? 0.0
+        : head.position.inMilliseconds
+              .clamp(0, head.total.inMilliseconds)
+              .toDouble();
+    final value = (_drag ?? live).clamp(0.0, max <= 0 ? 0.0 : max);
+
+    return Column(
+      children: [
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackShape: const RoundedRectSliderTrackShape(),
+            // Дорожка в плеере толще общей (3): это главный орган
+            // управления экрана, а не строка настройки.
+            trackHeight: 5,
+            // Без кружка — как в референсе: позицию показывает сам край
+            // залитой части. Тянуть и тыкать по дорожке это не мешает.
+            thumbShape: SliderComponentShape.noThumb,
+          ),
+          child: Slider(
+            value: value,
+            max: max <= 0 ? 1 : max,
+            onChanged: max <= 0 ? null : (v) => setState(() => _drag = v),
+            onChangeEnd: max <= 0 ? null : _commit,
+          ),
+        ),
+        // Слайдер рисует дорожку по центру своей высоты, но времена всё
+        // равно шли впритык к ней — отодвигаем их явно.
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Тем же цветом, что артист под названием (`bodyMedium`).
+              Text(
+                mmss(Duration(milliseconds: value.round())),
+                style: theme.bodyMedium,
               ),
-              child: Slider(
-                value: value,
-                max: max <= 0 ? 1 : max,
-                onChanged: max <= 0
-                    ? null
-                    : (v) => ref
-                          .read(playbackProvider.notifier)
-                          .seek(Duration(milliseconds: v.round())),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    mmss(pos),
-                    style: theme.bodySmall?.copyWith(color: t.muted),
-                  ),
-                  Text(
-                    mmss(total),
-                    style: theme.bodySmall?.copyWith(color: t.muted),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
+              Text(mmss(head.total), style: theme.bodyMedium),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -324,11 +364,12 @@ class _Block extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     return Container(
-      padding: padding ?? const EdgeInsets.symmetric(vertical: 10),
+      padding: padding ?? const EdgeInsets.symmetric(vertical: 18),
       decoration: BoxDecoration(
         color: t.ovlBg,
         border: Border.all(color: t.ovlLine),
-        borderRadius: BorderRadius.circular(t.radius),
+        // Круглее общего блока: у транспорта углы мягче, чем у карточек.
+        borderRadius: BorderRadius.circular(t.radius * 1.8),
       ),
       child: child,
     );
@@ -345,9 +386,26 @@ class _Transport extends ConsumerWidget {
     final ctrl = ref.read(playbackProvider.notifier);
     final player = ref.watch(audioPlayerProvider);
 
-    final repeatIcon = switch (state.repeat) {
-      PlayerRepeat.one => SolarIconsOutline.repeatOne,
-      _ => SolarIconsOutline.repeat,
+    // Режим повтора различаем бейджем, а не подменой иконки (как на ПК): сама
+    // кнопка всегда repeat, сверху справа — «список» для всей очереди и «1» для
+    // одного трека.
+    final repeatMark = switch (state.repeat) {
+      PlayerRepeat.all => Icon(
+        SolarIconsOutline.list,
+        size: 9,
+        color: t.accentText,
+      ),
+      PlayerRepeat.one => Text(
+        '1',
+        style: TextStyle(
+          fontSize: 8,
+          // Цифра оптически сидит выше центра — прижимаем высотой строки.
+          height: 1.2,
+          fontWeight: FontWeight.w700,
+          color: t.accentText,
+        ),
+      ),
+      _ => null,
     };
 
     return _Block(
@@ -355,18 +413,20 @@ class _Transport extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _FlatIcon(
-            icon: repeatIcon,
+            icon: SolarIconsOutline.repeat,
+            size: 24,
             active: state.repeat != PlayerRepeat.off,
             onTap: ctrl.cycleRepeat,
+            mark: repeatMark,
           ),
           _FlatIcon(
             icon: SolarIconsBold.skipPrevious,
-            size: 26,
+            size: 30,
             onTap: ctrl.prev,
           ),
           SizedBox(
-            width: 64,
-            height: 64,
+            width: 68,
+            height: 68,
             // На загрузке круг ОСТАЁТСЯ на месте, спиннер рисуется внутри него:
             // иначе транспорт на каждом переходе трека визуально схлопывается.
             child: state.loading
@@ -377,8 +437,8 @@ class _Transport extends ConsumerWidget {
                     ),
                     child: Center(
                       child: SizedBox(
-                        width: 26,
-                        height: 26,
+                        width: 28,
+                        height: 28,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.4,
                           color: t.accentText,
@@ -399,16 +459,17 @@ class _Transport extends ConsumerWidget {
                           snap.data == true
                               ? SolarIconsBold.pause
                               : SolarIconsBold.play,
-                          size: 26,
+                          size: 28,
                           color: t.accentText,
                         ),
                       ),
                     ),
                   ),
           ),
-          _FlatIcon(icon: SolarIconsBold.skipNext, size: 26, onTap: ctrl.next),
+          _FlatIcon(icon: SolarIconsBold.skipNext, size: 30, onTap: ctrl.next),
           _FlatIcon(
             icon: SolarIconsOutline.shuffle,
+            size: 24,
             active: state.shuffle,
             onTap: ctrl.toggleShuffle,
           ),
@@ -425,6 +486,7 @@ class _FlatIcon extends StatelessWidget {
     this.size = 22,
     this.active = false,
     this.badge,
+    this.mark,
   });
 
   final IconData icon;
@@ -432,6 +494,10 @@ class _FlatIcon extends StatelessWidget {
   final double size;
   final bool active;
   final int? badge;
+
+  /// Мини-бейдж в кружке акцента поверх иконки (перенос .cc-badge с ПК): им
+  /// различаем режимы кнопки, чтобы не подменять саму иконку.
+  final Widget? mark;
 
   @override
   Widget build(BuildContext context) {
@@ -468,6 +534,28 @@ class _FlatIcon extends StatelessWidget {
                   ),
                 ),
               ),
+            if (mark != null)
+              Positioned(
+                right: -4,
+                top: -3,
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: t.accent,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        blurRadius: 3,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: mark,
+                ),
+              ),
           ],
         ),
       ),
@@ -483,15 +571,16 @@ class _Tools extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _Block(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          const _FlatIcon(icon: SolarIconsOutline.text),
-          const _FlatIcon(icon: SolarIconsOutline.tuning),
-          const _FlatIcon(icon: SolarIconsOutline.speedometerMiddle),
+          const _FlatIcon(icon: SolarIconsOutline.text, size: 26),
+          const _FlatIcon(icon: SolarIconsOutline.tuning, size: 26),
+          const _FlatIcon(icon: SolarIconsOutline.speedometerMiddle, size: 26),
           _FlatIcon(
             icon: SolarIconsOutline.playlistMinimalistic,
+            size: 26,
             badge: queueCount > 0 ? queueCount : null,
             onTap: queueCount > 0 ? () => showQueueSheet(context) : null,
           ),

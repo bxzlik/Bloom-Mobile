@@ -4,6 +4,11 @@
 /// О площадках экран не знает: спрашивает [ProviderRegistry.searchAll] и
 /// рисует нейтральные сущности. Чипы фильтруют УЖЕ полученную выдачу, а не
 /// ходят в сеть заново — провайдер отдаёт все разделы за один прогон.
+///
+/// Сюда же вставляют ссылки: как на десктопе, поле поиска — единственная точка
+/// импорта. Похожая на ссылку строка идёт в `resolveUrlAny` вместо поиска, и
+/// трек/артист/плейлист/альбом превращается в одну карточку выдачи, а ссылка
+/// на аккаунт — в профиль ([ProfileView]) с плейлистами и лайками.
 library;
 
 import 'package:flutter/material.dart';
@@ -18,10 +23,32 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/skeleton.dart';
+import 'profile_view.dart';
 
 /// Просвет под чипами-фильтрами: без него ряд чипов слипался с первой строкой
 /// выдачи и читался как её часть.
 const double _chipsGap = 14;
+
+/// Похожа ли строка на ссылку. Домены ловим и без протокола — вставляют и так.
+/// Точный разбор всё равно за площадкой, здесь только выбор ветки.
+bool looksLikeUrl(String query) =>
+    RegExp(r'^https?://', caseSensitive: false).hasMatch(query) ||
+    RegExp(
+      r'(^|\.)(soundcloud\.com|snd\.sc|music\.yandex\.[a-z]+|music\.youtube\.com|youtu\.be)/',
+      caseSensitive: false,
+    ).hasMatch(query);
+
+/// Зарезолвленная ссылка → выдача из одной карточки. Профиль сюда не попадает:
+/// у него свой вид.
+SearchResults _resolvedToResults(ResolvedUrl resolved) => switch (resolved) {
+  ResolvedTrack(:final track) => SearchResults(tracks: [track]),
+  ResolvedArtist(:final artist) => SearchResults(artists: [artist]),
+  ResolvedSet(:final playlist) =>
+    playlist.isAlbum
+        ? SearchResults(albums: [playlist])
+        : SearchResults(playlists: [playlist]),
+  ResolvedProfile() => SearchResults.empty,
+};
 
 enum SearchFilter {
   all('Всё', SolarIconsOutline.widget_4),
@@ -52,6 +79,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   bool _loading = false;
   String? _error;
 
+  /// Аккаунт, найденный по вставленной ссылке. Пока он есть, вместо выдачи (и
+  /// чипов над ней) показывается профиль.
+  ProfileData? _profile;
+
   /// Был ли уже прогон. Нужен, чтобы отличать «ещё не искали» от «искали и не
   /// нашли»: реестр гасит ошибки провайдеров в пустую выдачу, и без этого
   /// флага неудачный поиск выглядел как нетронутый экран.
@@ -74,9 +105,31 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     setState(() {
       _loading = true;
       _error = null;
+      _profile = null;
     });
 
     try {
+      // Ссылка — сперва резолв. Не разобрали (чужая площадка не подключена,
+      // опечатка) — молча падаем в обычный поиск: строка ведь введена в поле
+      // поиска, и выдача по ней полезнее пустого экрана с ошибкой.
+      if (looksLikeUrl(query)) {
+        final found = await ref.read(registryProvider).resolveUrlAny(query);
+        if (!mounted || gen != _generation) return;
+        if (found != null) {
+          setState(() {
+            _loading = false;
+            _searched = true;
+            if (found.resolved case ResolvedProfile(:final profile)) {
+              _profile = profile;
+              _results = SearchResults.empty;
+            } else {
+              _results = _resolvedToResults(found.resolved);
+            }
+          });
+          return;
+        }
+      }
+
       final results = await ref
           .read(registryProvider)
           .searchAll(query, providerId: ref.read(activeProviderIdProvider));
@@ -121,6 +174,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       _results = SearchResults.empty;
                       _error = null;
                       _searched = false;
+                      _profile = null;
                     }),
                   ),
                 ),
@@ -129,11 +183,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ],
             ),
           ),
-          _FilterChips(
-            active: _filter,
-            onPick: (f) => setState(() => _filter = f),
-          ),
-          const SizedBox(height: _chipsGap),
+          // У профиля своих разделов нет — чипы над ним нечего фильтровать.
+          if (_profile == null) ...[
+            _FilterChips(
+              active: _filter,
+              onPick: (f) => setState(() => _filter = f),
+            ),
+            const SizedBox(height: _chipsGap),
+          ],
           Expanded(child: _body(context)),
         ],
       ),
@@ -160,6 +217,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         ),
       );
     }
+    if (_profile case final profile?) return ProfileView(profile: profile);
     if (_results.isEmpty) {
       final text = _searched ? 'Ничего не нашлось' : 'Найди что-нибудь';
       return Center(

@@ -8,6 +8,7 @@ library;
 
 import 'dart:io';
 
+import 'package:bloom/core/providers/music_provider.dart';
 import 'package:bloom/core/providers/registry.dart';
 import 'package:bloom/providers/soundcloud/sc_provider.dart';
 import 'package:bloom/providers/soundcloud/soundcloud.dart';
@@ -98,6 +99,32 @@ Future<void> main() async {
   );
   print('resolveStream: hls=${playable?.isHls}');
 
+  // Офлайн-копия: та же цепочка, но ссылка обязана быть на цельный файл, и по
+  // ней должны реально пойти байты — иначе «Слушать офлайн» молча не работает.
+  check(provider.canDownload(entity), 'трек площадки не считается скачиваемым');
+  final downloadable = await provider.resolveDownload(entity);
+  check(
+    downloadable != null && !downloadable.isHls,
+    'скачивание отдало не файл, а поток',
+  );
+  final dlClient = HttpClient();
+  final dlResp = await (await dlClient.getUrl(
+    Uri.parse(downloadable!.url),
+  )).close();
+  check(dlResp.statusCode == 200, 'файл: CDN status ${dlResp.statusCode}');
+  final first = await dlResp.first;
+  // Те же магические байты, по которым офлайн-стор выбирает расширение: `ftyp`
+  // с четвёртого байта — m4a, иначе mp3.
+  final isM4a =
+      first.length > 8 &&
+      String.fromCharCodes(first.sublist(4, 8)) == 'ftyp';
+  check(first.isNotEmpty, 'файл: пустое тело');
+  print(
+    'resolveDownload: status ${dlResp.statusCode}, '
+    '${dlResp.contentLength} байт, формат ${isM4a ? 'm4a' : 'mp3'}',
+  );
+  dlClient.close(force: true);
+
   // Страница артиста — шесть эндпоинтов параллельно.
   final artistEntity = results.artists.isNotEmpty
       ? results.artists.first
@@ -125,6 +152,26 @@ Future<void> main() async {
     print('getAlbum ${album.playlist.title}: ${album.tracks.length} треков');
     check(album.tracks.isNotEmpty, 'альбом без треков');
   }
+
+  // Ссылка на аккаунт — это профиль, а не карточка артиста: так её понимает
+  // поиск, и через неё же переносят к себе чужие плейлисты и лайки.
+  final handle = artistPage?.artist.permalink ?? artistEntity.permalink;
+  if (handle != null) {
+    final hit = await registry.resolveUrlAny(handle);
+    check(hit?.resolved is ResolvedProfile, 'ссылка аккаунта не дала профиль');
+    if (hit?.resolved case ResolvedProfile(:final profile)) {
+      print(
+        'resolve профиля ${profile.artist.name}: '
+        '${profile.playlists.length} плейлистов, ${profile.likes.length} лайков',
+      );
+    }
+  }
+
+  // Чужая ссылка не должна уходить в SC `/resolve` — провайдер отдаёт её дальше.
+  check(
+    await provider.resolveUrl('https://music.yandex.ru/album/1') == null,
+    'SC взялся резолвить чужую ссылку',
+  );
 
   print(failed == 0 ? '\nВСЁ ОК' : '\nПРОВАЛОВ: $failed');
   exit(failed == 0 ? 0 : 1);
