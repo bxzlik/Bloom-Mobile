@@ -6,8 +6,7 @@
 
 **Music from every source in one player.**
 
-Android and iOS: SoundCloud, Yandex Music
-and YouTube Music in a single app
+A mobile player: Yandex Music, SoundCloud, and YouTube Music in a single app
 
 [**📦 Releases**](https://github.com/bxzlik/Bloom-Mobile/releases) · [**🖥 Desktop**](https://github.com/bxzlik/Bloom) · [**🌐 Website**](https://bloom-site-x.vercel.app/)
 
@@ -22,10 +21,6 @@ and YouTube Music in a single app
 | 🟠 **SoundCloud** | Native streaming |
 | 🔴 **YouTube Music** | Not started |
 | 🟡 **Yandex Music** | Not started |
-
-Providers are rewritten in Dart — the desktop Rust is not reused. The comments
-in [`src-tauri/src/*.rs`](https://github.com/bxzlik/Bloom) remain the spec: they
-document the whole reverse engineering of each platform.
 
 ## 🚀 Development
 
