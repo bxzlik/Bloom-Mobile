@@ -138,8 +138,7 @@ class AchProgress {
   /// Доля до следующего порога; у взятого целиком — 1.
   final double ratio;
 
-  AchTier? get tier =>
-      tierReached > 0 ? kTierOrder[tierReached - 1] : null;
+  AchTier? get tier => tierReached > 0 ? kTierOrder[tierReached - 1] : null;
 
   bool get unlocked => tierReached > 0;
   bool get maxed => tierReached >= def.tiers.length;

@@ -143,10 +143,9 @@ void main() {
 
   test('без отмеченных плейлистов проход не запускается', () async {
     final c = _container(_FakeSoundCloud(const {}), JsonStore.memory());
-    c.read(libraryProvider.notifier).createPlaylist(
-      'Импортированный',
-      sourceUrl: 'https://sc/one',
-    );
+    c
+        .read(libraryProvider.notifier)
+        .createPlaylist('Импортированный', sourceUrl: 'https://sc/one');
 
     final result = await c.read(plAutoProvider.notifier).runSweep(silent: true);
     expect(result.skipped, isTrue);

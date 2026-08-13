@@ -77,9 +77,8 @@ class _AchCard extends StatelessWidget {
     'дек',
   ];
 
-  String _fmt(int value) => progress.def.unit == AchUnit.time
-      ? fmtDurLong(value)
-      : '$value';
+  String _fmt(int value) =>
+      progress.def.unit == AchUnit.time ? fmtDurLong(value) : '$value';
 
   @override
   Widget build(BuildContext context) {

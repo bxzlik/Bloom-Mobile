@@ -22,7 +22,9 @@ Track _track(String id) => Track(
 List<String> _ids(List<Track> tracks) => [for (final t in tracks) t.id];
 
 void main() {
-  final queue = [for (final id in ['a', 'b', 'c', 'd', 'e', 'f']) _track(id)];
+  final queue = [
+    for (final id in ['a', 'b', 'c', 'd', 'e', 'f']) _track(id),
+  ];
 
   test('играющий трек встаёт первым, состав не меняется', () {
     final out = shuffledQueue(queue, 3, Random(7));

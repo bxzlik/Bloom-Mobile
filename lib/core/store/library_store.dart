@@ -535,7 +535,10 @@ class LibraryController extends Notifier<LibraryState> {
   void restorePlaylist(int index, UserPlaylist playlist) {
     if (state.playlists.any((p) => p.id == playlist.id)) return;
     final next = [...state.playlists];
-    next.insert(index < 0 ? next.length : index.clamp(0, next.length), playlist);
+    next.insert(
+      index < 0 ? next.length : index.clamp(0, next.length),
+      playlist,
+    );
     state = state.copyWith(playlists: next);
     _savePlaylists();
   }

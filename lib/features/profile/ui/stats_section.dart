@@ -151,8 +151,12 @@ class _StatsSectionState extends ConsumerState<StatsSection> {
           icon: SolarIconsOutline.clockCircle,
           child: Row(
             children: [
-              Expanded(child: _Daily(value: hoursDay, label: 'часов/день')),
-              Expanded(child: _Daily(value: tracksDay, label: 'треков/день')),
+              Expanded(
+                child: _Daily(value: hoursDay, label: 'часов/день'),
+              ),
+              Expanded(
+                child: _Daily(value: tracksDay, label: 'треков/день'),
+              ),
               Expanded(
                 child: _Daily(value: '${s.uniqueArtists}', label: 'артистов'),
               ),
@@ -168,7 +172,11 @@ class _StatsSectionState extends ConsumerState<StatsSection> {
               : Column(
                   children: [
                     for (final src in s.bySource)
-                      _SourceRow(row: src, total: s.totalPlays, max: s.bySource.first.plays),
+                      _SourceRow(
+                        row: src,
+                        total: s.totalPlays,
+                        max: s.bySource.first.plays,
+                      ),
                   ],
                 ),
         ),
@@ -254,15 +262,31 @@ class _Tiles extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = stats;
     final tiles = <({IconData icon, String value, String label})>[
-      (icon: SolarIconsOutline.musicNote, value: '${s.libraryTracks}', label: 'Треков'),
-      (icon: SolarIconsOutline.play, value: '${s.totalPlays}', label: 'Прослушано'),
+      (
+        icon: SolarIconsOutline.musicNote,
+        value: '${s.libraryTracks}',
+        label: 'Треков',
+      ),
+      (
+        icon: SolarIconsOutline.play,
+        value: '${s.totalPlays}',
+        label: 'Прослушано',
+      ),
       (
         icon: SolarIconsOutline.clockCircle,
         value: fmtDurLong(s.listenSec),
         label: 'Время прослушивания',
       ),
-      (icon: SolarIconsOutline.stars, value: '${s.uniqueTracks}', label: 'Уникальных'),
-      (icon: SolarIconsOutline.chart, value: fmtClock(s.avgSec), label: 'Средняя длина'),
+      (
+        icon: SolarIconsOutline.stars,
+        value: '${s.uniqueTracks}',
+        label: 'Уникальных',
+      ),
+      (
+        icon: SolarIconsOutline.chart,
+        value: fmtClock(s.avgSec),
+        label: 'Средняя длина',
+      ),
       (
         icon: SolarIconsOutline.user,
         value: s.favArtist ?? '—',
@@ -273,7 +297,11 @@ class _Tiles extends StatelessWidget {
         value: fmtDurLong(s.appSec),
         label: 'Время в приложении',
       ),
-      (icon: SolarIconsOutline.medalStar, value: '${s.recordDay}', label: 'Рекорд дня'),
+      (
+        icon: SolarIconsOutline.medalStar,
+        value: '${s.recordDay}',
+        label: 'Рекорд дня',
+      ),
     ];
 
     return LayoutBuilder(
@@ -412,11 +440,7 @@ class _Daily extends StatelessWidget {
 
 /// Строка площадки: знак, доля, полоска.
 class _SourceRow extends StatelessWidget {
-  const _SourceRow({
-    required this.row,
-    required this.total,
-    required this.max,
-  });
+  const _SourceRow({required this.row, required this.total, required this.max});
 
   final SourcePlays row;
   final int total;
@@ -664,11 +688,7 @@ class _Bars extends StatelessWidget {
       final label = days == 7
           ? (i == 0 ? 'сег.' : _weekdays[date.weekday - 1])
           : (i == 0 || i % 7 == 0 ? '${date.day}.${date.month}' : '');
-      bars.add((
-        label: label,
-        count: log[dayKey(date)] ?? 0,
-        today: i == 0,
-      ));
+      bars.add((label: label, count: log[dayKey(date)] ?? 0, today: i == 0));
     }
     final max = bars.fold(1, (m, b) => b.count > m ? b.count : m);
 
@@ -734,7 +754,10 @@ class _Heatmap extends StatelessWidget {
       builder: (context, box) {
         const cell = 11.0;
         const gap = 3.0;
-        final weeks = ((box.maxWidth + gap) / (cell + gap)).floor().clamp(4, 53);
+        final weeks = ((box.maxWidth + gap) / (cell + gap)).floor().clamp(
+          4,
+          53,
+        );
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -765,7 +788,10 @@ class _Heatmap extends StatelessWidget {
               children: [
                 Text(
                   'меньше',
-                  style: theme.bodySmall?.copyWith(color: t.muted, fontSize: 10),
+                  style: theme.bodySmall?.copyWith(
+                    color: t.muted,
+                    fontSize: 10,
+                  ),
                 ),
                 const SizedBox(width: 6),
                 for (final level in [0.0, 0.25, 0.5, 0.75, 1.0])
@@ -783,7 +809,10 @@ class _Heatmap extends StatelessWidget {
                 const SizedBox(width: 2),
                 Text(
                   'больше',
-                  style: theme.bodySmall?.copyWith(color: t.muted, fontSize: 10),
+                  style: theme.bodySmall?.copyWith(
+                    color: t.muted,
+                    fontSize: 10,
+                  ),
                 ),
               ],
             ),

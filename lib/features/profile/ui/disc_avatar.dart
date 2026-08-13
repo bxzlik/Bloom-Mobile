@@ -89,7 +89,8 @@ const List<_DiscTheme> _themes = [
 
 /// Тема из одного цвета — `discThemeFromColor`.
 _DiscTheme _themeFromColor(Color c) {
-  Color dim(double f) => Color.from(alpha: 1, red: c.r * f, green: c.g * f, blue: c.b * f);
+  Color dim(double f) =>
+      Color.from(alpha: 1, red: c.r * f, green: c.g * f, blue: c.b * f);
   double up(double v, double add) => (v + add / 255).clamp(0.0, 1.0);
   return _DiscTheme(
     dim(0.28),

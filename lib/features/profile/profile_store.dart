@@ -132,8 +132,7 @@ class UserProfile {
 
   static UserProfile fromJson(Map<String, dynamic> json) {
     Color? color(Object? raw) => raw is num ? Color(raw.toInt()) : null;
-    String? text(Object? raw) =>
-        raw is String && raw.isNotEmpty ? raw : null;
+    String? text(Object? raw) => raw is String && raw.isNotEmpty ? raw : null;
 
     final name = json['name'];
     return UserProfile(

@@ -28,11 +28,7 @@ List<String> pickCollageCovers(Iterable<String?> covers) {
 }
 
 class CoverCollage extends StatelessWidget {
-  const CoverCollage({
-    super.key,
-    required this.covers,
-    required this.fallback,
-  });
+  const CoverCollage({super.key, required this.covers, required this.fallback});
 
   /// Обложки треков списка в его порядке — с пустыми и повторами, разбор
   /// внутри.

@@ -200,11 +200,7 @@ class PlaybackController extends Notifier<PlaybackState>
   /// При включённой перемешке новая очередь сразу ставится перемешанной:
   /// порядок очереди у нас и есть порядок воспроизведения, иначе флаг перемешки
   /// висел бы, а треки шли подряд.
-  Future<void> playQueue(
-    List<Track> tracks,
-    int index, {
-    String? sourceId,
-  }) {
+  Future<void> playQueue(List<Track> tracks, int index, {String? sourceId}) {
     if (state.shuffle && tracks.length > 1) {
       return _start(
         shuffledQueue(tracks, index, _rnd),

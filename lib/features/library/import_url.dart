@@ -96,7 +96,9 @@ Future<ResolvedCollection> resolveCollectionUrl(
         throw const ImportException('Не удалось распознать ссылку');
       }
       return ResolvedCollection(
-        title: content.playlist.title.isEmpty ? p.title : content.playlist.title,
+        title: content.playlist.title.isEmpty
+            ? p.title
+            : content.playlist.title,
         cover: content.playlist.cover ?? p.cover,
         tracks: content.tracks,
         isAlbum: p.isAlbum,
@@ -183,12 +185,10 @@ Future<ImportResult> importUrlInto(
     case ImportTargetKind.playlist:
       final id = target.playlistId!;
       // Плейлист мог исчезнуть, пока тянулись треки: тогда добавлять некуда.
-      final before =
-          read()
-              .playlists
-              .where((p) => p.id == id)
-              .map((p) => p.trackIds.toSet())
-              .firstOrNull;
+      final before = read().playlists
+          .where((p) => p.id == id)
+          .map((p) => p.trackIds.toSet())
+          .firstOrNull;
       if (before == null) {
         throw const ImportException('Плейлист больше не существует');
       }

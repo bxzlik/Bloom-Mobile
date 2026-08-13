@@ -35,8 +35,10 @@ class StatsState {
   /// Сколько времени приложение реально было открыто, миллисекунды.
   final int appMs;
 
-  StatsState copyWith({Map<String, int>? activity, int? appMs}) =>
-      StatsState(activity: activity ?? this.activity, appMs: appMs ?? this.appMs);
+  StatsState copyWith({Map<String, int>? activity, int? appMs}) => StatsState(
+    activity: activity ?? this.activity,
+    appMs: appMs ?? this.appMs,
+  );
 }
 
 final statsProvider = NotifierProvider<StatsController, StatsState>(

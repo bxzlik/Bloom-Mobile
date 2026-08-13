@@ -32,12 +32,7 @@ ProviderContainer _container(JsonStore store) {
 }
 
 List<String> _arrange(LibOrderState state, [List<_Item> items = _all]) => state
-    .arrange(
-      items,
-      key: (e) => e.key,
-      name: (e) => e.name,
-      rank: (e) => e.rank,
-    )
+    .arrange(items, key: (e) => e.key, name: (e) => e.name, rank: (e) => e.rank)
     .map((e) => e.key)
     .toList();
 
@@ -86,11 +81,10 @@ void main() {
     final c = _container(JsonStore.memory());
     c.read(libOrderProvider.notifier).setSort(LibSort.type);
 
-    expect(_arrange(c.read(libOrderProvider), [_artists.first, ..._playlists]), [
-      'playlist:a',
-      'playlist:b',
-      'artist:x',
-    ]);
+    expect(
+      _arrange(c.read(libOrderProvider), [_artists.first, ..._playlists]),
+      ['playlist:a', 'playlist:b', 'artist:x'],
+    );
   });
 
   test('закреплённое всплывает наверх в ЛЮБОМ режиме', () {

@@ -91,10 +91,7 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
           cover: artist.avatar,
           sourceUrl: artist.permalink,
         );
-    _toast(
-      'Плейлист создан — ${tracksCount(likes.length)}',
-      ToastKind.success,
-    );
+    _toast('Плейлист создан — ${tracksCount(likes.length)}', ToastKind.success);
   }
 
   /// Все плейлисты аккаунта. Состав приходит только по `getPlaylist`, поэтому
@@ -115,7 +112,10 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     for (var i = 0; i < sets.length; i++) {
       final set = sets[i];
       // Счётчик двигаем ДО работы: ниже есть `continue`.
-      toast.update('Импортирую: ${i + 1}/${sets.length}', progress: i / sets.length);
+      toast.update(
+        'Импортирую: ${i + 1}/${sets.length}',
+        progress: i / sets.length,
+      );
       try {
         final content = await registry.forEntity(set.id)?.getPlaylist(set.id);
         final tracks = content?.tracks ?? const <Track>[];

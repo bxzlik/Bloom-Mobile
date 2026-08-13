@@ -74,9 +74,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
     // тона прыгал бы в красный на каждом «000000».
     final next = HSVColor.fromColor(parsed);
     _set(
-      next.saturation == 0 || next.value == 0
-          ? next.withHue(_hsv.hue)
-          : next,
+      next.saturation == 0 || next.value == 0 ? next.withHue(_hsv.hue) : next,
       syncHex: false,
     );
   }
@@ -90,7 +88,9 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
       // Поле hex поднимает клавиатуру — шторка должна встать над ней.
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: ClipRRect(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(t.radius * 1.7)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(t.radius * 1.7),
+        ),
         child: ColoredBox(
           color: t.bg,
           child: SafeArea(
@@ -312,9 +312,7 @@ class _HuePainter extends CustomPainter {
     canvas.drawRect(
       rect,
       Paint()
-        ..shader = const LinearGradient(
-          colors: _spectrum,
-        ).createShader(rect),
+        ..shader = const LinearGradient(colors: _spectrum).createShader(rect),
     );
     _drawKnob(
       canvas,

@@ -687,8 +687,7 @@ Future<void> showPlaylistMenu(
         SheetAction(
           icon: SolarIconsOutline.pin,
           label: pinned ? 'Открепить' : 'Закрепить',
-          onTap: () =>
-              ref.read(libOrderProvider.notifier).togglePin(orderKey),
+          onTap: () => ref.read(libOrderProvider.notifier).togglePin(orderKey),
         ),
         SheetAction(
           icon: SolarIconsOutline.penNewSquare,

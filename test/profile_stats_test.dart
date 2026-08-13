@@ -97,8 +97,7 @@ void main() {
 
   test('стрик держится, пока сегодня ещё не слушали (грейс со вчера)', () {
     final today = DateTime.now();
-    String key(int daysAgo) =>
-        dayKey(today.subtract(Duration(days: daysAgo)));
+    String key(int daysAgo) => dayKey(today.subtract(Duration(days: daysAgo)));
 
     final c = _container({
       'stats': {
@@ -149,7 +148,10 @@ void main() {
     expect(unlocked.sync(c.read(achievementsProvider)), isEmpty);
     expect(c.read(unlockedAchievementsProvider).seeded, isTrue);
     expect(
-      c.read(unlockedAchievementsProvider).at.containsKey(tierKey('listener', 0)),
+      c
+          .read(unlockedAchievementsProvider)
+          .at
+          .containsKey(tierKey('listener', 0)),
       isTrue,
     );
 
@@ -177,9 +179,9 @@ void main() {
         {'id': 'sc_1', 'at': 1, 'n': 150},
       ],
     });
-    c.read(unlockedAchievementsProvider.notifier).sync(
-      c.read(achievementsProvider),
-    );
+    c
+        .read(unlockedAchievementsProvider.notifier)
+        .sync(c.read(achievementsProvider));
 
     c.read(libraryProvider.notifier).clearHistory();
     c.read(statsProvider.notifier).clear();

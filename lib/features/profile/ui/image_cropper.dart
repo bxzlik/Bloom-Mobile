@@ -37,17 +37,18 @@ Future<String?> pickAndCropImage(
   final path = await pickImageFile();
   if (path == null || !context.mounted) return null;
 
-  final bytes = await Navigator.of(context, rootNavigator: true).push<Uint8List>(
-    MaterialPageRoute(
-      fullscreenDialog: true,
-      builder: (_) => _CropPage(
-        path: path,
-        shape: shape,
-        aspect: aspect,
-        output: output,
-      ),
-    ),
-  );
+  final bytes = await Navigator.of(context, rootNavigator: true)
+      .push<Uint8List>(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => _CropPage(
+            path: path,
+            shape: shape,
+            aspect: aspect,
+            output: output,
+          ),
+        ),
+      );
   if (bytes == null) return null;
   return saveLocalImage(bytes, prefix: prefix);
 }
@@ -219,7 +220,8 @@ class _CropPageState extends State<_CropPage> {
                     },
                     onScaleUpdate: (d) => setState(() {
                       _zoom = (_startZoom * d.scale).clamp(_minZoom, 3.0);
-                      _offset = _startOffset + (d.localFocalPoint - _startFocal);
+                      _offset =
+                          _startOffset + (d.localFocalPoint - _startFocal);
                     }),
                     child: CustomPaint(
                       size: Size(box.maxWidth, box.maxHeight),
@@ -319,7 +321,10 @@ class _CropPainter extends CustomPainter {
         Offset.zero,
       )
       ..fillType = PathFillType.evenOdd;
-    canvas.drawPath(hole, Paint()..color = Colors.black.withValues(alpha: 0.62));
+    canvas.drawPath(
+      hole,
+      Paint()..color = Colors.black.withValues(alpha: 0.62),
+    );
 
     final line = Paint()
       ..style = PaintingStyle.stroke

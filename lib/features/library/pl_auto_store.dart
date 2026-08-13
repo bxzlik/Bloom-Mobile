@@ -249,14 +249,20 @@ class PlAutoController extends Notifier<PlAutoState> {
         if (got == null) {
           failed++;
           state = state.copyWith(
-            runs: {...state.runs, pl.id: PlAutoRun(at: at, failed: true)},
+            runs: {
+              ...state.runs,
+              pl.id: PlAutoRun(at: at, failed: true),
+            },
           );
           continue;
         }
         added += got;
         if (got > 0) changed++;
         state = state.copyWith(
-          runs: {...state.runs, pl.id: PlAutoRun(at: at, added: got)},
+          runs: {
+            ...state.runs,
+            pl.id: PlAutoRun(at: at, added: got),
+          },
         );
       }
     } finally {

@@ -67,7 +67,11 @@ extension BloomToasts on ScaffoldMessengerState {
   ///
   /// С [action] живёт дольше (5с) и показывает кнопку; если её не нажать,
   /// сработает `action.onExpire`.
-  void toast(String text, {ToastKind kind = ToastKind.info, ToastAction? action}) {
+  void toast(
+    String text, {
+    ToastKind kind = ToastKind.info,
+    ToastAction? action,
+  }) {
     final duration = action == null ? _plain : _withAction;
     var used = false;
     late ScaffoldFeatureController<SnackBar, SnackBarClosedReason> entry;
@@ -92,9 +96,11 @@ extension BloomToasts on ScaffoldMessengerState {
 
     if (action?.onExpire != null) {
       // Смахнули — это тоже «не нажал отмену»: решение остаётся в силе.
-      unawaited(entry.closed.then((_) {
-        if (!used) action!.onExpire!.call();
-      }));
+      unawaited(
+        entry.closed.then((_) {
+          if (!used) action!.onExpire!.call();
+        }),
+      );
     }
   }
 

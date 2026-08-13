@@ -488,10 +488,7 @@ class Cover extends StatelessWidget {
               ? placeholder()
               : ClipRRect(
                   borderRadius: shape,
-                  child: CoverCollage(
-                    covers: collage,
-                    fallback: placeholder(),
-                  ),
+                  child: CoverCollage(covers: collage, fallback: placeholder()),
                 ),
         ),
       );

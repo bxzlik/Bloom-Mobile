@@ -140,8 +140,7 @@ class LibOrderController extends Notifier<LibOrderState> {
     return LibOrderState(
       sort: _sortFromId(raw['sort']),
       order: (raw['order'] as List?)?.whereType<String>().toList() ?? const [],
-      pinned:
-          (raw['pinned'] as List?)?.whereType<String>().toSet() ?? const {},
+      pinned: (raw['pinned'] as List?)?.whereType<String>().toSet() ?? const {},
     );
   }
 

@@ -63,10 +63,7 @@ class _FakeSoundCloud extends MusicProvider {
     overrides: [jsonStoreProvider.overrideWithValue(JsonStore.memory())],
   );
   addTearDown(c.dispose);
-  return (
-    container: c,
-    registry: ProviderRegistry()..register(provider),
-  );
+  return (container: c, registry: ProviderRegistry()..register(provider));
 }
 
 Future<ImportResult> _import(

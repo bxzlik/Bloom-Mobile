@@ -116,7 +116,10 @@ class ProfileStats {
       final track = lib.tracks[entry.trackId];
       final seconds = track == null ? 0 : track.duration.inSeconds * plays;
       final was = sources[source] ?? (plays: 0, seconds: 0);
-      sources[source] = (plays: was.plays + plays, seconds: was.seconds + seconds);
+      sources[source] = (
+        plays: was.plays + plays,
+        seconds: was.seconds + seconds,
+      );
 
       if (entry.at > 0) {
         if (entry.at < firstTs) firstTs = entry.at;

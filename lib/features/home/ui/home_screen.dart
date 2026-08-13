@@ -108,8 +108,7 @@ class _ProfileButtonState extends ConsumerState<_ProfileButton> {
   Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider);
     return GestureDetector(
-      onTap: () =>
-          context.go('/home/profile', extra: CoverFlight(tag: _tag)),
+      onTap: () => context.go('/home/profile', extra: CoverFlight(tag: _tag)),
       child: ProfileAvatar(
         profile: profile,
         size: kHeaderControl,

@@ -91,10 +91,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 // десктопе. Выбор живёт в состоянии страницы: на ПК он
                 // персистится, чтобы бар статистики с главной открывал профиль
                 // сразу на нужной, а главной у нас ещё нет.
-                _Tabs(
-                  index: _tab,
-                  onChanged: (i) => setState(() => _tab = i),
-                ),
+                _Tabs(index: _tab, onChanged: (i) => setState(() => _tab = i)),
                 const SizedBox(height: 14),
                 if (_tab == 0)
                   const StatsSection()
