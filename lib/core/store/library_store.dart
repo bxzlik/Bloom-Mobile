@@ -116,15 +116,25 @@ class FollowedArtist {
 class HistoryEntry {
   final String trackId;
   final int at;
-  const HistoryEntry(this.trackId, this.at);
 
-  Map<String, dynamic> toJson() => {'id': trackId, 'at': at};
+  /// Сколько раз трек слушали — счётчик статистики профиля (десктопный
+  /// `HistoryEntry.count`). У записей, сделанных до появления счётчика, он
+  /// равен единице.
+  final int count;
+
+  const HistoryEntry(this.trackId, this.at, {this.count = 1});
+
+  Map<String, dynamic> toJson() => {'id': trackId, 'at': at, 'n': count};
 
   static HistoryEntry? fromJson(Object? json) {
     if (json is! Map) return null;
     final id = json['id'];
     if (id is! String) return null;
-    return HistoryEntry(id, (json['at'] as num?)?.toInt() ?? 0);
+    return HistoryEntry(
+      id,
+      (json['at'] as num?)?.toInt() ?? 0,
+      count: (json['n'] as num?)?.toInt() ?? 1,
+    );
   }
 }
 
@@ -431,8 +441,15 @@ class LibraryController extends Notifier<LibraryState> {
   /// библиотеку он при этом НЕ попадает (как и на десктопе) — только в
   /// хранилище, чтобы историю было чем показать и заиграть.
   void pushHistory(Track track) {
+    // Счётчик прослушиваний переезжает вместе с записью наверх: он и есть
+    // основа статистики профиля, потерять его при подъёме нельзя.
+    final was = state.history.where((h) => h.trackId == track.id).firstOrNull;
     final history = [
-      HistoryEntry(track.id, DateTime.now().millisecondsSinceEpoch),
+      HistoryEntry(
+        track.id,
+        DateTime.now().millisecondsSinceEpoch,
+        count: (was?.count ?? 0) + 1,
+      ),
       ...state.history.where((h) => h.trackId != track.id),
     ];
     if (history.length > kHistoryLimit) {
@@ -509,6 +526,17 @@ class LibraryController extends Notifier<LibraryState> {
     state = state.copyWith(
       playlists: state.playlists.where((p) => p.id != id).toList(),
     );
+    _savePlaylists();
+  }
+
+  /// Вернуть удалённый плейлист на его место — «Отменить» в тосте (порт
+  /// `PlMenu` с ПК). Восстанавливать нечего, если его уже создали заново с тем
+  /// же id, поэтому дубль молча пропускаем.
+  void restorePlaylist(int index, UserPlaylist playlist) {
+    if (state.playlists.any((p) => p.id == playlist.id)) return;
+    final next = [...state.playlists];
+    next.insert(index < 0 ? next.length : index.clamp(0, next.length), playlist);
+    state = state.copyWith(playlists: next);
     _savePlaylists();
   }
 

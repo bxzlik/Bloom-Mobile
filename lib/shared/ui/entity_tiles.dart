@@ -26,6 +26,15 @@ import 'track_actions.dart';
 CoverFlight? _flightFor(String? cover, Object tag) =>
     cover == null || cover.isEmpty ? null : CoverFlight(tag: tag, image: cover);
 
+/// Поля строки трека. Высота нужна снаружи: очередь открывается сразу на
+/// играющем треке и считает по ней смещение прокрутки.
+const EdgeInsets kTrackRowPadding = EdgeInsets.symmetric(
+  horizontal: 8,
+  vertical: 6,
+);
+const double kTrackRowCover = 52;
+const double kTrackRowHeight = kTrackRowCover + 12;
+
 /// Строка трека: обложка, название/артист, длительность. Тап ставит [queue]
 /// целиком, чтобы работали «дальше»/«назад», а не один трек.
 class TrackRow extends ConsumerWidget {
@@ -35,6 +44,7 @@ class TrackRow extends ConsumerWidget {
     required this.queue,
     required this.index,
     this.sourceId,
+    this.dragIndex,
   });
 
   final Track track;
@@ -46,66 +56,165 @@ class TrackRow extends ConsumerWidget {
   /// должна показать эквалайзер.
   final String? sourceId;
 
+  /// Номер строки в `ReorderableList` — см. [TrackRowShell.dragIndex]. `null` в
+  /// списках, где порядок не свой: в выдаче поиска и на страницах площадок
+  /// двигать нечего.
+  final int? dragIndex;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final active = ref.watch(playbackProvider).track?.id == track.id;
-
-    return InkWell(
+    return TrackRowShell(
+      track: track,
+      active: ref.watch(playbackProvider).track?.id == track.id,
       onTap: () => ref
           .read(playbackProvider.notifier)
           .playQueue(queue, index, sourceId: sourceId),
-      // Длинный тап — то же, что контекстное меню трека на десктопе.
-      onLongPress: () => showTrackActions(context, ref, track),
+      onMenu: () => showTrackActions(context, ref, track),
+      dragIndex: dragIndex,
+    );
+  }
+}
+
+/// Строка трека без привязки к списку: вид и жесты, действия — снаружи. Одна
+/// на всё — плейлисты, выдачу поиска, страницы площадок и очередь, — иначе
+/// списки неминуемо разъезжаются видом.
+class TrackRowShell extends StatelessWidget {
+  const TrackRowShell({
+    super.key,
+    required this.track,
+    required this.active,
+    required this.onTap,
+    required this.onMenu,
+    this.dragIndex,
+  });
+
+  final Track track;
+
+  /// «Играет сейчас»: название акцентом, вместо длительности эквалайзер.
+  /// Считает вызывающий — в очереди один трек может стоять дважды, и по id их
+  /// не различить.
+  final bool active;
+
+  final VoidCallback onTap;
+
+  /// Долгий тап — контекстное меню трека, как на десктопе.
+  final VoidCallback onMenu;
+
+  /// Номер строки в `ReorderableList`. Задан — обложка становится тянучкой:
+  /// зажать и тащить (на десктопе handle тоже на обложке). Меню при этом
+  /// переезжает с обложки на остальную часть строки: два долгих жеста на одном
+  /// месте иначе спорят в арене и меню открывается вместо перетаскивания.
+  final int? dragIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final drag = dragIndex;
+    final Widget cover = _Cover(track: track);
+
+    return InkWell(
+      onTap: onTap,
+      onLongPress: drag == null ? onMenu : null,
       borderRadius: BorderRadius.circular(t.radius * 0.85),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: kTrackRowPadding,
         child: Row(
           children: [
-            // Бейдж площадки в углу обложки: в общем списке треки могут быть
-            // из разных источников, и по обложке этого не понять.
-            Stack(
-              children: [
-                Cover(url: track.cover, size: 52),
-                Positioned(
-                  right: 3,
-                  bottom: 3,
-                  child: SourceBadge(track.source, size: 18),
-                ),
-              ],
-            ),
+            if (drag == null)
+              cover
+            else
+              ReorderableDelayedDragStartListener(index: drag, child: cover),
             const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    track.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: active
-                        ? theme.titleMedium?.copyWith(color: t.accent)
-                        : theme.titleMedium,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    track.artist,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    // Ярче обычной подписи: в строке трека артист читается
-                    // наравне с названием, а не как второстепенная мелочь.
-                    style: theme.bodySmall?.copyWith(color: t.text2),
-                  ),
-                ],
+              child: _Rest(
+                track: track,
+                active: active,
+                onMenu: drag == null ? null : onMenu,
               ),
             ),
-            _OfflineMark(trackId: track.id),
-            const SizedBox(width: 10),
-            DurationPill(track: track, active: active),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Обложка трека в строке. Бейдж площадки в углу: в общем списке треки могут
+/// быть из разных источников, и по обложке этого не понять.
+class _Cover extends StatelessWidget {
+  const _Cover({required this.track});
+
+  final Track track;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Cover(url: track.cover, size: kTrackRowCover),
+        Positioned(
+          right: 3,
+          bottom: 3,
+          child: SourceBadge(track.source, size: 18),
+        ),
+      ],
+    );
+  }
+}
+
+/// Строка без обложки: тексты, отметка офлайна, длительность. Отдельным
+/// куском, потому что у тянущихся строк именно на нём висит долгий тап.
+class _Rest extends StatelessWidget {
+  const _Rest({required this.track, required this.active, this.onMenu});
+
+  final Track track;
+  final bool active;
+  final VoidCallback? onMenu;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+
+    final row = Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                track.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: active
+                    ? theme.titleMedium?.copyWith(color: t.accent)
+                    : theme.titleMedium,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                track.artist,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                // Ярче обычной подписи: в строке трека артист читается наравне
+                // с названием, а не как второстепенная мелочь.
+                style: theme.bodySmall?.copyWith(color: t.text2),
+              ),
+            ],
+          ),
+        ),
+        _OfflineMark(trackId: track.id),
+        const SizedBox(width: 10),
+        DurationPill(track: track, active: active),
+      ],
+    );
+
+    if (onMenu == null) return row;
+    // `opaque`: меню должно открываться и с пустого места между текстом и
+    // длительностью. Тап при этом остаётся у `InkWell` строки — свой тап этот
+    // детектор не ловит, и подсветка идёт по всей строке.
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onLongPress: onMenu,
+      child: row,
     );
   }
 }

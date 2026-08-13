@@ -4,12 +4,16 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_mark.dart';
+import '../../../shared/ui/cover_hero.dart';
+import '../../profile/profile_store.dart';
+import '../../profile/ui/profile_avatar.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -77,12 +81,39 @@ class _TopBar extends StatelessWidget {
             onTap: () => context.go('/home/search'),
           ),
           const SizedBox(width: 8),
-          // user-circle в шрифте Solar нарисован диском — берём настоящий SVG.
-          CircleSvgButton(
-            asset: 'assets/icons/user-circle-linear.svg',
-            onTap: () {},
-          ),
+          const _ProfileButton(),
         ],
+      ),
+    );
+  }
+}
+
+/// Вход в профиль — сам аватар, а не значок «пользователь»: с него же он и
+/// летит в шапку страницы.
+///
+/// Метка перелёта — [UniqueKey] у экземпляра, а не общая строка: две карточки
+/// с одной меткой в дереве роняют переход исключением, и заводить такую мину
+/// на будущее незачем.
+class _ProfileButton extends ConsumerStatefulWidget {
+  const _ProfileButton();
+
+  @override
+  ConsumerState<_ProfileButton> createState() => _ProfileButtonState();
+}
+
+class _ProfileButtonState extends ConsumerState<_ProfileButton> {
+  late final Object _tag = UniqueKey();
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = ref.watch(profileProvider);
+    return GestureDetector(
+      onTap: () =>
+          context.go('/home/profile', extra: CoverFlight(tag: _tag)),
+      child: ProfileAvatar(
+        profile: profile,
+        size: kHeaderControl,
+        flightTag: _tag,
       ),
     );
   }

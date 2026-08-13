@@ -1,0 +1,58 @@
+/// Перемешивание переставляет саму очередь, а не подкидывает случайный номер
+/// на переходе, — значит проверять надо состав и голову списка.
+///
+/// Случайность в тесте фиксируем: `Random(seed)` даёт тот же порядок, и падение
+/// теста будет означать сломанную логику, а не невезение.
+library;
+
+import 'dart:math';
+
+import 'package:bloom/core/entities/entities.dart';
+import 'package:bloom/features/player/player_controller.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+Track _track(String id) => Track(
+  id: id,
+  name: id,
+  artist: 'a',
+  duration: Duration.zero,
+  source: MusicSource.soundcloud,
+);
+
+List<String> _ids(List<Track> tracks) => [for (final t in tracks) t.id];
+
+void main() {
+  final queue = [for (final id in ['a', 'b', 'c', 'd', 'e', 'f']) _track(id)];
+
+  test('играющий трек встаёт первым, состав не меняется', () {
+    final out = shuffledQueue(queue, 3, Random(7));
+    expect(out.first.id, 'd');
+    expect(out.length, queue.length);
+    expect(_ids(out).toSet(), _ids(queue).toSet());
+  });
+
+  test('без играющего мешаются все — порядок не исходный', () {
+    final out = shuffledQueue(queue, -1, Random(7));
+    expect(_ids(out).toSet(), _ids(queue).toSet());
+    expect(_ids(out), isNot(_ids(queue)));
+  });
+
+  test('номер вне очереди — как будто играющего нет', () {
+    final out = shuffledQueue(queue, 99, Random(1));
+    expect(_ids(out).toSet(), _ids(queue).toSet());
+  });
+
+  test('очередь из одного трека переживает перемешку', () {
+    expect(_ids(shuffledQueue([_track('a')], 0, Random(1))), ['a']);
+    expect(shuffledQueue(const [], -1, Random(1)), isEmpty);
+  });
+
+  test('перемешка правда мешает: два разных зерна дают разный порядок', () {
+    final long = [for (var i = 0; i < 30; i++) _track('t$i')];
+    final a = _ids(shuffledQueue(long, 0, Random(1)));
+    final b = _ids(shuffledQueue(long, 0, Random(2)));
+    expect(a, isNot(b));
+    expect(a.first, 't0'); // но голова на месте в обоих
+    expect(b.first, 't0');
+  });
+}

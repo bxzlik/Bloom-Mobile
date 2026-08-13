@@ -18,6 +18,7 @@ import '../../../core/store/library_store.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
+import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/detail_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
@@ -108,9 +109,9 @@ class _SetScreenState extends ConsumerState<SetScreen> {
 
   void _shuffle() {
     if (_tracks.isEmpty) return;
-    final ctrl = ref.read(playbackProvider.notifier);
-    if (!ref.read(playbackProvider).shuffle) ctrl.toggleShuffle();
-    ctrl.playQueue(_tracks, 0, sourceId: _set.id);
+    ref
+        .read(playbackProvider.notifier)
+        .playQueueShuffled(_tracks, sourceId: _set.id);
   }
 
   /// Есть ли уже сохранённая копия — ищем по ссылке источника, тому же полю, по
@@ -139,33 +140,31 @@ class _SetScreenState extends ConsumerState<SetScreen> {
       backgroundColor: t.bg,
       body: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(
-            child: DetailHero(
-              image: _set.cover,
-              title: _set.title,
-              owner: _set.ownerName,
-              subtitle: _subtitle(),
-              flight: widget.flight,
-              onMenu: _menu,
-              actions: HeroActions(
-                onPlay: queue.isEmpty ? null : _play,
-                trailing: [
-                  GlassIconButton(
-                    icon: SolarIconsOutline.shuffle,
-                    size: 46,
-                    onTap: queue.isEmpty ? null : _shuffle,
-                  ),
-                  GlassIconButton(
-                    icon: saved
-                        ? SolarIconsBold.checkCircle
-                        : SolarIconsOutline.addCircle,
-                    size: 46,
-                    background: saved ? t.accent : null,
-                    color: saved ? t.accentText : null,
-                    onTap: queue.isEmpty ? null : () => _save(saved),
-                  ),
-                ],
-              ),
+          DetailHero(
+            image: _set.cover,
+            title: _set.title,
+            owner: _set.ownerName,
+            subtitle: _subtitle(),
+            flight: widget.flight,
+            onMenu: _menu,
+            actions: HeroActions(
+              onPlay: queue.isEmpty ? null : _play,
+              trailing: [
+                GlassIconButton(
+                  icon: SolarIconsOutline.shuffle,
+                  size: 46,
+                  onTap: queue.isEmpty ? null : _shuffle,
+                ),
+                GlassIconButton(
+                  icon: saved
+                      ? SolarIconsBold.checkCircle
+                      : SolarIconsOutline.addCircle,
+                  size: 46,
+                  background: saved ? t.accent : null,
+                  color: saved ? t.accentText : null,
+                  onTap: queue.isEmpty ? null : () => _save(saved),
+                ),
+              ],
             ),
           ),
           if (_loading)
@@ -247,7 +246,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
 
   void _save(bool alreadySaved) {
     if (alreadySaved) {
-      _toast('Уже в библиотеке');
+      _toast('Уже в библиотеке', ToastKind.warn);
       return;
     }
     ref
@@ -259,7 +258,10 @@ class _SetScreenState extends ConsumerState<SetScreen> {
           sourceUrl: _set.sourceUrl,
           isAlbum: _set.isAlbum,
         );
-    _toast('Добавлено: ${_set.title} — ${tracksCount(_tracks.length)}');
+    _toast(
+      'Добавлено: ${_set.title} — ${tracksCount(_tracks.length)}',
+      ToastKind.success,
+    );
   }
 
   Future<void> _menu() async {
@@ -301,7 +303,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
               label: 'Скопировать ссылку',
               onTap: () {
                 Clipboard.setData(ClipboardData(text: link));
-                _toast('Ссылка скопирована');
+                _toast('Ссылка скопирована', ToastKind.success);
               },
             ),
         ],
@@ -309,10 +311,8 @@ class _SetScreenState extends ConsumerState<SetScreen> {
     );
   }
 
-  void _toast(String message) {
+  void _toast(String message, [ToastKind kind = ToastKind.info]) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    showToast(context, message, kind: kind);
   }
 }

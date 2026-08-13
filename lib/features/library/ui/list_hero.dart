@@ -1,7 +1,8 @@
 /// Фон hero-шапки списка библиотеки — общий у обычного экрана и режима правки.
 ///
-/// Порядок такой же, как на десктопе: своя обложка плейлиста → коллаж 2×2 из
-/// первых треков → плоский тинт раздела с его цветной иконкой.
+/// У встроенных разделов всегда плоский тинт с цветной иконкой; у плейлистов —
+/// своя обложка → коллаж из первых треков (`CoverCollage`, он же на плитке
+/// библиотеки) → тот же тинт.
 library;
 
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:solar_icons/solar_icons.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/store/cover_store.dart';
+import '../../../shared/ui/cover_collage.dart';
 
 class ListHeroBackground extends StatelessWidget {
   const ListHeroBackground({
@@ -27,9 +29,15 @@ class ListHeroBackground extends StatelessWidget {
 
   final List<Track> tracks;
 
+  /// У `all` / `fav` / `history` своей обложки нет и коллаж не собираем —
+  /// шапка всегда остаётся фирменным тинтом раздела.
+  bool get _system => listId == 'all' || listId == 'fav' || listId == 'history';
+
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
+
+    if (_system) return _tint(t);
 
     final image = coverImage(cover);
     if (image != null) {
@@ -40,33 +48,10 @@ class ListHeroBackground extends StatelessWidget {
       );
     }
 
-    final covers = tracks
-        .map((x) => x.cover)
-        .whereType<String>()
-        .take(4)
-        .toList();
-    if (covers.length == 4) {
-      return GridView.count(
-        crossAxisCount: 2,
-        physics: const NeverScrollableScrollPhysics(),
-        children: [
-          for (final c in covers)
-            Image.network(
-              c,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => _tint(t),
-            ),
-        ],
-      );
-    }
-    if (covers.isNotEmpty) {
-      return Image.network(
-        covers.first,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _tint(t),
-      );
-    }
-    return _tint(t);
+    return CoverCollage(
+      covers: tracks.map((track) => track.cover),
+      fallback: _tint(t),
+    );
   }
 
   Widget _tint(BloomTokens t) {

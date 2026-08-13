@@ -1,0 +1,362 @@
+/// Кроп картинки для профиля — порт десктопного `ImageCropper.tsx`.
+///
+/// Там canvas с рамкой (круг для аватара, прямоугольник по аспекту для
+/// обложки), перетаскивание и ползунок масштаба; тут то же самое на
+/// [CustomPaint], только тянуть можно ещё и щипком. Начальный масштаб —
+/// cover (картинка закрывает рамку), ползунок вниз доходит до «вписать
+/// целиком», как на десктопе.
+///
+/// Обрезок рендерится в отдельный слой и сохраняется файлом приложения; в
+/// профиль уходит только `local:<имя>`.
+library;
+
+import 'dart:io';
+import 'dart:typed_data' show Uint8List;
+import 'dart:ui' as ui;
+
+import 'package:flutter/material.dart';
+
+import '../../../app/theme/tokens.dart';
+import '../../../core/store/cover_store.dart';
+
+enum CropShape { circle, rect }
+
+/// Выбрать картинку из галереи, обрезать и положить к себе.
+/// Возвращает значение поля (`local:...`) или `null`, если бросили на любом шаге.
+///
+/// [aspect] — высота/ширина рамки (для [CropShape.rect]).
+/// [output] — ширина результата в пикселях: рамка на экране мельче, и хранить
+/// её один в один значило бы получить мыло на большом аватаре.
+Future<String?> pickAndCropImage(
+  BuildContext context, {
+  required CropShape shape,
+  double aspect = 1,
+  double output = 720,
+  String prefix = 'img',
+}) async {
+  final path = await pickImageFile();
+  if (path == null || !context.mounted) return null;
+
+  final bytes = await Navigator.of(context, rootNavigator: true).push<Uint8List>(
+    MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (_) => _CropPage(
+        path: path,
+        shape: shape,
+        aspect: aspect,
+        output: output,
+      ),
+    ),
+  );
+  if (bytes == null) return null;
+  return saveLocalImage(bytes, prefix: prefix);
+}
+
+class _CropPage extends StatefulWidget {
+  const _CropPage({
+    required this.path,
+    required this.shape,
+    required this.aspect,
+    required this.output,
+  });
+
+  final String path;
+  final CropShape shape;
+  final double aspect;
+  final double output;
+
+  @override
+  State<_CropPage> createState() => _CropPageState();
+}
+
+class _CropPageState extends State<_CropPage> {
+  ui.Image? _image;
+
+  /// Масштаб относительно cover: 1 — картинка ровно закрывает рамку.
+  double _zoom = 1;
+  Offset _offset = Offset.zero;
+
+  /// Считаются по размеру области под картинку — она известна только в build.
+  Size _canvas = Size.zero;
+  Size _frame = Size.zero;
+  double _cover = 1;
+  double _minZoom = 0.2;
+
+  double _startZoom = 1;
+  Offset _startOffset = Offset.zero;
+  Offset _startFocal = Offset.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final data = await File(widget.path).readAsBytes();
+      final image = await decodeImageFromList(data);
+      if (!mounted) return;
+      setState(() => _image = image);
+    } catch (_) {
+      if (mounted) Navigator.of(context).pop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _image?.dispose();
+    super.dispose();
+  }
+
+  /// Рамка и масштабы под текущий размер области.
+  void _measure(Size canvas) {
+    final image = _image;
+    if (image == null || canvas == _canvas) return;
+    _canvas = canvas;
+
+    if (widget.shape == CropShape.circle) {
+      final d = canvas.shortestSide * 0.62;
+      _frame = Size(d, d);
+    } else {
+      var w = canvas.width * 0.88;
+      var h = w * widget.aspect;
+      if (h > canvas.height * 0.8) {
+        h = canvas.height * 0.8;
+        w = h / widget.aspect;
+      }
+      _frame = Size(w, h);
+    }
+
+    final iw = image.width.toDouble();
+    final ih = image.height.toDouble();
+    _cover = (_frame.width / iw) > (_frame.height / ih)
+        ? _frame.width / iw
+        : _frame.height / ih;
+    final fit =
+        (canvas.width / iw < canvas.height / ih
+            ? canvas.width / iw
+            : canvas.height / ih) *
+        0.9;
+    _minZoom = (fit / _cover).clamp(0.05, 1.0);
+  }
+
+  /// Прямоугольник, в котором сейчас лежит картинка (в координатах области).
+  Rect _imageRect() {
+    final image = _image!;
+    final w = image.width * _cover * _zoom;
+    final h = image.height * _cover * _zoom;
+    return Rect.fromLTWH(
+      (_canvas.width - w) / 2 + _offset.dx,
+      (_canvas.height - h) / 2 + _offset.dy,
+      w,
+      h,
+    );
+  }
+
+  Rect _frameRect() => Rect.fromCenter(
+    center: Offset(_canvas.width / 2, _canvas.height / 2),
+    width: _frame.width,
+    height: _frame.height,
+  );
+
+  Future<void> _apply() async {
+    final image = _image;
+    if (image == null) return;
+    final frame = _frameRect();
+    final scale = widget.output / frame.width;
+    final width = (frame.width * scale).round();
+    final height = (frame.height * scale).round();
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.scale(scale);
+    if (widget.shape == CropShape.circle) {
+      canvas.clipPath(
+        Path()..addOval(Rect.fromLTWH(0, 0, frame.width, frame.height)),
+      );
+    }
+    canvas.drawImageRect(
+      image,
+      Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+      _imageRect().shift(-frame.topLeft),
+      Paint()..filterQuality = FilterQuality.high,
+    );
+    final picture = recorder.endRecording();
+    final out = await picture.toImage(width, height);
+    picture.dispose();
+    final data = await out.toByteData(format: ui.ImageByteFormat.png);
+    out.dispose();
+    if (!mounted || data == null) return;
+    Navigator.of(context).pop(data.buffer.asUint8List());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+    final image = _image;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, box) {
+                  if (image == null) {
+                    return Center(
+                      child: CircularProgressIndicator(color: t.accent),
+                    );
+                  }
+                  _measure(Size(box.maxWidth, box.maxHeight));
+                  return GestureDetector(
+                    onScaleStart: (d) {
+                      _startZoom = _zoom;
+                      _startOffset = _offset;
+                      _startFocal = d.localFocalPoint;
+                    },
+                    onScaleUpdate: (d) => setState(() {
+                      _zoom = (_startZoom * d.scale).clamp(_minZoom, 3.0);
+                      _offset = _startOffset + (d.localFocalPoint - _startFocal);
+                    }),
+                    child: CustomPaint(
+                      size: Size(box.maxWidth, box.maxHeight),
+                      painter: _CropPainter(
+                        image: image,
+                        imageRect: _imageRect(),
+                        frame: _frameRect(),
+                        circle: widget.shape == CropShape.circle,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'Масштаб  ${(_zoom * 100).round()}%',
+                        style: theme.bodySmall,
+                      ),
+                      Expanded(
+                        child: Slider(
+                          value: _zoom.clamp(_minZoom, 3.0),
+                          min: _minZoom,
+                          max: 3,
+                          onChanged: image == null
+                              ? null
+                              : (v) => setState(() => _zoom = v),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: Text(
+                            'Назад',
+                            style: TextStyle(color: t.text2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: image == null ? null : _apply,
+                          child: const Text('Применить'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Картинка, затемнение вокруг рамки и сама рамка — то же, что рисует
+/// десктопный `draw()`.
+class _CropPainter extends CustomPainter {
+  const _CropPainter({
+    required this.image,
+    required this.imageRect,
+    required this.frame,
+    required this.circle,
+  });
+
+  final ui.Image image;
+  final Rect imageRect;
+  final Rect frame;
+  final bool circle;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final full = Offset.zero & size;
+    canvas.drawImageRect(
+      image,
+      Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+      imageRect,
+      Paint()..filterQuality = FilterQuality.medium,
+    );
+
+    // Затемнение всего, кроме рамки: дырка вырезается even-odd.
+    final hole = Path()
+      ..addRect(full)
+      ..addPath(
+        circle ? (Path()..addOval(frame)) : (Path()..addRect(frame)),
+        Offset.zero,
+      )
+      ..fillType = PathFillType.evenOdd;
+    canvas.drawPath(hole, Paint()..color = Colors.black.withValues(alpha: 0.62));
+
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = Colors.white.withValues(alpha: 0.75);
+    if (circle) {
+      canvas.drawOval(frame, line);
+      return;
+    }
+    canvas.drawRect(frame, line);
+
+    // Уголки — по ним видно, куда тянуть картинку.
+    final corner = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..color = Colors.white;
+    const len = 12.0;
+    for (final (point, sx, sy) in [
+      (frame.topLeft, 1.0, 1.0),
+      (frame.topRight, -1.0, 1.0),
+      (frame.bottomLeft, 1.0, -1.0),
+      (frame.bottomRight, -1.0, -1.0),
+    ]) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(point.dx, point.dy + sy * len)
+          ..lineTo(point.dx, point.dy)
+          ..lineTo(point.dx + sx * len, point.dy),
+        corner,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CropPainter old) =>
+      old.image != image ||
+      old.imageRect != imageRect ||
+      old.frame != frame ||
+      old.circle != circle;
+}

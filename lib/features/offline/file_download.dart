@@ -143,12 +143,12 @@ Future<String> _saveToVisibleDir(
 /// начинает отбивать.
 Future<({int total, int failed})> saveListAsFiles(
   WidgetRef ref,
-  String title,
+  String sourceId,
   List<Track> tracks,
 ) async {
   final offline = ref.read(offlineProvider.notifier);
   final pending = tracks.where(offline.canDownload).toList();
-  if (pending.isEmpty || !offline.beginBatch(title, pending.length)) {
+  if (pending.isEmpty || !offline.beginBatch(sourceId, pending.length)) {
     return (total: pending.length, failed: 0);
   }
 

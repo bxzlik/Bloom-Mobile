@@ -6,9 +6,11 @@
 /// «иконка — текст — шеврон».
 ///
 /// Не перенесены разделы, которых на телефоне физически не бывает: «Оверлей»
-/// (окно поверх других окон), «Горячие клавиши» (глобальные, на уровне ОС) и
-/// «Discord RPC». Иконки — те же Solar, что на десктопе; исключение «Система»:
-/// там монитор, здесь смартфон.
+/// (окно поверх других окон), «Горячие клавиши» (глобальные, на уровне ОС),
+/// «Discord RPC», «Эффективность», «Страницы» и «Вкладки». Вместо них в
+/// «Основное» добавлены «Свайпы» — жесты есть только на телефоне. Иконки — те
+/// же Solar, что на десктопе; исключение «Система»: там монитор, здесь
+/// смартфон.
 ///
 /// Работают два раздела — «Интерфейс» и «SoundCloud». Остальные честно говорят,
 /// что ещё не сделаны.
@@ -20,6 +22,7 @@ import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
+import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -32,7 +35,7 @@ class SettingsScreen extends StatelessWidget {
       child: ListView(
         // Заголовка экрана нет: вкладка и так подписана иконкой в таб-баре,
         // а первая группа начинается со своего капсового заголовка.
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
         children: [
           SettingsGroup(
             title: 'ОСНОВНОЕ',
@@ -43,13 +46,12 @@ class SettingsScreen extends StatelessWidget {
               ),
               const SettingsRow(icon: SolarIconsOutline.tuning, title: 'Аудио'),
               const SettingsRow(
-                icon: SolarIconsOutline.cpu,
-                title: 'Эффективность',
+                icon: SolarIconsOutline.transferHorizontal,
+                title: 'Свайпы',
               ),
               SettingsRow(
                 icon: SolarIconsOutline.database,
                 title: 'Хранилище',
-                subtitle: 'Офлайн-кеш скачанных треков',
                 onTap: () => context.go('/settings/storage'),
               ),
             ],
@@ -64,16 +66,7 @@ class SettingsScreen extends StatelessWidget {
               SettingsRow(
                 icon: SolarIconsOutline.sidebar,
                 title: 'Интерфейс',
-                subtitle: 'Тема, акцент, скругления',
                 onTap: () => context.go('/settings/appearance'),
-              ),
-              const SettingsRow(
-                icon: SolarIconsOutline.widget_4,
-                title: 'Страницы',
-              ),
-              const SettingsRow(
-                icon: SolarIconsOutline.windowFrame,
-                title: 'Вкладки',
               ),
               const SettingsRow(
                 icon: SolarIconsOutline.album,
@@ -86,18 +79,15 @@ class SettingsScreen extends StatelessWidget {
             rows: [
               SettingsRow(
                 title: 'SoundCloud',
-                subtitle: 'client_id и проверка соединения',
                 leading: const PlatformLogo(MusicSource.soundcloud, size: 20),
                 onTap: () => context.go('/settings/soundcloud'),
               ),
               SettingsRow(
                 title: 'Яндекс.Музыка',
-                subtitle: 'Площадка ещё не портирована',
                 leading: const PlatformLogo(MusicSource.yandex, size: 20),
               ),
               SettingsRow(
                 title: 'YouTube Music',
-                subtitle: 'Площадка ещё не портирована',
                 leading: const PlatformLogo(MusicSource.ytmusic, size: 20),
               ),
               SettingsRow(
@@ -130,7 +120,14 @@ class SettingsGroup extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(6, 20, 6, 8),
-          child: Text(title, style: Theme.of(context).textTheme.labelSmall),
+          // Ярче общего `labelSmall`: в списке без описаний капсовый заголовок
+          // остался единственным ориентиром, приглушённый `muted` его терял.
+          child: Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: t.text2),
+          ),
         ),
         Container(
           decoration: BoxDecoration(
@@ -143,8 +140,15 @@ class SettingsGroup extends StatelessWidget {
               for (var i = 0; i < rows.length; i++) ...[
                 if (i > 0)
                   Padding(
+                    // 14 паддинга + 24 иконки + 14 зазора: линия начинается
+                    // ровно под текстом строки.
                     padding: const EdgeInsets.only(left: 52),
-                    child: Divider(height: 1, color: t.ovlLine),
+                    // Половина от обычной рамки: строки уже сгруппированы
+                    // контейнером, разделителю достаточно едва намекать.
+                    child: Divider(
+                      height: 1,
+                      color: t.ovlLine.withValues(alpha: t.ovlLine.a * 0.5),
+                    ),
                   ),
                 rows[i],
               ],
@@ -162,14 +166,12 @@ class SettingsRow extends StatelessWidget {
     this.icon,
     this.leading,
     required this.title,
-    this.subtitle,
     this.onTap,
   });
 
   final IconData? icon;
   final Widget? leading;
   final String title;
-  final String? subtitle;
   final VoidCallback? onTap;
 
   @override
@@ -180,7 +182,8 @@ class SettingsRow extends StatelessWidget {
     return InkWell(
       onTap: onTap ?? () => _showStub(context, title),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        // 20 по вертикали + 20 строки текста = 60 на строку.
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
         child: Row(
           children: [
             SizedBox(
@@ -191,23 +194,14 @@ class SettingsRow extends StatelessWidget {
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: ready
-                        ? theme.titleSmall
-                        : theme.titleSmall?.copyWith(color: t.text2),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(subtitle!, style: theme.bodySmall),
-                  ],
-                ],
+              child: Text(
+                title,
+                style: ready
+                    ? theme.titleMedium
+                    : theme.titleMedium?.copyWith(color: t.text2),
               ),
             ),
-            Icon(SolarIconsOutline.altArrowRight, size: 16, color: t.muted),
+            Icon(SolarIconsOutline.altArrowRight, size: 16, color: t.text2),
           ],
         ),
       ),
@@ -215,8 +209,5 @@ class SettingsRow extends StatelessWidget {
   }
 }
 
-void _showStub(BuildContext context, String title) {
-  ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text('«$title» ещё не сделан')));
-}
+void _showStub(BuildContext context, String title) =>
+    showToast(context, '«$title» ещё не сделан', kind: ToastKind.warn);

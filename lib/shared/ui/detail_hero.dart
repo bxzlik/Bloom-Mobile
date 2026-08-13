@@ -5,6 +5,9 @@
 /// растворяется в фоне страницы, поэтому граница между шапкой и списком не
 /// видна.
 ///
+/// Это слайвер, а не обычный блок: при прокрутке ряд круглых кнопок остаётся
+/// приклеенным к верху экрана ([StickyHero]).
+///
 /// Отдельно от hero трек-листа библиотеки: там левое выравнивание, свои кнопки
 /// (сортировка, поиск по списку) и коллаж 2×2 вместо одной обложки.
 library;
@@ -17,6 +20,7 @@ import '../../core/store/cover_store.dart';
 import 'atoms.dart';
 import 'bloom_mark.dart';
 import 'cover_hero.dart';
+import 'sticky_hero.dart';
 
 class DetailHero extends StatelessWidget {
   const DetailHero({
@@ -65,82 +69,63 @@ class DetailHero extends StatelessWidget {
         ? size.width * 0.92
         : size.height * 0.5;
 
-    return SizedBox(
+    return StickyHero(
       height: height + 72,
-      child: Stack(
+      flying: flight != null,
+      // Картинка идёт и под рядом действий, а кончается скруглённым краем:
+      // граница со списком видна, а не размазана в фон.
+      background: HeroCover(
+        child: CoverHero(
+          tag: flight?.tag,
+          shape: BorderRadius.vertical(bottom: Radius.circular(t.radius * 1.5)),
+          child: _Background(url: image, previous: flight?.image),
+        ),
+      ),
+      barHeight: kHeaderControl,
+      bar: Row(
         children: [
-          // Картинка идёт и под рядом действий, а кончается скруглённым краем:
-          // граница со списком видна, а не размазана в фон.
-          Positioned.fill(
-            child: HeroCover(
-              child: CoverHero(
-                tag: flight?.tag,
-                shape: BorderRadius.vertical(
-                  bottom: Radius.circular(t.radius * 1.5),
-                ),
-                child: _Background(url: image, previous: flight?.image),
-              ),
-            ),
+          GlassIconButton(
+            icon: SolarIconsOutline.arrowLeft,
+            onTap: () => Navigator.of(context).maybePop(),
           ),
-          HeroContent(
-            flying: flight != null,
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        GlassIconButton(
-                          icon: SolarIconsOutline.arrowLeft,
-                          onTap: () => Navigator.of(context).maybePop(),
-                        ),
-                        const Spacer(),
-                        if (onMenu != null)
-                          GlassIconButton(
-                            icon: SolarIconsOutline.menuDots,
-                            onTap: onMenu,
-                          ),
-                      ],
-                    ),
-                    const Spacer(),
-                    Text(
-                      title,
-                      maxLines: 2,
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.headlineSmall?.copyWith(fontSize: 28),
-                    ),
-                    if (owner case final name? when name.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        name,
-                        maxLines: 1,
-                        textAlign: TextAlign.center,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.titleMedium?.copyWith(color: t.text2),
-                      ),
-                    ],
-                    if (subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        maxLines: 1,
-                        textAlign: TextAlign.center,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.bodyMedium,
-                      ),
-                    ],
-                    const SizedBox(height: 14),
-                    actions,
-                    const SizedBox(height: 12),
-                  ],
-                ),
-              ),
-            ),
+          const Spacer(),
+          if (onMenu != null)
+            GlassIconButton(icon: SolarIconsOutline.menuDots, onTap: onMenu),
+        ],
+      ),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            title,
+            maxLines: 2,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            style: theme.headlineSmall?.copyWith(fontSize: 28),
           ),
+          if (owner case final name? when name.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              name,
+              maxLines: 1,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              style: theme.titleMedium?.copyWith(color: t.text2),
+            ),
+          ],
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              maxLines: 1,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              style: theme.bodyMedium,
+            ),
+          ],
+          const SizedBox(height: 14),
+          actions,
         ],
       ),
     );

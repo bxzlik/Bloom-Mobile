@@ -12,22 +12,33 @@
 ///
 /// Вид системных плиток тоже десктопный — плоский тинт и цветная иконка
 /// (`--sys-*-tint` / `--sys-*-ico`), а не заливка в полный цвет.
+///
+/// Порядок плиток — десктопный `unifiedOrderStore`: четыре режима сортировки,
+/// закреплённые сверху, а в режиме «По умолчанию» плитки таскаются пальцем.
+/// Долгий тап при этом делит работу: отпустил на месте — меню, потянул —
+/// перестановка (см. `_DragCell`).
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
-import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_sheet.dart';
+import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/util/format.dart';
 import '../../detail/detail_nav.dart';
-import 'refresh_imported.dart';
+import '../../offline/offline_actions.dart';
+import '../lib_order_store.dart';
+import '../pl_auto_store.dart';
+import 'create_playlist_sheet.dart';
+import 'pl_auto_sheet.dart';
 import 'tracklist_screen.dart';
 
 enum LibFilter { all, playlists, artists }
@@ -45,12 +56,46 @@ class LibraryScreen extends ConsumerStatefulWidget {
   ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
 }
 
+/// Запись общего списка библиотеки — плейлист или артист. Порядок и сортировка
+/// работают с ними одинаково, как с `UnifiedEntry` на десктопе.
+class _Entry {
+  _Entry.playlist(UserPlaylist this.playlist)
+    : follow = null,
+      key = libKeyOfPlaylist(playlist.id),
+      name = playlist.name,
+      rank = kLibRankPlaylist;
+
+  _Entry.artist(FollowedArtist this.follow)
+    : playlist = null,
+      key = libKeyOfArtist(follow.artist.id),
+      name = follow.artist.name,
+      rank = kLibRankArtist;
+
+  final UserPlaylist? playlist;
+  final FollowedArtist? follow;
+  final String key;
+  final String name;
+  final int rank;
+}
+
+/// Отступы сетки — по ним же считается ширина плитки для «летящей» копии.
+const double _gridPad = 16;
+const double _gridGap = 14;
+
 class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   LibFilter _filter = LibFilter.all;
+
+  /// Переставить плитку и запомнить новый порядок целиком.
+  void _move(List<_Entry> entries, int from, int to) {
+    final keys = entries.map((e) => e.key).toList();
+    keys.insert(to, keys.removeAt(from));
+    ref.read(libOrderProvider.notifier).setOrder(keys);
+  }
 
   @override
   Widget build(BuildContext context) {
     final lib = ref.watch(libraryProvider);
+    final order = ref.watch(libOrderProvider);
 
     final showPlaylists =
         _filter == LibFilter.all || _filter == LibFilter.playlists;
@@ -58,11 +103,22 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         _filter == LibFilter.all || _filter == LibFilter.artists;
 
     // Импортированный альбом — такой же плейлист и стоит в общем ряду.
-    final tiles = <Widget>[
-      if (showPlaylists)
-        ...lib.playlists.map((p) => _SetTile(playlist: p, lib: lib)),
-      if (showArtists) ...lib.follows.map((f) => _ArtistTile(followed: f)),
-    ];
+    final entries = order.arrange(
+      [
+        if (showPlaylists) ...lib.playlists.map(_Entry.playlist),
+        if (showArtists) ...lib.follows.map(_Entry.artist),
+      ],
+      key: (e) => e.key,
+      name: (e) => e.name,
+      rank: (e) => e.rank,
+    );
+
+    // Таскать плитки можно только там, где порядок и правда пользовательский:
+    // в отфильтрованном списке видно не всё, и записать его как порядок целиком
+    // нельзя. Ровно та же оговорка стоит у `useSortable` на десктопе.
+    final draggable = order.sort == LibSort.manual && _filter == LibFilter.all;
+    final tileWidth =
+        (MediaQuery.sizeOf(context).width - _gridPad * 2 - _gridGap) / 2;
 
     return SafeArea(
       bottom: false,
@@ -77,29 +133,150 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               onPick: (f) => setState(() => _filter = f),
             ),
           ),
-          if (tiles.isEmpty)
+          if (entries.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
               child: _Empty(filter: _filter),
             )
           else
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+              padding: const EdgeInsets.fromLTRB(
+                _gridPad,
+                4,
+                _gridPad,
+                _gridPad,
+              ),
               sliver: SliverGrid(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
-                  crossAxisSpacing: 14,
+                  crossAxisSpacing: _gridGap,
                   mainAxisSpacing: 10,
                   childAspectRatio: 0.78,
                 ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, i) => tiles[i],
-                  childCount: tiles.length,
-                ),
+                delegate: SliverChildBuilderDelegate((context, i) {
+                  final entry = entries[i];
+                  final pinned = order.isPinned(entry.key);
+                  final playlist = entry.playlist;
+                  final tile = playlist != null
+                      ? _SetTile(playlist: playlist, lib: lib, pinned: pinned)
+                      : _ArtistTile(followed: entry.follow!, pinned: pinned);
+                  return _DragCell(
+                    key: ValueKey(entry.key),
+                    index: i,
+                    width: tileWidth,
+                    enabled: draggable,
+                    // Закреплённые живут отдельной группой наверху — как
+                    // `getGroupRank` на ПК: перемешать их с остальными значило
+                    // бы уронить плитку туда, откуда её тут же вынесет вверх.
+                    accepts: (from) =>
+                        order.isPinned(entries[from].key) == pinned,
+                    onMove: (from, to) => _move(entries, from, to),
+                    onMenu: () => playlist != null
+                        ? showPlaylistMenu(
+                            context,
+                            ref,
+                            playlist,
+                            lib.tracksOf(playlist),
+                          )
+                        : _showArtistMenu(context, ref, entry.follow!),
+                    child: tile,
+                  );
+                }, childCount: entries.length),
               ),
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Ячейка сетки, которую можно взять пальцем и переставить.
+///
+/// Своя, а не `ReorderableListView`: тот умеет только список, а библиотека —
+/// сетка в две колонки. Достаточно пары `LongPressDraggable` + `DragTarget`:
+/// плитка уезжает на место той, над которой её отпустили.
+///
+/// Долгий тап делает две вещи сразу, как на рабочем столе iOS: плитка
+/// приподнимается под пальцем, но если её отпустить на месте — открывается
+/// меню, а не перестановка. Иначе меню было бы негде держать: своей кнопки на
+/// плитке нет, а долгий тап занят.
+class _DragCell extends StatefulWidget {
+  const _DragCell({
+    super.key,
+    required this.index,
+    required this.width,
+    required this.enabled,
+    required this.accepts,
+    required this.onMove,
+    required this.onMenu,
+    required this.child,
+  });
+
+  final int index;
+  final double width;
+  final bool enabled;
+  final bool Function(int from) accepts;
+  final void Function(int from, int to) onMove;
+  final VoidCallback onMenu;
+  final Widget child;
+
+  @override
+  State<_DragCell> createState() => _DragCellState();
+}
+
+class _DragCellState extends State<_DragCell> {
+  /// Сколько палец прошёл за перетаскивание. Меньше порога — это был не
+  /// перенос, а удержание, и вместо перестановки открывается меню.
+  double _travel = 0;
+
+  static const double _slop = 12;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.enabled) {
+      return GestureDetector(
+        onLongPress: widget.onMenu,
+        // Плитка сама ловит тап; удержание должно доходить сюда даже мимо
+        // её собственных жестов.
+        behavior: HitTestBehavior.translucent,
+        child: widget.child,
+      );
+    }
+    return DragTarget<int>(
+      onWillAcceptWithDetails: (d) =>
+          d.data != widget.index && widget.accepts(d.data),
+      onAcceptWithDetails: (d) => widget.onMove(d.data, widget.index),
+      builder: (context, candidate, _) {
+        final hovered = candidate.isNotEmpty;
+        return LongPressDraggable<int>(
+          data: widget.index,
+          onDragStarted: () {
+            _travel = 0;
+            HapticFeedback.selectionClick();
+          },
+          onDragUpdate: (d) => _travel += d.delta.distance,
+          onDragEnd: (d) {
+            if (!d.wasAccepted && _travel < _slop) widget.onMenu();
+          },
+          // Копия под пальцем берёт ширину ячейки: в оверлее сетки нет и
+          // размер плитке задать больше нечем.
+          feedback: Material(
+            type: MaterialType.transparency,
+            child: Opacity(
+              opacity: 0.9,
+              child: SizedBox(width: widget.width, child: widget.child),
+            ),
+          ),
+          childWhenDragging: Opacity(opacity: 0.25, child: widget.child),
+          // Цель перетаскивания подсказывается только сжатием плитки: рамка
+          // вокруг обложки читалась как чужой элемент.
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 140),
+            scale: hovered ? 0.94 : 1,
+            child: widget.child,
+          ),
+        );
+      },
     );
   }
 }
@@ -213,6 +390,11 @@ class _Chips extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
+    // Подсветка кнопок — десктопный `sort-active`: расписание включено,
+    // сортировка не «по умолчанию».
+    final autoOn = ref.watch(plAutoProvider).enabled;
+    final sort = ref.watch(libOrderProvider).sort;
+
     return SizedBox(
       height: 60,
       child: ListView(
@@ -227,7 +409,7 @@ class _Chips extends ConsumerWidget {
               size: kChipHeight,
               iconSize: 22,
               tooltip: 'Создать плейлист',
-              onTap: () => _createPlaylist(context, ref),
+              onTap: () => showCreatePlaylistSheet(context, ref),
             ),
           ),
           const SizedBox(width: 8),
@@ -236,8 +418,22 @@ class _Chips extends ConsumerWidget {
               icon: SolarIconsOutline.refresh,
               size: kChipHeight,
               iconSize: 20,
-              tooltip: 'Обновить импортированные',
-              onTap: () => refreshImported(context, ref),
+              tooltip: 'Авто-обновление плейлистов',
+              background: autoOn ? t.accent : null,
+              color: autoOn ? t.accentText : null,
+              onTap: () => showPlAutoSheet(context, ref),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Center(
+            child: CircleIconButton(
+              icon: SolarIconsOutline.sort,
+              size: kChipHeight,
+              iconSize: 20,
+              tooltip: 'Сортировка',
+              background: sort == LibSort.manual ? null : t.accent,
+              color: sort == LibSort.manual ? null : t.accentText,
+              onTap: () => _showSortSheet(context, ref),
             ),
           ),
           const SizedBox(width: 12),
@@ -256,210 +452,83 @@ class _Chips extends ConsumerWidget {
   }
 }
 
-Future<void> _createPlaylist(BuildContext context, WidgetRef ref) async {
-  final result = await showDialog<({String name, String? cover})>(
+/// Выбор сортировки библиотеки — та же нижняя шторка, что у сортировки списка
+/// треков (десктопное `LibSortMenu`).
+Future<void> _showSortSheet(BuildContext context, WidgetRef ref) {
+  final t = context.bloom;
+  final active = ref.read(libOrderProvider).sort;
+  return showBloomSheet(
     context: context,
-    builder: (_) => const _CreatePlaylistDialog(),
-  );
-  if (result == null) return;
-  ref
-      .read(libraryProvider.notifier)
-      .createPlaylist(result.name, cover: result.cover);
-}
-
-/// Диалог «Новый плейлист»: обложка из галереи и название.
-///
-/// Отдельный виджет, а не пачка полей рядом с `showDialog`: контроллер поля
-/// должен жить ровно столько же, сколько диалог. Если освобождать его сразу
-/// после `await`, диалог в этот момент ещё доигрывает закрытие и падает на
-/// `_dependents.isEmpty`.
-class _CreatePlaylistDialog extends StatefulWidget {
-  const _CreatePlaylistDialog();
-
-  @override
-  State<_CreatePlaylistDialog> createState() => _CreatePlaylistDialogState();
-}
-
-class _CreatePlaylistDialogState extends State<_CreatePlaylistDialog> {
-  final _controller = TextEditingController();
-  String? _cover;
-  bool _picking = false;
-  bool _submitted = false;
-
-  @override
-  void dispose() {
-    // Обложка копируется на диск в момент выбора. Если плейлист так и не
-    // создали (отмена, «назад», тап мимо) — файл надо убрать за собой.
-    if (!_submitted) deleteCover(_cover);
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pick() async {
-    if (_picking) return;
-    setState(() => _picking = true);
-    final picked = await pickCover();
-    if (!mounted) return;
-    // Отмена выбора не должна стирать уже выбранную обложку.
-    if (picked != null) deleteCover(_cover);
-    setState(() {
-      _picking = false;
-      if (picked != null) _cover = picked;
-    });
-  }
-
-  void _clear() {
-    deleteCover(_cover);
-    setState(() => _cover = null);
-  }
-
-  void _submit() {
-    _submitted = true;
-    Navigator.of(context).pop((name: _controller.text, cover: _cover));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    return AlertDialog(
-      backgroundColor: t.blockColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(t.radius),
-        side: BorderSide(color: t.ovlLine),
-      ),
-      title: Text('Новый плейлист', style: theme.titleLarge),
-      // Скролл — чтобы с поднятой клавиатурой на невысоком экране обложка и
-      // поле не упирались в края диалога.
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: _CoverPicker(
-                cover: _cover,
-                busy: _picking,
-                onTap: _pick,
-                onClear: _cover == null ? null : _clear,
-              ),
-            ),
-            const SizedBox(height: 18),
-            TextField(
-              controller: _controller,
-              autofocus: true,
-              cursorColor: t.accent,
-              style: theme.titleSmall,
-              textInputAction: TextInputAction.done,
-              decoration: InputDecoration(
-                hintText: 'Название',
-                hintStyle: theme.bodyMedium?.copyWith(color: t.muted),
-                enabledBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: t.border),
-                ),
-                focusedBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: t.accent),
-                ),
-              ),
-              onSubmitted: (_) => _submit(),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text('Отмена', style: TextStyle(color: t.text2)),
-        ),
-        TextButton(
-          onPressed: _submit,
-          child: Text('Создать', style: TextStyle(color: t.accent)),
-        ),
-      ],
-    );
-  }
-}
-
-/// Квадрат обложки в диалоге: пустой — пунктир с иконкой галереи, выбранный —
-/// сама картинка с крестиком.
-class _CoverPicker extends StatelessWidget {
-  const _CoverPicker({
-    required this.cover,
-    required this.busy,
-    required this.onTap,
-    required this.onClear,
-  });
-
-  final String? cover;
-  final bool busy;
-  final VoidCallback onTap;
-  final VoidCallback? onClear;
-
-  static const double _size = 128;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Stack(
-      clipBehavior: Clip.none, // крестик заходит за угол квадрата
-      children: [
-        GestureDetector(
-          onTap: busy ? null : onTap,
-          child: cover != null
-              ? Cover(url: cover, size: _size)
-              : Container(
-                  width: _size,
-                  height: _size,
-                  decoration: BoxDecoration(
-                    color: t.ovlBg,
-                    borderRadius: BorderRadius.circular(t.radius * 0.72),
-                    border: Border.all(color: t.border),
-                  ),
-                  child: busy
-                      ? Center(
-                          child: SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: t.accent,
-                            ),
-                          ),
-                        )
-                      : Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              SolarIconsOutline.galleryAdd,
-                              size: 26,
-                              color: t.muted,
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Обложка',
-                              style: Theme.of(
-                                context,
-                              ).textTheme.bodySmall?.copyWith(color: t.muted),
-                            ),
-                          ],
-                        ),
-                ),
-        ),
-        if (onClear != null)
-          Positioned(
-            top: -6,
-            right: -6,
-            child: CircleIconButton(
-              icon: SolarIconsOutline.closeCircle,
-              size: 30,
-              iconSize: 16,
-              background: t.blockColor,
-              onTap: onClear,
-            ),
+    header: const SheetLineHeader(
+      cover: null,
+      title: 'Сортировка',
+      subtitle: 'Библиотека',
+    ),
+    groups: [
+      [
+        for (final sort in LibSort.values)
+          SheetAction(
+            icon: sort.icon,
+            label: sort.label,
+            onTap: () => ref.read(libOrderProvider.notifier).setSort(sort),
+            trailing: sort == active
+                ? Icon(SolarIconsBold.checkCircle, size: 18, color: t.accent)
+                : null,
           ),
       ],
-    );
-  }
+      // Подсказка про перетаскивание: без неё ручной порядок не найти — он
+      // прячется в долгом тапе.
+      const [
+        SheetAction(
+          icon: SolarIconsOutline.infoCircle,
+          label: 'В «По умолчанию» плитку можно зажать и перетащить',
+        ),
+      ],
+    ],
+  );
+}
+
+/// Меню плитки артиста — у плейлиста для этого есть свой `showPlaylistMenu`.
+Future<void> _showArtistMenu(
+  BuildContext context,
+  WidgetRef ref,
+  FollowedArtist followed,
+) {
+  final artist = followed.artist;
+  final key = libKeyOfArtist(artist.id);
+  final pinned = ref.read(libOrderProvider).isPinned(key);
+  final messenger = ScaffoldMessenger.of(context);
+
+  return showBloomSheet(
+    context: context,
+    backdrop: artist.avatar,
+    header: SheetLineHeader(
+      cover: artist.avatar,
+      title: artist.name,
+      subtitle: 'Артист',
+      circle: true,
+    ),
+    groups: [
+      [
+        SheetAction(
+          icon: SolarIconsOutline.pin,
+          label: pinned ? 'Открепить' : 'Закрепить',
+          onTap: () => ref.read(libOrderProvider.notifier).togglePin(key),
+        ),
+      ],
+      [
+        SheetAction(
+          icon: SolarIconsBold.userCheckRounded,
+          label: 'Отписаться',
+          danger: true,
+          onTap: () {
+            ref.read(libraryProvider.notifier).toggleFollow(artist);
+            messenger.toast('Подписка снята');
+          },
+        ),
+      ],
+    ],
+  );
 }
 
 class _FilterChip extends StatelessWidget {
@@ -506,10 +575,15 @@ class _FilterChip extends StatelessWidget {
 }
 
 class _SetTile extends ConsumerStatefulWidget {
-  const _SetTile({required this.playlist, required this.lib});
+  const _SetTile({
+    required this.playlist,
+    required this.lib,
+    required this.pinned,
+  });
 
   final UserPlaylist playlist;
   final LibraryState lib;
+  final bool pinned;
 
   @override
   ConsumerState<_SetTile> createState() => _SetTileState();
@@ -525,8 +599,10 @@ class _SetTileState extends ConsumerState<_SetTile> {
     final lib = widget.lib;
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
-    // Своей обложки нет — в шапке списка стоит коллаж из треков, и лететь туда
-    // заглушке незачем.
+    final tracks = lib.tracksOf(playlist);
+    // Своей обложки нет — и на плитке, и в шапке списка стоит один и тот же
+    // коллаж из треков. Лететь ему незачем: перелёт возит одну картинку, а
+    // коллаж на концах разной формы всё равно собирался бы заново.
     final cover = playlist.cover;
     final flight = cover == null || cover.isEmpty
         ? null
@@ -535,9 +611,6 @@ class _SetTileState extends ConsumerState<_SetTile> {
     return LayoutBuilder(
       builder: (context, box) => GestureDetector(
         onTap: () => context.go('/library/list/${playlist.id}', extra: flight),
-        // Длинный тап — та же шторка «трёх точек», что на странице плейлиста.
-        onLongPress: () =>
-            showPlaylistMenu(context, ref, playlist, lib.tracksOf(playlist)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -549,19 +622,40 @@ class _SetTileState extends ConsumerState<_SetTile> {
               radius: t.radius * 1.3,
               flight: flight,
               overlay: SetEqualizer(setId: playlist.id),
+              covers: tracks.map((track) => track.cover),
             ),
             const SizedBox(height: 8),
-            Text(
-              playlist.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.titleSmall,
+            Row(
+              children: [
+                if (widget.pinned) ...[
+                  Icon(SolarIconsBold.pin, size: 13, color: t.accent),
+                  const SizedBox(width: 4),
+                ],
+                Expanded(
+                  child: Text(
+                    playlist.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.titleSmall,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 2),
-            Text(
-              tracksCount(playlist.trackIds.length),
-              maxLines: 1,
-              style: theme.bodySmall,
+            Row(
+              children: [
+                // Счётчик ужимается первым: тег офлайна короткий и должен
+                // оставаться целым, даже если название списка длинное.
+                Flexible(
+                  child: Text(
+                    tracksCount(playlist.trackIds.length),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.bodySmall,
+                  ),
+                ),
+                OfflineTag(tracks: tracks, style: theme.bodySmall),
+              ],
             ),
           ],
         ),
@@ -570,20 +664,22 @@ class _SetTileState extends ConsumerState<_SetTile> {
   }
 }
 
-class _ArtistTile extends StatefulWidget {
-  const _ArtistTile({required this.followed});
+class _ArtistTile extends ConsumerStatefulWidget {
+  const _ArtistTile({required this.followed, required this.pinned});
 
   final FollowedArtist followed;
+  final bool pinned;
 
   @override
-  State<_ArtistTile> createState() => _ArtistTileState();
+  ConsumerState<_ArtistTile> createState() => _ArtistTileState();
 }
 
-class _ArtistTileState extends State<_ArtistTile> {
+class _ArtistTileState extends ConsumerState<_ArtistTile> {
   final _tag = UniqueKey();
 
   @override
   Widget build(BuildContext context) {
+    final t = context.bloom;
     final theme = Theme.of(context).textTheme;
     final artist = widget.followed.artist;
     final avatar = artist.avatar;
@@ -606,12 +702,23 @@ class _ArtistTileState extends State<_ArtistTile> {
               flight: flight,
             ),
             const SizedBox(height: 8),
-            Text(
-              artist.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: theme.titleSmall,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (widget.pinned) ...[
+                  Icon(SolarIconsBold.pin, size: 13, color: t.accent),
+                  const SizedBox(width: 4),
+                ],
+                Flexible(
+                  child: Text(
+                    artist.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: theme.titleSmall,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

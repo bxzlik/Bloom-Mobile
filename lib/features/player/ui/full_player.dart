@@ -15,7 +15,9 @@ import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/track_actions.dart';
+import '../../../shared/util/artists.dart';
 import '../../../shared/util/format.dart';
+import '../../detail/artists_sheet.dart';
 import '../player_controller.dart';
 import 'queue_sheet.dart';
 
@@ -50,6 +52,19 @@ class FullPlayerPage extends ConsumerWidget {
     final state = ref.watch(playbackProvider);
     final track = state.track;
 
+    // Очередь могла опустеть под нами: смахнули последний трек в шторке, пришла
+    // остановка из системы. Играть больше нечего — плеер тогда превращается в
+    // чёрный экран без единого органа управления, из которого не выйти ничем,
+    // кроме свайпа вниз. Закрываем его сами, вместе со шторками поверх.
+    ref.listen(playbackProvider, (_, next) {
+      if (next.track != null) return;
+      final route = ModalRoute.of(context);
+      if (route == null || !route.isActive) return;
+      Navigator.of(context)
+        ..popUntil((r) => r == route)
+        ..pop();
+    });
+
     return Scaffold(
       backgroundColor: t.bg,
       body: GestureDetector(
@@ -77,10 +92,12 @@ class FullPlayerPage extends ConsumerWidget {
                         ),
                       ),
                       // Отступы вокруг названия одинаковые: оно должно стоять
-                      // ровно посередине между обложкой и прогрессом.
+                      // ровно посередине между обложкой и прогрессом. Снизу
+                      // своего `SizedBox` нет — там те же ~24 набегают из
+                      // ловушки прогресса (`_Progress.slack`) и полей вокруг
+                      // имени артиста.
                       const SizedBox(height: 24),
                       _TitleBlock(state: state),
-                      const SizedBox(height: 24),
                       const _Progress(),
                       const SizedBox(height: 16),
                       const _Transport(),
@@ -106,9 +123,9 @@ class _Header extends ConsumerWidget {
   /// меню под тремя точками.
   final Track track;
 
-  /// Пилюля «Играет из» — та же плёнка, что у круглых кнопок по краям, только
-  /// чуть ниже них: в шапке она подпись, а не орган управления.
-  static const double _pillHeight = 40;
+  /// Пилюля «Играет из» — та же плёнка и та же высота, что у круглых кнопок по
+  /// краям: шапка читается одной ровной строкой, а не ступенькой.
+  static const double _pillHeight = kHeaderControl;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -234,16 +251,38 @@ class _CoverButton extends StatelessWidget {
   }
 }
 
-class _TitleBlock extends StatelessWidget {
+class _TitleBlock extends ConsumerWidget {
   const _TitleBlock({required this.state});
 
   final PlaybackState state;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
     final track = state.track!;
     final theme = Theme.of(context).textTheme;
+
+    // По имени артиста уходим на его страницу — как из меню трека; артистов в
+    // строке несколько — сперва шторка с выбором. На месте имени может стоять
+    // ошибка воспроизведения: тогда строка просто текст. Одиночного артиста
+    // без точного id открывать тоже нечем.
+    final canOpen =
+        state.error == null &&
+        (track.artistId != null || parseArtists(track.artist).length > 1);
+
+    final subtitle = Text(
+      state.error ?? track.artist,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+      // Крупнее общей подписи (13): в плеере под названием стоит одна
+      // строка, и она должна читаться с руки.
+      style: theme.bodyMedium?.copyWith(
+        fontSize: 16,
+        color: state.error != null ? t.sysFavIco : null,
+      ),
+    );
+
     return Column(
       children: [
         Text(
@@ -253,17 +292,14 @@ class _TitleBlock extends StatelessWidget {
           textAlign: TextAlign.center,
           style: theme.headlineSmall,
         ),
-        const SizedBox(height: 5),
-        Text(
-          state.error ?? track.artist,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          // Крупнее общей подписи (13): в плеере под названием стоит одна
-          // строка, и она должна читаться с руки.
-          style: theme.bodyMedium?.copyWith(
-            fontSize: 16,
-            color: state.error != null ? t.sysFavIco : null,
+        // Отступ до имени даёт сама ловушка под палец: одной строкой текста в
+        // 19 px по центру экрана попасть тяжело.
+        GestureDetector(
+          onTap: canOpen ? () => openTrackArtist(context, ref, track) : null,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 20),
+            child: subtitle,
           ),
         ),
       ],
@@ -273,6 +309,21 @@ class _TitleBlock extends StatelessWidget {
 
 class _Progress extends ConsumerStatefulWidget {
   const _Progress();
+
+  /// Толщина дорожки и высота ловушки под палец.
+  ///
+  /// Слайдер без кружка и без ореола ужимается по высоте до самой дорожки, а в
+  /// 5 px пальцем не попасть — перемотать получалось, только ткнув точно в
+  /// полоску. Растягиваем его на [hit]: дорожку он рисует по центру своей
+  /// высоты, а нажатие ловит всей площадью.
+  static const double trackHeight = 5;
+
+  /// Пустота, которая при этом остаётся над и под дорожкой внутри ловушки:
+  /// сверху она заменяет собой отступ от названия, снизу — воздух до времён.
+  /// Поэтому ни того, ни другого отдельным `SizedBox` больше нет.
+  static const double slack = 20;
+
+  static const double hit = trackHeight + slack * 2;
 
   @override
   ConsumerState<_Progress> createState() => _ProgressState();
@@ -314,26 +365,28 @@ class _ProgressState extends ConsumerState<_Progress> {
 
     return Column(
       children: [
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            trackShape: const RoundedRectSliderTrackShape(),
-            // Дорожка в плеере толще общей (3): это главный орган
-            // управления экрана, а не строка настройки.
-            trackHeight: 5,
-            // Без кружка — как в референсе: позицию показывает сам край
-            // залитой части. Тянуть и тыкать по дорожке это не мешает.
-            thumbShape: SliderComponentShape.noThumb,
-          ),
-          child: Slider(
-            value: value,
-            max: max <= 0 ? 1 : max,
-            onChanged: max <= 0 ? null : (v) => setState(() => _drag = v),
-            onChangeEnd: max <= 0 ? null : _commit,
+        SizedBox(
+          height: _Progress.hit,
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackShape: const RoundedRectSliderTrackShape(),
+              // Дорожка в плеере толще общей (3): это главный орган
+              // управления экрана, а не строка настройки.
+              trackHeight: _Progress.trackHeight,
+              // Без кружка — как в референсе: позицию показывает сам край
+              // залитой части. Тянуть и тыкать по дорожке это не мешает.
+              thumbShape: SliderComponentShape.noThumb,
+            ),
+            child: Slider(
+              value: value,
+              max: max <= 0 ? 1 : max,
+              onChanged: max <= 0 ? null : (v) => setState(() => _drag = v),
+              onChangeEnd: max <= 0 ? null : _commit,
+            ),
           ),
         ),
-        // Слайдер рисует дорожку по центру своей высоты, но времена всё
-        // равно шли впритык к ней — отодвигаем их явно.
-        const SizedBox(height: 8),
+        // Времена стоят сразу под ловушкой: воздух до дорожки они получают из
+        // её нижней половины (`_Progress.slack`).
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Row(

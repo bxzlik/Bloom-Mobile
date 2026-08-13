@@ -214,6 +214,14 @@ abstract class MusicProvider {
     SearchSort sort = SearchSort.relevance,
   });
 
+  /// Артисты по имени — точечный запрос без остальной выдачи. Нужен там, где
+  /// от площадки хочется одно поле: аватар исполнителя в топе статистики.
+  ///
+  /// По умолчанию берётся из общего поиска; площадка с отдельным эндпоинтом
+  /// (у SoundCloud это `/search/users`) переопределяет и не тянет лишнего.
+  Future<List<Artist>> searchArtists(String query, {int limit = 3}) async =>
+      (await search(query)).artists.take(limit).toList();
+
   /// Догрузить ещё треки. `offset` — сколько уже показано. `null` —
   /// пагинации нет.
   Future<TrackPage?> loadMoreTracks(

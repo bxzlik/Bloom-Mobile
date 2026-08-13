@@ -1,0 +1,348 @@
+/// Выбор цвета — порт десктопного `ColorPicker.tsx`.
+///
+/// Там это попап у сватча: квадрат насыщенности/яркости, полоса тона и поле
+/// hex. На телефоне попапу негде висеть, поэтому те же три части лежат в
+/// шторке; набор ручек и порядок — десктопные.
+library;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show FilteringTextInputFormatter;
+
+import '../../app/theme/tokens.dart';
+
+/// Открыть пикер. Возвращает выбранный цвет или `null`, если закрыли.
+Future<Color?> showBloomColorPicker(BuildContext context, Color initial) {
+  return showModalBottomSheet<Color>(
+    context: context,
+    // Корневой навигатор: иначе шторка остаётся под таб-баром и миниплеером.
+    useRootNavigator: true,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    barrierColor: Colors.black.withValues(alpha: 0.5),
+    builder: (_) => _ColorPickerSheet(initial: initial),
+  );
+}
+
+/// `#rrggbb` без альфы — в этом виде цвет живёт в десктопном профиле.
+String colorToHex(Color color) =>
+    '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
+
+/// Разбор hex (`#rgb`, `#rrggbb`); `null` — не цвет.
+Color? colorFromHex(String input) {
+  var hex = input.trim().replaceAll(RegExp('[^0-9a-fA-F]'), '');
+  if (hex.length == 3) {
+    hex = hex.split('').map((c) => '$c$c').join();
+  }
+  if (hex.length != 6) return null;
+  return Color(0xFF000000 | int.parse(hex, radix: 16));
+}
+
+class _ColorPickerSheet extends StatefulWidget {
+  const _ColorPickerSheet({required this.initial});
+
+  final Color initial;
+
+  @override
+  State<_ColorPickerSheet> createState() => _ColorPickerSheetState();
+}
+
+class _ColorPickerSheetState extends State<_ColorPickerSheet> {
+  late HSVColor _hsv = HSVColor.fromColor(widget.initial);
+  late final TextEditingController _hex = TextEditingController(
+    text: colorToHex(widget.initial),
+  );
+
+  Color get _color => _hsv.toColor();
+
+  @override
+  void dispose() {
+    _hex.dispose();
+    super.dispose();
+  }
+
+  void _set(HSVColor next, {bool syncHex = true}) {
+    setState(() {
+      _hsv = next;
+      if (syncHex) _hex.text = colorToHex(next.toColor());
+    });
+  }
+
+  void _onHex(String value) {
+    final parsed = colorFromHex(value);
+    if (parsed == null) return;
+    // Тон у чёрного и белого не определён — берём прежний, иначе ползунок
+    // тона прыгал бы в красный на каждом «000000».
+    final next = HSVColor.fromColor(parsed);
+    _set(
+      next.saturation == 0 || next.value == 0
+          ? next.withHue(_hsv.hue)
+          : next,
+      syncHex: false,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+
+    return Padding(
+      // Поле hex поднимает клавиатуру — шторка должна встать над ней.
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: ClipRRect(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(t.radius * 1.7)),
+        child: ColoredBox(
+          color: t.bg,
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    height: 190,
+                    child: _SatBox(
+                      hsv: _hsv,
+                      onChanged: (s, v) =>
+                          _set(_hsv.withSaturation(s).withValue(v)),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    height: 26,
+                    child: _HueBar(
+                      hue: _hsv.hue,
+                      onChanged: (h) => _set(_hsv.withHue(h)),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: _color,
+                          borderRadius: BorderRadius.circular(t.radius * 0.6),
+                          border: Border.all(color: t.ovlLine2),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _hex,
+                          onChanged: _onHex,
+                          cursorColor: t.accent,
+                          maxLength: 7,
+                          style: theme.titleMedium,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp('[#0-9a-fA-F]'),
+                            ),
+                          ],
+                          decoration: InputDecoration(
+                            counterText: '',
+                            isDense: true,
+                            filled: true,
+                            fillColor: t.pill,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(
+                                t.radius * 0.6,
+                              ),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: Text(
+                            'Отмена',
+                            style: TextStyle(color: t.text2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () => Navigator.of(context).pop(_color),
+                          child: const Text('Готово'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Квадрат насыщенности и яркости: по горизонтали — s, по вертикали — v.
+class _SatBox extends StatelessWidget {
+  const _SatBox({required this.hsv, required this.onChanged});
+
+  final HSVColor hsv;
+  final void Function(double s, double v) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return LayoutBuilder(
+      builder: (context, box) {
+        void pick(Offset local) => onChanged(
+          (local.dx / box.maxWidth).clamp(0.0, 1.0),
+          1 - (local.dy / box.maxHeight).clamp(0.0, 1.0),
+        );
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onPanDown: (d) => pick(d.localPosition),
+          onPanUpdate: (d) => pick(d.localPosition),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(t.radius * 0.6),
+            child: CustomPaint(
+              size: Size(box.maxWidth, box.maxHeight),
+              painter: _SatPainter(hsv),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SatPainter extends CustomPainter {
+  const _SatPainter(this.hsv);
+
+  final HSVColor hsv;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final hue = HSVColor.fromAHSV(1, hsv.hue, 1, 1).toColor();
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = LinearGradient(
+          colors: [Colors.white, hue],
+        ).createShader(rect),
+    );
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.transparent, Colors.black],
+        ).createShader(rect),
+    );
+    _drawKnob(
+      canvas,
+      Offset(hsv.saturation * size.width, (1 - hsv.value) * size.height),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_SatPainter old) => old.hsv != hsv;
+}
+
+/// Полоса тона.
+class _HueBar extends StatelessWidget {
+  const _HueBar({required this.hue, required this.onChanged});
+
+  final double hue;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, box) {
+        void pick(Offset local) =>
+            onChanged((local.dx / box.maxWidth).clamp(0.0, 1.0) * 360);
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onPanDown: (d) => pick(d.localPosition),
+          onPanUpdate: (d) => pick(d.localPosition),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: CustomPaint(
+              size: Size(box.maxWidth, box.maxHeight),
+              painter: _HuePainter(hue),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _HuePainter extends CustomPainter {
+  const _HuePainter(this.hue);
+
+  final double hue;
+
+  static const List<Color> _spectrum = [
+    Color(0xFFFF0000),
+    Color(0xFFFFFF00),
+    Color(0xFF00FF00),
+    Color(0xFF00FFFF),
+    Color(0xFF0000FF),
+    Color(0xFFFF00FF),
+    Color(0xFFFF0000),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: _spectrum,
+        ).createShader(rect),
+    );
+    _drawKnob(
+      canvas,
+      Offset((hue / 360) * size.width, size.height / 2),
+      radius: size.height / 2 - 2,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_HuePainter old) => old.hue != hue;
+}
+
+/// Кружок-указатель: белое кольцо с тёмной подложкой — читается на любом цвете.
+void _drawKnob(Canvas canvas, Offset at, {double radius = 8}) {
+  canvas.drawCircle(
+    at,
+    radius,
+    Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..color = Colors.black.withValues(alpha: 0.35),
+  );
+  canvas.drawCircle(
+    at,
+    radius,
+    Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = Colors.white,
+  );
+}

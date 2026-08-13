@@ -5,13 +5,15 @@
 /// воспроизведение, потом действия над сущностью, в конце опасное.
 ///
 /// Фон самой шторки — размытая обложка той сущности, о которой она; страница
-/// над шторкой НЕ размывается, только притемняется. Шторка идёт через корневой
+/// под шторкой НЕ размывается, только притемняется. Шторка идёт через корневой
 /// навигатор, поэтому накрывает и таб-бар с миниплеером — иначе бары остаются
 /// поверх затемнения и висят непрозрачной полосой.
 ///
 /// Состав пунктов задаёт вызывающий: он берётся из десктопного Bloom, а не из
 /// референса — там свои функции, которых у нас нет.
 library;
+
+import 'dart:ui' show ImageFilter, TileMode;
 
 import 'package:flutter/material.dart';
 
@@ -57,7 +59,7 @@ Future<void> showBloomSheet({
   required List<List<SheetAction>> groups,
 }) {
   final filled = groups.where((g) => g.isNotEmpty).toList();
-  return showBloomSheetChild(
+  return showBloomSheetChild<void>(
     context: context,
     backdrop: backdrop,
     header: header,
@@ -69,14 +71,14 @@ Future<void> showBloomSheet({
 }
 
 /// Та же шторка, но с произвольным содержимым — для выбора плейлиста и других
-/// списков.
-Future<void> showBloomSheetChild({
+/// списков. Возвращает то, с чем её закрыли (`Navigator.pop`).
+Future<T?> showBloomSheetChild<T>({
   required BuildContext context,
   String? backdrop,
   Widget? header,
   required Widget child,
 }) {
-  return showModalBottomSheet<void>(
+  return showModalBottomSheet<T>(
     context: context,
     // Корневой навигатор: иначе шторка живёт внутри ветки таба и таб-бар с
     // миниплеером остаются поверх неё.
@@ -104,47 +106,81 @@ class _SheetShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final media = MediaQuery.of(context);
-    final image = coverImage(backdrop);
 
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: media.size.height * 0.85),
-      child: ClipRRect(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(t.radius * 1.7),
+    // Отступ снизу под клавиатуру: шторка стоит на дне экрана, и без него поле
+    // ввода (создание плейлиста) осталось бы под ней. Потолок высоты на ту же
+    // величину опускается, иначе шторка вылезет за верх экрана.
+    return Padding(
+      padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: media.size.height * 0.85 - media.viewInsets.bottom,
         ),
-        child: Stack(
-          children: [
-            // Картинок две: эта — фон всей шторки, и та же, но резкая и
-            // яркая, в шапке поверх неё. Фоновая НЕ размывается, только
-            // притемняется, иначе под пунктами каша.
-            if (image != null)
-              Positioned.fill(
-                child: Image(image: image, fit: BoxFit.cover),
-              ),
-            Positioned.fill(
-              child: ColoredBox(
-                color: image == null
-                    ? t.bg
-                    : Colors.black.withValues(alpha: 0.62),
-              ),
-            ),
-            SafeArea(
-              top: false,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const _Handle(),
-                    ?header,
-                    child,
-                    const SizedBox(height: 10),
-                  ],
+        child: ClipRRect(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(t.radius * 1.7),
+          ),
+          child: Stack(
+            children: [
+              // Картинок две: эта — фон всей шторки, и та же, но резкая и
+              // яркая, в шапке поверх неё.
+              Positioned.fill(child: SheetBackdrop(cover: backdrop)),
+              SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const _Handle(),
+                      ?header,
+                      child,
+                      const SizedBox(height: 10),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// Фон шторки: обложка сущности, размытая и притемнённая. Один на все шторки —
+/// включая очередь, у которой своя оболочка.
+class SheetBackdrop extends StatelessWidget {
+  const SheetBackdrop({super.key, required this.cover});
+
+  /// Сила размытия. Пункты лежат прямо на фоне, и деталей обложки под ними
+  /// остаться не должно — отсюда σ куда больше, чем у стеклянных плёнок.
+  static const double sigma = 34;
+
+  final String? cover;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final image = coverImage(cover);
+    if (image == null) return ColoredBox(color: t.bg);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ImageFiltered(
+          // `clamp`: без него размытие тянет за края прозрачность и по
+          // периметру шторки идёт светлая кайма.
+          imageFilter: ImageFilter.blur(
+            sigmaX: sigma,
+            sigmaY: sigma,
+            tileMode: TileMode.clamp,
+          ),
+          child: Image(image: image, fit: BoxFit.cover),
+        ),
+        // Притемнение поверх размытия: одного блюра мало, светлые обложки
+        // забивают текст пунктов.
+        ColoredBox(color: Colors.black.withValues(alpha: 0.62)),
+      ],
     );
   }
 }

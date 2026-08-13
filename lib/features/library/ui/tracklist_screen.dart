@@ -25,9 +25,13 @@ import '../../../features/offline/offline_store.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
+import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
+import '../../../shared/ui/sticky_hero.dart';
 import '../../../shared/util/format.dart';
+import '../lib_order_store.dart';
+import '../refresh_playlist.dart';
 import 'list_edit.dart';
 import 'list_hero.dart';
 
@@ -104,41 +108,39 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
     }
 
     final tracks = _apply(source);
+    final keys = _canReorder ? _keysFor(tracks) : const <Key>[];
     final width = MediaQuery.of(context).size.width;
 
     return CustomScrollView(
       slivers: [
-        SliverToBoxAdapter(
-          child: _Hero(
-            listId: widget.listId,
-            title: title,
-            playlist: playlist,
-            tracks: source,
-            visible: tracks,
-            // Летим только на свою обложку: коллаж 2×2 собирается из чужих
-            // картинок, и обложке плитки в нём места нет.
-            flight: playlist?.cover == null ? null : widget.flight,
-            height: width * 0.62,
-            sort: _sort,
-            onSort: (s) => setState(() => _sort = s),
-            searchOpen: _searchOpen,
-            query: _query,
-            onToggleSearch: () => setState(() {
-              _searchOpen = !_searchOpen;
-              if (!_searchOpen) _query = '';
-            }),
-            onQuery: (q) => setState(() => _query = q),
-            onEdit: () => setState(() {
-              _editing = true;
-              _searchOpen = false;
-              _query = '';
-              _sort = TrackSort.manual;
-            }),
-          ),
+        _Hero(
+          listId: widget.listId,
+          title: title,
+          playlist: playlist,
+          tracks: source,
+          visible: tracks,
+          // Летим только на свою обложку: коллаж 2×2 собирается из чужих
+          // картинок, и обложке плитки в нём места нет.
+          flight: playlist?.cover == null ? null : widget.flight,
+          height: width * 0.62,
+          sort: _sort,
+          onSort: (s) => setState(() => _sort = s),
+          searchOpen: _searchOpen,
+          query: _query,
+          onToggleSearch: () => setState(() {
+            _searchOpen = !_searchOpen;
+            if (!_searchOpen) _query = '';
+          }),
+          onQuery: (q) => setState(() => _query = q),
+          onEdit: () => setState(() {
+            _editing = true;
+            _searchOpen = false;
+            _query = '';
+            _sort = TrackSort.manual;
+          }),
         ),
-        // Ход пакетной загрузки — под шапкой, а не в ней: у hero фиксированная
-        // высота, лишняя строка внутри его переполнила бы.
-        const SliverToBoxAdapter(child: OfflineBatchBar()),
+        // Ход пакетной загрузки больше не строка под шапкой: он в тосте
+        // (`BatchToastBody`) и виден с любого экрана, а не только отсюда.
         if (tracks.isEmpty)
           SliverFillRemaining(
             hasScrollBody: false,
@@ -161,6 +163,30 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
               ),
             ),
           )
+        // Свой порядок списка — строки можно двигать: зажать обложку и тащить,
+        // как в очереди и на десктопе.
+        else if (_canReorder)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(8, 10, 8, 12),
+            sliver: SliverReorderableList(
+              itemCount: tracks.length,
+              onReorder: (from, to) => _reorder(source, from, to),
+              proxyDecorator: (child, _, _) => Material(
+                color: t.pill,
+                elevation: 6,
+                borderRadius: BorderRadius.circular(t.radius * 0.85),
+                child: child,
+              ),
+              itemBuilder: (context, i) => TrackRow(
+                key: keys[i],
+                track: tracks[i],
+                queue: tracks,
+                index: i,
+                sourceId: widget.listId,
+                dragIndex: i,
+              ),
+            ),
+          )
         else
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(8, 10, 8, 12),
@@ -176,6 +202,41 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
           ),
       ],
     );
+  }
+
+  /// Тянуть строки можно, только когда на экране собственный порядок списка:
+  /// при сортировке и поиске видно не его, и перестановка легла бы не туда.
+  bool get _canReorder => _sort == TrackSort.manual && _query.isEmpty;
+
+  /// Ключи строк: один трек может стоять в списке дважды, а `ReorderableList`
+  /// на дублях падает — дописываем номер вхождения (как в очереди).
+  List<Key> _keysFor(List<Track> tracks) {
+    final seen = <String, int>{};
+    return [
+      for (final track in tracks)
+        ValueKey('${track.id}#${seen[track.id] = (seen[track.id] ?? -1) + 1}'),
+    ];
+  }
+
+  /// Новый порядок уезжает в хранилище целиком — теми же ручками, что и режим
+  /// правки: состав не меняется, меняются только места.
+  void _reorder(List<Track> source, int from, int to) {
+    // Индекс вставки считается ДО изъятия строки — всё, что ниже, уже сдвинуто.
+    if (to > from) to--;
+    final next = [...source];
+    next.insert(to, next.removeAt(from));
+    final ids = [for (final track in next) track.id];
+    final lib = ref.read(libraryProvider.notifier);
+    switch (widget.listId) {
+      case 'all':
+        lib.setLibraryTracks(ids);
+      case 'fav':
+        lib.setFavTracks(ids);
+      case 'history':
+        lib.setHistoryTracks(ids);
+      default:
+        lib.setPlaylistTracks(widget.listId, ids);
+    }
   }
 
   /// Поиск и сортировка применяются к копии: исходный порядок плейлиста
@@ -260,104 +321,89 @@ class _Hero extends ConsumerWidget {
     final cover =
         playlist?.cover ?? (tracks.isEmpty ? null : tracks.first.cover);
 
-    return SizedBox(
+    return StickyHero(
       height: height + 76,
-      child: Stack(
-        children: [
-          // Обложка на всю шапку, включая ряд действий: её скруглённый нижний
-          // край и есть граница со списком.
-          Positioned.fill(
-            child: HeroCover(
-              child: CoverHero(
-                tag: flight?.tag,
-                shape: BorderRadius.vertical(
-                  bottom: Radius.circular(t.radius * 1.5),
-                ),
-                child: ListHeroBackground(
-                  listId: listId,
-                  cover: playlist?.cover,
-                  tracks: tracks,
-                ),
-              ),
-            ),
+      flying: flight != null,
+      // Обложка на всю шапку, включая ряд действий: её скруглённый нижний
+      // край и есть граница со списком.
+      background: HeroCover(
+        child: CoverHero(
+          tag: flight?.tag,
+          shape: BorderRadius.vertical(bottom: Radius.circular(t.radius * 1.5)),
+          child: ListHeroBackground(
+            listId: listId,
+            cover: playlist?.cover,
+            tracks: tracks,
           ),
-          HeroContent(
-            flying: flight != null,
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        GlassIconButton(
-                          icon: SolarIconsOutline.arrowLeft,
-                          onTap: () => context.go('/library'),
-                        ),
-                        const SizedBox(width: 8),
-                        _SortButton(
-                          sort: sort,
-                          onSort: onSort,
-                          title: title,
-                          cover: cover,
-                        ),
-                        const Spacer(),
-                        GlassIconButton(
-                          icon: searchOpen
-                              ? SolarIconsOutline.closeCircle
-                              : SolarIconsOutline.magnifier,
-                          onTap: onToggleSearch,
-                        ),
-                        if (playlist != null) ...[
-                          const SizedBox(width: 8),
-                          GlassIconButton(
-                            icon: SolarIconsOutline.menuDots,
-                            onTap: () => showPlaylistMenu(
-                              context,
-                              ref,
-                              playlist!,
-                              tracks,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    if (searchOpen) ...[
-                      const SizedBox(height: 10),
-                      _InlineSearch(query: query, onQuery: onQuery),
-                    ],
-                    const Spacer(),
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.headlineSmall?.copyWith(fontSize: 30),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(
-                          tracksCount(tracks.length),
-                          style: theme.bodyMedium,
-                        ),
-                        // Сколько из списка уже на устройстве — та же подпись,
-                        // что в шапке плейлиста на десктопе.
-                        OfflineTag(tracks: tracks),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    _Actions(
-                      listId: listId,
-                      tracks: visible.isEmpty ? tracks : visible,
-                      onEdit: onEdit,
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                ),
+        ),
+      ),
+      // Открытый поиск едет вместе с кнопками: искать по списку, глядя на него,
+      // и есть смысл только в прокрученном виде.
+      barHeight: searchOpen ? kHeaderControl * 2 + 10 : kHeaderControl,
+      bar: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              GlassIconButton(
+                icon: SolarIconsOutline.arrowLeft,
+                onTap: () => context.go('/library'),
               ),
-            ),
+              const SizedBox(width: 8),
+              _SortButton(
+                sort: sort,
+                onSort: onSort,
+                title: title,
+                cover: cover,
+              ),
+              const Spacer(),
+              GlassIconButton(
+                icon: searchOpen
+                    ? SolarIconsOutline.closeCircle
+                    : SolarIconsOutline.magnifier,
+                onTap: onToggleSearch,
+              ),
+              if (playlist != null) ...[
+                const SizedBox(width: 8),
+                GlassIconButton(
+                  icon: SolarIconsOutline.menuDots,
+                  onTap: () =>
+                      showPlaylistMenu(context, ref, playlist!, tracks),
+                ),
+              ],
+            ],
+          ),
+          if (searchOpen) ...[
+            const SizedBox(height: 10),
+            _InlineSearch(query: query, onQuery: onQuery),
+          ],
+        ],
+      ),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.headlineSmall?.copyWith(fontSize: 30),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Text(tracksCount(tracks.length), style: theme.bodyMedium),
+              // Сколько из списка уже на устройстве — та же подпись, что в
+              // шапке плейлиста на десктопе. Только у плейлиста: у «Всех
+              // треков» / «Любимых» / «Истории» на ПК её нет.
+              if (playlist != null) OfflineTag(tracks: tracks),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _Actions(
+            listId: listId,
+            tracks: visible.isEmpty ? tracks : visible,
+            onEdit: onEdit,
           ),
         ],
       ),
@@ -525,11 +571,9 @@ class _Actions extends ConsumerWidget {
           icon: SolarIconsOutline.shuffle,
           size: 46,
           onTap: enabled
-              ? () {
-                  final ctrl = ref.read(playbackProvider.notifier);
-                  if (!ref.read(playbackProvider).shuffle) ctrl.toggleShuffle();
-                  ctrl.playQueue(tracks, 0, sourceId: listId);
-                }
+              ? () => ref
+                    .read(playbackProvider.notifier)
+                    .playQueueShuffled(tracks, sourceId: listId)
               : null,
         ),
         const SizedBox(width: 10),
@@ -554,13 +598,21 @@ Future<void> showPlaylistMenu(
   void play({bool shuffle = false}) {
     if (tracks.isEmpty) return;
     final ctrl = ref.read(playbackProvider.notifier);
-    if (shuffle && !ref.read(playbackProvider).shuffle) ctrl.toggleShuffle();
-    ctrl.playQueue(tracks, 0, sourceId: playlist.id);
+    if (shuffle) {
+      ctrl.playQueueShuffled(tracks, sourceId: playlist.id);
+    } else {
+      ctrl.playQueue(tracks, 0, sourceId: playlist.id);
+    }
   }
 
   // У плейлиста без своей обложки её роль играет первый трек — так же, как в
   // hero экрана.
   final cover = playlist.cover ?? (tracks.isEmpty ? null : tracks.first.cover);
+
+  // Закреплённость читаем тут же, до открытия: в обработчиках пунктов `watch`
+  // уже недоступен.
+  final orderKey = libKeyOfPlaylist(playlist.id);
+  final pinned = ref.read(libOrderProvider).isPinned(orderKey);
 
   // Офлайн-состав считаем до открытия шторки: в её обработчиках `watch` уже
   // недоступен, а `read` внутри пункта дал бы состояние на момент нажатия.
@@ -593,9 +645,11 @@ Future<void> showPlaylistMenu(
         ),
       ],
       [
-        // Пакет качается прямо сейчас — единственное, что здесь уместно, это
-        // его остановить.
-        if (ref.read(offlineProvider).batch != null)
+        // Пакет ЭТОГО плейлиста качается прямо сейчас — единственное, что
+        // здесь уместно, это его остановить. Чужой пакет пунктов не меняет:
+        // остановить его отсюда было бы неожиданно, а `downloadAll` сам
+        // ответит, что уже качает другой список.
+        if (ref.read(offlineProvider).batch?.sourceId == playlist.id)
           SheetAction(
             icon: SolarIconsOutline.closeCircle,
             label: 'Прервать сохранение',
@@ -613,15 +667,29 @@ Future<void> showPlaylistMenu(
                 : 'Слушать офлайн (${offlineStatus.total - offlineStatus.cached})',
             onTap: () => offlineStatus.all
                 ? removeListOffline(messenger, ref, tracks)
-                : downloadListOffline(messenger, ref, playlist.name, tracks),
+                : downloadListOffline(messenger, ref, playlist.id, tracks),
           ),
           if (canSaveFiles)
             SheetAction(
               icon: SolarIconsOutline.downloadMinimalistic,
               label: 'Скачать файлами (${offlineStatus.total})',
-              onTap: () => saveListFiles(messenger, ref, playlist.name, tracks),
+              onTap: () => saveListFiles(messenger, ref, playlist.id, tracks),
             ),
         ],
+        // Тот же «Обновить треки», что кнопкой в шапке: в шторку он попадает
+        // и с плитки библиотеки, где шапки нет.
+        if (playlist.sourceUrl != null)
+          SheetAction(
+            icon: SolarIconsOutline.refresh,
+            label: 'Обновить треки',
+            onTap: () => refreshOnePlaylist(messenger, ref, playlist),
+          ),
+        SheetAction(
+          icon: SolarIconsOutline.pin,
+          label: pinned ? 'Открепить' : 'Закрепить',
+          onTap: () =>
+              ref.read(libOrderProvider.notifier).togglePin(orderKey),
+        ),
         SheetAction(
           icon: SolarIconsOutline.penNewSquare,
           label: 'Переименовать',
@@ -652,11 +720,26 @@ Future<void> showPlaylistMenu(
           label: 'Удалить плейлист',
           danger: true,
           onTap: () {
-            // Своя обложка живёт файлом в каталоге приложения — без этого
-            // она останется мусором навсегда.
-            deleteCover(playlist.cover);
-            ref.read(libraryProvider.notifier).deletePlaylist(playlist.id);
+            // Удаляем сразу и даём «Отменить» в тосте — как `PlMenu` на ПК:
+            // плейлист это всего лишь список id, вернуть его дёшево, а сами
+            // треки в библиотеке не трогаются.
+            final lib = ref.read(libraryProvider.notifier);
+            final index = ref
+                .read(libraryProvider)
+                .playlists
+                .indexWhere((p) => p.id == playlist.id);
+            lib.deletePlaylist(playlist.id);
             context.go('/library');
+            messenger.toast(
+              'Плейлист «${playlist.name}» удалён',
+              action: ToastAction(
+                fn: () => lib.restorePlaylist(index, playlist),
+                // Своя обложка живёт файлом в каталоге приложения; удаляем её
+                // только когда отменять уже нечего, иначе возвращённый
+                // плейлист остался бы без картинки.
+                onExpire: () => deleteCover(playlist.cover),
+              ),
+            );
           },
         ),
       ],

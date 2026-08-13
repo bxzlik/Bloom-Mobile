@@ -47,20 +47,23 @@ Future<void> initOfflineStore() async {
 /// Ход пакетной загрузки (плейлист целиком) — то, что на ПК показывает
 /// `downloadBanner`.
 class OfflineBatch {
-  final String title;
+  /// Чей это пакет — id списка, с которого его запустили (`listId` экрана).
+  /// Индикатор один на всё приложение, поэтому без него строка «Сохраняю…»
+  /// висела бы на КАЖДОМ плейлисте, а не на том, который качается.
+  final String sourceId;
   final int done;
   final int total;
   final int failed;
 
   const OfflineBatch({
-    required this.title,
+    required this.sourceId,
     required this.done,
     required this.total,
     this.failed = 0,
   });
 
   OfflineBatch copyWith({int? done, int? failed}) => OfflineBatch(
-    title: title,
+    sourceId: sourceId,
     done: done ?? this.done,
     total: total,
     failed: failed ?? this.failed,
@@ -224,12 +227,12 @@ class OfflineController extends Notifier<OfflineState> {
   /// взятая заранее, к концу списка протухла бы.
   ///
   /// Возвращает текст итога для снекбара; `null` — качать было нечего.
-  Future<String?> downloadAll(String title, List<Track> tracks) async {
+  Future<String?> downloadAll(String sourceId, List<Track> tracks) async {
     final pending = tracks
         .where((t) => !state.has(t.id) && canDownload(t))
         .toList();
     if (pending.isEmpty) return null;
-    if (!beginBatch(title, pending.length)) return 'Уже качаю другой список';
+    if (!beginBatch(sourceId, pending.length)) return 'Уже качаю другой список';
 
     var failed = 0;
     for (var i = 0; i < pending.length; i++) {
@@ -247,10 +250,10 @@ class OfflineController extends Notifier<OfflineState> {
   /// один индикатор не налезут, да и площадку душить параллельными резолвами
   /// незачем. Публичный, потому что тем же индикатором пользуется сохранение
   /// списка файлами (см. `file_download.dart`).
-  bool beginBatch(String title, int total) {
+  bool beginBatch(String sourceId, int total) {
     if (state.batch != null || total == 0) return false;
     state = state.copyWith(
-      batch: OfflineBatch(title: title, done: 0, total: total),
+      batch: OfflineBatch(sourceId: sourceId, done: 0, total: total),
     );
     return true;
   }

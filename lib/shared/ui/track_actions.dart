@@ -20,6 +20,7 @@ import '../../features/offline/offline_store.dart';
 import '../util/format.dart';
 import 'atoms.dart';
 import 'bloom_sheet.dart';
+import 'bloom_toast.dart';
 
 Future<void> showTrackActions(
   BuildContext context,
@@ -97,56 +98,25 @@ Future<void> showTrackActions(
             icon: SolarIconsOutline.trashBinMinimalistic,
             label: 'Удалить трек',
             danger: true,
-            onTap: () => _confirmDelete(context, ref, track),
+            onTap: () => _deleteTrack(messenger, ref, track),
           ),
       ],
     ],
   );
 }
 
-/// Удаление насквозь — спрашиваем, как `confirm()` на десктопе: трек уходит и
-/// из любимых, и из плейлистов, и из истории.
-Future<void> _confirmDelete(
-  BuildContext context,
+/// Удаление насквозь, без переспроса: трек уходит и из любимых, и из
+/// плейлистов, и из истории — пункт красный, тап по нему уже и есть решение.
+void _deleteTrack(
+  ScaffoldMessengerState messenger,
   WidgetRef ref,
   Track track,
-) async {
-  final t = context.bloom;
-  final theme = Theme.of(context).textTheme;
-  final yes = await showDialog<bool>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      backgroundColor: t.blockColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(t.radius),
-        side: BorderSide(color: t.ovlLine),
-      ),
-      title: Text('Удалить трек?', style: theme.titleLarge),
-      content: Text(
-        '«${track.name}» пропадёт из библиотеки, любимых, плейлистов и истории.',
-        style: theme.bodyMedium?.copyWith(color: t.text2),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: Text('Отмена', style: TextStyle(color: t.text2)),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: Text('Удалить', style: TextStyle(color: t.sysFavIco)),
-        ),
-      ],
-    ),
-  );
-  if (yes != true || !context.mounted) return;
-  // Мессенджер берём до удаления: строка, из которой вызвали шторку, после него
-  // уезжает из списка вместе со своим context.
-  final messenger = ScaffoldMessenger.of(context);
+) {
   // Офлайн-копию убираем вместе с треком: без строки в библиотеке файл остался
   // бы мусором, на который никто не ссылается.
   unawaited(ref.read(offlineProvider.notifier).remove(track.id));
   ref.read(libraryProvider.notifier).deleteTrack(track.id);
-  messenger.showSnackBar(const SnackBar(content: Text('Трек удалён')));
+  messenger.toast('Трек удалён');
 }
 
 /// Шторка «Добавить в …»: сперва библиотека, потом плейлисты — порядок как в
@@ -207,8 +177,9 @@ Future<void> showAddTracksToPlaylistSheet(
                   final messenger = ScaffoldMessenger.of(context);
                   ref.read(libraryProvider.notifier).addToLibrary(outside);
                   Navigator.of(context).pop();
-                  messenger.showSnackBar(
-                    const SnackBar(content: Text('Добавлено в библиотеку')),
+                  messenger.toast(
+                    'Добавлено в библиотеку',
+                    kind: ToastKind.success,
                   );
                 },
               ),
@@ -282,6 +253,7 @@ class _PlaylistRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
+    final lib = ref.watch(libraryProvider);
     // Галочка — «всё это уже здесь»: у пачки половина треков в плейлисте ещё
     // не отметка, добавить остальные по-прежнему есть смысл.
     final ids = playlist.trackIds.toSet();
@@ -298,7 +270,11 @@ class _PlaylistRow extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           children: [
-            Cover(url: playlist.cover, size: 40),
+            Cover(
+              url: playlist.cover,
+              size: 40,
+              covers: playlist.trackIds.map((id) => lib.tracks[id]?.cover),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(

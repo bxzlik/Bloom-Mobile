@@ -10,6 +10,7 @@
 library;
 
 import 'dart:io';
+import 'dart:typed_data' show Uint8List;
 
 import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
@@ -75,6 +76,37 @@ Future<String?> pickCover() async {
   try {
     final name = 'cover_${DateTime.now().millisecondsSinceEpoch}.jpg';
     await picked.saveTo('${dir.path}/$name');
+    return '$_prefix$name';
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Выбрать картинку из галереи БЕЗ сохранения — путь к тому, что вернул
+/// image_picker. Нужна там, где картинку ещё будут резать (аватар и обложка
+/// профиля): исходник берётся крупнее обложки, а в каталог приложения ляжет
+/// уже обрезок.
+Future<String?> pickImageFile({int maxSide = 2048}) async {
+  try {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: maxSide.toDouble(),
+      maxHeight: maxSide.toDouble(),
+    );
+    return picked?.path;
+  } catch (_) {
+    return null; // отказ в доступе к галерее
+  }
+}
+
+/// Положить готовые байты картинкой приложения. Возвращает значение поля
+/// (`local:...`) или `null`, если записать не вышло.
+Future<String?> saveLocalImage(Uint8List bytes, {String prefix = 'img'}) async {
+  final dir = _dir;
+  if (dir == null) return null;
+  try {
+    final name = '${prefix}_${DateTime.now().millisecondsSinceEpoch}.png';
+    await File('${dir.path}/$name').writeAsBytes(bytes, flush: true);
     return '$_prefix$name';
   } catch (_) {
     return null;

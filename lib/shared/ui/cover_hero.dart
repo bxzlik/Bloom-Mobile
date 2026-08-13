@@ -137,13 +137,16 @@ class HeroContent extends StatelessWidget {
 /// расходились по темпу.
 
 /// Новая страница проявляется за первые 3/4 перехода.
-final Animatable<double> _fadeIn = Tween<double>(
+///
+/// Публичные: этими же кривыми растворяются вкладки каркаса
+/// (см. `BranchCrossfade`), и расходиться по темпу им нельзя.
+final Animatable<double> kPageFadeIn = Tween<double>(
   begin: 0,
   end: 1,
 ).chain(CurveTween(curve: const Interval(0, 0.75)));
 
 /// Уходящая — гаснет за первую четверть.
-final Animatable<double> _fadeOut = Tween<double>(
+final Animatable<double> kPageFadeOut = Tween<double>(
   begin: 1,
   end: 0,
 ).chain(CurveTween(curve: const Interval(0, 0.25)));
@@ -165,10 +168,13 @@ Widget detailPageTransition(
   return DualTransitionBuilder(
     animation: animation,
     forwardBuilder: (context, animation, child) =>
-        FadeTransition(opacity: _fadeIn.animate(animation), child: child),
+        FadeTransition(opacity: kPageFadeIn.animate(animation), child: child),
     reverseBuilder: (context, animation, child) => IgnorePointer(
       ignoring: animation.status == AnimationStatus.forward,
-      child: FadeTransition(opacity: _fadeOut.animate(animation), child: child),
+      child: FadeTransition(
+        opacity: kPageFadeOut.animate(animation),
+        child: child,
+      ),
     ),
     // Заливка на время перехода — иначе в момент, когда страницу накрывают
     // следующей, между ними просвечивает чёрное.
@@ -178,10 +184,14 @@ Widget detailPageTransition(
           : Colors.transparent,
       child: DualTransitionBuilder(
         animation: ReverseAnimation(secondaryAnimation),
-        forwardBuilder: (context, animation, child) =>
-            FadeTransition(opacity: _fadeIn.animate(animation), child: child),
-        reverseBuilder: (context, animation, child) =>
-            FadeTransition(opacity: _fadeOut.animate(animation), child: child),
+        forwardBuilder: (context, animation, child) => FadeTransition(
+          opacity: kPageFadeIn.animate(animation),
+          child: child,
+        ),
+        reverseBuilder: (context, animation, child) => FadeTransition(
+          opacity: kPageFadeOut.animate(animation),
+          child: child,
+        ),
         child: child,
       ),
     ),

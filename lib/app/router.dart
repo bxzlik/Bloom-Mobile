@@ -1,5 +1,8 @@
-/// Навигация: три таба через [StatefulShellRoute.indexedStack] — у каждого
-/// свой стек, состояние вкладки переживает переключение.
+/// Навигация: три таба через [StatefulShellRoute] — у каждого свой стек,
+/// состояние вкладки переживает переключение.
+///
+/// Контейнер веток свой ([BranchCrossfade]) вместо готового `indexedStack`:
+/// тот меняет вкладку одним кадром, без перехода.
 ///
 /// Вложенные страницы (поиск, списки библиотеки, разделы настроек) живут
 /// ВНУТРИ своей ветки: таб-бар и миниплеер остаются на месте.
@@ -11,6 +14,8 @@ import 'package:go_router/go_router.dart';
 import '../features/home/ui/home_screen.dart';
 import '../features/library/ui/library_screen.dart';
 import '../features/library/ui/tracklist_screen.dart';
+import '../features/profile/ui/profile_edit_screen.dart';
+import '../features/profile/ui/profile_screen.dart';
 import '../features/search/ui/search_screen.dart';
 import '../features/settings/ui/appearance_screen.dart';
 import '../features/settings/ui/settings_screen.dart';
@@ -42,8 +47,10 @@ final GoRouter bloomRouter = GoRouter(
   navigatorKey: _rootKey,
   initialLocation: '/home',
   routes: [
-    StatefulShellRoute.indexedStack(
+    StatefulShellRoute(
       builder: (context, state, shell) => BloomShell(shell: shell),
+      navigatorContainerBuilder: (context, shell, children) =>
+          BranchCrossfade(index: shell.currentIndex, children: children),
       branches: [
         StatefulShellBranch(
           routes: [
@@ -54,6 +61,35 @@ final GoRouter bloomRouter = GoRouter(
                 GoRoute(
                   path: 'search',
                   builder: (_, _) => const _Page(SearchScreen()),
+                ),
+                GoRoute(
+                  path: 'profile',
+                  // Растворение на месте: в шапку профиля летит аватар с
+                  // кнопки главной, и сдвиг всей страницы спорил бы с ним
+                  // (см. `detailPageTransition`).
+                  pageBuilder: (_, state) => CustomTransitionPage<void>(
+                    key: state.pageKey,
+                    transitionsBuilder: detailPageTransition,
+                    transitionDuration: kDetailTransition,
+                    reverseTransitionDuration: kDetailTransition,
+                    child: _Page(
+                      ProfileScreen(
+                        flight: state.extra is CoverFlight
+                            ? state.extra! as CoverFlight
+                            : null,
+                      ),
+                    ),
+                  ),
+                  routes: [
+                    GoRoute(
+                      path: 'edit',
+                      // Поверх каркаса: редактор — это модалка десктопа, и
+                      // таб-бар с миниплеером под кнопкой «Сохранить» ей ни к
+                      // чему.
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const _Page(ProfileEditScreen()),
+                    ),
+                  ],
                 ),
               ],
             ),

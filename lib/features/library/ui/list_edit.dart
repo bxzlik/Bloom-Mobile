@@ -25,7 +25,9 @@ import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../features/offline/offline_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/entity_tiles.dart';
+import '../../../shared/ui/sticky_hero.dart';
 import '../../../shared/ui/track_actions.dart';
 import '../../../shared/util/format.dart';
 import 'list_hero.dart';
@@ -123,12 +125,10 @@ class _ListEditorState extends ConsumerState<ListEditor> {
       added++;
     }
     setState(_selected.clear);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          added == 0 ? 'Уже в любимых' : 'В любимые: ${tracksCount(added)}',
-        ),
-      ),
+    showToast(
+      context,
+      added == 0 ? 'Уже в любимых' : 'В любимые: ${tracksCount(added)}',
+      kind: added == 0 ? ToastKind.warn : ToastKind.success,
     );
   }
 
@@ -264,20 +264,18 @@ class _ListEditorState extends ConsumerState<ListEditor> {
         children: [
           CustomScrollView(
             slivers: [
-              SliverToBoxAdapter(
-                child: _EditHero(
-                  listId: widget.listId,
-                  name: _name,
-                  cover: _cover,
-                  tracks: _tracks,
-                  // Своя обложка и своё имя есть только у плейлиста.
-                  editable: _playlist != null,
-                  height: width * 0.62,
-                  onCancel: _cancel,
-                  onDone: _commit,
-                  onCover: _pickCover,
-                  onRename: () => setState(() => _renaming = true),
-                ),
+              _EditHero(
+                listId: widget.listId,
+                name: _name,
+                cover: _cover,
+                tracks: _tracks,
+                // Своя обложка и своё имя есть только у плейлиста.
+                editable: _playlist != null,
+                height: width * 0.62,
+                onCancel: _cancel,
+                onDone: _commit,
+                onCover: _pickCover,
+                onRename: () => setState(() => _renaming = true),
               ),
               SliverPadding(
                 // Снизу — место под плавающую панель: последняя строка не
@@ -340,7 +338,11 @@ class _ListEditorState extends ConsumerState<ListEditor> {
 
 /// Шапка режима правки: та же обложка, но вместо «назад/сортировка/поиск» —
 /// ✕ и ✓, по центру кнопка выбора картинки, у названия карандаш. Ряда
-/// «Воспроизвести» здесь нет, поэтому шапка ниже обычной.
+/// «Воспроизвести» здесь нет, но высота шапки та же, что и на обычном экране:
+/// вход в правку не должен её дёргать. Название с подписью просто опускаются
+/// на освободившееся место — к нижнему краю обложки.
+///
+/// Как и обычная шапка списка — слайвер: ряд ✕/✓ остаётся у верхнего края.
 class _EditHero extends StatelessWidget {
   const _EditHero({
     required this.listId,
@@ -373,17 +375,18 @@ class _EditHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context).textTheme;
 
-    return SizedBox(
-      height: height,
-      child: Stack(
+    return StickyHero(
+      // Те же `+ 76`, что и у обычной шапки списка (ряд «Воспроизвести»): её
+      // высота считается от одной и той же [height].
+      height: height + 76,
+      background: Stack(
+        fit: StackFit.expand,
         children: [
-          Positioned.fill(
-            child: HeroCover(
-              child: ListHeroBackground(
-                listId: listId,
-                cover: cover,
-                tracks: tracks,
-              ),
+          HeroCover(
+            child: ListHeroBackground(
+              listId: listId,
+              cover: cover,
+              tracks: tracks,
             ),
           ),
           if (editable)
@@ -395,68 +398,63 @@ class _EditHero extends StatelessWidget {
                 onTap: onCover,
               ),
             ),
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      GlassIconButton(
-                        icon: Icons.close_rounded,
-                        onTap: onCancel,
-                      ),
-                      const Spacer(),
-                      GlassIconButton(icon: Icons.check_rounded, onTap: onDone),
-                    ],
-                  ),
-                  const Spacer(),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.headlineSmall?.copyWith(fontSize: 30),
-                        ),
-                      ),
-                      if (editable) ...[
-                        const SizedBox(width: 8),
-                        // Карандаш прямо у названия, без подложки: это часть
-                        // заголовка, а не ещё одна кнопка шапки.
-                        InkResponse(
-                          onTap: onRename,
-                          radius: 22,
-                          child: const Padding(
-                            padding: EdgeInsets.all(4),
-                            child: Icon(
-                              SolarIconsOutline.pen,
-                              size: 21,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(tracksCount(tracks.length), style: theme.bodyMedium),
-                ],
+        ],
+      ),
+      // ✕ и ✓ остаются наверху: закончить правку длинного списка иначе можно
+      // только пролистав его обратно.
+      barHeight: kHeaderControl,
+      bar: Row(
+        children: [
+          GlassIconButton(icon: Icons.close_rounded, onTap: onCancel),
+          const Spacer(),
+          GlassIconButton(icon: Icons.check_rounded, onTap: onDone),
+        ],
+      ),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.headlineSmall?.copyWith(fontSize: 30),
+                ),
               ),
-            ),
+              if (editable) ...[
+                const SizedBox(width: 8),
+                // Карандаш прямо у названия, без подложки: это часть
+                // заголовка, а не ещё одна кнопка шапки.
+                InkResponse(
+                  onTap: onRename,
+                  radius: 22,
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: Icon(
+                      SolarIconsOutline.pen,
+                      size: 21,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
+          const SizedBox(height: 4),
+          Text(tracksCount(tracks.length), style: theme.bodyMedium),
         ],
       ),
     );
   }
 }
 
-/// Строка списка в режиме правки: чекбокс, обложка, название, длительность и
-/// ручка перетаскивания. Тап по строке выделяет её, а не заводит трек, — играть
-/// из режима правки нечего.
+/// Строка списка в режиме правки: чекбокс, обложка, название и длительность.
+/// Тап по строке выделяет её, а не заводит трек, — играть из режима правки
+/// нечего. Тянучка — обложка, как в обычном списке и в очереди: отдельной ручке
+/// в строке уже нечего делать.
 class _EditRow extends StatelessWidget {
   const _EditRow({
     super.key,
@@ -485,7 +483,10 @@ class _EditRow extends StatelessWidget {
           children: [
             _Check(on: selected),
             const SizedBox(width: 12),
-            Cover(url: track.cover, size: 52),
+            ReorderableDelayedDragStartListener(
+              index: index,
+              child: Cover(url: track.cover, size: 52),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -509,17 +510,6 @@ class _EditRow extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             DurationPill(track: track, active: false),
-            ReorderableDragStartListener(
-              index: index,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 4),
-                child: Icon(
-                  SolarIconsOutline.hamburgerMenu,
-                  size: 22,
-                  color: t.muted,
-                ),
-              ),
-            ),
           ],
         ),
       ),

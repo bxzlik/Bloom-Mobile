@@ -22,6 +22,7 @@ import '../../../core/providers/music_provider.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/util/format.dart';
@@ -58,11 +59,9 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     }
   }
 
-  void _toast(String message) {
+  void _toast(String message, [ToastKind kind = ToastKind.info]) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    showToast(context, message, kind: kind);
   }
 
   // ── Импорт ──────────────────────────────────────────────────────────────
@@ -72,7 +71,10 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     final likes = _profile.likes;
     if (likes.isEmpty) return;
     final added = ref.read(libraryProvider.notifier).addToLibrary(likes);
-    _toast(added > 0 ? 'Добавлено: ${tracksCount(added)}' : 'Уже в библиотеке');
+    _toast(
+      added > 0 ? 'Добавлено: ${tracksCount(added)}' : 'Уже в библиотеке',
+      added > 0 ? ToastKind.success : ToastKind.warn,
+    );
   }
 
   /// Лайки отдельным плейлистом. Ссылка на аккаунт становится источником —
@@ -89,7 +91,10 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
           cover: artist.avatar,
           sourceUrl: artist.permalink,
         );
-    _toast('Плейлист создан — ${tracksCount(likes.length)}');
+    _toast(
+      'Плейлист создан — ${tracksCount(likes.length)}',
+      ToastKind.success,
+    );
   }
 
   /// Все плейлисты аккаунта. Состав приходит только по `getPlaylist`, поэтому
@@ -98,12 +103,19 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     final sets = _profile.playlists;
     if (sets.isEmpty || _importing) return;
     setState(() => _importing = true);
-    _toast('Импортирую ${sets.length}…');
+    // Живой тост: счётчик и полоса идут по ходу обхода, итог подменяет их на
+    // месте — вместо двух тостов подряд.
+    final toast = ScaffoldMessenger.of(
+      context,
+    ).busyToast('Импортирую ${sets.length}…');
 
     final registry = ref.read(registryProvider);
     final lib = ref.read(libraryProvider.notifier);
     var ok = 0;
-    for (final set in sets) {
+    for (var i = 0; i < sets.length; i++) {
+      final set = sets[i];
+      // Счётчик двигаем ДО работы: ниже есть `continue`.
+      toast.update('Импортирую: ${i + 1}/${sets.length}', progress: i / sets.length);
       try {
         final content = await registry.forEntity(set.id)?.getPlaylist(set.id);
         final tracks = content?.tracks ?? const <Track>[];
@@ -119,9 +131,12 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
         // Один закрытый плейлист не должен прерывать остальные.
       }
     }
+    toast.finish(
+      'Импортировано: $ok из ${sets.length}',
+      kind: ok == sets.length ? ToastKind.success : ToastKind.warn,
+    );
     if (!mounted) return;
     setState(() => _importing = false);
-    _toast('Импортировано: $ok из ${sets.length}');
   }
 
   @override

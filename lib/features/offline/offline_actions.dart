@@ -7,12 +7,13 @@
 /// отвязан от дерева.
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solar_icons/solar_icons.dart';
 
-import '../../app/theme/tokens.dart';
 import '../../core/entities/entities.dart';
+import '../../shared/ui/bloom_toast.dart';
 import 'file_download.dart';
 import 'offline_store.dart';
 
@@ -25,32 +26,39 @@ Future<void> toggleTrackOffline(
   final offline = ref.read(offlineProvider.notifier);
   if (offline.has(track.id)) {
     await offline.remove(track.id);
-    messenger.showSnackBar(const SnackBar(content: Text('Убрано из офлайна')));
+    messenger.toast('Убрано из офлайна');
     return;
   }
-  messenger.showSnackBar(
-    const SnackBar(content: Text('Сохранение для офлайна…')),
-  );
+  // Один тост на всю операцию: вертушка меняется на галочку прямо в нём, а не
+  // сменой двух тостов подряд.
+  final toast = messenger.busyToast('Сохранение для офлайна…');
   final error = await offline.download(track);
-  messenger
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(content: Text(error ?? 'Доступно офлайн: ${track.name}')),
-    );
+  toast.finish(
+    error ?? 'Доступно офлайн: ${track.name}',
+    kind: error == null ? ToastKind.success : ToastKind.error,
+  );
 }
 
 /// Скачать список целиком (плейлист, «Любимые», «Все треки»).
+///
+/// [sourceId] — id списка (`listId` его экрана): по нему индикатор пакета
+/// понимает, на чьей странице ему показываться.
 Future<void> downloadListOffline(
   ScaffoldMessengerState messenger,
   WidgetRef ref,
-  String title,
+  String sourceId,
   List<Track> tracks,
 ) async {
+  final toast = messenger.busyToast(
+    'Сохранение для офлайна…',
+    content: (view) => BatchToastBody(view: view),
+  );
   final result = await ref
       .read(offlineProvider.notifier)
-      .downloadAll(title, tracks);
-  messenger.showSnackBar(
-    SnackBar(content: Text(result ?? 'Здесь нечего сохранять офлайн')),
+      .downloadAll(sourceId, tracks);
+  toast.finish(
+    result ?? 'Здесь нечего сохранять офлайн',
+    kind: result == null ? ToastKind.warn : ToastKind.success,
   );
 }
 
@@ -62,16 +70,12 @@ Future<void> saveTrackFile(
   WidgetRef ref,
   Track track,
 ) async {
-  messenger.showSnackBar(const SnackBar(content: Text('Скачиваю трек…')));
+  final toast = messenger.busyToast('Скачиваю трек…');
   try {
     final path = await saveTrackAsFile(ref, track);
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('Сохранено: $path')));
+    toast.finish('Сохранено: $path');
   } catch (e) {
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(readableSaveError(e))));
+    toast.finish(readableSaveError(e), kind: ToastKind.error);
   }
 }
 
@@ -79,18 +83,25 @@ Future<void> saveTrackFile(
 Future<void> saveListFiles(
   ScaffoldMessengerState messenger,
   WidgetRef ref,
-  String title,
+  String sourceId,
   List<Track> tracks,
 ) async {
-  final result = await saveListAsFiles(ref, title, tracks);
-  messenger.showSnackBar(
-    SnackBar(
-      content: Text(
-        result.total == 0
-            ? 'Здесь нечего скачивать'
-            : batchSummary(result.total, result.failed),
-      ),
-    ),
+  // Тот же индикатор пакета, что у офлайн-копий (см. `beginBatch`), — значит и
+  // тост тот же.
+  final toast = messenger.busyToast(
+    'Скачиваю файлами…',
+    content: (view) => BatchToastBody(view: view),
+  );
+  final result = await saveListAsFiles(ref, sourceId, tracks);
+  toast.finish(
+    result.total == 0
+        ? 'Здесь нечего скачивать'
+        : batchSummary(result.total, result.failed),
+    kind: result.total == 0
+        ? ToastKind.warn
+        : result.failed == 0
+        ? ToastKind.success
+        : ToastKind.warn,
   );
 }
 
@@ -101,10 +112,9 @@ Future<void> removeListOffline(
   List<Track> tracks,
 ) async {
   final n = await ref.read(offlineProvider.notifier).removeAll(tracks);
-  messenger.showSnackBar(
-    SnackBar(
-      content: Text(n == 0 ? 'Офлайн-копий не было' : 'Убрано из офлайна: $n'),
-    ),
+  messenger.toast(
+    n == 0 ? 'Офлайн-копий не было' : 'Убрано из офлайна: $n',
+    kind: n == 0 ? ToastKind.warn : ToastKind.info,
   );
 }
 
@@ -129,48 +139,40 @@ Future<void> removeListOffline(
   );
 }
 
-/// Ход пакетной загрузки — то, что на ПК показывает баннер: сколько треков из
-/// скольких сохранено и кнопка «прервать». Общий для обоих скачиваний; пока
-/// пакета нет, не занимает ни пикселя.
-class OfflineBatchBar extends ConsumerWidget {
-  const OfflineBatchBar({super.key});
+/// Тело тоста пакетной загрузки: счётчик «N/M», полоса снизу как индикатор
+/// прогресса (вместо отсчёта) и «Прервать». Раньше это была строка под шапкой
+/// списка — теперь тост, поэтому ход загрузки видно с любого экрана, а не
+/// только на той странице, откуда её запустили.
+///
+/// Пакет в сторе один на приложение, поэтому сверять `sourceId` не с чем: если
+/// пакет идёт — он и есть наш.
+class BatchToastBody extends ConsumerWidget {
+  const BatchToastBody({super.key, required this.view});
+
+  /// Состояние тоста от [ToastHandle]: до `finish()` тут «идёт работа», после —
+  /// готовый итог, и счётчик пакета уже не при чём.
+  final ValueListenable<ToastView> view;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final batch = ref.watch(offlineProvider.select((s) => s.batch));
-    if (batch == null) return const SizedBox.shrink();
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(
-              value: batch.done / batch.total,
-              strokeWidth: 2,
-              color: t.accent,
-              backgroundColor: t.ovlLine,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Сохраняю: ${batch.done}/${batch.total}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.bodyMedium,
-            ),
-          ),
-          TextButton(
-            onPressed: () => ref.read(offlineProvider.notifier).cancelBatch(),
-            child: Text('Прервать', style: TextStyle(color: t.text2)),
-          ),
-        ],
-      ),
+    return ValueListenableBuilder(
+      valueListenable: view,
+      builder: (_, v, _) {
+        final live = v.busy && batch != null;
+        return BloomToastCard(
+          text: live ? 'Сохраняю: ${batch.done}/${batch.total}' : v.text,
+          kind: v.kind,
+          busy: v.busy,
+          progress: live && batch.total > 0 ? batch.done / batch.total : null,
+          barDuration: v.barDuration,
+          actionLabel: live ? 'Прервать' : null,
+          onAction: live
+              ? () => ref.read(offlineProvider.notifier).cancelBatch()
+              : null,
+        );
+      },
     );
   }
 }
@@ -179,12 +181,21 @@ class OfflineBatchBar extends ConsumerWidget {
 /// частично — «N/M». Пока ни одного трека нет, не рисуется вовсе. Цвет — как у
 /// самой подписи, акцентом не выделяется (порт `PlaylistOfflineTag`).
 class OfflineTag extends ConsumerWidget {
-  const OfflineTag({super.key, required this.tracks, this.dot = true});
+  const OfflineTag({
+    super.key,
+    required this.tracks,
+    this.dot = true,
+    this.style,
+  });
 
   final List<Track> tracks;
 
   /// Ставить ли точку-разделитель перед тегом.
   final bool dot;
+
+  /// Стиль подписи, к которой тег приписывается. По умолчанию — `bodyMedium`
+  /// шапки списка; на плитках библиотеки подпись мельче, и стиль приходит свой.
+  final TextStyle? style;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -194,14 +205,18 @@ class OfflineTag extends ConsumerWidget {
       tracks,
     );
     if (!status.any) return const SizedBox.shrink();
-    final style = Theme.of(context).textTheme.bodyMedium;
+    final style = this.style ?? Theme.of(context).textTheme.bodyMedium;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (dot) Text(' · ', style: style),
         // Та же дискета, что в строке трека и в теге плейлиста на десктопе.
-        Icon(SolarIconsOutline.diskette, size: 13, color: style?.color),
+        Icon(
+          SolarIconsOutline.diskette,
+          size: style?.fontSize ?? 13,
+          color: style?.color,
+        ),
         const SizedBox(width: 3),
         Text(
           status.all ? 'офлайн' : '${status.cached}/${status.total}',

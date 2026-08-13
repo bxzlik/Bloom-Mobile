@@ -22,6 +22,7 @@ import '../../../core/store/library_store.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
+import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/detail_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
@@ -165,9 +166,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
   void _shuffle() {
     final queue = _playQueue;
     if (queue.isEmpty) return;
-    final ctrl = ref.read(playbackProvider.notifier);
-    if (!ref.read(playbackProvider).shuffle) ctrl.toggleShuffle();
-    ctrl.playQueue(queue, 0);
+    ref.read(playbackProvider.notifier).playQueueShuffled(queue);
   }
 
   @override
@@ -180,24 +179,22 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
       backgroundColor: t.bg,
       body: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(
-            child: DetailHero(
-              image: artist?.avatar,
-              title: artist?.name ?? 'Артист',
-              subtitle: _subtitle(artist),
-              flight: widget.flight,
-              onMenu: artist == null ? null : () => _menu(artist),
-              actions: HeroActions(
-                onPlay: queue.isEmpty ? null : _play,
-                trailing: [
-                  GlassIconButton(
-                    icon: SolarIconsOutline.shuffle,
-                    size: 46,
-                    onTap: queue.isEmpty ? null : _shuffle,
-                  ),
-                  if (artist != null) _FollowButton(artist: artist),
-                ],
-              ),
+          DetailHero(
+            image: artist?.avatar,
+            title: artist?.name ?? 'Артист',
+            subtitle: _subtitle(artist),
+            flight: widget.flight,
+            onMenu: artist == null ? null : () => _menu(artist),
+            actions: HeroActions(
+              onPlay: queue.isEmpty ? null : _play,
+              trailing: [
+                GlassIconButton(
+                  icon: SolarIconsOutline.shuffle,
+                  size: 46,
+                  onTap: queue.isEmpty ? null : _shuffle,
+                ),
+                if (artist != null) _FollowButton(artist: artist),
+              ],
             ),
           ),
           if (_loading)
@@ -382,6 +379,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                         );
                     _toast(
                       'Добавлено: ${artist.name} — ${tracksCount(forImport.length)}',
+                      ToastKind.success,
                     );
                   },
           ),
@@ -393,7 +391,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
               label: 'Скопировать ссылку',
               onTap: () {
                 Clipboard.setData(ClipboardData(text: link));
-                _toast('Ссылка скопирована');
+                _toast('Ссылка скопирована', ToastKind.success);
               },
             ),
         ],
@@ -401,11 +399,9 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
     );
   }
 
-  void _toast(String message) {
+  void _toast(String message, [ToastKind kind = ToastKind.info]) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    showToast(context, message, kind: kind);
   }
 }
 
@@ -429,10 +425,9 @@ class _FollowButton extends ConsumerWidget {
       color: following ? t.accentText : null,
       onTap: () {
         final on = ref.read(libraryProvider.notifier).toggleFollow(artist);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(on ? 'Подписка на ${artist.name}' : 'Подписка снята'),
-          ),
+        showToast(
+          context,
+          on ? 'Подписка на ${artist.name}' : 'Подписка снята',
         );
       },
     );

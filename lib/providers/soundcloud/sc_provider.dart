@@ -131,6 +131,14 @@ class SoundCloudProvider extends MusicProvider {
     );
   }
 
+  /// Узкий `/search/users` вместо всей выдачи: за аватаром одного исполнителя
+  /// незачем тянуть ещё треки, альбомы и плейлисты.
+  @override
+  Future<List<Artist>> searchArtists(String query, {int limit = 3}) async {
+    final page = await sc.searchArtists(query, limit: limit);
+    return page.items.map(artistFromSc).toList();
+  }
+
   @override
   Future<TrackPage?> loadMoreTracks(
     String query,

@@ -101,6 +101,9 @@ ThemeData buildBloomTheme(BloomTokens t) {
     ),
     iconTheme: IconThemeData(color: t.iconFg, size: 22),
     dividerTheme: DividerThemeData(color: t.ovlLine, thickness: 1, space: 1),
+    // Запасной вид для голого `SnackBar`. Свои тосты его не используют: они
+    // рисуются `BloomToastCard` (`shared/ui/bloom_toast.dart`), а сам снекбар
+    // делают прозрачным — см. `_show` там же.
     snackBarTheme: SnackBarThemeData(
       backgroundColor: t.pill,
       contentTextStyle: bloomText(size: 14, weight: 500, color: t.text),

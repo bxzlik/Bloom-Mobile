@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../offline/offline_store.dart';
 
@@ -162,8 +163,9 @@ class _ClearButton extends ConsumerWidget {
     if (yes != true || !context.mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     final deleted = await ref.read(offlineProvider.notifier).clearAll();
-    messenger.showSnackBar(
-      SnackBar(content: Text('Офлайн-кеш очищен, удалено файлов: $deleted')),
+    messenger.toast(
+      'Офлайн-кеш очищен, удалено файлов: $deleted',
+      kind: ToastKind.success,
     );
   }
 }

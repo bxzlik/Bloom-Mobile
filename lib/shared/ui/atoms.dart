@@ -14,6 +14,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../app/theme/tokens.dart';
 import '../../core/store/cover_store.dart';
 import 'bloom_mark.dart';
+import 'cover_collage.dart';
 import 'cover_hero.dart';
 
 /// Высота управляющих элементов шапки: круглых кнопок, пилюли профиля, поля
@@ -423,12 +424,19 @@ class Cover extends StatelessWidget {
     this.circle = false,
     this.flight,
     this.overlay,
+    this.covers,
   });
 
   final String? url;
   final double size;
   final double? radius;
   final bool circle;
+
+  /// Обложки треков списка — из них собирается коллаж, когда своей картинки у
+  /// списка нет. Так же, как в шапке этого списка (`CoverCollage`): карточка и
+  /// страница обязаны показывать одно и то же. `null` — сущность не список
+  /// (трек, артист), собирать нечего.
+  final Iterable<String?>? covers;
 
   /// Слой поверх картинки — эквалайзер играющего сета. Стоит РЯДОМ с перелётом,
   /// а не внутри: летит одна обложка, полоски остаются на карточке.
@@ -471,10 +479,21 @@ class Cover extends StatelessWidget {
 
     final image = coverImage(url);
     if (image == null) {
+      final collage = covers;
       return SizedBox(
         width: size,
         height: size,
-        child: withOverlay(placeholder()),
+        child: withOverlay(
+          collage == null
+              ? placeholder()
+              : ClipRRect(
+                  borderRadius: shape,
+                  child: CoverCollage(
+                    covers: collage,
+                    fallback: placeholder(),
+                  ),
+                ),
+        ),
       );
     }
 
