@@ -51,10 +51,7 @@ void main() {
     });
 
     test('обложка берётся из coverUri, cover.uri или ogImage', () {
-      expect(
-        coverFrom({'coverUri': 'a/%%'}),
-        'https://a/400x400',
-      );
+      expect(coverFrom({'coverUri': 'a/%%'}), 'https://a/400x400');
       expect(
         coverFrom({
           'cover': {'uri': 'b/%%'},
@@ -222,7 +219,10 @@ void main() {
 
   group('прямая ссылка', () {
     test('подпись: md5(соль + path без слеша + s)', () {
-      expect(signPath('/abc/def.mp3', 'xyz'), '018bd052f726715baee932ed27d907fc');
+      expect(
+        signPath('/abc/def.mp3', 'xyz'),
+        '018bd052f726715baee932ed27d907fc',
+      );
     });
 
     test('теги XML достаются по первому вхождению', () {

@@ -33,7 +33,9 @@ Future<void> main(List<String> args) async {
   // visitorData: без него `player` отвечает LOGIN_REQUIRED — это первое, что
   // ломается, и первое, что надо видеть в выводе.
   final visitor = await ytm.visitorData();
-  print('visitorData: ${visitor.isEmpty ? "ПУСТО" : "${visitor.length} симв."}');
+  print(
+    'visitorData: ${visitor.isEmpty ? "ПУСТО" : "${visitor.length} симв."}',
+  );
   check(visitor.isNotEmpty, 'visitorData не получен');
 
   // ---- Поиск: разделы не смешиваются ----
@@ -55,7 +57,9 @@ Future<void> main(List<String> args) async {
   );
   // Искомое обязано лежать в СВОЁМ разделе (ловит контаминацию выдачи).
   check(
-    found.artists.any((a) => a.name.toLowerCase().contains(query.toLowerCase())),
+    found.artists.any(
+      (a) => a.name.toLowerCase().contains(query.toLowerCase()),
+    ),
     'искомого артиста нет среди артистов',
   );
 
@@ -67,7 +71,9 @@ Future<void> main(List<String> args) async {
     final more = await provider.loadMoreTracks(query, found.tracks.length);
     final ids = found.tracks.map((t) => t.id).toSet();
     final dupes = (more?.tracks ?? const []).where((t) => ids.contains(t.id));
-    print('loadMoreTracks: +${more?.tracks.length} треков, дублей ${dupes.length}');
+    print(
+      'loadMoreTracks: +${more?.tracks.length} треков, дублей ${dupes.length}',
+    );
     check((more?.tracks.length ?? 0) > 0, 'догрузка ничего не дала');
     check(dupes.isEmpty, 'догрузка вернула уже показанные треки');
   } else {
@@ -102,10 +108,7 @@ Future<void> main(List<String> args) async {
       album?.tracks.every((t) => t.artist.isNotEmpty) ?? false,
       'в строках альбома пустой исполнитель',
     );
-    check(
-      (album?.playlist.cover ?? '').isNotEmpty,
-      'у альбома нет обложки',
-    );
+    check((album?.playlist.cover ?? '').isNotEmpty, 'у альбома нет обложки');
   }
 
   // ---- Плейлист ----
@@ -164,7 +167,10 @@ Future<void> main(List<String> args) async {
     final resp = await req.close();
     final bytes = await resp.fold<int>(0, (n, chunk) => n + chunk.length);
     print('байт получено: $bytes (HTTP ${resp.statusCode})');
-    check(resp.statusCode == 206 || resp.statusCode == 200, 'CDN не отдал байты');
+    check(
+      resp.statusCode == 206 || resp.statusCode == 200,
+      'CDN не отдал байты',
+    );
     check(bytes > 0, 'поток пуст');
     client.close();
   }

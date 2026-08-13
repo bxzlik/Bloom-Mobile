@@ -152,28 +152,31 @@ void main() {
       expect(t.cover, 'https://lh3.googleusercontent.com/aaa=w544-h544-l90-rj');
     });
 
-    test('трек альбома: длительность из fixedColumns, артиста в строке нет', () {
-      final t = parseTrack(
-        _row(
-          videoId: 'vid2',
-          columns: [
-            _col([
-              {'text': 'Второй трек'},
-            ]),
-            _col([
-              {'text': '1.2M plays'},
-            ]),
-          ],
-          fixedRuns: [
-            {'text': '4:02'},
-          ],
-        )['musicResponsiveListItemRenderer'],
-      )!;
+    test(
+      'трек альбома: длительность из fixedColumns, артиста в строке нет',
+      () {
+        final t = parseTrack(
+          _row(
+            videoId: 'vid2',
+            columns: [
+              _col([
+                {'text': 'Второй трек'},
+              ]),
+              _col([
+                {'text': '1.2M plays'},
+              ]),
+            ],
+            fixedRuns: [
+              {'text': '4:02'},
+            ],
+          )['musicResponsiveListItemRenderer'],
+        )!;
 
-      expect(t.duration, const Duration(minutes: 4, seconds: 2));
-      // Артист в строках альбома не повторяется; подставит его страница.
-      expect(t.artist, '1.2M plays');
-    });
+        expect(t.duration, const Duration(minutes: 4, seconds: 2));
+        // Артист в строках альбома не повторяется; подставит его страница.
+        expect(t.artist, '1.2M plays');
+      },
+    );
 
     test('трек чарт-плейлиста: артист в НУЛЕВОМ run подписи', () {
       // Гоча с десктопа: безусловный пропуск нулевого run оставлял чарт без
@@ -209,7 +212,10 @@ void main() {
       );
       expect(
         parseTrack(
-          _row(videoId: 'v', columns: const [])['musicResponsiveListItemRenderer'],
+          _row(
+            videoId: 'v',
+            columns: const [],
+          )['musicResponsiveListItemRenderer'],
         ),
         isNull,
       );
@@ -616,8 +622,10 @@ void main() {
     });
 
     test('апскейл обложки не портит ссылку без размеров', () {
-      expect(upscaleThumb('https://i.ytimg.com/vi/x/hq.jpg'),
-          'https://i.ytimg.com/vi/x/hq.jpg');
+      expect(
+        upscaleThumb('https://i.ytimg.com/vi/x/hq.jpg'),
+        'https://i.ytimg.com/vi/x/hq.jpg',
+      );
       expect(upscaleThumb('https://lh3/a=w60-h60'), 'https://lh3/a=w544-h544');
     });
 
@@ -630,30 +638,34 @@ void main() {
   });
 
   group('ссылки и id', () {
-    test('видео важнее плейлиста, browse-префиксы разбираются без сети',
-        () async {
-      expect(
-        (await resolve('https://music.youtube.com/watch?v=abc123&list=PL1')).id,
-        'abc123',
-      );
-      expect((await resolve('https://youtu.be/xyz789?t=10')).kind, 'track');
-      expect(
-        (await resolve('https://music.youtube.com/browse/MPREb_1')).kind,
-        'album',
-      );
-      expect(
-        (await resolve('https://music.youtube.com/playlist?list=PLabc')).id,
-        'PLabc',
-      );
-      expect(
-        (await resolve('https://www.youtube.com/channel/UCabc')).kind,
-        'artist',
-      );
-      await expectLater(
-        resolve('https://soundcloud.com/user/track'),
-        throwsA(isA<YtmException>()),
-      );
-    });
+    test(
+      'видео важнее плейлиста, browse-префиксы разбираются без сети',
+      () async {
+        expect(
+          (await resolve(
+            'https://music.youtube.com/watch?v=abc123&list=PL1',
+          )).id,
+          'abc123',
+        );
+        expect((await resolve('https://youtu.be/xyz789?t=10')).kind, 'track');
+        expect(
+          (await resolve('https://music.youtube.com/browse/MPREb_1')).kind,
+          'album',
+        );
+        expect(
+          (await resolve('https://music.youtube.com/playlist?list=PLabc')).id,
+          'PLabc',
+        );
+        expect(
+          (await resolve('https://www.youtube.com/channel/UCabc')).kind,
+          'artist',
+        );
+        await expectLater(
+          resolve('https://soundcloud.com/user/track'),
+          throwsA(isA<YtmException>()),
+        );
+      },
+    );
 
     test('сквозные id: трек не путается с альбомом и плейлистом', () {
       expect(parseYtmTrackId(ytmTrackId('vid')), 'vid');

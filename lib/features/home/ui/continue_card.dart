@@ -231,8 +231,7 @@ class _SeekPill extends StatelessWidget {
     final pill = LayoutBuilder(
       builder: (context, box) {
         final width = box.maxWidth;
-        void applyAt(double dx) =>
-            seek?.call((dx / width).clamp(0.0, 1.0));
+        void applyAt(double dx) => seek?.call((dx / width).clamp(0.0, 1.0));
 
         final content = Container(
           height: _CardShell._height,
@@ -290,7 +289,8 @@ class _SeekPill extends StatelessWidget {
           // Свои жесты только по горизонтали: вертикальные остаются ленте
           // главной, иначе пилюля мешала бы её листать.
           onTapDown: (d) => applyAt(d.localPosition.dx),
-          onTapUp: (d) => onSeekEnd?.call((d.localPosition.dx / width).clamp(0.0, 1.0)),
+          onTapUp: (d) =>
+              onSeekEnd?.call((d.localPosition.dx / width).clamp(0.0, 1.0)),
           onHorizontalDragStart: (d) => applyAt(d.localPosition.dx),
           onHorizontalDragUpdate: (d) => applyAt(d.localPosition.dx),
           onHorizontalDragEnd: (_) => onSeekEnd?.call(progress),

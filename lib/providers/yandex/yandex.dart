@@ -90,7 +90,8 @@ Future<YmDeviceCode> authStart(String deviceId) async {
   return YmDeviceCode(
     deviceCode: v?['device_code'] as String? ?? '',
     userCode: v?['user_code'] as String? ?? '',
-    verificationUrl: v?['verification_url'] as String? ?? 'https://ya.ru/device',
+    verificationUrl:
+        v?['verification_url'] as String? ?? 'https://ya.ru/device',
     interval: Duration(seconds: (v?['interval'] as num?)?.toInt() ?? 5),
     expiresIn: Duration(seconds: (v?['expires_in'] as num?)?.toInt() ?? 300),
   );
@@ -152,7 +153,9 @@ Future<Map<String, dynamic>> apiGet(
   for (var attempt = 1; ; attempt++) {
     http.Response? resp;
     try {
-      resp = await _http.get(uri, headers: _authHeaders(token)).timeout(_timeout);
+      resp = await _http
+          .get(uri, headers: _authHeaders(token))
+          .timeout(_timeout);
     } catch (_) {
       // сетевая ошибка — транзиентна
     }
@@ -238,8 +241,7 @@ YmRawTrack? parseTrack(Object? node) {
     id: id,
     title: node['title'] as String? ?? kYmUntitled,
     artist: names.isEmpty ? kYmUnknownArtist : names.join(', '),
-    artistId:
-        (firstArtist is Map ? idStr(firstArtist['id']) : null) ?? '',
+    artistId: (firstArtist is Map ? idStr(firstArtist['id']) : null) ?? '',
     cover: coverUrl(node['coverUri']),
     duration: Duration(
       milliseconds: (node['durationMs'] as num?)?.toInt() ?? 0,
@@ -528,7 +530,10 @@ Future<List<YmRawTrack>> chart() async {
   final arr = chartNode is Map ? chartNode['tracks'] : null;
   if (arr is! List) return const [];
   return _parseAll(
-    [for (final it in arr) (it is Map && it['track'] != null) ? it['track'] : it],
+    [
+      for (final it in arr)
+        (it is Map && it['track'] != null) ? it['track'] : it,
+    ],
     parseTrack,
     30,
   );
@@ -649,11 +654,7 @@ Future<String> streamUrl(String trackId) async {
   final path = xmlTag(xml, 'path');
   final ts = xmlTag(xml, 'ts');
   final s = xmlTag(xml, 's');
-  if (host == null ||
-      path == null ||
-      path.isEmpty ||
-      ts == null ||
-      s == null) {
+  if (host == null || path == null || path.isEmpty || ts == null || s == null) {
     throw const YmException('ym.err.badDownloadXml');
   }
 

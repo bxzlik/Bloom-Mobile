@@ -178,10 +178,7 @@ void main() {
           HistoryEntry('sc_c', 2),
         ],
       );
-      expect(
-        recentTracks(lib, 12).map((t) => t.id),
-        ['sc_a', 'sc_b', 'sc_c'],
-      );
+      expect(recentTracks(lib, 12).map((t) => t.id), ['sc_a', 'sc_b', 'sc_c']);
       expect(recentTracks(lib, 2).map((t) => t.id), ['sc_a', 'sc_b']);
     });
 
@@ -199,7 +196,10 @@ void main() {
       final provider = _FakeProvider(charts: [_track('a')]);
       final c = _container(provider);
 
-      final first = await fetchDiscover(c.read(registryProvider), DiscoverMode.charts);
+      final first = await fetchDiscover(
+        c.read(registryProvider),
+        DiscoverMode.charts,
+      );
       expect(first, isNotNull);
       expect(first!.source, MusicSource.yandex);
       expect((first.block as DiscoverTracks).tracks.single.id, 'sc_a');

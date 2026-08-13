@@ -243,8 +243,7 @@ class YtmusicProvider extends MusicProvider {
         ownerName: _blankToNull(e.subtitle),
         ownerAvatar: _blankToNull(e.ownerAvatar),
         trackCount: tracks.isEmpty ? null : tracks.length,
-        sourceUrl:
-            'https://music.youtube.com/playlist?list=${_bare(browseId)}',
+        sourceUrl: 'https://music.youtube.com/playlist?list=${_bare(browseId)}',
         source: MusicSource.ytmusic,
       ),
       tracks: tracks,

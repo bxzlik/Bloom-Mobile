@@ -182,7 +182,10 @@ class _PlusBadge extends StatelessWidget {
           children: [
             TextSpan(
               text: l.ymPlusNoneA,
-              style: body?.copyWith(color: t.text2, fontWeight: FontWeight.w700),
+              style: body?.copyWith(
+                color: t.text2,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             TextSpan(text: ' ${l.ymPlusNoneB}', style: body),
           ],

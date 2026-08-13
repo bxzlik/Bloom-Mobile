@@ -29,7 +29,11 @@ void main() {
     });
     final c = _container(store);
 
-    expect(const YandexProvider().isEnabled, isFalse, reason: 'до чтения стора');
+    expect(
+      const YandexProvider().isEnabled,
+      isFalse,
+      reason: 'до чтения стора',
+    );
     expect(c.read(ymAuthProvider).authed, isTrue);
     // Токен уезжает в сетевой слой, иначе первый же запрос ушёл бы без него.
     expect(ym.activeToken(), 'saved-token');
@@ -81,7 +85,10 @@ void main() {
   });
 
   test('причина отказа доезжает до UI кодом, а не «Instance of»', () {
-    expect(ymErrorCode(const YmException('ym.err.needPlus')), 'ym.err.needPlus');
+    expect(
+      ymErrorCode(const YmException('ym.err.needPlus')),
+      'ym.err.needPlus',
+    );
     // Ошибка, всплывшая через toString (так она приходит из состояния стора).
     expect(ymErrorCode('YmException: ym.err.auth'), 'ym.err.auth');
   });

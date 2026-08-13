@@ -114,7 +114,10 @@ Future<void> main(List<String> args) async {
     '${artistPage?.topTracks.length} популярных, ${artistPage?.tracks.length} треков, '
     '${artistPage?.albums.length} альбомов, ${artistPage?.similarArtists.length} похожих',
   );
-  check((artistPage?.topTracks.length ?? 0) > 0, 'у артиста пусто в популярных');
+  check(
+    (artistPage?.topTracks.length ?? 0) > 0,
+    'у артиста пусто в популярных',
+  );
   check(
     artistPage?.topTracks.every((t) => t.name.isNotEmpty) ?? false,
     'популярные без названий — brief-info отдал голые id, добор не сработал',

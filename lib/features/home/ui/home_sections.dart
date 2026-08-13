@@ -76,7 +76,8 @@ class DiscoverSection extends ConsumerWidget {
             height: 194,
             padding: 16,
             itemCount: tracks.length,
-            builder: (i) => TrackCard(track: tracks[i], queue: tracks, index: i),
+            builder: (i) =>
+                TrackCard(track: tracks[i], queue: tracks, index: i),
           ),
           DiscoverAlbums(:final albums) => EntityCarousel(
             height: 194,
@@ -111,8 +112,7 @@ class RecentSection extends ConsumerWidget {
           height: 194,
           padding: 16,
           itemCount: recent.length,
-          builder: (i) =>
-              TrackCard(track: recent[i], queue: recent, index: i),
+          builder: (i) => TrackCard(track: recent[i], queue: recent, index: i),
         ),
       ],
     );
@@ -249,7 +249,11 @@ class _NewPlaylistCard extends ConsumerWidget {
                 color: t.ovlBg,
                 borderRadius: BorderRadius.circular(t.radius * 0.72),
               ),
-              child: Icon(SolarIconsOutline.addSquare, size: 28, color: t.text2),
+              child: Icon(
+                SolarIconsOutline.addSquare,
+                size: 28,
+                color: t.text2,
+              ),
             ),
             const SizedBox(height: 8),
             Text(

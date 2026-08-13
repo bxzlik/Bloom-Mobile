@@ -539,7 +539,9 @@ YtmRawTrack? parseTrack(Object? it) {
         'pageType',
       ]);
       if (pt == 'MUSIC_PAGE_TYPE_ARTIST') {
-        artistId = str(at(r, ['navigationEndpoint', 'browseEndpoint', 'browseId']));
+        artistId = str(
+          at(r, ['navigationEndpoint', 'browseEndpoint', 'browseId']),
+        );
         if (artistId.isNotEmpty) break;
       }
     }
@@ -670,10 +672,7 @@ const int kPagingMaxFetches = 3;
 Future<Map<String, dynamic>> searchRaw(String query, [String? params]) async =>
     _postJson(
       '$kSearchUrl&key=$kWebKey',
-      await _webBody({
-        'query': query,
-        'params': ?params,
-      }),
+      await _webBody({'query': query, 'params': ?params}),
       userAgent: kWebUa,
       extraHeaders: _musicHeaders,
       errCode: 'ytm.err.search',
@@ -727,10 +726,10 @@ List<T> mergeById<T>(
 }
 
 Future<Map<String, dynamic>?> _searchOrNull(String query, String params) =>
-    searchRaw(query, params).then<Map<String, dynamic>?>(
-      (v) => v,
-      onError: (_) => null,
-    );
+    searchRaw(
+      query,
+      params,
+    ).then<Map<String, dynamic>?>((v) => v, onError: (_) => null);
 
 Future<YtmSearchRaw> search(String query) async {
   // Пять запросов параллельно: общая выдача + по вкладке на каждый раздел.
@@ -975,10 +974,7 @@ Future<YtmSearchMore> searchMore(String query) async {
 Future<Map<String, dynamic>> browse(String browseId, [String? params]) async =>
     _postJson(
       '$kBrowseUrl&key=$kWebKey',
-      await _webBody({
-        'browseId': browseId,
-        'params': ?params,
-      }),
+      await _webBody({'browseId': browseId, 'params': ?params}),
       userAgent: kWebUa,
       extraHeaders: _musicHeaders,
       errCode: 'ytm.err.browse',
@@ -1049,16 +1045,9 @@ Future<YtmEntity> artist(String browseId) async {
 
   final more = await Future.wait([
     _moreTracks(
-      shelfMore(v, const [
-        'Top songs',
-        'Songs',
-        'Популярные треки',
-        'Песни',
-      ]),
+      shelfMore(v, const ['Top songs', 'Songs', 'Популярные треки', 'Песни']),
     ),
-    _moreAlbums(
-      shelfMore(v, const ['Singles & EPs', 'Синглы и EP', 'Синглы']),
-    ),
+    _moreAlbums(shelfMore(v, const ['Singles & EPs', 'Синглы и EP', 'Синглы'])),
   ]);
   final fullSongs = more[0] as List<YtmRawTrack>;
   final singles = more[1] as List<YtmRawAlbum>;
@@ -1123,7 +1112,10 @@ MoreLink? shelfMore(Object? v, List<String> titles) {
   void walk(Object? node) {
     if (out != null) return;
     if (node is Map) {
-      for (final key in const ['musicShelfRenderer', 'musicCarouselShelfRenderer']) {
+      for (final key in const [
+        'musicShelfRenderer',
+        'musicCarouselShelfRenderer',
+      ]) {
         final shelf = node[key];
         if (shelf == null) continue;
         final head = (shelf is Map ? shelf['header'] : null) ?? shelf;
@@ -1465,10 +1457,7 @@ Future<String?> _getText(String url) async {
     final r = await _http
         .get(
           Uri.parse(url),
-          headers: {
-            'User-Agent': kWebUa,
-            'Accept-Language': 'en-US,en;q=0.9',
-          },
+          headers: {'User-Agent': kWebUa, 'Accept-Language': 'en-US,en;q=0.9'},
         )
         .timeout(_timeout);
     if (r.statusCode < 200 || r.statusCode >= 300) return null;

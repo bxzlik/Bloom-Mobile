@@ -68,7 +68,10 @@ class ResumeData {
               ? index
               : queue.length - kResumeQueueLimit);
     return ResumeData(
-      queue: queue.sublist(from, (from + kResumeQueueLimit).clamp(0, queue.length)),
+      queue: queue.sublist(
+        from,
+        (from + kResumeQueueLimit).clamp(0, queue.length),
+      ),
       index: index - from,
       position: position,
       paused: paused,
