@@ -13,28 +13,36 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../core/entities/entities.dart';
+import '../../core/l10n/l10n.dart';
 import '../../shared/ui/bloom_toast.dart';
 import 'file_download.dart';
 import 'offline_store.dart';
 
 /// Скачать трек или убрать его копию — «Слушать офлайн» / «Убрать из офлайна».
+///
+/// Переводы передаются рядом с мессенджером и по той же причине: шторка
+/// действий закрывается раньше, чем приходит результат, и брать их из её
+/// `context` в этот момент уже нельзя.
 Future<void> toggleTrackOffline(
   ScaffoldMessengerState messenger,
+  AppLocalizations l,
   WidgetRef ref,
   Track track,
 ) async {
   final offline = ref.read(offlineProvider.notifier);
   if (offline.has(track.id)) {
     await offline.remove(track.id);
-    messenger.toast('Убрано из офлайна');
+    messenger.toast(l.ofRemoved);
     return;
   }
   // Один тост на всю операцию: вертушка меняется на галочку прямо в нём, а не
   // сменой двух тостов подряд.
-  final toast = messenger.busyToast('Сохранение для офлайна…');
+  final toast = messenger.busyToast(l.ofSaving);
   final error = await offline.download(track);
   toast.finish(
-    error ?? 'Доступно офлайн: ${track.name}',
+    error == null
+        ? l.ofAvailable(track.name)
+        : describeOfflineFailure(l, error),
     kind: error == null ? ToastKind.success : ToastKind.error,
   );
 }
@@ -45,21 +53,23 @@ Future<void> toggleTrackOffline(
 /// понимает, на чьей странице ему показываться.
 Future<void> downloadListOffline(
   ScaffoldMessengerState messenger,
+  AppLocalizations l,
   WidgetRef ref,
   String sourceId,
   List<Track> tracks,
 ) async {
   final toast = messenger.busyToast(
-    'Сохранение для офлайна…',
+    l.ofSaving,
     content: (view) => BatchToastBody(view: view),
   );
   final result = await ref
       .read(offlineProvider.notifier)
       .downloadAll(sourceId, tracks);
-  toast.finish(
-    result ?? 'Здесь нечего сохранять офлайн',
-    kind: result == null ? ToastKind.warn : ToastKind.success,
-  );
+  toast.finish(switch (result) {
+    null => l.ofNothingToSave,
+    final r when r.busy => l.ofBusyWithAnother,
+    final r => batchSummary(l, r),
+  }, kind: result == null || result.busy ? ToastKind.warn : ToastKind.success);
 }
 
 /// «Скачать файлом» — второе скачивание десктопа: трек ложится туда, где его
@@ -67,21 +77,26 @@ Future<void> downloadListOffline(
 /// приложения в «Файлах»).
 Future<void> saveTrackFile(
   ScaffoldMessengerState messenger,
+  AppLocalizations l,
   WidgetRef ref,
   Track track,
 ) async {
-  final toast = messenger.busyToast('Скачиваю трек…');
+  final toast = messenger.busyToast(l.ofDownloadingTrack);
   try {
     final path = await saveTrackAsFile(ref, track);
-    toast.finish('Сохранено: $path');
+    toast.finish(l.ofSaved(path ?? saveTargetLabel(l)));
   } catch (e) {
-    toast.finish(readableSaveError(e), kind: ToastKind.error);
+    toast.finish(
+      describeSaveError(l, readableSaveError(e)),
+      kind: ToastKind.error,
+    );
   }
 }
 
 /// Сохранить файлами весь список.
 Future<void> saveListFiles(
   ScaffoldMessengerState messenger,
+  AppLocalizations l,
   WidgetRef ref,
   String sourceId,
   List<Track> tracks,
@@ -89,14 +104,17 @@ Future<void> saveListFiles(
   // Тот же индикатор пакета, что у офлайн-копий (см. `beginBatch`), — значит и
   // тост тот же.
   final toast = messenger.busyToast(
-    'Скачиваю файлами…',
+    l.ofDownloadingFiles,
     content: (view) => BatchToastBody(view: view),
   );
   final result = await saveListAsFiles(ref, sourceId, tracks);
   toast.finish(
     result.total == 0
-        ? 'Здесь нечего скачивать'
-        : batchSummary(result.total, result.failed),
+        ? l.ofNothingToDownload
+        : batchSummary(
+            l,
+            BatchResult(total: result.total, failed: result.failed),
+          ),
     kind: result.total == 0
         ? ToastKind.warn
         : result.failed == 0
@@ -108,12 +126,13 @@ Future<void> saveListFiles(
 /// Убрать офлайн-копии всех треков списка.
 Future<void> removeListOffline(
   ScaffoldMessengerState messenger,
+  AppLocalizations l,
   WidgetRef ref,
   List<Track> tracks,
 ) async {
   final n = await ref.read(offlineProvider.notifier).removeAll(tracks);
   messenger.toast(
-    n == 0 ? 'Офлайн-копий не было' : 'Убрано из офлайна: $n',
+    n == 0 ? l.ofNoCopies : l.ofRemovedCount(n),
     kind: n == 0 ? ToastKind.warn : ToastKind.info,
   );
 }
@@ -162,12 +181,14 @@ class BatchToastBody extends ConsumerWidget {
       builder: (_, v, _) {
         final live = v.busy && batch != null;
         return BloomToastCard(
-          text: live ? 'Сохраняю: ${batch.done}/${batch.total}' : v.text,
+          text: live
+              ? context.l.ofSavingProgress(batch.done, batch.total)
+              : v.text,
           kind: v.kind,
           busy: v.busy,
           progress: live && batch.total > 0 ? batch.done / batch.total : null,
           barDuration: v.barDuration,
-          actionLabel: live ? 'Прервать' : null,
+          actionLabel: live ? context.l.ofAbort : null,
           onAction: live
               ? () => ref.read(offlineProvider.notifier).cancelBatch()
               : null,
@@ -219,10 +240,41 @@ class OfflineTag extends ConsumerWidget {
         ),
         const SizedBox(width: 3),
         Text(
-          status.all ? 'офлайн' : '${status.cached}/${status.total}',
+          status.all
+              ? context.l.commonOfflineBadge
+              : '${status.cached}/${status.total}',
           style: style,
         ),
       ],
     );
   }
+}
+
+/// Причина отказа офлайна — фразой. Живёт здесь, а не в сторе: только у UI
+/// есть язык интерфейса.
+String describeOfflineFailure(AppLocalizations l, OfflineFailure failure) =>
+    switch (failure.kind) {
+      OfflineFailureKind.noStorage => l.ofNoStorage,
+      OfflineFailureKind.notSavable => l.ofCantSaveTrack,
+      OfflineFailureKind.streamOnly => l.ofStreamOnly,
+      OfflineFailureKind.drm => l.ofDrm,
+      OfflineFailureKind.noFileLink => l.ofNoFileLink,
+      OfflineFailureKind.noConnection => l.ofNoConnection,
+      OfflineFailureKind.unknown => l.ofSaveFailed(failure.detail ?? ''),
+    };
+
+/// То же для сохранения файлом.
+String describeSaveError(AppLocalizations l, DownloadFailure failure) =>
+    switch (failure.kind) {
+      DownloadFailureKind.notDownloadable => l.fdCantDownload,
+      DownloadFailureKind.needPermission => l.fdNeedPermission,
+      DownloadFailureKind.noConnection => l.ofNoConnection,
+      DownloadFailureKind.unknown => failure.detail ?? l.fdSaveFailed,
+    };
+
+/// Итог пакетной загрузки фразой.
+String batchSummary(AppLocalizations l, BatchResult r) {
+  if (r.failed == 0) return l.ofDownloadedAll(r.ok);
+  if (r.ok == 0) return l.ofDownloadedNone;
+  return l.ofDownloadedPartial(r.ok, r.total, r.failed);
 }

@@ -1,6 +1,13 @@
-/// Главная. Пока сделана только шапка из референса (пилюля профиля + круглые
-/// кнопки). Созвездие «Моя волна», карточка «Недавние» и ленты «Для вас» /
-/// «Популярное» — следующим заходом.
+/// Главная — витрина из секций, порядок как на десктопе (`app/pages/HomePage`):
+/// «Продолжить» → «Любимые»/«История» → «Новинки» → «Чарты» → «Недавно
+/// слушали» → «Плейлисты».
+///
+/// Секции сами решают, показываться ли им: пустая история и пустая витрина
+/// схлопываются в ничто, поэтому на свежей установке остаются только карточки
+/// разделов и плитка «Новый плейлист».
+///
+/// «Моя волна» на десктопе стоит рядом с «Продолжить»; её движок рекомендаций
+/// на мобилку ещё не переносился — это отдельный заход.
 library;
 
 import 'package:flutter/material.dart';
@@ -12,15 +19,19 @@ import '../../../app/theme/tokens.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/cover_hero.dart';
+import '../../player/ui/mini_player.dart';
 import '../../profile/profile_store.dart';
 import '../../profile/ui/profile_avatar.dart';
+import '../discover_store.dart';
+import 'continue_card.dart';
+import 'home_sections.dart';
+import 'quick_cards.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     return SafeArea(
       bottom: false,
       child: Column(
@@ -28,13 +39,18 @@ class HomeScreen extends StatelessWidget {
         children: [
           const _TopBar(),
           Expanded(
-            child: Center(
-              child: Text(
-                'Здесь будет «Моя волна», недавние и ленты',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: t.muted),
-              ),
+            child: ListView(
+              // Снизу — воздух под миниплеер и таб-бар: они плавают над
+              // содержимым, и без запаса последняя лента уезжает под них.
+              padding: const EdgeInsets.only(bottom: kMiniPlayerHeight + 16),
+              children: const [
+                ContinueCard(),
+                QuickCards(),
+                DiscoverSection(mode: DiscoverMode.newReleases),
+                DiscoverSection(mode: DiscoverMode.charts),
+                RecentSection(),
+                PlaylistsSection(),
+              ],
             ),
           ),
         ],

@@ -1,3 +1,5 @@
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/router.dart';
 import 'app/theme/bloom_theme.dart';
+import 'core/l10n/l10n.dart';
 import 'core/store/cover_store.dart';
 import 'core/store/json_store.dart';
 import 'core/store/library_store.dart';
@@ -14,6 +17,8 @@ import 'features/library/pl_auto_store.dart';
 import 'features/offline/offline_store.dart';
 import 'features/player/audio_handler.dart';
 import 'features/player/player_controller.dart';
+import 'features/settings/auto_accent.dart';
+import 'providers/yandex/ym_auth.dart';
 import 'shared/ui/bloom_toast.dart';
 
 Future<void> main() async {
@@ -29,13 +34,28 @@ Future<void> main() async {
   final store = await JsonStore.open();
   await initCoverStore();
   await initOfflineStore();
+
+  // Канал уведомлений заводится ДО первого кадра, поэтому `context.l` тут ещё
+  // неоткуда взять — переводы грузим напрямую из делегата. Язык тот же, что
+  // потом увидит приложение: сохранённый, а если не выбирали — системный.
+  //
+  // Название канала Android запоминает при создании и позже само не меняет:
+  // после смены языка в настройках оно обновится со следующего запуска.
+  final saved = readSavedLocale(store.readMap('settings'));
+  final l10n = await AppLocalizations.delegate.load(
+    saved ??
+        basicLocaleListResolution(
+          PlatformDispatcher.instance.locales,
+          AppLocalizations.supportedLocales,
+        ),
+  );
+
   final handler = await AudioService.init(
     builder: BloomAudioHandler.new,
-    config: const AudioServiceConfig(
+    config: AudioServiceConfig(
       androidNotificationChannelId: 'com.bxzlik.bloom.playback',
-      androidNotificationChannelName: 'Воспроизведение',
-      androidNotificationChannelDescription:
-          'Управление музыкой в шторке и на экране блокировки',
+      androidNotificationChannelName: l10n.notifChannelName,
+      androidNotificationChannelDescription: l10n.notifChannelDescription,
       // Пара «ongoing + stopForegroundOnPause» — единственная рабочая: шторку
       // нельзя смахнуть, пока играет, но на паузе она снова смахивается.
       androidNotificationOngoing: true,
@@ -54,6 +74,12 @@ Future<void> main() async {
     ],
   );
   container.read(playbackProvider);
+  // Токен Яндекса поднимаем сразу: пока стор не создан, площадка считается
+  // выключенной и первый же поиск прошёл бы мимо неё.
+  container.read(ymAuthProvider);
+  // Мост авто-акцента живёт столько же, сколько процесс: цвет должен ехать за
+  // обложкой всегда, а не только пока открыт экран «Интерфейс».
+  container.read(autoAccentProvider);
   // Счётчик времени в приложении — с первой же секунды, как `startUsageTracking`
   // на десктопе. Живёт до конца процесса, снимать его некому и незачем.
   UsageTracker(container.read(statsProvider.notifier)).start();
@@ -91,6 +117,12 @@ class BloomApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Bloom',
       debugShowCheckedModeBanner: false,
+      // `locale: null` — язык берётся у системы и матчится с supportedLocales,
+      // где английский стоит первым и потому работает запасным. Как только
+      // язык выбран руками, отдаём его явно.
+      locale: ref.watch(settingsProvider).locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       // Свой ключ мессенджера: тосты бывают и без экрана — авто-обновление
       // плейлистов ходит по таймеру.
       scaffoldMessengerKey: bloomMessengerKey,

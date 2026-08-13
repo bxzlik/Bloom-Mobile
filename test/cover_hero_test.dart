@@ -12,6 +12,8 @@ import 'package:bloom/shared/ui/cover_hero.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:bloom/core/l10n/l10n.dart';
+
 /// Скругление на карточке и в шапке — намеренно крайние значения, чтобы любое
 /// промежуточное было видно однозначно.
 const double _card = 50;
@@ -50,6 +52,11 @@ void main() {
   Future<void> pumpApp(WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        // Язык прибит гвоздями: иначе проверки текста зависели бы от локали
+        // машины, на которой гоняют тесты.
+        locale: const Locale('ru'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (context) => Scaffold(
             body: Center(
@@ -129,6 +136,11 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        // Язык прибит гвоздями: иначе проверки текста зависели бы от локали
+        // машины, на которой гоняют тесты.
+        locale: const Locale('ru'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: buildBloomTheme(BloomThemes.dark),
         home: Builder(
           builder: (context) => Scaffold(

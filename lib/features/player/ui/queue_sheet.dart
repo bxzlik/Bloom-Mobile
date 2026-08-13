@@ -15,11 +15,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/entities/entities.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/track_actions.dart';
-import '../../../shared/util/format.dart';
 import '../player_controller.dart';
 
 void showQueueSheet(BuildContext context) {
@@ -190,11 +190,11 @@ class _QueueHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Очередь', style: theme.titleLarge),
+                Text(context.l.playerQueue, style: theme.titleLarge),
                 const SizedBox(height: 2),
                 Row(
                   children: [
-                    Text(tracksCount(count), style: theme.bodyMedium),
+                    Text(context.l.tracksCount(count), style: theme.bodyMedium),
                     // Перемешивание показываем здесь же: список ниже уже стоит
                     // в перемешанном порядке, и надо понимать, почему.
                     if (shuffle) ...[

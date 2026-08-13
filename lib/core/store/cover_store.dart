@@ -53,6 +53,19 @@ ImageProvider? coverImage(String? cover) {
   return NetworkImage(cover);
 }
 
+/// Метаданные снимка (EXIF, дата, геометка) нам не нужны — берём только сам
+/// файл. Флаг НЕ косметический: при `true` image_picker на iOS 13 идёт в
+/// `PHPhotoLibrary requestAuthorization` («Full metadata are available only in
+/// PHAsset, which requires gallery permission» — комментарий в самом плагине),
+/// а это системный запрос доступа ко ВСЕЙ медиатеке и обязательный
+/// `NSPhotoLibraryUsageDescription` в Info.plist. С `false` на iOS 13 открывается
+/// просто выбор файла, а на iOS 14+ и так работает `PHPickerViewController`,
+/// который разрешений не спрашивает вовсе.
+///
+/// Поставишь обратно `true` — вернуть и ключ в `ios/Runner/Info.plist`, иначе
+/// iOS убьёт приложение в момент запроса.
+const bool kPickMetadata = false;
+
 /// Выбрать картинку из галереи и положить её к себе. Возвращает значение для
 /// поля `cover` (`local:...`) или `null`, если выбор отменён.
 ///
@@ -68,6 +81,7 @@ Future<String?> pickCover() async {
       maxWidth: 1024,
       maxHeight: 1024,
       imageQuality: 90,
+      requestFullMetadata: kPickMetadata,
     );
   } catch (_) {
     return null; // отказ в доступе к галерее
@@ -92,6 +106,7 @@ Future<String?> pickImageFile({int maxSide = 2048}) async {
       source: ImageSource.gallery,
       maxWidth: maxSide.toDouble(),
       maxHeight: maxSide.toDouble(),
+      requestFullMetadata: kPickMetadata,
     );
     return picked?.path;
   } catch (_) {

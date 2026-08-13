@@ -25,6 +25,7 @@ import '../../core/store/stats_store.dart';
 import '../offline/offline_store.dart';
 import 'audio_handler.dart';
 import 'notification_permission.dart';
+import 'resume_store.dart';
 
 enum PlayerRepeat { off, all, one }
 
@@ -73,6 +74,13 @@ final playheadProvider = StreamProvider<Playhead>((ref) {
   });
   emit(); // первое значение — сразу, до первого тика
   return out.stream;
+});
+
+/// Идёт ли звук. Отдельным потоком, потому что `playing` меняется и мимо нас —
+/// кнопкой в шторке, гарнитурой, аудиофокусом.
+final playingProvider = StreamProvider<bool>((ref) {
+  final player = ref.watch(audioPlayerProvider);
+  return player.playingStream;
 });
 
 class PlaybackState {
@@ -180,14 +188,49 @@ class PlaybackController extends Notifier<PlaybackState>
   PlaybackState build() {
     final handler = ref.read(audioHandlerProvider);
     handler.commands = this;
-    final sub = handler.player.processingStateStream.listen((s) {
-      if (s == ProcessingState.completed) _onCompleted();
+    final subs = [
+      handler.player.processingStateStream.listen((s) {
+        if (s == ProcessingState.completed) _onCompleted();
+      }),
+      // Снимок сессии — на каждую смену play/pause: именно на паузе человек
+      // чаще всего и уходит из приложения.
+      handler.player.playingStream.listen((_) => _saveResume()),
+    ];
+    // Плюс по таймеру, пока играет: процесс убивают без предупреждения, и без
+    // тика «Продолжить» вернуло бы на позицию последнего нажатия паузы.
+    final ticker = Timer.periodic(_resumeEvery, (_) {
+      if (handler.player.playing) _saveResume();
     });
     ref.onDispose(() {
-      sub.cancel();
+      ticker.cancel();
+      for (final s in subs) {
+        s.cancel();
+      }
       if (handler.commands == this) handler.commands = null;
     });
     return const PlaybackState();
+  }
+
+  /// Как часто обновляем позицию в снимке сессии. Реже — заметный откат назад
+  /// после убийства процесса, чаще — лишняя запись файла на ровном месте.
+  static const Duration _resumeEvery = Duration(seconds: 10);
+
+  /// Записать снимок «Продолжить». Пустая очередь снимок не трогает: остановка
+  /// не должна стирать то, что человек слушал.
+  void _saveResume() {
+    final track = state.track;
+    if (track == null) return;
+    ref
+        .read(resumeProvider.notifier)
+        .save(
+          ResumeData.capture(
+            queue: state.queue,
+            index: state.index,
+            position: _player.position,
+            paused: !_player.playing,
+            sourceId: state.sourceId,
+          ),
+        );
   }
 
   BloomAudioHandler get _handler => ref.read(audioHandlerProvider);
@@ -230,6 +273,7 @@ class PlaybackController extends Notifier<PlaybackState>
     int index, {
     required String? sourceId,
     required List<Track>? orig,
+    Duration? startAt,
   }) async {
     if (tracks.isEmpty) return;
     _origQueue = orig;
@@ -241,13 +285,24 @@ class PlaybackController extends Notifier<PlaybackState>
       clearSource: sourceId == null,
     );
     _handler.setQueue(tracks);
-    await _load(index);
+    await _load(index, startAt: startAt);
   }
 
   /// Один трек — очередь из него же.
   Future<void> play(Track track) => playQueue([track], 0);
 
-  Future<void> _load(int index) async {
+  /// Продолжить прошлую сессию — очередь из снимка, с той же позиции
+  /// (карточка «Продолжить» на главной). Порт `restoreResumeQueue`.
+  Future<void> resumeSession(ResumeData data) => _start(
+    data.queue,
+    data.index,
+    sourceId: data.sourceId,
+    orig: null,
+    // Первые пару секунд перематывать некуда — начинаем с начала трека.
+    startAt: data.position > const Duration(seconds: 2) ? data.position : null,
+  );
+
+  Future<void> _load(int index, {Duration? startAt}) async {
     final track = state.queue[index];
     final gen = ++_generation;
     state = state.copyWith(index: index, loading: true, clearError: true);
@@ -265,7 +320,7 @@ class PlaybackController extends Notifier<PlaybackState>
       // способ заиграть без сети.
       final offlinePath = ref.read(offlineProvider.notifier).pathOf(track.id);
       if (offlinePath != null) {
-        await _player.setFilePath(offlinePath);
+        await _player.setFilePath(offlinePath, initialPosition: startAt);
       } else {
         final provider = ref.read(registryProvider).forEntity(track.id);
         if (provider == null) {
@@ -277,6 +332,7 @@ class PlaybackController extends Notifier<PlaybackState>
         await _player.setUrl(
           stream.url,
           headers: stream.headers.isEmpty ? null : stream.headers,
+          initialPosition: startAt,
         );
       }
       if (gen != _generation) return;
@@ -287,6 +343,10 @@ class PlaybackController extends Notifier<PlaybackState>
       ref.read(libraryProvider.notifier).pushHistory(track);
       // Дневной журнал ведётся рядом с историей — как `loadPlay` на десктопе.
       ref.read(statsProvider.notifier).addPlay();
+      // Снимок «Продолжить» — сразу на новом треке: подписка на playingStream
+      // при переходе внутри очереди молчит (плеер и так играл), и до тика
+      // таймера карточка звала бы обратно на прошлый трек.
+      _saveResume();
       // play() у just_audio завершается НЕ когда началось воспроизведение, а
       // когда трек доиграл (или его поставили на паузу). Ждать его нельзя:
       // `loading` тогда висит всю песню, а кнопка play остаётся спиннером.

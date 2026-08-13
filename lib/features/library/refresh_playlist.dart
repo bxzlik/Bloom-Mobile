@@ -14,6 +14,7 @@ import '../../app/providers.dart';
 import '../../core/providers/music_provider.dart';
 import '../../core/providers/registry.dart';
 import '../../core/store/library_store.dart';
+import '../../core/l10n/l10n.dart';
 import '../../shared/ui/bloom_toast.dart';
 
 /// Обновить состав плейлиста из [UserPlaylist.sourceUrl].
@@ -58,21 +59,22 @@ Future<int?> refreshPlaylistFromSource(
 /// закрытия, и искать предка по её контексту поздно.
 Future<void> refreshOnePlaylist(
   ScaffoldMessengerState messenger,
+  AppLocalizations l,
   WidgetRef ref,
   UserPlaylist playlist,
 ) async {
-  final toast = messenger.busyToast('Обновляю «${playlist.name}»…');
+  final toast = messenger.busyToast(l.rpBusy(playlist.name));
   final added = await refreshPlaylistFromSource(
     ref.read(registryProvider),
     ref.read(libraryProvider.notifier),
     playlist,
   );
   if (added == null) {
-    toast.finish('Источник не ответил', kind: ToastKind.warn);
+    toast.finish(l.rpNoAnswer, kind: ToastKind.warn);
     return;
   }
   toast.finish(
-    added == 0 ? 'Новых треков нет' : 'Новых треков: $added',
+    added == 0 ? l.paNoNewTracks : l.rpNewTracks(added),
     kind: added == 0 ? ToastKind.info : ToastKind.success,
   );
 }

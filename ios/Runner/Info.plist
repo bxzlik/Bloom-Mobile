@@ -24,8 +24,11 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Чтобы поставить свою обложку на плейлист.</string>
+	<!-- NSPhotoLibraryUsageDescription тут НЕ нужен и намеренно убран: обложки и
+	     аватар берутся через PHPickerViewController (iOS 14+) либо через выбор
+	     файла на iOS 13, а доступа к медиатеке ни то, ни другое не требует —
+	     см. `kPickMetadata` в lib/core/store/cover_store.dart. Вернёшь там
+	     метаданные — верни и ключ сюда, вместе с его переводами. -->
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<!-- «Скачать файлом»: без этой пары папка приложения не появляется в

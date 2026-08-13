@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme/tokens.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/entities/entities.dart';
 import '../../core/providers/artist_lookup.dart';
 import '../../core/providers/music_provider.dart';
@@ -154,8 +155,8 @@ class _ArtistPickerState extends ConsumerState<_ArtistPicker> {
     final followers = artist?.followers;
 
     final String? note = followers != null
-        ? '${compactCount(followers)} подписчиков'
-        : (pending || artist != null ? null : 'Не нашли у площадки');
+        ? context.l.followersCount(followers, compactCount(followers))
+        : (pending || artist != null ? null : context.l.artistNotFoundOnSource);
 
     return InkWell(
       // Пока ищем и когда не нашли — идти некуда: строка просто не нажимается.

@@ -21,6 +21,7 @@ import 'package:solar_icons/solar_icons.dart';
 
 import '../../app/theme/bloom_theme.dart';
 import '../../app/theme/tokens.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Вид тоста: от него зависят значок и цвет полосы (те же четыре, что на ПК).
 enum ToastKind { info, success, warn, error }
@@ -83,7 +84,10 @@ extension BloomToasts on ScaffoldMessengerState {
         text: text,
         kind: kind,
         barDuration: duration,
-        actionLabel: action == null ? null : (action.label ?? 'Отменить'),
+        // Подпись по умолчанию ставит сама карточка: здесь `BuildContext`
+        // взять негде — тост зовут и из таймеров.
+        actionLabel: action?.label,
+        hasAction: action != null,
         onAction: action == null
             ? null
             : () {
@@ -260,6 +264,7 @@ class BloomToastCard extends StatelessWidget {
     this.progress,
     this.barDuration,
     this.actionLabel,
+    this.hasAction = false,
     this.onAction,
   });
 
@@ -269,12 +274,16 @@ class BloomToastCard extends StatelessWidget {
   final double? progress;
   final Duration? barDuration;
   final String? actionLabel;
+
+  /// Кнопка есть, но своей подписи у неё нет — подставится «Отменить».
+  final bool hasAction;
   final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
     final color = kindColor(kind, t);
+    final label = actionLabel ?? (hasAction ? context.l.commonUndo : null);
 
     return Align(
       // Ширина по содержимому, как inline-flex на ПК: короткому «Трек удалён»
@@ -321,7 +330,7 @@ class BloomToastCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (actionLabel != null && onAction != null) ...[
+                  if (label != null && onAction != null) ...[
                     const SizedBox(width: 12),
                     GestureDetector(
                       onTap: onAction,
@@ -334,7 +343,7 @@ class BloomToastCard extends StatelessWidget {
                           vertical: 6,
                         ),
                         child: Text(
-                          actionLabel!,
+                          label,
                           style: bloomText(
                             size: 13,
                             weight: 700,

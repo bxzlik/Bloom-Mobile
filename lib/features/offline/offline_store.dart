@@ -161,22 +161,28 @@ class OfflineController extends Notifier<OfflineState> {
     state = state.copyWith(pending: next);
   }
 
-  /// Скачать трек. Возвращает `null` при успехе либо текст ошибки для снекбара.
+  /// Скачать трек. Возвращает `null` при успехе либо ПРИЧИНУ отказа.
+  ///
+  /// Именно причину, а не готовую фразу: стор не знает языка интерфейса и
+  /// вообще не должен решать, какими словами говорить с пользователем —
+  /// текст собирается на UI (`describeOfflineFailure`).
   ///
   /// Идемпотентна, как `offline_download` на ПК: трек уже в кеше или уже
   /// качается — второй раз не качаем.
-  Future<String?> download(Track track) async {
+  Future<OfflineFailure?> download(Track track) async {
     if (state.has(track.id) || state.isPending(track.id)) return null;
-    if (_dir == null) return 'Нет доступа к хранилищу';
+    if (_dir == null) return const OfflineFailure(OfflineFailureKind.noStorage);
     final provider = ref.read(registryProvider).forEntity(track.id);
     if (provider == null || !provider.canDownload(track)) {
-      return 'Этот трек нельзя сохранить офлайн';
+      return const OfflineFailure(OfflineFailureKind.notSavable);
     }
 
     _setPending(track.id, -1);
     try {
       final stream = await provider.resolveDownload(track);
-      if (stream == null) return 'Этот трек нельзя сохранить офлайн';
+      if (stream == null) {
+        return const OfflineFailure(OfflineFailureKind.notSavable);
+      }
       final file = await fetchAudioToFile(
         url: stream.url,
         headers: stream.headers,
@@ -214,7 +220,7 @@ class OfflineController extends Notifier<OfflineState> {
     }
   }
 
-  Future<String?> toggle(Track track) async {
+  Future<OfflineFailure?> toggle(Track track) async {
     if (state.has(track.id)) {
       await remove(track.id);
       return null;
@@ -226,13 +232,16 @@ class OfflineController extends Notifier<OfflineState> {
   /// перед каждым треком: подписанный CDN-URL живёт минуты, и пачка ссылок,
   /// взятая заранее, к концу списка протухла бы.
   ///
-  /// Возвращает текст итога для снекбара; `null` — качать было нечего.
-  Future<String?> downloadAll(String sourceId, List<Track> tracks) async {
+  /// Возвращает счёт для итогового снекбара; `null` — качать было нечего.
+  /// `busy` — уже идёт другая пакетная загрузка.
+  Future<BatchResult?> downloadAll(String sourceId, List<Track> tracks) async {
     final pending = tracks
         .where((t) => !state.has(t.id) && canDownload(t))
         .toList();
     if (pending.isEmpty) return null;
-    if (!beginBatch(sourceId, pending.length)) return 'Уже качаю другой список';
+    if (!beginBatch(sourceId, pending.length)) {
+      return const BatchResult(total: 0, failed: 0, busy: true);
+    }
 
     var failed = 0;
     for (var i = 0; i < pending.length; i++) {
@@ -243,7 +252,7 @@ class OfflineController extends Notifier<OfflineState> {
       if (i < pending.length - 1) await Future<void>.delayed(_betweenTracks);
     }
     endBatch();
-    return batchSummary(pending.length, failed);
+    return BatchResult(total: pending.length, failed: failed);
   }
 
   /// Занять индикатор пакета. `false` — другой пакет уже идёт: два счётчика на
@@ -381,12 +390,41 @@ Future<File> fetchAudioToFile({
   }
 }
 
-/// Итог пакетной загрузки для снекбара — общий для обоих скачиваний.
-String batchSummary(int total, int failed) {
-  final ok = total - failed;
-  if (failed == 0) return 'Скачано треков: $ok';
-  if (ok == 0) return 'Не удалось скачать ни одного трека';
-  return 'Скачано $ok из $total, не вышло: $failed';
+/// Итог пакетной загрузки — общий для обоих скачиваний. Фразу из него делает
+/// `batchSummary` в `offline_actions.dart`, где есть язык интерфейса.
+class BatchResult {
+  const BatchResult({
+    required this.total,
+    required this.failed,
+    this.busy = false,
+  });
+
+  final int total;
+  final int failed;
+
+  /// Пакет не стартовал: уже качается другой список.
+  final bool busy;
+
+  int get ok => total - failed;
+}
+
+/// Почему трек не сохранился офлайн.
+enum OfflineFailureKind {
+  noStorage,
+  notSavable,
+  streamOnly,
+  drm,
+  noFileLink,
+  noConnection,
+  unknown,
+}
+
+/// Причина отказа + сырьё для `unknown` (текст исключения площадки).
+class OfflineFailure {
+  const OfflineFailure(this.kind, [this.detail]);
+
+  final OfflineFailureKind kind;
+  final String? detail;
 }
 
 /// «Артист - Название» — то же имя файла, что даёт `trackFileBase` на ПК.
@@ -420,15 +458,19 @@ String _uniqueName(Directory dir, String base, String ext) {
   return name;
 }
 
-/// Коды площадки понятны только разработчику — в снекбар идёт человеческий
-/// текст (порт соответствующих строк `dict.ts`).
-String _readableError(Object e) {
+/// Коды площадки понятны только разработчику — разбираем их в причину, а
+/// человеческий текст собирается на UI (порт строк `dict.ts`).
+OfflineFailure _readableError(Object e) {
   final msg = e is Exception ? e.toString() : '$e';
   if (msg.contains('hlsOnly')) {
-    return 'Этот трек отдаётся только потоком — сохранить нельзя';
+    return const OfflineFailure(OfflineFailureKind.streamOnly);
   }
-  if (msg.contains('drm')) return 'Трек защищён DRM';
-  if (msg.contains('noStream')) return 'Площадка не отдала ссылку на файл';
-  if (e is SocketException) return 'Нет соединения';
-  return 'Не удалось сохранить: $msg';
+  if (msg.contains('drm')) return const OfflineFailure(OfflineFailureKind.drm);
+  if (msg.contains('noStream')) {
+    return const OfflineFailure(OfflineFailureKind.noFileLink);
+  }
+  if (e is SocketException) {
+    return const OfflineFailure(OfflineFailureKind.noConnection);
+  }
+  return OfflineFailure(OfflineFailureKind.unknown, msg);
 }

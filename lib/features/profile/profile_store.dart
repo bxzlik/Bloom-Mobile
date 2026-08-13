@@ -16,10 +16,8 @@ import 'dart:math' show cos, sin, pi;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/l10n/l10n.dart';
 import '../../core/store/library_store.dart' show jsonStoreProvider;
-
-/// `common.defaultUser` из десктопного словаря.
-const String kDefaultUserName = 'Пользователь';
 
 /// Обложка профиля: сплошной цвет или градиент между двумя.
 enum BannerColorMode { solid, gradient }
@@ -29,8 +27,15 @@ const List<int> kBannerAngles = [0, 45, 90, 135, 180, 225, 270, 315];
 
 @immutable
 class UserProfile {
+  /// Имя для показа. Пустое поле — имени никто не задавал: подставляется
+  /// локализованное «Пользователь» (`common.defaultUser` десктопного словаря).
+  /// Именно при отрисовке, а не при сохранении: иначе дефолт застыл бы на
+  /// языке, который стоял в момент первого запуска.
+  String displayName(AppLocalizations l) =>
+      name.trim().isEmpty ? l.profileDefaultName : name;
+
   const UserProfile({
-    this.name = kDefaultUserName,
+    this.name = '',
     this.bio = '',
     this.status = '',
     this.discIdx = 0,
@@ -136,7 +141,7 @@ class UserProfile {
 
     final name = json['name'];
     return UserProfile(
-      name: name is String && name.trim().isNotEmpty ? name : kDefaultUserName,
+      name: name is String ? name : '',
       bio: json['bio'] as String? ?? '',
       status: json['status'] as String? ?? '',
       discIdx: (json['discIdx'] as num?)?.toInt() ?? 0,

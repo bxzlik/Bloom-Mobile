@@ -17,6 +17,7 @@ import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme/tokens.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/providers/music_provider.dart';
 import '../../../core/store/cover_store.dart';
@@ -72,7 +73,9 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     if (likes.isEmpty) return;
     final added = ref.read(libraryProvider.notifier).addToLibrary(likes);
     _toast(
-      added > 0 ? 'Добавлено: ${tracksCount(added)}' : 'Уже в библиотеке',
+      added > 0
+          ? context.l.pvAdded(context.l.tracksCount(added))
+          : context.l.commonAlreadyInLibrary,
       added > 0 ? ToastKind.success : ToastKind.warn,
     );
   }
@@ -86,12 +89,15 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     ref
         .read(libraryProvider.notifier)
         .createPlaylist(
-          'Лайки ${artist.name}',
+          context.l.pvLikesOf(artist.name),
           tracks: likes,
           cover: artist.avatar,
           sourceUrl: artist.permalink,
         );
-    _toast('Плейлист создан — ${tracksCount(likes.length)}', ToastKind.success);
+    _toast(
+      context.l.pvPlaylistCreated(context.l.tracksCount(likes.length)),
+      ToastKind.success,
+    );
   }
 
   /// Все плейлисты аккаунта. Состав приходит только по `getPlaylist`, поэтому
@@ -104,7 +110,8 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     // месте — вместо двух тостов подряд.
     final toast = ScaffoldMessenger.of(
       context,
-    ).busyToast('Импортирую ${sets.length}…');
+    ).busyToast(context.l.pvImporting(sets.length));
+    final l10n = context.l;
 
     final registry = ref.read(registryProvider);
     final lib = ref.read(libraryProvider.notifier);
@@ -113,7 +120,7 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
       final set = sets[i];
       // Счётчик двигаем ДО работы: ниже есть `continue`.
       toast.update(
-        'Импортирую: ${i + 1}/${sets.length}',
+        l10n.pvImportProgress(i + 1, sets.length),
         progress: i / sets.length,
       );
       try {
@@ -132,7 +139,7 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
       }
     }
     toast.finish(
-      'Импортировано: $ok из ${sets.length}',
+      l10n.pvImported(ok, sets.length),
       kind: ok == sets.length ? ToastKind.success : ToastKind.warn,
     );
     if (!mounted) return;
@@ -154,10 +161,10 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
         _Hero(artist: artist),
         if (sets.isNotEmpty) ...[
           _SectionHead(
-            title: 'Плейлисты · ${sets.length}',
+            title: context.l.pvPlaylistsTitle(sets.length),
             actions: [
               _MiniButton(
-                label: 'Импортировать все',
+                label: context.l.pvImportAll,
                 busy: _importing,
                 onTap: _importPlaylists,
               ),
@@ -167,14 +174,17 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
         ],
         if (likes.isNotEmpty) ...[
           _SectionHead(
-            title: 'Лайки · ${likes.length}',
+            title: context.l.pvLikesTitle(likes.length),
             actions: [
               _MiniButton(
-                label: 'В библиотеку',
+                label: context.l.commonAddToLibrary,
                 accent: true,
                 onTap: _importLikes,
               ),
-              _MiniButton(label: 'В плейлист', onTap: _likesAsPlaylist),
+              _MiniButton(
+                label: context.l.pvToPlaylist,
+                onTap: _likesAsPlaylist,
+              ),
             ],
           ),
           for (var i = 0; i < shown; i++)
@@ -191,7 +201,10 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Center(
-                      child: Text('Показать ещё', style: theme.titleMedium),
+                      child: Text(
+                        context.l.commonShowMore,
+                        style: theme.titleMedium,
+                      ),
                     ),
                   ),
                 ),
@@ -203,7 +216,7 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
             padding: const EdgeInsets.symmetric(vertical: 40),
             child: Center(
               child: Text(
-                'У этого аккаунта нет открытых плейлистов и лайков',
+                context.l.pvNothingPublic,
                 textAlign: TextAlign.center,
                 style: theme.bodyMedium?.copyWith(color: t.muted),
               ),
@@ -249,7 +262,8 @@ class _HeroState extends ConsumerState<_Hero> {
     final followers = artist.followers ?? 0;
     final sub = [
       if (fullName.isNotEmpty) fullName,
-      if (followers > 0) '${compactCount(followers)} подписчиков',
+      if (followers > 0)
+        context.l.followersCount(followers, compactCount(followers)),
     ].join(' · ');
 
     return ClipRRect(
@@ -341,7 +355,7 @@ class _HeroState extends ConsumerState<_Hero> {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'Треки',
+                                  context.l.commonTracks,
                                   style: theme.titleMedium?.copyWith(
                                     color: t.accentText,
                                   ),
@@ -368,8 +382,8 @@ class _HeroState extends ConsumerState<_Hero> {
                           SnackBar(
                             content: Text(
                               on
-                                  ? 'Подписка на ${artist.name}'
-                                  : 'Подписка снята',
+                                  ? context.l.followedToast(artist.name)
+                                  : context.l.unfollowedToast,
                             ),
                           ),
                         );

@@ -18,6 +18,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:bloom/core/l10n/l10n.dart';
+
 Artist _artist(String name, {String? avatar, int? followers}) => Artist(
   id: 'sc_artist_$name',
   name: name,
@@ -70,6 +72,11 @@ Future<void> _pump(
         ),
       ],
       child: MaterialApp(
+        // Язык прибит гвоздями: иначе проверки текста зависели бы от локали
+        // машины, на которой гоняют тесты.
+        locale: const Locale('ru'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: buildBloomTheme(BloomThemes.dark),
         home: Scaffold(
           body: Consumer(

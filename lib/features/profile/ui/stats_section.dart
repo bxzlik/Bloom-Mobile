@@ -10,11 +10,14 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../core/l10n/l10n.dart';
+import '../../../core/l10n/source_label.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/store/library_store.dart';
 import '../../../core/store/stats_store.dart';
@@ -43,40 +46,41 @@ class _StatsSectionState extends ConsumerState<StatsSection> {
   bool _confirmClear = false;
 
   void _copy(ProfileStats s) {
+    final l = context.l;
     final lines = <String>[
-      '🎵 Моя статистика в Bloom',
+      l.statsShareTitle,
       '',
-      '📚 Треков: ${s.libraryTracks}',
-      '🎵 Уникальных: ${s.uniqueTracks}',
-      '▶️ Прослушано: ${s.totalPlays}',
-      '🎧 Время прослушивания: ${fmtDurLong(s.listenSec)}',
-      '📏 Средняя длина: ${fmtClock(s.avgSec)}',
-      '⏱️ Время в приложении: ${fmtDurLong(s.appSec)}',
-      if (s.favArtist != null) '⭐ Любимый исполнитель: ${s.favArtist}',
-      if (s.recordDay > 0) '🏆 Рекорд дня: ${s.recordDay}',
+      l.statsShareTracks(s.libraryTracks),
+      l.statsShareUnique(s.uniqueTracks),
+      l.statsSharePlays(s.totalPlays),
+      l.statsShareTime(fmtDurLong(context, s.listenSec)),
+      l.statsShareAvgLength(fmtClock(s.avgSec)),
+      l.statsShareAppTime(fmtDurLong(context, s.appSec)),
+      if (s.favArtist != null) l.statsShareFavArtist(s.favArtist!),
+      if (s.recordDay > 0) l.statsShareRecordDay(s.recordDay),
       '',
-      '📈 В среднем за день:',
-      '  ${(s.listenSec / 3600 / s.daySpan).toStringAsFixed(1)} часов/день · '
-          '${(s.totalPlays / s.daySpan).toStringAsFixed(1)} треков/день · '
-          '${s.uniqueArtists} артистов',
+      l.statsShareAvgPerDay,
+      '  ${(s.listenSec / 3600 / s.daySpan).toStringAsFixed(1)} ${l.statsHoursDay} · '
+          '${(s.totalPlays / s.daySpan).toStringAsFixed(1)} ${l.statsTracksDay} · '
+          '${s.uniqueArtists} ${l.statsArtists}',
       if (s.bySource.isNotEmpty) ...[
         '',
-        '📡 Где слушали чаще:',
+        l.statsShareSources,
         for (final (i, src) in s.bySource.take(5).indexed)
-          '  ${i + 1}. ${src.source.label} — ${src.plays} '
+          '  ${i + 1}. ${src.source.label10n(l)} — ${src.plays} '
               '(${s.totalPlays > 0 ? (src.plays / s.totalPlays * 100).round() : 0}%)',
       ],
       if (s.topTracks.isNotEmpty) ...[
         '',
-        '🔥 Топ треков:',
+        l.statsShareTopTracks,
         for (final (i, row) in s.topTracks.take(5).indexed)
           '  ${i + 1}. ${row.track.name}'
               '${row.track.artist.isEmpty ? '' : ' — ${row.track.artist}'} '
-              '(${row.plays} раз)',
+              '(${l.playsCount(row.plays)})',
       ],
       if (s.topArtists.isNotEmpty) ...[
         '',
-        '👤 Топ исполнителей:',
+        l.statsShareTopArtists,
         for (final (i, a) in s.topArtists.take(5).indexed)
           '  ${i + 1}. ${a.name} (${a.plays})',
       ],
@@ -84,7 +88,7 @@ class _StatsSectionState extends ConsumerState<StatsSection> {
       '— Bloom',
     ];
     Clipboard.setData(ClipboardData(text: lines.join('\n')));
-    showToast(context, 'Статистика скопирована', kind: ToastKind.success);
+    showToast(context, l.statsCopied, kind: ToastKind.success);
   }
 
   void _clear() {
@@ -100,7 +104,7 @@ class _StatsSectionState extends ConsumerState<StatsSection> {
     ref.read(libraryProvider.notifier).clearHistory();
     ref.read(statsProvider.notifier).clear();
     ref.read(unlockedAchievementsProvider.notifier).clear();
-    showToast(context, 'Статистика очищена');
+    showToast(context, context.l.statsCleared);
   }
 
   @override
@@ -129,13 +133,15 @@ class _StatsSectionState extends ConsumerState<StatsSection> {
           children: [
             _ToolButton(
               icon: SolarIconsOutline.copy,
-              label: 'Скопировать',
+              label: context.l.statsCopy,
               onTap: () => _copy(s),
             ),
             const SizedBox(width: 8),
             _ToolButton(
               icon: SolarIconsOutline.trashBinMinimalistic,
-              label: _confirmClear ? 'Точно? Ещё раз' : 'Очистить',
+              label: _confirmClear
+                  ? context.l.statsClearConfirm
+                  : context.l.statsClear,
               color: t.sysFavIco,
               onTap: _clear,
             ),
@@ -147,25 +153,31 @@ class _StatsSectionState extends ConsumerState<StatsSection> {
         _Tiles(stats: s),
         const SizedBox(height: 14),
         _Card(
-          title: 'В среднем за день',
+          title: context.l.statsAvgPerDay,
           icon: SolarIconsOutline.clockCircle,
           child: Row(
             children: [
               Expanded(
-                child: _Daily(value: hoursDay, label: 'часов/день'),
+                child: _Daily(value: hoursDay, label: context.l.statsHoursDay),
               ),
               Expanded(
-                child: _Daily(value: tracksDay, label: 'треков/день'),
+                child: _Daily(
+                  value: tracksDay,
+                  label: context.l.statsTracksDay,
+                ),
               ),
               Expanded(
-                child: _Daily(value: '${s.uniqueArtists}', label: 'артистов'),
+                child: _Daily(
+                  value: '${s.uniqueArtists}',
+                  label: context.l.statsArtists,
+                ),
               ),
             ],
           ),
         ),
         const SizedBox(height: 14),
         _Card(
-          title: 'Где слушали чаще',
+          title: context.l.statsSources,
           icon: SolarIconsOutline.musicNote,
           child: s.bySource.isEmpty
               ? _empty(context)
@@ -182,7 +194,7 @@ class _StatsSectionState extends ConsumerState<StatsSection> {
         ),
         const SizedBox(height: 14),
         _Card(
-          title: 'Топ треков',
+          title: context.l.statsTopTracks,
           icon: SolarIconsOutline.star,
           child: s.topTracks.isEmpty
               ? _empty(context)
@@ -200,7 +212,7 @@ class _StatsSectionState extends ConsumerState<StatsSection> {
         ),
         const SizedBox(height: 14),
         _Card(
-          title: 'Активность',
+          title: context.l.statsActivity,
           icon: SolarIconsOutline.chart,
           trailing: _PeriodSwitch(
             value: _period,
@@ -212,7 +224,7 @@ class _StatsSectionState extends ConsumerState<StatsSection> {
         ),
         const SizedBox(height: 14),
         _Card(
-          title: 'Топ исполнителей',
+          title: context.l.statsTopArtists,
           icon: SolarIconsOutline.user,
           child: s.topArtists.isEmpty
               ? _empty(context)
@@ -233,7 +245,7 @@ class _StatsSectionState extends ConsumerState<StatsSection> {
         // Честно говорим, откуда взялись цифры: журнал ведётся с первого
         // прослушивания, за прошлое данных нет.
         Text(
-          'Считается по истории прослушиваний на этом устройстве',
+          context.l.statsFootnote,
           textAlign: TextAlign.center,
           style: theme.bodySmall?.copyWith(color: t.muted),
         ),
@@ -244,7 +256,7 @@ class _StatsSectionState extends ConsumerState<StatsSection> {
   Widget _empty(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 6),
     child: Text(
-      'Пока нет данных',
+      context.l.statsNoDataYet,
       style: Theme.of(
         context,
       ).textTheme.bodySmall?.copyWith(color: context.bloom.muted),
@@ -265,42 +277,42 @@ class _Tiles extends StatelessWidget {
       (
         icon: SolarIconsOutline.musicNote,
         value: '${s.libraryTracks}',
-        label: 'Треков',
+        label: context.l.statsTracks,
       ),
       (
         icon: SolarIconsOutline.play,
         value: '${s.totalPlays}',
-        label: 'Прослушано',
+        label: context.l.statsPlays,
       ),
       (
         icon: SolarIconsOutline.clockCircle,
-        value: fmtDurLong(s.listenSec),
-        label: 'Время прослушивания',
+        value: fmtDurLong(context, s.listenSec),
+        label: context.l.statsTime,
       ),
       (
         icon: SolarIconsOutline.stars,
         value: '${s.uniqueTracks}',
-        label: 'Уникальных',
+        label: context.l.statsUnique,
       ),
       (
         icon: SolarIconsOutline.chart,
         value: fmtClock(s.avgSec),
-        label: 'Средняя длина',
+        label: context.l.statsAvgLength,
       ),
       (
         icon: SolarIconsOutline.user,
         value: s.favArtist ?? '—',
-        label: 'Любимый исполнитель',
+        label: context.l.statsFavArtist,
       ),
       (
         icon: SolarIconsOutline.stopwatch,
-        value: fmtDurLong(s.appSec),
-        label: 'Время в приложении',
+        value: fmtDurLong(context, s.appSec),
+        label: context.l.statsAppTime,
       ),
       (
         icon: SolarIconsOutline.medalStar,
         value: '${s.recordDay}',
-        label: 'Рекорд дня',
+        label: context.l.statsRecordDay,
       ),
     ];
 
@@ -468,8 +480,8 @@ class _SourceRow extends StatelessWidget {
               Expanded(
                 child: Text(
                   row.source == MusicSource.local
-                      ? 'Локальные файлы'
-                      : row.source.label,
+                      ? context.l.statsLocalFiles
+                      : row.source.label10n(context.l),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.titleSmall,
@@ -478,7 +490,7 @@ class _SourceRow extends StatelessWidget {
               Text('$percent%', style: theme.titleSmall),
               const SizedBox(width: 8),
               Text(
-                '${row.plays} · ${fmtDurLong(row.seconds)}',
+                '${row.plays} · ${fmtDurLong(context, row.seconds)}',
                 style: theme.bodySmall?.copyWith(color: t.muted),
               ),
             ],
@@ -551,7 +563,7 @@ class _TrackRow extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              '${row.plays} раз',
+              context.l.playsCount(row.plays),
               style: theme.bodySmall?.copyWith(color: t.muted),
             ),
           ],
@@ -613,10 +625,10 @@ class _PeriodSwitch extends StatelessWidget {
   final _Period value;
   final ValueChanged<_Period> onChanged;
 
-  static const _labels = {
-    _Period.week: '7д',
-    _Period.month: '30д',
-    _Period.all: 'Всё',
+  static final _labels = <_Period, String Function(AppLocalizations)>{
+    _Period.week: (AppLocalizations l) => l.statsPeriod7d,
+    _Period.month: (AppLocalizations l) => l.statsPeriod30d,
+    _Period.all: (AppLocalizations l) => l.statsPeriodAll,
   };
 
   @override
@@ -645,7 +657,7 @@ class _PeriodSwitch extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  entry.value,
+                  entry.value(context.l),
                   style: theme.bodySmall?.copyWith(
                     color: entry.key == value ? t.accentText : t.text2,
                     fontWeight: FontWeight.w600,
@@ -666,16 +678,6 @@ class _Bars extends StatelessWidget {
   final Map<String, int> log;
   final int days;
 
-  static const List<String> _weekdays = [
-    'пн',
-    'вт',
-    'ср',
-    'чт',
-    'пт',
-    'сб',
-    'вс',
-  ];
-
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
@@ -686,7 +688,12 @@ class _Bars extends StatelessWidget {
     for (var i = days - 1; i >= 0; i--) {
       final date = today.subtract(Duration(days: i));
       final label = days == 7
-          ? (i == 0 ? 'сег.' : _weekdays[date.weekday - 1])
+          // Сокращения дней недели знает `intl` — своей таблицы не держим.
+          ? (i == 0
+                ? context.l.statsToday
+                : DateFormat.E(
+                    Localizations.localeOf(context).languageCode,
+                  ).format(date))
           : (i == 0 || i % 7 == 0 ? '${date.day}.${date.month}' : '');
       bars.add((label: label, count: log[dayKey(date)] ?? 0, today: i == 0));
     }
@@ -787,7 +794,7 @@ class _Heatmap extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  'меньше',
+                  context.l.statsLess,
                   style: theme.bodySmall?.copyWith(
                     color: t.muted,
                     fontSize: 10,
@@ -808,7 +815,7 @@ class _Heatmap extends StatelessWidget {
                   ),
                 const SizedBox(width: 2),
                 Text(
-                  'больше',
+                  context.l.statsMore,
                   style: theme.bodySmall?.copyWith(
                     color: t.muted,
                     fontSize: 10,

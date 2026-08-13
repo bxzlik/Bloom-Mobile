@@ -9,7 +9,10 @@
 /// резолвится в объект — иначе в «где слушали чаще» остался бы один SoundCloud.
 library;
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/l10n/l10n.dart';
 
 import '../../core/entities/entities.dart';
 import '../../core/store/library_store.dart';
@@ -216,11 +219,15 @@ final profileStatsProvider = Provider<ProfileStats>((ref) {
 });
 
 /// «Nч Nм» / «N мин» — десктопный `fmtDurLong`.
-String fmtDurLong(int seconds) {
-  if (seconds <= 0) return '0 мин';
+///
+/// Берёт `BuildContext`, а не готовый `AppLocalizations`: зовут её из вёрстки
+/// десятками мест, и лишний аргумент там был бы шумом.
+String fmtDurLong(BuildContext context, int seconds) {
+  final l = context.l;
+  if (seconds <= 0) return l.statsZeroMinutes;
   final h = seconds ~/ 3600;
   final m = (seconds % 3600) ~/ 60;
-  return h > 0 ? '$hч $mм' : '$m мин';
+  return h > 0 ? l.statsHoursMinutes(h, m) : l.statsMinutes(m);
 }
 
 /// «м:сс» — средняя длина трека.

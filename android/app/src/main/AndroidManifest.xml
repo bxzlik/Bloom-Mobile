@@ -83,5 +83,11 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Без этого на Android 11+ система прячет браузер от приложения, и
+             url_launcher не откроет страницу подтверждения Яндекс ID. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
     </queries>
 </manifest>

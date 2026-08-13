@@ -11,6 +11,8 @@ import 'package:bloom/shared/ui/sticky_hero.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:bloom/core/l10n/l10n.dart';
+
 /// Системная строка — её высоту шапка обязана оставить под кнопками.
 const double _top = 40;
 
@@ -24,6 +26,8 @@ Future<void> _pumpList(WidgetTester tester) async {
   _played = false;
   await tester.pumpWidget(
     MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       theme: buildBloomTheme(BloomThemes.dark),
       home: MediaQuery(
         data: const MediaQueryData(padding: EdgeInsets.only(top: _top)),

@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solar_icons/solar_icons.dart';
 
+import '../../core/l10n/l10n.dart';
 import '../../core/store/library_store.dart' show jsonStoreProvider;
 import 'stats.dart';
 
@@ -22,10 +23,10 @@ enum AchTier { bronze, silver, gold }
 
 const List<AchTier> kTierOrder = AchTier.values;
 
-String tierLabel(AchTier tier) => switch (tier) {
-  AchTier.bronze => 'Бронза',
-  AchTier.silver => 'Серебро',
-  AchTier.gold => 'Золото',
+String tierLabel(AppLocalizations l, AchTier tier) => switch (tier) {
+  AchTier.bronze => l.achTierBronze,
+  AchTier.silver => l.achTierSilver,
+  AchTier.gold => l.achTierGold,
 };
 
 Color tierColor(AchTier tier) => switch (tier) {
@@ -52,8 +53,11 @@ class AchDef {
 
   final String id;
   final IconData icon;
-  final String name;
-  final String description;
+
+  /// Название и подпись резолвятся при отрисовке: таблица собирается один раз
+  /// на весь процесс и обязана пережить смену языка.
+  final String Function(AppLocalizations l) name;
+  final String Function(AppLocalizations l) description;
   final AchUnit unit;
 
   /// Три порога по возрастанию.
@@ -67,8 +71,8 @@ final List<AchDef> kAchievements = [
   AchDef(
     id: 'listener',
     icon: SolarIconsBold.play,
-    name: 'Меломан',
-    description: 'Всего прослушиваний',
+    name: (l) => l.achListenerName,
+    description: (l) => l.achListenerDesc,
     unit: AchUnit.count,
     tiers: const [100, 1000, 10000],
     value: (s) => s.totalPlays,
@@ -76,8 +80,8 @@ final List<AchDef> kAchievements = [
   AchDef(
     id: 'time',
     icon: SolarIconsBold.headphonesRound,
-    name: 'В наушниках',
-    description: 'Время прослушивания',
+    name: (l) => l.achTimeName,
+    description: (l) => l.achTimeDesc,
     unit: AchUnit.time,
     tiers: const [10 * _h, 100 * _h, 500 * _h],
     value: (s) => s.listenSec,
@@ -85,8 +89,8 @@ final List<AchDef> kAchievements = [
   AchDef(
     id: 'streak',
     icon: SolarIconsBold.fire,
-    name: 'На волне',
-    description: 'Дней подряд с прослушиваниями',
+    name: (l) => l.achStreakName,
+    description: (l) => l.achStreakDesc,
     unit: AchUnit.count,
     tiers: const [3, 7, 30],
     value: (s) => s.streak,
@@ -94,8 +98,8 @@ final List<AchDef> kAchievements = [
   AchDef(
     id: 'marathon',
     icon: SolarIconsBold.medalStar,
-    name: 'Марафонец',
-    description: 'Треков за один день',
+    name: (l) => l.achMarathonName,
+    description: (l) => l.achMarathonDesc,
     unit: AchUnit.count,
     tiers: const [20, 50, 100],
     value: (s) => s.recordDay,
@@ -103,8 +107,8 @@ final List<AchDef> kAchievements = [
   AchDef(
     id: 'veteran',
     icon: SolarIconsBold.crownStar,
-    name: 'Ветеран Bloom',
-    description: 'Время в приложении',
+    name: (l) => l.achVeteranName,
+    description: (l) => l.achVeteranDesc,
     unit: AchUnit.time,
     tiers: const [5 * _h, 50 * _h, 200 * _h],
     value: (s) => s.appSec,
@@ -112,8 +116,8 @@ final List<AchDef> kAchievements = [
   AchDef(
     id: 'devotee',
     icon: SolarIconsBold.calendar,
-    name: 'Преданность',
-    description: 'Активных дней всего',
+    name: (l) => l.achDevoteeName,
+    description: (l) => l.achDevoteeDesc,
     unit: AchUnit.count,
     tiers: const [7, 30, 100],
     value: (s) => s.activeDays,

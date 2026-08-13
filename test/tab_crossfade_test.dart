@@ -9,6 +9,8 @@ import 'package:bloom/app/shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:bloom/core/l10n/l10n.dart';
+
 /// Прозрачность ветки: `null` — ветка убрана со сцены (`Offstage`).
 double? _opacity(WidgetTester tester, String label) {
   final branch = find.ancestor(
@@ -33,6 +35,8 @@ Future<void> _pump(WidgetTester tester) async {
   var index = 0;
   await tester.pumpWidget(
     MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: StatefulBuilder(
         builder: (context, setState) => Column(
           children: [
@@ -94,6 +98,11 @@ void main() {
     var index = 0;
     await tester.pumpWidget(
       MaterialApp(
+        // Язык прибит гвоздями: иначе проверки текста зависели бы от локали
+        // машины, на которой гоняют тесты.
+        locale: const Locale('ru'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: StatefulBuilder(
           builder: (context, setState) => Column(
             children: [

@@ -17,9 +17,13 @@ import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme/tokens.dart';
+import '../../../core/l10n/l10n.dart';
+import '../../../core/l10n/source_label.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/providers/music_provider.dart';
+import '../../../core/providers/registry.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/skeleton.dart';
@@ -51,15 +55,22 @@ SearchResults _resolvedToResults(ResolvedUrl resolved) => switch (resolved) {
 };
 
 enum SearchFilter {
-  all('Всё', SolarIconsOutline.widget_4),
-  tracks('Треки', SolarIconsOutline.musicNote),
-  playlists('Плейлисты', SolarIconsOutline.playlistMinimalistic),
-  albums('Альбомы', SolarIconsOutline.vinyl),
-  artists('Артисты', SolarIconsOutline.user);
+  all(SolarIconsOutline.widget_4),
+  tracks(SolarIconsOutline.musicNote),
+  playlists(SolarIconsOutline.playlistMinimalistic),
+  albums(SolarIconsOutline.vinyl),
+  artists(SolarIconsOutline.user);
 
-  const SearchFilter(this.label, this.icon);
+  const SearchFilter(this.icon);
 
-  final String label;
+  String label(AppLocalizations l) => switch (this) {
+    SearchFilter.all => l.searchTabAll,
+    SearchFilter.tracks => l.commonTracks,
+    SearchFilter.playlists => l.commonPlaylists,
+    SearchFilter.albums => l.commonAlbums,
+    SearchFilter.artists => l.commonArtists,
+  };
+
   final IconData icon;
 }
 
@@ -179,7 +190,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                const _PlatformButton(),
+                // Смена площадки перезапускает поиск: выдача целиком принадлежит
+                // выбранному источнику, показывать под новым логотипом старые
+                // строки нельзя.
+                _PlatformButton(onPicked: _search),
               ],
             ),
           ),
@@ -219,7 +233,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     }
     if (_profile case final profile?) return ProfileView(profile: profile);
     if (_results.isEmpty) {
-      final text = _searched ? 'Ничего не нашлось' : 'Найди что-нибудь';
+      final text = _searched
+          ? context.l.searchNothingFound
+          : context.l.searchFindSomething;
       return Center(
         child: Text(text, style: theme.bodyMedium?.copyWith(color: t.muted)),
       );
@@ -267,7 +283,7 @@ class _SearchField extends StatelessWidget {
               decoration: InputDecoration(
                 isDense: true,
                 border: InputBorder.none,
-                hintText: 'Поиск',
+                hintText: context.l.searchHint,
                 hintStyle: Theme.of(
                   context,
                 ).textTheme.titleMedium?.copyWith(color: t.muted),
@@ -293,26 +309,30 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-/// Кнопка площадки. Пока зарегистрирован один провайдер, поэтому она просто
-/// показывает его логотип; станет переключателем, когда появятся YTM и Яндекс.
+/// Кнопка площадки: показывает, где ищем, и открывает выбор источника.
+///
+/// «Все источники» — значок-мозаика вместо логотипа: ни один бренд не годится
+/// на роль общего. Выключенные площадки (Яндекс без входа) в список не
+/// попадают — как в дропдауне на десктопе.
 class _PlatformButton extends ConsumerWidget {
-  const _PlatformButton();
+  const _PlatformButton({required this.onPicked});
+
+  /// Вызывается после смены площадки — перезапустить поиск.
+  final VoidCallback onPicked;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
     final registry = ref.watch(registryProvider);
     final activeId = ref.watch(activeProviderIdProvider);
-    final provider =
-        registry.byId(activeId) ??
-        (registry.enabled.isEmpty ? null : registry.enabled.first);
+    final provider = registry.byId(activeId);
 
     return Material(
       color: t.pill,
       shape: const CircleBorder(),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () {},
+        onTap: () => _pickSource(context, ref, onPicked),
         child: SizedBox(
           width: kHeaderControl,
           height: kHeaderControl,
@@ -320,6 +340,116 @@ class _PlatformButton extends ConsumerWidget {
             child: provider == null
                 ? Icon(SolarIconsOutline.widget_4, size: 22, color: t.iconFg)
                 : PlatformLogo(provider.source, size: 22),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Шторка выбора источника поиска.
+///
+/// Площадки идут отдельными карточками с просветом между ними, а не пунктами
+/// одного блока: логотипы у брендов разноцветные и на общей панели читались как
+/// каша. Заголовка нет — знак и название площадки говорят сами за себя.
+Future<void> _pickSource(
+  BuildContext context,
+  WidgetRef ref,
+  VoidCallback onPicked,
+) async {
+  final registry = ref.read(registryProvider);
+  final picked = await showBloomSheetChild<String>(
+    context: context,
+    child: Consumer(
+      builder: (context, ref, _) {
+        final activeId = ref.watch(activeProviderIdProvider);
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _SourceRow(
+                label: context.l.searchSourceAll,
+                icon: SolarIconsOutline.widget_4,
+                active: activeId == kAllProviders,
+                onTap: () => Navigator.of(context).pop(kAllProviders),
+              ),
+              for (final p in registry.enabled)
+                _SourceRow(
+                  label: p.source.label10n(context.l),
+                  source: p.source,
+                  active: activeId == p.id,
+                  onTap: () => Navigator.of(context).pop(p.id),
+                ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+  if (picked == null) return;
+  final controller = ref.read(activeProviderIdProvider.notifier);
+  if (controller.state == picked) return;
+  controller.state = picked;
+  onPicked();
+}
+
+class _SourceRow extends StatelessWidget {
+  const _SourceRow({
+    required this.label,
+    required this.active,
+    required this.onTap,
+    this.source,
+    this.icon,
+  });
+
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+  final MusicSource? source;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: t.pill,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(t.radius),
+          // Выбранная карточка обведена акцентом: галочки справа мало —
+          // взгляд ищет активный пункт по силуэту, а не по значку.
+          side: active
+              ? BorderSide(color: t.accent.withValues(alpha: 0.55))
+              : BorderSide.none,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 32,
+                  child: Center(
+                    child: source != null
+                        ? PlatformLogo(source!, size: 28)
+                        : Icon(icon, size: 24, color: t.iconFg),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                if (active)
+                  Icon(SolarIconsBold.checkCircle, size: 22, color: t.accent),
+              ],
+            ),
           ),
         ),
       ),
@@ -384,7 +514,7 @@ class _Chip extends StatelessWidget {
               Icon(filter.icon, size: 18, color: fg),
               const SizedBox(width: 8),
               Text(
-                filter.label,
+                filter.label(context.l),
                 style: Theme.of(
                   context,
                 ).textTheme.titleMedium?.copyWith(color: fg),
@@ -503,22 +633,23 @@ class _ResultsView extends StatelessWidget {
     // Порядок секций — из референса: треки, артисты, плейлисты, альбомы.
     final sections = <Widget>[
       if (_shows(SearchFilter.tracks) && tracks.isNotEmpty) ...[
-        if (titled) const SectionTitle('Треки'),
+        if (titled) SectionTitle(context.l.commonTracks),
         for (var i = 0; i < shownTracks; i++)
           // Очередь — весь список, а не превью: с четвёртой строки
           // проигрывание должно ехать дальше по выдаче.
           TrackRow(track: tracks[i], queue: tracks, index: i),
       ],
       if (_shows(SearchFilter.artists) && results.artists.isNotEmpty) ...[
-        if (titled) const SectionTitle('Артисты'),
+        if (titled) SectionTitle(context.l.commonArtists),
         EntityCarousel(
           height: 168,
           itemCount: results.artists.length,
-          builder: (i) => ArtistCard(artist: results.artists[i]),
+          builder: (i) =>
+              ArtistCard(artist: results.artists[i], centerLabel: true),
         ),
       ],
       if (_shows(SearchFilter.playlists) && results.playlists.isNotEmpty) ...[
-        if (titled) const SectionTitle('Плейлисты'),
+        if (titled) SectionTitle(context.l.commonPlaylists),
         EntityCarousel(
           height: 194,
           itemCount: results.playlists.length,
@@ -526,7 +657,7 @@ class _ResultsView extends StatelessWidget {
         ),
       ],
       if (_shows(SearchFilter.albums) && results.albums.isNotEmpty) ...[
-        if (titled) const SectionTitle('Альбомы'),
+        if (titled) SectionTitle(context.l.commonAlbums),
         EntityCarousel(
           height: 194,
           itemCount: results.albums.length,
@@ -538,7 +669,7 @@ class _ResultsView extends StatelessWidget {
     if (sections.isEmpty) {
       return Center(
         child: Text(
-          'В этом разделе ничего не нашлось',
+          context.l.searchSectionEmpty,
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: t.muted),

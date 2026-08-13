@@ -38,11 +38,23 @@ const Map<MusicSource, Color> platformColor = {
   MusicSource.yandex: Color(0xFFFED42B),
 };
 
+/// Оптическая поправка размера: `size` — это сторона квадрата, в который знак
+/// вписывается по `contain`, а не его воспринимаемая величина. Ассет YouTube —
+/// широкий прямоугольник (viewBox 313×216) и почти сплошная заливка, поэтому по
+/// ширине он занимает весь квадрат и рядом с редкими силуэтами SoundCloud и
+/// Яндекса выглядит заметно крупнее при одном и том же `size`. Поджимаем его,
+/// чтобы «вес» знаков совпадал — на десктопе этой поправки нет, там лого стоят
+/// в менее плотных строках.
+const Map<MusicSource, double> _opticalScale = {MusicSource.ytmusic: 0.82};
+
 /// Логотип площадки. У локальных файлов логотипа нет — рисуем пустоту.
 class PlatformLogo extends StatelessWidget {
   const PlatformLogo(this.source, {super.key, this.size = 16, this.color});
 
   final MusicSource source;
+
+  /// Сторона квадрата, в который вписывается знак, ДО оптической поправки
+  /// ([_opticalScale]).
   final double size;
 
   /// Перекрасить знак в один цвет (бейджи). `null` — фирменные цвета ассета.
@@ -53,23 +65,36 @@ class PlatformLogo extends StatelessWidget {
     final mono = color != null;
     final asset = (mono ? _monoAssets[source] : null) ?? _assets[source];
     if (asset == null) return SizedBox(width: size, height: size);
+    final box = size * (_opticalScale[source] ?? 1);
     return SvgPicture.asset(
       asset,
-      width: size,
-      height: size,
+      width: box,
+      height: box,
       fit: BoxFit.contain,
       colorFilter: mono ? ColorFilter.mode(color!, BlendMode.srcIn) : null,
     );
   }
 }
 
-/// Доля бейджа, которую занимает знак площадки, — те же коэффициенты, что на
-/// десктопе (у каждого лого своя «воздушность»).
+/// Доля бейджа, которую занимает знак площадки (у каждого лого своя
+/// «воздушность»). У SoundCloud и Яндекса — те же коэффициенты, что на десктопе.
+/// У YouTube меньше десктопного 0.62: бейдж на телефоне мелкий, и сплошной
+/// широкий прямоугольник в нём распирает плашку. Итоговая ширина знака ещё
+/// умножается на [_opticalScale].
 const Map<MusicSource, double> _logoScale = {
   MusicSource.soundcloud: 0.60,
   MusicSource.yandex: 0.58,
-  MusicSource.ytmusic: 0.62,
+  MusicSource.ytmusic: 0.54,
 };
+
+/// Размер бейджа на обложке. Два на всё приложение, чтобы строки и карточки
+/// разных экранов не разъезжались: [kRowBadge] в строке списка, [kCardBadge] на
+/// крупной карточке ленты или сетки.
+///
+/// Карточный крупнее десктопного (26 на обложке 172): обложка на телефоне
+/// вдвое мельче, и знак на ней должен читаться с той же дистанции.
+const double kRowBadge = 18;
+const double kCardBadge = 30;
 
 /// Бейдж источника поверх обложки — круглая полупрозрачная «стеклянная» плашка
 /// (затемнение + размытие фона), чтобы знак читался на любой картинке и не

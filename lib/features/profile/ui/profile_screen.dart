@@ -17,6 +17,7 @@ import 'package:go_router/go_router.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_toast.dart';
@@ -73,9 +74,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               children: [
                 // Тап по нику копирует его — то же, что клик по `.acc-name`.
                 GestureDetector(
-                  onTap: () => _copyNick(context, profile.name),
+                  onTap: () =>
+                      _copyNick(context, profile.displayName(context.l)),
                   child: Text(
-                    profile.name,
+                    profile.displayName(context.l),
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -107,7 +109,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   void _copyNick(BuildContext context, String name) {
     Clipboard.setData(ClipboardData(text: name));
-    showToast(context, 'Ник скопирован!', kind: ToastKind.success);
+    showToast(context, context.l.profileNickCopied, kind: ToastKind.success);
   }
 }
 
@@ -118,10 +120,17 @@ class _Tabs extends StatelessWidget {
   final int index;
   final ValueChanged<int> onChanged;
 
-  static const _items = [
-    (icon: SolarIconsOutline.chart, label: 'Статистика'),
-    (icon: SolarIconsOutline.medalStar, label: 'Достижения'),
-  ];
+  static final _items =
+      <({IconData icon, String Function(AppLocalizations) label})>[
+        (
+          icon: SolarIconsOutline.chart,
+          label: (AppLocalizations l) => l.profileStats,
+        ),
+        (
+          icon: SolarIconsOutline.medalStar,
+          label: (AppLocalizations l) => l.profileAchievements,
+        ),
+      ];
 
   @override
   Widget build(BuildContext context) {
@@ -156,7 +165,7 @@ class _Tabs extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        _items[i].label,
+                        _items[i].label(context.l),
                         style: theme.titleSmall?.copyWith(
                           color: i == index ? t.accentText : t.text2,
                         ),
@@ -298,7 +307,7 @@ class _NowPlaying extends ConsumerWidget {
                 TextSpan(
                   children: [
                     TextSpan(
-                      text: 'Слушает сейчас: ',
+                      text: context.l.profileNowPlaying,
                       style: TextStyle(
                         color: t.accent,
                         fontWeight: FontWeight.w600,

@@ -21,6 +21,7 @@ import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../features/offline/offline_store.dart';
@@ -29,7 +30,6 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/sticky_hero.dart';
 import '../../../shared/ui/track_actions.dart';
-import '../../../shared/util/format.dart';
 import 'list_hero.dart';
 
 class ListEditor extends ConsumerStatefulWidget {
@@ -127,7 +127,9 @@ class _ListEditorState extends ConsumerState<ListEditor> {
     setState(_selected.clear);
     showToast(
       context,
-      added == 0 ? 'Уже в любимых' : 'В любимые: ${tracksCount(added)}',
+      added == 0
+          ? context.l.leAlreadyFavorite
+          : context.l.leAddedToFavorites(context.l.tracksCount(added)),
       kind: added == 0 ? ToastKind.warn : ToastKind.success,
     );
   }
@@ -198,16 +200,16 @@ class _ListEditorState extends ConsumerState<ListEditor> {
   }
 
   Future<bool> _confirmPurge(int count) => _ask(
-    title: 'Удалить ${tracksCount(count)}?',
-    body: 'Они пропадут из библиотеки, любимых, плейлистов и истории.',
-    yes: 'Удалить',
+    title: context.l.leDeleteTitle(context.l.tracksCount(count)),
+    body: context.l.leDeleteBody,
+    yes: context.l.commonDelete,
     danger: true,
   );
 
   Future<bool> _confirmDrop() => _ask(
-    title: 'Отменить правку?',
-    body: 'Всё, что вы наменяли в списке, не сохранится.',
-    yes: 'Отменить',
+    title: context.l.leDiscardTitle,
+    body: context.l.leDiscardBody,
+    yes: context.l.commonDiscard,
     danger: true,
   );
 
@@ -232,7 +234,7 @@ class _ListEditorState extends ConsumerState<ListEditor> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text('Назад', style: TextStyle(color: t.text2)),
+            child: Text(context.l.commonBack, style: TextStyle(color: t.text2)),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -444,7 +446,7 @@ class _EditHero extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          Text(tracksCount(tracks.length), style: theme.bodyMedium),
+          Text(context.l.tracksCount(tracks.length), style: theme.bodyMedium),
         ],
       ),
     );

@@ -16,6 +16,7 @@ import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
@@ -67,6 +68,7 @@ Future<void> showCreatePlaylistSheet(
   WidgetRef ref,
 ) async {
   final messenger = ScaffoldMessenger.of(context);
+  final l10n = context.l;
   final outcome = await showBloomSheetChild<_Outcome>(
     context: context,
     child: const _AddBody(),
@@ -80,10 +82,10 @@ Future<void> showCreatePlaylistSheet(
     case _Imported(:final result):
       messenger.toast(
         result.createdId != null
-            ? 'Импортировано: ${result.title} — ${result.added}'
+            ? l10n.cpImported(result.title, result.added)
             : result.added == 0
-            ? 'Всё это уже в библиотеке'
-            : 'Добавлено: ${result.added}',
+            ? l10n.cpAllAlreadyIn
+            : l10n.cpAdded(result.added),
         kind: result.added == 0 ? ToastKind.info : ToastKind.success,
       );
       // В созданный плейлист уходим, как и при обычном создании; при импорте
@@ -134,26 +136,28 @@ class _AddBodyState extends ConsumerState<_AddBody> {
     } on ImportException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      ScaffoldMessenger.of(context).toast(e.message, kind: ToastKind.warn);
+      ScaffoldMessenger.of(
+        context,
+      ).toast(describeImportFailure(context.l, e.reason), kind: ToastKind.warn);
     } catch (_) {
       if (!mounted) return;
       setState(() => _busy = false);
       ScaffoldMessenger.of(
         context,
-      ).toast('Площадка не ответила', kind: ToastKind.error);
+      ).toast(context.l.cpSourceNoAnswer, kind: ToastKind.error);
     }
   }
 
   String _targetLabel(List<UserPlaylist> playlists) => switch (_target.kind) {
-    ImportTargetKind.create => 'Создать плейлист',
-    ImportTargetKind.library => 'Все треки',
-    ImportTargetKind.favorites => 'Любимые',
+    ImportTargetKind.create => context.l.commonCreatePlaylist,
+    ImportTargetKind.library => context.l.commonAllTracks,
+    ImportTargetKind.favorites => context.l.commonFavorites,
     ImportTargetKind.playlist =>
       playlists
               .where((p) => p.id == _target.playlistId)
               .map((p) => p.name)
               .firstOrNull ??
-          'Создать плейлист',
+          context.l.commonCreatePlaylist,
   };
 
   @override
@@ -174,7 +178,7 @@ class _AddBodyState extends ConsumerState<_AddBody> {
     children: [
       _FieldRow(
         controller: _name,
-        hint: 'Мой плейлист',
+        hint: context.l.cpNameHint,
         autofocus: true,
         onChanged: (_) => setState(() {}),
         onSubmit: _submitName,
@@ -183,7 +187,7 @@ class _AddBodyState extends ConsumerState<_AddBody> {
         children: [
           _Row(
             icon: SolarIconsOutline.import,
-            label: 'Импортировать по ссылке',
+            label: context.l.cpImportByLink,
             chevron: true,
             onTap: () => setState(() => _importView = true),
           ),
@@ -198,7 +202,7 @@ class _AddBodyState extends ConsumerState<_AddBody> {
     children: [
       _FieldRow(
         controller: _url,
-        hint: 'Вставьте ссылку…',
+        hint: context.l.cpLinkHint,
         autofocus: true,
         busy: _busy,
         source: detectLinkSource(_url.text),
@@ -209,7 +213,7 @@ class _AddBodyState extends ConsumerState<_AddBody> {
         children: [
           _Row(
             icon: SolarIconsOutline.folderPathConnect,
-            label: 'Куда: ${_targetLabel(playlists)}',
+            label: context.l.cpDestination(_targetLabel(playlists)),
             chevron: true,
             onTap: () => setState(() => _targetOpen = !_targetOpen),
           ),
@@ -218,19 +222,19 @@ class _AddBodyState extends ConsumerState<_AddBody> {
             for (final option in <(ImportTarget, String, IconData, String?)>[
               (
                 const ImportTarget.create(),
-                'Создать плейлист',
+                context.l.commonCreatePlaylist,
                 SolarIconsOutline.addCircle,
                 null,
               ),
               (
                 const ImportTarget(ImportTargetKind.library),
-                'Все треки',
+                context.l.commonAllTracks,
                 SolarIconsOutline.musicNote,
                 null,
               ),
               (
                 const ImportTarget(ImportTargetKind.favorites),
-                'Любимые',
+                context.l.commonFavorites,
                 SolarIconsBold.heart,
                 null,
               ),
@@ -264,7 +268,7 @@ class _AddBodyState extends ConsumerState<_AddBody> {
         children: [
           _Row(
             icon: SolarIconsOutline.arrowLeft,
-            label: 'Назад',
+            label: context.l.commonBack,
             onTap: () => setState(() {
               _importView = false;
               _targetOpen = false;

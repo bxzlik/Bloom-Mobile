@@ -18,6 +18,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../core/store/library_store.dart';
+import '../../core/l10n/l10n.dart';
 import '../../shared/ui/bloom_toast.dart';
 import 'refresh_playlist.dart';
 
@@ -225,9 +226,12 @@ class PlAutoController extends Notifier<PlAutoState> {
     if (targets.isEmpty) return const PlAutoSweep(skipped: true);
 
     final messenger = bloomMessengerKey.currentState;
-    final toast = silent
+    // Проход по расписанию говорит из таймера, когда своего экрана у него нет,
+    // — язык берётся у глобального мессенджера (см. `globalL10n`).
+    final l10n = globalL10n;
+    final toast = silent || l10n == null
         ? null
-        : messenger?.busyToast('Обновляю ${targets.length}…');
+        : messenger?.busyToast(l10n.paBusy(targets.length));
 
     state = state.copyWith(busy: '');
     final registry = ref.read(registryProvider);
@@ -241,7 +245,7 @@ class PlAutoController extends Notifier<PlAutoState> {
         final pl = targets[i];
         state = state.copyWith(busy: pl.id);
         toast?.update(
-          'Обновляю: ${i + 1}/${targets.length}',
+          l10n!.paProgress(i + 1, targets.length),
           progress: i / targets.length,
         );
         final got = await refreshPlaylistFromSource(registry, library, pl);
@@ -274,18 +278,19 @@ class PlAutoController extends Notifier<PlAutoState> {
     }
 
     final result = PlAutoSweep(added: added, changed: changed, failed: failed);
+    if (l10n == null) return result;
     if (added > 0) {
-      final text = 'Новых треков: $added (плейлистов: $changed)';
+      final text = l10n.paNewTracks(added, changed);
       toast == null
           ? messenger?.toast(text, kind: ToastKind.success)
           : toast.finish(text);
     } else if (failed > 0) {
-      final text = 'Не удалось обновить плейлистов: $failed';
+      final text = l10n.paFailed(failed);
       toast == null
           ? messenger?.toast(text, kind: ToastKind.warn)
           : toast.finish(text, kind: ToastKind.warn);
     } else {
-      toast?.finish('Новых треков нет', kind: ToastKind.info);
+      toast?.finish(l10n.paNoNewTracks, kind: ToastKind.info);
     }
     return result;
   }

@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../core/entities/entities.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/providers/music_provider.dart';
 import '../../core/providers/registry.dart';
 import '../../core/store/library_store.dart';
@@ -68,15 +69,27 @@ class ImportResult {
   final String? createdId;
 }
 
-/// Сообщение, которое видит пользователь. Отдельный тип, чтобы не показывать
-/// в тосте сырой текст сетевой ошибки.
+/// Почему ссылка не импортировалась. Причина, а не готовая фраза: текст знает
+/// только UI, где есть язык интерфейса (`describeImportFailure`).
+enum ImportFailure { unrecognized, unsupported, noTracks, playlistGone }
+
+/// Отдельный тип, чтобы не показывать в тосте сырой текст сетевой ошибки.
 class ImportException implements Exception {
-  const ImportException(this.message);
-  final String message;
+  const ImportException(this.reason);
+  final ImportFailure reason;
 
   @override
-  String toString() => message;
+  String toString() => 'ImportException(${reason.name})';
 }
+
+/// Причина отказа импорта — фразой.
+String describeImportFailure(AppLocalizations l, ImportFailure reason) =>
+    switch (reason) {
+      ImportFailure.unrecognized => l.iuUnrecognized,
+      ImportFailure.unsupported => l.iuOnlySupported,
+      ImportFailure.noTracks => l.iuNoTracks,
+      ImportFailure.playlistGone => l.iuPlaylistGone,
+    };
 
 /// Резолв ссылки в набор треков. Общая точка для импорта и «обновить треки».
 Future<ResolvedCollection> resolveCollectionUrl(
@@ -85,7 +98,7 @@ Future<ResolvedCollection> resolveCollectionUrl(
 ) async {
   final found = await registry.resolveUrlAny(url.trim());
   if (found == null) {
-    throw const ImportException('Не удалось распознать ссылку');
+    throw const ImportException(ImportFailure.unrecognized);
   }
   switch (found.resolved) {
     case ResolvedSet(playlist: final p):
@@ -93,7 +106,7 @@ Future<ResolvedCollection> resolveCollectionUrl(
           ? await found.provider.getAlbum(p.id)
           : await found.provider.getPlaylist(p.id);
       if (content == null) {
-        throw const ImportException('Не удалось распознать ссылку');
+        throw const ImportException(ImportFailure.unrecognized);
       }
       return ResolvedCollection(
         title: content.playlist.title.isEmpty
@@ -106,14 +119,14 @@ Future<ResolvedCollection> resolveCollectionUrl(
     case ResolvedProfile(:final profile):
       // Ссылка на профиль — импортируем его лайки, как на ПК.
       return ResolvedCollection(
-        title: 'Лайки · ${profile.artist.name}',
+        title:
+            globalL10n?.iuLikesTitle(profile.artist.name) ??
+            'Likes · ${profile.artist.name}',
         cover: profile.artist.avatar,
         tracks: profile.likes,
       );
     case ResolvedTrack() || ResolvedArtist():
-      throw const ImportException(
-        'Можно вставить только плейлист, альбом или лайки',
-      );
+      throw const ImportException(ImportFailure.unsupported);
   }
 }
 
@@ -141,7 +154,7 @@ Future<ImportResult> importUrlInto(
 ) async {
   final source = await resolveCollectionUrl(registry, url);
   if (source.tracks.isEmpty) {
-    throw const ImportException('В этой ссылке нет треков');
+    throw const ImportException(ImportFailure.noTracks);
   }
 
   final tracks = source.tracks;
@@ -190,7 +203,7 @@ Future<ImportResult> importUrlInto(
           .map((p) => p.trackIds.toSet())
           .firstOrNull;
       if (before == null) {
-        throw const ImportException('Плейлист больше не существует');
+        throw const ImportException(ImportFailure.playlistGone);
       }
       library.addTracksToPlaylist(id, tracks);
       return ImportResult(

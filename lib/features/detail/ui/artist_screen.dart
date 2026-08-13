@@ -16,6 +16,7 @@ import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme/tokens.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/providers/music_provider.dart';
 import '../../../core/store/library_store.dart';
@@ -75,7 +76,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
     if (provider == null) {
       setState(() {
         _loading = false;
-        _error = 'Площадка этого артиста не подключена';
+        _error = context.l.artistSourceNotConnected;
       });
       return;
     }
@@ -85,7 +86,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
       setState(() {
         _loading = false;
         if (data == null) {
-          _error = 'Артист не найден';
+          _error = context.l.artistNotFound;
           return;
         }
         _data = data;
@@ -181,7 +182,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         slivers: [
           DetailHero(
             image: artist?.avatar,
-            title: artist?.name ?? 'Артист',
+            title: artist?.name ?? context.l.commonArtist,
             subtitle: _subtitle(artist),
             flight: widget.flight,
             onMenu: artist == null ? null : () => _menu(artist),
@@ -238,8 +239,8 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
   String _subtitle(Artist? artist) {
     final parts = <String>[
       if (artist?.followers case final n? when n > 0)
-        '${compactCount(n)} подписчиков',
-      if (_tracks.isNotEmpty) tracksCount(_tracks.length),
+        context.l.followersCount(n, compactCount(n)),
+      if (_tracks.isNotEmpty) context.l.tracksCount(_tracks.length),
     ];
     return parts.join(' · ');
   }
@@ -260,7 +261,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
 
     return [
       if (top.isNotEmpty) ...[
-        const SectionTitle('Популярные'),
+        SectionTitle(context.l.artistPopular),
         EntityCarousel(
           height: 194,
           itemCount: top.length,
@@ -268,7 +269,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         ),
       ],
       if (albums.isNotEmpty) ...[
-        const SectionTitle('Альбомы'),
+        SectionTitle(context.l.commonAlbums),
         EntityCarousel(
           height: 194,
           itemCount: albums.length,
@@ -276,7 +277,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         ),
       ],
       if (_reposts.isNotEmpty) ...[
-        const SectionTitle('Репосты'),
+        SectionTitle(context.l.artistReposts),
         // Лента смешанная: трек играется в очереди из соседних треков ленты,
         // сет — открывается страницей.
         for (final item in _reposts)
@@ -292,7 +293,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
           _MoreButton(busy: _loadingMore == 'reposts', onTap: _moreReposts),
       ],
       if (similar.isNotEmpty) ...[
-        const SectionTitle('Похожие исполнители'),
+        SectionTitle(context.l.artistSimilar),
         EntityCarousel(
           height: 168,
           itemCount: similar.length,
@@ -300,7 +301,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         ),
       ],
       if (_tracks.isNotEmpty) ...[
-        const SectionTitle('Треки'),
+        SectionTitle(context.l.commonTracks),
         for (var i = 0; i < _tracks.length; i++)
           TrackRow(track: _tracks[i], queue: _tracks, index: i),
         if (_tracksCursor != null)
@@ -311,7 +312,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
           padding: const EdgeInsets.symmetric(vertical: 40),
           child: Center(
             child: Text(
-              'У этого артиста нет доступных треков',
+              context.l.artistNoTracks,
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(color: context.bloom.muted),
@@ -342,12 +343,12 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         [
           SheetAction(
             icon: SolarIconsBold.play,
-            label: 'Воспроизвести',
+            label: context.l.commonPlay,
             onTap: queue.isEmpty ? null : _play,
           ),
           SheetAction(
             icon: SolarIconsOutline.shuffle,
-            label: 'Перемешать',
+            label: context.l.commonShuffle,
             onTap: queue.isEmpty ? null : _shuffle,
           ),
         ],
@@ -356,17 +357,23 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
             icon: following
                 ? SolarIconsBold.userCheckRounded
                 : SolarIconsOutline.userPlusRounded,
-            label: following ? 'Отписаться' : 'Подписаться',
+            label: following
+                ? context.l.commonUnfollow
+                : context.l.commonFollow,
             onTap: () {
               final on = ref
                   .read(libraryProvider.notifier)
                   .toggleFollow(artist);
-              _toast(on ? 'Подписка на ${artist.name}' : 'Подписка снята');
+              _toast(
+                on
+                    ? context.l.followedToast(artist.name)
+                    : context.l.unfollowedToast,
+              );
             },
           ),
           SheetAction(
             icon: SolarIconsOutline.import,
-            label: 'Треки в новый плейлист',
+            label: context.l.artistTracksToNewPlaylist,
             onTap: forImport.isEmpty
                 ? null
                 : () {
@@ -378,7 +385,10 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                           cover: artist.avatar,
                         );
                     _toast(
-                      'Добавлено: ${artist.name} — ${tracksCount(forImport.length)}',
+                      context.l.addedToast(
+                        artist.name,
+                        context.l.tracksCount(forImport.length),
+                      ),
                       ToastKind.success,
                     );
                   },
@@ -388,10 +398,10 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
           if (link != null && link.isNotEmpty)
             SheetAction(
               icon: SolarIconsOutline.link,
-              label: 'Скопировать ссылку',
+              label: context.l.commonCopyLink,
               onTap: () {
                 Clipboard.setData(ClipboardData(text: link));
-                _toast('Ссылка скопирована', ToastKind.success);
+                _toast(context.l.commonLinkCopied, ToastKind.success);
               },
             ),
         ],
@@ -427,7 +437,7 @@ class _FollowButton extends ConsumerWidget {
         final on = ref.read(libraryProvider.notifier).toggleFollow(artist);
         showToast(
           context,
-          on ? 'Подписка на ${artist.name}' : 'Подписка снята',
+          on ? context.l.followedToast(artist.name) : context.l.unfollowedToast,
         );
       },
     );
@@ -464,7 +474,7 @@ class _MoreButton extends StatelessWidget {
                       ),
                     )
                   : Text(
-                      'Загрузить ещё',
+                      context.l.commonLoadMore,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
             ),

@@ -11,13 +11,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../app/theme/tokens.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/entities/entities.dart';
 import '../../core/store/library_store.dart';
 import '../../features/detail/detail_nav.dart';
 import '../../features/offline/file_download.dart';
 import '../../features/offline/offline_actions.dart';
 import '../../features/offline/offline_store.dart';
-import '../util/format.dart';
 import 'atoms.dart';
 import 'bloom_sheet.dart';
 import 'bloom_toast.dart';
@@ -38,6 +38,7 @@ Future<void> showTrackActions(
   // Мессенджер берём здесь: шторка закрывается до вызова обработчика, и её
   // context к моменту снекбара уже отвязан от дерева.
   final messenger = ScaffoldMessenger.of(context);
+  final l10n = context.l;
 
   await showBloomSheet(
     context: context,
@@ -51,12 +52,14 @@ Future<void> showTrackActions(
       [
         SheetAction(
           icon: isFav ? SolarIconsBold.heart : SolarIconsOutline.heart,
-          label: isFav ? 'Убрать из любимых' : 'В любимые',
+          label: isFav
+              ? context.l.taRemoveFromFavorites
+              : context.l.taAddToFavorites,
           onTap: () => ref.read(libraryProvider.notifier).toggleFav(track),
         ),
         SheetAction(
           icon: SolarIconsOutline.addCircle,
-          label: 'Добавить в плейлист',
+          label: context.l.taAddToPlaylist,
           chevron: true,
           onTap: () => showAddToPlaylistSheet(context, ref, track),
         ),
@@ -70,14 +73,16 @@ Future<void> showTrackActions(
             icon: isOffline
                 ? SolarIconsBold.checkCircle
                 : SolarIconsOutline.diskette,
-            label: isOffline ? 'Убрать из офлайна' : 'Слушать офлайн',
-            onTap: () => toggleTrackOffline(messenger, ref, track),
+            label: isOffline
+                ? context.l.taRemoveOffline
+                : context.l.taListenOffline,
+            onTap: () => toggleTrackOffline(messenger, l10n, ref, track),
           ),
           if (canSaveFiles)
             SheetAction(
               icon: SolarIconsOutline.downloadMinimalistic,
-              label: 'Скачать файлом',
-              onTap: () => saveTrackFile(messenger, ref, track),
+              label: context.l.fdDownloadFile,
+              onTap: () => saveTrackFile(messenger, l10n, ref, track),
             ),
         ],
       ],
@@ -86,7 +91,7 @@ Future<void> showTrackActions(
         if (artistId != null)
           SheetAction(
             icon: SolarIconsOutline.userRounded,
-            label: 'Перейти к артисту',
+            label: context.l.taGoToArtist,
             onTap: () => openArtist(context, artistId),
           ),
       ],
@@ -96,9 +101,9 @@ Future<void> showTrackActions(
         if (inLib)
           SheetAction(
             icon: SolarIconsOutline.trashBinMinimalistic,
-            label: 'Удалить трек',
+            label: context.l.taDeleteTrack,
             danger: true,
-            onTap: () => _deleteTrack(messenger, ref, track),
+            onTap: () => _deleteTrack(messenger, l10n, ref, track),
           ),
       ],
     ],
@@ -109,6 +114,7 @@ Future<void> showTrackActions(
 /// плейлистов, и из истории — пункт красный, тап по нему уже и есть решение.
 void _deleteTrack(
   ScaffoldMessengerState messenger,
+  AppLocalizations l10n,
   WidgetRef ref,
   Track track,
 ) {
@@ -116,7 +122,7 @@ void _deleteTrack(
   // бы мусором, на который никто не ссылается.
   unawaited(ref.read(offlineProvider.notifier).remove(track.id));
   ref.read(libraryProvider.notifier).deleteTrack(track.id);
-  messenger.toast('Трек удалён');
+  messenger.toast(l10n.taTrackDeleted);
 }
 
 /// Шторка «Добавить в …»: сперва библиотека, потом плейлисты — порядок как в
@@ -146,8 +152,8 @@ Future<void> showAddTracksToPlaylistSheet(
     backdrop: cover,
     header: SheetLineHeader(
       cover: cover,
-      title: 'Добавить в плейлист',
-      subtitle: one?.name ?? tracksCount(tracks.length),
+      title: context.l.taAddToPlaylist,
+      subtitle: one?.name ?? context.l.tracksCount(tracks.length),
     ),
     child: Consumer(
       builder: (context, ref, _) {
@@ -169,16 +175,17 @@ Future<void> showAddTracksToPlaylistSheet(
             if (outside.isNotEmpty) ...[
               _SimpleRow(
                 icon: SolarIconsOutline.download,
-                label: 'В библиотеку',
+                label: context.l.commonAddToLibrary,
                 color: t.accent,
                 onTap: () {
                   // Мессенджер берём до pop: после него context шторки уже
                   // отвязан от дерева и до Scaffold по нему не дойти.
                   final messenger = ScaffoldMessenger.of(context);
+                  final l10n = context.l;
                   ref.read(libraryProvider.notifier).addToLibrary(outside);
                   Navigator.of(context).pop();
                   messenger.toast(
-                    'Добавлено в библиотеку',
+                    l10n.taAddedToLibrary,
                     kind: ToastKind.success,
                   );
                 },
@@ -187,7 +194,7 @@ Future<void> showAddTracksToPlaylistSheet(
             ],
             _SimpleRow(
               icon: SolarIconsOutline.addSquare,
-              label: 'Новый плейлист',
+              label: context.l.commonNewPlaylist,
               color: t.accent,
               onTap: () {
                 ref

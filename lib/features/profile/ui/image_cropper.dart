@@ -17,6 +17,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
 
 enum CropShape { circle, rect }
@@ -243,7 +244,7 @@ class _CropPageState extends State<_CropPage> {
                   Row(
                     children: [
                       Text(
-                        'Масштаб  ${(_zoom * 100).round()}%',
+                        context.l.profileZoom((_zoom * 100).round()),
                         style: theme.bodySmall,
                       ),
                       Expanded(
@@ -264,7 +265,7 @@ class _CropPageState extends State<_CropPage> {
                         child: TextButton(
                           onPressed: () => Navigator.of(context).pop(),
                           child: Text(
-                            'Назад',
+                            context.l.commonBack,
                             style: TextStyle(color: t.text2),
                           ),
                         ),
@@ -273,7 +274,7 @@ class _CropPageState extends State<_CropPage> {
                       Expanded(
                         child: FilledButton(
                           onPressed: image == null ? null : _apply,
-                          child: const Text('Применить'),
+                          child: Text(context.l.commonApply),
                         ),
                       ),
                     ],

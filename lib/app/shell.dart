@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:solar_icons/solar_icons.dart';
 
+import '../core/l10n/l10n.dart';
 import '../features/player/ui/mini_player.dart';
 import '../features/profile/achievements.dart';
 import '../shared/ui/atoms.dart';
@@ -48,7 +49,10 @@ class _BloomShellState extends ConsumerState<BloomShell> {
     // показывает следующий, когда догорит предыдущий.
     for (final item in fresh) {
       ScaffoldMessenger.of(context).toast(
-        '🏅 Достижение получено: ${item.ach.def.name} — ${tierLabel(item.tier)}',
+        context.l.achUnlockedToast(
+          item.ach.def.name(context.l),
+          tierLabel(context.l, item.tier),
+        ),
         kind: ToastKind.success,
       );
     }
@@ -194,7 +198,9 @@ class _NavSpec {
          'у таба должна быть пара глифов или пара SVG',
        );
 
-  final String label;
+  /// Подпись резолвится при отрисовке, а не при сборке списка: таблица табов
+  /// статическая и переживает смену языка.
+  final String Function(AppLocalizations l) label;
   final IconData? icon;
   final IconData? activeIcon;
   final String? svg;
@@ -212,19 +218,19 @@ class _NavBar extends StatelessWidget {
   /// У Библиотеки — настоящие Solar-SVG (те же файлы, что в anibloom): глиф
   /// `library` в шрифте залит сплошным ящиком, а у `folder` сверху справа
   /// торчит планка, которая в размере таба читается как «минус».
-  static const _items = <_NavSpec>[
+  static final _items = <_NavSpec>[
     _NavSpec(
-      label: 'Главная',
+      label: (l) => l.navHome,
       icon: SolarIconsOutline.homeAngle_2,
       activeIcon: SolarIconsBold.homeAngle_2,
     ),
     _NavSpec(
-      label: 'Библиотека',
+      label: (l) => l.navLibrary,
       svg: 'assets/icons/library-linear.svg',
       activeSvg: 'assets/icons/library-bold.svg',
     ),
     _NavSpec(
-      label: 'Настройки',
+      label: (l) => l.navSettings,
       icon: SolarIconsOutline.settings,
       activeIcon: SolarIconsBold.settings,
     ),
@@ -281,7 +287,7 @@ class _NavItem extends StatelessWidget {
     return Semantics(
       button: true,
       selected: active,
-      label: spec.label,
+      label: spec.label(context.l),
       // Без подложки и без ряби: активный таб отличается заливкой глифа
       // (bold вместо outline) и цветом акцента — этого достаточно, а
       // material-ripple на голом фоне читается как посторонний круг.

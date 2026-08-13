@@ -11,25 +11,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
-import '../../../shared/util/format.dart';
 import '../pl_auto_store.dart';
 
 /// «30 мин» / «3 ч» — подпись периода (десктопный `fmtEvery`).
-String _fmtEvery(int min) => min < 60 ? '$min мин' : '${(min / 60).round()} ч';
+String _fmtEvery(AppLocalizations l, int min) =>
+    min < 60 ? l.paEveryMinutes(min) : l.paEveryHours((min / 60).round());
 
 /// «2 ч назад» — когда плейлист обновлялся в последний раз.
-String _ago(int at) {
+String _ago(AppLocalizations l, int at) {
   final min = ((DateTime.now().millisecondsSinceEpoch - at) / 60000)
       .round()
       .clamp(0, 1 << 31);
-  if (min < 1) return 'только что';
-  if (min < 60) return '$min мин назад';
+  if (min < 1) return l.paJustNow;
+  if (min < 60) return l.paMinutesAgo(min);
   final h = (min / 60).round();
-  if (h < 24) return '$h ч назад';
-  return '${(h / 24).round()} дн назад';
+  if (h < 24) return l.paHoursAgo(h);
+  return l.paDaysAgo((h / 24).round());
 }
 
 Future<void> showPlAutoSheet(BuildContext context, WidgetRef ref) {
@@ -69,8 +70,8 @@ class _PlAutoBody extends ConsumerWidget {
         SheetPanel(
           children: [
             _ToggleRow(
-              title: 'Обновлять автоматически',
-              subtitle: 'Тянуть новые треки из источников по расписанию',
+              title: context.l.paAutoTitle,
+              subtitle: context.l.paAutoSubtitle,
               value: state.enabled,
               onChanged: auto.setEnabled,
             ),
@@ -82,8 +83,8 @@ class _PlAutoBody extends ConsumerWidget {
             ),
             sheetDivider(),
             _ToggleRow(
-              title: 'Проверять при запуске',
-              subtitle: 'Один проход через несколько секунд после старта',
+              title: context.l.paOnStartTitle,
+              subtitle: context.l.paOnStartSubtitle,
               value: state.onStart,
               // Без расписания проверять при запуске нечего — как и на ПК,
               // строка гаснет вместе с тумблером выше.
@@ -97,7 +98,7 @@ class _PlAutoBody extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Плейлисты с источниками',
+                  context.l.paPlaylistsWithSources,
                   style: theme.bodySmall?.copyWith(color: t.muted),
                 ),
               ),
@@ -111,7 +112,9 @@ class _PlAutoBody extends ConsumerWidget {
                               : candidates.map((p) => p.id).toList(),
                         ),
                   child: Text(
-                    allSelected ? 'Снять все' : 'Выбрать все',
+                    allSelected
+                        ? context.l.paDeselectAll
+                        : context.l.paSelectAll,
                     style: theme.bodySmall?.copyWith(color: t.accent),
                   ),
                 ),
@@ -122,9 +125,7 @@ class _PlAutoBody extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(28, 12, 28, 8),
             child: Text(
-              'Обновлять нечего: ни один плейлист не импортирован по ссылке. '
-              'Вставьте ссылку в поле поиска — импортированный плейлист '
-              'запомнит источник.',
+              context.l.paNothingToRefresh,
               textAlign: TextAlign.center,
               style: theme.bodySmall?.copyWith(color: t.muted),
             ),
@@ -149,10 +150,10 @@ class _PlAutoBody extends ConsumerWidget {
           ),
         _Footer(
           hint: state.running
-              ? 'Идёт обновление…'
+              ? context.l.paRefreshing
               : state.lastRun == 0
-              ? 'Ещё не обновлялось'
-              : 'Последний проход: ${_ago(state.lastRun)}',
+              ? context.l.paNeverRefreshed
+              : context.l.paLastRun(_ago(context.l, state.lastRun)),
           canRun: !state.running && selected > 0,
           onRun: () {
             Navigator.of(context).pop();
@@ -184,14 +185,14 @@ class _Hero extends ConsumerWidget {
           state.lastRun +
           state.everyMin * 60 * 1000 -
           DateTime.now().millisecondsSinceEpoch;
-      if (left <= 0) return 'вот-вот';
+      if (left <= 0) return context.l.paSoon;
       final min = (left / 60000).ceil();
-      return 'через ${_fmtEvery(min)}';
+      return context.l.paNextIn(_fmtEvery(context.l, min));
     }
 
     final chips = [
-      'Выбрано: $selected из $candidates',
-      if (state.enabled) _fmtEvery(state.everyMin),
+      context.l.paSelected(selected, candidates),
+      if (state.enabled) _fmtEvery(context.l, state.everyMin),
       ?next(),
     ];
 
@@ -217,7 +218,7 @@ class _Hero extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Авто-обновление', style: theme.titleLarge),
+                Text(context.l.paTitle, style: theme.titleLarge),
                 const SizedBox(height: 6),
                 Wrap(
                   spacing: 6,
@@ -329,7 +330,7 @@ class _IntervalRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Периодичность',
+            context.l.paPeriod,
             style: theme.titleMedium?.copyWith(
               color: enabled ? t.text : t.muted,
             ),
@@ -351,7 +352,7 @@ class _IntervalRow extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 9),
                         child: Center(
                           child: Text(
-                            _fmtEvery(min),
+                            _fmtEvery(context.l, min),
                             style: theme.bodySmall?.copyWith(
                               color: min == value && enabled
                                   ? t.accentText
@@ -396,14 +397,14 @@ class _CandidateRow extends StatelessWidget {
     final theme = Theme.of(context).textTheme;
 
     final last = busy
-        ? 'обновляем…'
+        ? context.l.paRunUpdating
         : run == null
         ? null
         : '${run!.failed
-              ? 'ошибка'
+              ? context.l.paRunError
               : run!.added > 0
               ? '+${run!.added}'
-              : 'без изменений'} · ${_ago(run!.at)}';
+              : context.l.paRunNoChanges} · ${_ago(context.l, run!.at)}';
 
     return InkWell(
       onTap: onTap,
@@ -426,8 +427,8 @@ class _CandidateRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     last == null
-                        ? tracksCount(tracks)
-                        : '${tracksCount(tracks)} · $last',
+                        ? context.l.tracksCount(tracks)
+                        : '${context.l.tracksCount(tracks)} · $last',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.bodySmall?.copyWith(color: t.muted),
@@ -502,7 +503,7 @@ class _Footer extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 13),
                   child: Center(
                     child: Text(
-                      'Обновить сейчас',
+                      context.l.paRefreshNow,
                       style: theme.titleMedium?.copyWith(
                         color: canRun ? t.accentText : t.muted,
                       ),

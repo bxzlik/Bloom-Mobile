@@ -15,6 +15,7 @@ library;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../entities/entities.dart';
+import '../l10n/l10n.dart';
 import 'json_store.dart';
 
 /// Сколько записей держим в истории.
@@ -488,7 +489,12 @@ class LibraryController extends Notifier<LibraryState> {
     final now = DateTime.now().millisecondsSinceEpoch;
     final pl = UserPlaylist(
       id: 'pl_$now',
-      name: name.trim().isEmpty ? 'Новый плейлист' : name.trim(),
+      // Имя плейлиста — данные, а не интерфейс: как назвали при создании,
+      // так и останется. Поэтому дефолт берётся на языке, который стоял в
+      // этот момент, и потом уже не переводится.
+      name: name.trim().isEmpty
+          ? (globalL10n?.commonNewPlaylist ?? 'New playlist')
+          : name.trim(),
       trackIds: tracks.map((t) => t.id).toList(),
       cover: cover ?? (tracks.isEmpty ? null : tracks.first.cover),
       sourceUrl: sourceUrl,

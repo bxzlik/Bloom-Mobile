@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../providers/soundcloud/models.dart';
 import '../../../providers/soundcloud/soundcloud.dart' as sc;
@@ -69,12 +70,7 @@ class _SoundCloudSettingsScreenState
           const SizedBox(height: 22),
           Text('CLIENT_ID', style: theme.labelSmall),
           const SizedBox(height: 8),
-          Text(
-            'Обычно не нужен: ключ подбирается сам — скрейпом сайта, а если не '
-            'вышло, перебором известных. Своё значение имеет смысл вбить, если '
-            'SoundCloud перестал отвечать.',
-            style: theme.bodySmall,
-          ),
+          Text(context.l.scHelp, style: theme.bodySmall),
           const SizedBox(height: 12),
           Container(
             height: 46,
@@ -93,7 +89,7 @@ class _SoundCloudSettingsScreenState
                     decoration: InputDecoration(
                       isDense: true,
                       border: InputBorder.none,
-                      hintText: 'Автоматически',
+                      hintText: context.l.scHint,
                       hintStyle: theme.bodyMedium?.copyWith(color: t.muted),
                     ),
                     onSubmitted: (v) =>
@@ -122,7 +118,10 @@ class _SoundCloudSettingsScreenState
               onPressed: () => ref
                   .read(settingsProvider.notifier)
                   .setScClientId(_controller.text),
-              child: Text('Сохранить', style: TextStyle(color: t.accent)),
+              child: Text(
+                context.l.commonSave,
+                style: TextStyle(color: t.accent),
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -144,7 +143,10 @@ class _SoundCloudSettingsScreenState
                             color: t.accent,
                           ),
                         )
-                      : Text('Проверить соединение', style: theme.titleSmall),
+                      : Text(
+                          context.l.scCheckConnection,
+                          style: theme.titleSmall,
+                        ),
                 ),
               ),
             ),
@@ -172,14 +174,16 @@ class _SoundCloudSettingsScreenState
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        r.ok ? 'Соединение работает' : 'Не отвечает',
+                        r.ok
+                            ? context.l.scConnectionOk
+                            : context.l.scConnectionFail,
                         style: theme.titleSmall,
                       ),
                     ],
                   ),
                   if (r.clientId != null) ...[
                     const SizedBox(height: 8),
-                    Text('Активный ключ', style: theme.bodySmall),
+                    Text(context.l.scActiveKey, style: theme.bodySmall),
                     const SizedBox(height: 2),
                     SelectableText(
                       r.clientId!,

@@ -13,6 +13,7 @@ import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme/tokens.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/store/library_store.dart';
 import '../../../features/player/player_controller.dart';
@@ -55,7 +56,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
     if (provider == null) {
       setState(() {
         _loading = false;
-        _error = 'Площадка этого списка не подключена';
+        _error = context.l.setSourceNotConnected;
       });
       return;
     }
@@ -68,8 +69,8 @@ class _SetScreenState extends ConsumerState<SetScreen> {
         _loading = false;
         if (content == null) {
           _error = widget.set.isAlbum
-              ? 'Альбом не найден'
-              : 'Плейлист не найден';
+              ? context.l.setAlbumNotFound
+              : context.l.setPlaylistNotFound;
           return;
         }
         // Обложку и владельца из карточки не теряем: у SoundCloud полная
@@ -98,7 +99,8 @@ class _SetScreenState extends ConsumerState<SetScreen> {
     }
   }
 
-  String get _kindWord => _set.isAlbum ? 'Альбом' : 'Плейлист';
+  String _kindWord(BuildContext context) =>
+      _set.isAlbum ? context.l.commonAlbum : context.l.commonPlaylist;
 
   void _play() {
     if (_tracks.isEmpty) return;
@@ -202,7 +204,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 40),
                 child: Center(
                   child: Text(
-                    'Нет доступных треков',
+                    context.l.setNoTracks,
                     style: Theme.of(
                       context,
                     ).textTheme.bodyMedium?.copyWith(color: t.muted),
@@ -237,16 +239,16 @@ class _SetScreenState extends ConsumerState<SetScreen> {
         : _tracks.fold(Duration.zero, (sum, x) => sum + x.duration);
     final year = _set.year;
     return [
-      _kindWord,
+      _kindWord(context),
       if (year != null && year.isNotEmpty) year,
-      if (count case final n?) tracksCount(n),
+      if (count case final n?) context.l.tracksCount(n),
       if (total case final d? when d > Duration.zero) mmss(d),
     ].join(' · ');
   }
 
   void _save(bool alreadySaved) {
     if (alreadySaved) {
-      _toast('Уже в библиотеке', ToastKind.warn);
+      _toast(context.l.commonAlreadyInLibrary, ToastKind.warn);
       return;
     }
     ref
@@ -259,7 +261,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
           isAlbum: _set.isAlbum,
         );
     _toast(
-      'Добавлено: ${_set.title} — ${tracksCount(_tracks.length)}',
+      context.l.addedToast(_set.title, context.l.tracksCount(_tracks.length)),
       ToastKind.success,
     );
   }
@@ -280,19 +282,21 @@ class _SetScreenState extends ConsumerState<SetScreen> {
         [
           SheetAction(
             icon: SolarIconsBold.play,
-            label: 'Воспроизвести',
+            label: context.l.commonPlay,
             onTap: _tracks.isEmpty ? null : _play,
           ),
           SheetAction(
             icon: SolarIconsOutline.shuffle,
-            label: 'Перемешать',
+            label: context.l.commonShuffle,
             onTap: _tracks.isEmpty ? null : _shuffle,
           ),
         ],
         [
           SheetAction(
             icon: saved ? SolarIconsBold.checkCircle : SolarIconsOutline.import,
-            label: saved ? 'Уже в библиотеке' : 'Сохранить в библиотеку',
+            label: saved
+                ? context.l.commonAlreadyInLibrary
+                : context.l.setSaveToLibrary,
             onTap: _tracks.isEmpty ? null : () => _save(saved),
           ),
         ],
@@ -300,10 +304,10 @@ class _SetScreenState extends ConsumerState<SetScreen> {
           if (link != null && link.isNotEmpty)
             SheetAction(
               icon: SolarIconsOutline.link,
-              label: 'Скопировать ссылку',
+              label: context.l.commonCopyLink,
               onTap: () {
                 Clipboard.setData(ClipboardData(text: link));
-                _toast('Ссылка скопирована', ToastKind.success);
+                _toast(context.l.commonLinkCopied, ToastKind.success);
               },
             ),
         ],

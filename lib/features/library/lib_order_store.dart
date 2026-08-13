@@ -15,16 +15,17 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solar_icons/solar_icons.dart';
 
+import '../../core/l10n/l10n.dart';
 import '../../core/store/library_store.dart' show jsonStoreProvider;
 
 enum LibSort { manual, nameAsc, nameDesc, type }
 
 extension LibSortMeta on LibSort {
-  String get label => switch (this) {
-    LibSort.manual => 'По умолчанию',
-    LibSort.nameAsc => 'По имени A–Z',
-    LibSort.nameDesc => 'По имени Z–A',
-    LibSort.type => 'По типу',
+  String label(AppLocalizations l) => switch (this) {
+    LibSort.manual => l.libSortManual,
+    LibSort.nameAsc => l.libSortNameAsc,
+    LibSort.nameDesc => l.libSortNameDesc,
+    LibSort.type => l.libSortType,
   };
 
   IconData get icon => switch (this) {

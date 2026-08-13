@@ -22,19 +22,6 @@ String compactCount(int n) {
   return '${m < 10 ? m.toStringAsFixed(1) : m.round()}M';
 }
 
-/// «12 треков» с русскими формами множественного числа.
-String tracksCount(int n) {
-  final mod100 = n % 100;
-  final mod10 = n % 10;
-  final String word;
-  if (mod100 >= 11 && mod100 <= 14) {
-    word = 'треков';
-  } else if (mod10 == 1) {
-    word = 'трек';
-  } else if (mod10 >= 2 && mod10 <= 4) {
-    word = 'трека';
-  } else {
-    word = 'треков';
-  }
-  return '$n $word';
-}
+// «12 треков» переехало в словарь: ключ `tracksCount` в `lib/l10n/*.arb`
+// считает формы через ICU-плюрали, поэтому русская тройка (трек/трека/треков)
+// и английская пара живут рядом с остальными строками, а не в коде.

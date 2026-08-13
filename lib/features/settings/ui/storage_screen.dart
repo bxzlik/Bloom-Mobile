@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../offline/offline_store.dart';
@@ -34,7 +35,7 @@ class StorageSettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
         children: [
           SubPageHeader(
-            title: 'Хранилище',
+            title: context.l.setStorage,
             onBack: () => context.go('/settings'),
           ),
           const SizedBox(height: 22),
@@ -59,12 +60,18 @@ class StorageSettingsScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Офлайн-кеш треков', style: theme.titleSmall),
+                          Text(
+                            context.l.stOfflineCache,
+                            style: theme.titleSmall,
+                          ),
                           const SizedBox(height: 2),
                           Text(
                             stats == null
-                                ? 'Считаю…'
-                                : '${stats.count} треков · ${_size(stats.bytes)}',
+                                ? context.l.stCounting
+                                : context.l.stCacheStats(
+                                    stats.count,
+                                    _size(context.l, stats.bytes),
+                                  ),
                             style: theme.bodySmall,
                           ),
                         ],
@@ -76,12 +83,7 @@ class StorageSettingsScreen extends ConsumerWidget {
             },
           ),
           const SizedBox(height: 12),
-          Text(
-            'Скачанные треки играют без сети и не тратят трафик. '
-            'Лежат внутри приложения — другим плеерам не видны и '
-            'удаляются вместе с Bloom.',
-            style: theme.bodySmall,
-          ),
+          Text(context.l.stHelp, style: theme.bodySmall),
           const SizedBox(height: 20),
           _ClearButton(enabled: files.isNotEmpty),
         ],
@@ -117,7 +119,7 @@ class _ClearButton extends ConsumerWidget {
               ),
               const SizedBox(width: 14),
               Text(
-                'Очистить офлайн-кеш',
+                context.l.stClear,
                 style: theme.titleSmall?.copyWith(
                   color: enabled ? t.sysFavIco : t.muted,
                 ),
@@ -142,40 +144,43 @@ class _ClearButton extends ConsumerWidget {
           borderRadius: BorderRadius.circular(t.radius),
           side: BorderSide(color: t.ovlLine),
         ),
-        title: Text('Очистить офлайн-кеш?', style: theme.titleLarge),
+        title: Text(context.l.stClearTitle, style: theme.titleLarge),
         content: Text(
-          'Скачанные копии будут удалены, и эти треки перестанут играть без '
-          'сети. Из библиотеки и плейлистов они никуда не денутся.',
+          context.l.stClearBody,
           style: theme.bodyMedium?.copyWith(color: t.text2),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text('Отмена', style: TextStyle(color: t.text2)),
+            child: Text(
+              context.l.commonCancel,
+              style: TextStyle(color: t.text2),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text('Очистить', style: TextStyle(color: t.sysFavIco)),
+            child: Text(
+              context.l.statsClear,
+              style: TextStyle(color: t.sysFavIco),
+            ),
           ),
         ],
       ),
     );
     if (yes != true || !context.mounted) return;
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l;
     final deleted = await ref.read(offlineProvider.notifier).clearAll();
-    messenger.toast(
-      'Офлайн-кеш очищен, удалено файлов: $deleted',
-      kind: ToastKind.success,
-    );
+    messenger.toast(l10n.stCleared(deleted), kind: ToastKind.success);
   }
 }
 
 /// Размер по-человечески: килобайты для мелочи, дальше мегабайты и гигабайты.
-String _size(int bytes) {
-  if (bytes < 1024) return '$bytes Б';
+String _size(AppLocalizations l, int bytes) {
+  if (bytes < 1024) return l.stBytes('$bytes');
   final kb = bytes / 1024;
-  if (kb < 1024) return '${kb.toStringAsFixed(0)} КБ';
+  if (kb < 1024) return l.stKilobytes(kb.toStringAsFixed(0));
   final mb = kb / 1024;
-  if (mb < 1024) return '${mb.toStringAsFixed(mb < 10 ? 1 : 0)} МБ';
-  return '${(mb / 1024).toStringAsFixed(2)} ГБ';
+  if (mb < 1024) return l.stMegabytes(mb.toStringAsFixed(mb < 10 ? 1 : 0));
+  return l.stGigabytes((mb / 1024).toStringAsFixed(2));
 }

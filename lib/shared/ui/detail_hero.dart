@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../app/theme/tokens.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/store/cover_store.dart';
 import 'atoms.dart';
 import 'bloom_mark.dart';
@@ -179,7 +180,7 @@ class HeroActions extends StatelessWidget {
     super.key,
     required this.onPlay,
     required this.trailing,
-    this.label = 'Воспроизвести',
+    this.label,
   });
 
   /// `null` — играть нечего (страница ещё грузится или треков нет).
@@ -188,7 +189,9 @@ class HeroActions extends StatelessWidget {
   /// Круглые кнопки справа от «Воспроизвести».
   final List<Widget> trailing;
 
-  final String label;
+  /// `null` — обычное «Воспроизвести»; берётся при отрисовке, потому что
+  /// значение по умолчанию у параметра обязано быть константой.
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
@@ -211,7 +214,7 @@ class HeroActions extends StatelessWidget {
                     Icon(SolarIconsBold.play, size: 18, color: t.accentText),
                     const SizedBox(width: 8),
                     Text(
-                      label,
+                      label ?? context.l.commonPlay,
                       style: Theme.of(
                         context,
                       ).textTheme.titleMedium?.copyWith(color: t.accentText),

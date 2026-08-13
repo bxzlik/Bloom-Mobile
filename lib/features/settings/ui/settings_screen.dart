@@ -12,8 +12,8 @@
 /// же Solar, что на десктопе; исключение «Система»: там монитор, здесь
 /// смартфон.
 ///
-/// Работают два раздела — «Интерфейс» и «SoundCloud». Остальные честно говорят,
-/// что ещё не сделаны.
+/// Работают «Интерфейс», «Хранилище», «SoundCloud» и «Яндекс.Музыка».
+/// Остальные честно говорят, что ещё не сделаны.
 library;
 
 import 'package:flutter/material.dart';
@@ -22,6 +22,7 @@ import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
 
@@ -38,44 +39,47 @@ class SettingsScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
         children: [
           SettingsGroup(
-            title: 'ОСНОВНОЕ',
+            title: context.l.setGroupMain,
             rows: [
-              const SettingsRow(
+              SettingsRow(
                 icon: SolarIconsOutline.smartphone,
-                title: 'Система',
+                title: context.l.setSystem,
               ),
-              const SettingsRow(icon: SolarIconsOutline.tuning, title: 'Аудио'),
-              const SettingsRow(
+              SettingsRow(
+                icon: SolarIconsOutline.tuning,
+                title: context.l.setAudio,
+              ),
+              SettingsRow(
                 icon: SolarIconsOutline.transferHorizontal,
-                title: 'Свайпы',
+                title: context.l.setSwipes,
               ),
               SettingsRow(
                 icon: SolarIconsOutline.database,
-                title: 'Хранилище',
+                title: context.l.setStorage,
                 onTap: () => context.go('/settings/storage'),
               ),
             ],
           ),
           SettingsGroup(
-            title: 'ОФОРМЛЕНИЕ',
+            title: context.l.setGroupAppearance,
             rows: [
-              const SettingsRow(
+              SettingsRow(
                 icon: SolarIconsOutline.musicNote,
-                title: 'Плеер',
+                title: context.l.setPlayer,
               ),
               SettingsRow(
                 icon: SolarIconsOutline.sidebar,
-                title: 'Интерфейс',
+                title: context.l.setInterface,
                 onTap: () => context.go('/settings/appearance'),
               ),
-              const SettingsRow(
+              SettingsRow(
                 icon: SolarIconsOutline.album,
-                title: 'Кастомизация',
+                title: context.l.setCustomization,
               ),
             ],
           ),
           SettingsGroup(
-            title: 'ИНТЕГРАЦИИ',
+            title: context.l.setGroupIntegrations,
             rows: [
               SettingsRow(
                 title: 'SoundCloud',
@@ -83,12 +87,14 @@ class SettingsScreen extends StatelessWidget {
                 onTap: () => context.go('/settings/soundcloud'),
               ),
               SettingsRow(
-                title: 'Яндекс.Музыка',
+                title: context.l.sourceYandex,
                 leading: const PlatformLogo(MusicSource.yandex, size: 20),
+                onTap: () => context.go('/settings/yandex'),
               ),
               SettingsRow(
                 title: 'YouTube Music',
                 leading: const PlatformLogo(MusicSource.ytmusic, size: 20),
+                onTap: () => context.go('/settings/ytmusic'),
               ),
               SettingsRow(
                 title: 'Last.fm',
@@ -210,4 +216,4 @@ class SettingsRow extends StatelessWidget {
 }
 
 void _showStub(BuildContext context, String title) =>
-    showToast(context, '«$title» ещё не сделан', kind: ToastKind.warn);
+    showToast(context, context.l.setStub(title), kind: ToastKind.warn);

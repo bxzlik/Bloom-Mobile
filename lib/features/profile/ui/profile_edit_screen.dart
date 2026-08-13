@@ -26,6 +26,7 @@ import 'package:go_router/go_router.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
@@ -163,7 +164,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     // Прежние свои картинки больше никому не нужны.
     if (_draft.avatar != _saved.avatar) unawaited(deleteCover(_saved.avatar));
     if (_draft.banner != _saved.banner) unawaited(deleteCover(_saved.banner));
-    showToast(context, 'Профиль сохранён!', kind: ToastKind.success);
+    showToast(context, context.l.profileSaved, kind: ToastKind.success);
     context.go('/home/profile');
   }
 
@@ -185,19 +186,22 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(t.radius),
         ),
-        title: Text('Отменить правку?', style: theme.titleLarge),
+        title: Text(context.l.profileDiscardTitle, style: theme.titleLarge),
         content: Text(
-          'Всё, что вы наменяли в профиле, не сохранится.',
+          context.l.profileDiscardBody,
           style: theme.bodyMedium?.copyWith(color: t.text2),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text('Назад', style: TextStyle(color: t.text2)),
+            child: Text(context.l.commonBack, style: TextStyle(color: t.text2)),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text('Отменить', style: TextStyle(color: t.sysFavIco)),
+            child: Text(
+              context.l.commonDiscard,
+              style: TextStyle(color: t.sysFavIco),
+            ),
           ),
         ],
       ),
@@ -256,30 +260,30 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                     ),
                     const SizedBox(height: 26),
                     _Field(
-                      label: 'НИКНЕЙМ',
+                      label: context.l.profileNickname,
                       controller: _name,
-                      hint: 'Введи никнейм...',
+                      hint: context.l.profileNicknameHint,
                       limit: 32,
                     ),
                     const SizedBox(height: 16),
                     _Field(
-                      label: 'О СЕБЕ',
+                      label: context.l.profileAbout,
                       controller: _bio,
-                      hint: 'Расскажи о себе...',
+                      hint: context.l.profileAboutHint,
                       limit: 300,
                       lines: 4,
                     ),
                     const SizedBox(height: 16),
                     _Field(
-                      label: 'СТАТУС',
+                      label: context.l.profileStatus,
                       controller: _status,
-                      hint: '"Мой статус..."',
+                      hint: context.l.profileStatusHint,
                       limit: 80,
                       italic: true,
                     ),
                     const SizedBox(height: 22),
                     _Section(
-                      title: 'ПЛАСТИНКА',
+                      title: context.l.profileDisc,
                       child: _DiscRow(
                         draft: _draft,
                         onPreset: (i) => _patch(
@@ -308,7 +312,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                       width: double.infinity,
                       child: FilledButton(
                         onPressed: _save,
-                        child: const Text('Сохранить'),
+                        child: Text(context.l.commonSave),
                       ),
                     ),
                   ),
@@ -469,9 +473,11 @@ class _ImageSheetState extends State<_ImageSheet> {
                             const Spacer(),
                             _Segmented<BannerColorMode>(
                               value: _draft.bannerMode,
-                              items: const {
-                                BannerColorMode.solid: 'Цвет',
-                                BannerColorMode.gradient: 'Градиент',
+                              items: {
+                                BannerColorMode.solid: (l) =>
+                                    l.profileColorSolid,
+                                BannerColorMode.gradient: (l) =>
+                                    l.profileColorGradient,
                               },
                               onChanged: (m) =>
                                   _patch(_draft.copyWith(bannerMode: m)),
@@ -500,14 +506,16 @@ class _ImageSheetState extends State<_ImageSheet> {
             child: FilledButton.icon(
               onPressed: () => _run(widget.onPick),
               icon: const Icon(SolarIconsOutline.uploadMinimalistic, size: 20),
-              label: const Text('Загрузить'),
+              label: Text(context.l.commonUpload),
             ),
           ),
           if (_hasOwn)
             TextButton(
               onPressed: () => _run(widget.onDrop),
               child: Text(
-                banner ? 'Убрать картинку' : 'Убрать фото',
+                banner
+                    ? context.l.profileRemoveImage
+                    : context.l.profileRemovePhoto,
                 style: TextStyle(color: t.sysFavIco),
               ),
             ),
@@ -753,7 +761,7 @@ class _Segmented<T> extends StatelessWidget {
   });
 
   final T value;
-  final Map<T, String> items;
+  final Map<T, String Function(AppLocalizations l)> items;
   final ValueChanged<T> onChanged;
 
   @override
@@ -782,7 +790,7 @@ class _Segmented<T> extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  entry.value,
+                  entry.value(context.l),
                   style: theme.bodySmall?.copyWith(
                     color: entry.key == value ? t.accentText : t.text2,
                     fontWeight: FontWeight.w600,

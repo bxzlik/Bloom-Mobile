@@ -269,7 +269,9 @@ void main() {
   test('пустое имя плейлиста не создаёт безымянный', () {
     final c = _container(JsonStore.memory());
     final pl = c.read(libraryProvider.notifier).createPlaylist('   ');
-    expect(pl.name, 'Новый плейлист');
+    // Без дерева виджетов языку интерфейса взяться неоткуда, и `globalL10n`
+    // отдаёт null — createPlaylist падает на английский запасной вариант.
+    expect(pl.name, 'New playlist');
   });
 
   test('всё переживает перезапуск', () {

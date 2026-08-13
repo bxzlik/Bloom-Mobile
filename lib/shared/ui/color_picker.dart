@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 
 import '../../app/theme/tokens.dart';
+import '../../core/l10n/l10n.dart';
 
 /// Открыть пикер. Возвращает выбранный цвет или `null`, если закрыли.
 Future<Color?> showBloomColorPicker(BuildContext context, Color initial) {
@@ -169,7 +170,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                         child: TextButton(
                           onPressed: () => Navigator.of(context).pop(),
                           child: Text(
-                            'Отмена',
+                            context.l.commonCancel,
                             style: TextStyle(color: t.text2),
                           ),
                         ),
@@ -178,7 +179,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                       Expanded(
                         child: FilledButton(
                           onPressed: () => Navigator.of(context).pop(_color),
-                          child: const Text('Готово'),
+                          child: Text(context.l.commonDone),
                         ),
                       ),
                     ],

@@ -17,6 +17,7 @@ import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../features/offline/file_download.dart';
@@ -29,7 +30,6 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/sticky_hero.dart';
-import '../../../shared/util/format.dart';
 import '../lib_order_store.dart';
 import '../refresh_playlist.dart';
 import 'list_edit.dart';
@@ -37,14 +37,20 @@ import 'list_hero.dart';
 
 /// Сортировка трек-листа — те же режимы, что на десктопе.
 enum TrackSort {
-  manual('По порядку', SolarIconsOutline.playlistMinimalistic),
-  name('По названию', SolarIconsOutline.sortByAlphabet),
-  artist('По исполнителю', SolarIconsOutline.userRounded),
-  duration('По длительности', SolarIconsOutline.sortByTime);
+  manual(SolarIconsOutline.playlistMinimalistic),
+  name(SolarIconsOutline.sortByAlphabet),
+  artist(SolarIconsOutline.userRounded),
+  duration(SolarIconsOutline.sortByTime);
 
-  const TrackSort(this.label, this.icon);
-  final String label;
+  const TrackSort(this.icon);
   final IconData icon;
+
+  String label(AppLocalizations l) => switch (this) {
+    TrackSort.manual => l.tlSortManual,
+    TrackSort.name => l.tlSortName,
+    TrackSort.artist => l.tlSortArtist,
+    TrackSort.duration => l.tlSortDuration,
+  };
 }
 
 class TracklistScreen extends ConsumerStatefulWidget {
@@ -86,11 +92,11 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
     }
 
     final (String title, List<Track> source) = switch (widget.listId) {
-      'all' => ('Все треки', lib.allTracks),
-      'fav' => ('Любимые', lib.favTracks),
-      'history' => ('История', lib.historyTracks),
+      'all' => (context.l.commonAllTracks, lib.allTracks),
+      'fav' => (context.l.commonFavorites, lib.favTracks),
+      'history' => (context.l.commonHistory, lib.historyTracks),
       _ => (
-        playlist?.name ?? 'Плейлист',
+        playlist?.name ?? context.l.commonPlaylist,
         playlist == null ? <Track>[] : lib.tracksOf(playlist),
       ),
     };
@@ -149,12 +155,12 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
               child: Center(
                 child: Text(
                   _query.isNotEmpty
-                      ? 'Ничего не нашлось'
+                      ? context.l.tlNothingFound
                       : switch (widget.listId) {
-                          'fav' => 'Пока ничего не залайкано',
-                          'history' => 'История пуста',
-                          'all' => 'В библиотеке пока пусто',
-                          _ => 'В плейлисте пока пусто',
+                          'fav' => context.l.tlEmptyFav,
+                          'history' => context.l.tlEmptyHistory,
+                          'all' => context.l.tlEmptyAll,
+                          _ => context.l.tlEmptyPlaylist,
                         },
                   style: Theme.of(
                     context,
@@ -392,7 +398,10 @@ class _Hero extends ConsumerWidget {
           const SizedBox(height: 4),
           Row(
             children: [
-              Text(tracksCount(tracks.length), style: theme.bodyMedium),
+              Text(
+                context.l.tracksCount(tracks.length),
+                style: theme.bodyMedium,
+              ),
               // Сколько из списка уже на устройстве — та же подпись, что в
               // шапке плейлиста на десктопе. Только у плейлиста: у «Всех
               // треков» / «Любимых» / «Истории» на ПК её нет.
@@ -449,13 +458,17 @@ Future<void> showSortSheet(
   return showBloomSheet(
     context: context,
     backdrop: cover,
-    header: SheetLineHeader(cover: cover, title: 'Сортировка', subtitle: title),
+    header: SheetLineHeader(
+      cover: cover,
+      title: context.l.commonSort,
+      subtitle: title,
+    ),
     groups: [
       [
         for (final s in TrackSort.values)
           SheetAction(
             icon: s.icon,
-            label: s.label,
+            label: s.label(context.l),
             onTap: () => onSort(s),
             trailing: s == sort
                 ? Icon(SolarIconsBold.checkCircle, size: 18, color: t.accent)
@@ -497,11 +510,14 @@ class _InlineSearch extends StatelessWidget {
                   style: Theme.of(
                     context,
                   ).textTheme.titleMedium?.copyWith(color: Colors.white),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     isDense: true,
                     border: InputBorder.none,
-                    hintText: 'В этом списке',
-                    hintStyle: TextStyle(color: Colors.white54, fontSize: 15),
+                    hintText: context.l.tlSearchHint,
+                    hintStyle: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
               ),
@@ -555,7 +571,7 @@ class _Actions extends ConsumerWidget {
                     Icon(SolarIconsBold.play, size: 18, color: t.accentText),
                     const SizedBox(width: 8),
                     Text(
-                      'Воспроизвести',
+                      context.l.commonPlay,
                       style: Theme.of(
                         context,
                       ).textTheme.titleMedium?.copyWith(color: t.accentText),
@@ -622,6 +638,7 @@ Future<void> showPlaylistMenu(
     tracks,
   );
   final messenger = ScaffoldMessenger.of(context);
+  final l10n = context.l;
 
   await showBloomSheet(
     context: context,
@@ -629,18 +646,18 @@ Future<void> showPlaylistMenu(
     header: SheetCoverHeader(
       cover: cover,
       title: playlist.name,
-      subtitle: tracksCount(tracks.length),
+      subtitle: context.l.tracksCount(tracks.length),
     ),
     groups: [
       [
         SheetAction(
           icon: SolarIconsBold.play,
-          label: 'Воспроизвести',
+          label: context.l.commonPlay,
           onTap: tracks.isEmpty ? null : play,
         ),
         SheetAction(
           icon: SolarIconsOutline.shuffle,
-          label: 'Перемешать',
+          label: context.l.commonShuffle,
           onTap: tracks.isEmpty ? null : () => play(shuffle: true),
         ),
       ],
@@ -652,7 +669,7 @@ Future<void> showPlaylistMenu(
         if (ref.read(offlineProvider).batch?.sourceId == playlist.id)
           SheetAction(
             icon: SolarIconsOutline.closeCircle,
-            label: 'Прервать сохранение',
+            label: context.l.tlStopSaving,
             onTap: () => ref.read(offlineProvider.notifier).cancelBatch(),
           )
         // Скачать целиком есть смысл, пока в списке остались несохранённые
@@ -663,17 +680,26 @@ Future<void> showPlaylistMenu(
                 ? SolarIconsBold.checkCircle
                 : SolarIconsOutline.diskette,
             label: offlineStatus.all
-                ? 'Убрать из офлайна'
-                : 'Слушать офлайн (${offlineStatus.total - offlineStatus.cached})',
+                ? context.l.tlRemoveOffline
+                : context.l.tlListenOffline(
+                    offlineStatus.total - offlineStatus.cached,
+                  ),
             onTap: () => offlineStatus.all
-                ? removeListOffline(messenger, ref, tracks)
-                : downloadListOffline(messenger, ref, playlist.id, tracks),
+                ? removeListOffline(messenger, l10n, ref, tracks)
+                : downloadListOffline(
+                    messenger,
+                    l10n,
+                    ref,
+                    playlist.id,
+                    tracks,
+                  ),
           ),
           if (canSaveFiles)
             SheetAction(
               icon: SolarIconsOutline.downloadMinimalistic,
-              label: 'Скачать файлами (${offlineStatus.total})',
-              onTap: () => saveListFiles(messenger, ref, playlist.id, tracks),
+              label: context.l.tlDownloadFiles(offlineStatus.total),
+              onTap: () =>
+                  saveListFiles(messenger, l10n, ref, playlist.id, tracks),
             ),
         ],
         // Тот же «Обновить треки», что кнопкой в шапке: в шторку он попадает
@@ -681,30 +707,30 @@ Future<void> showPlaylistMenu(
         if (playlist.sourceUrl != null)
           SheetAction(
             icon: SolarIconsOutline.refresh,
-            label: 'Обновить треки',
-            onTap: () => refreshOnePlaylist(messenger, ref, playlist),
+            label: context.l.tlRefreshTracks,
+            onTap: () => refreshOnePlaylist(messenger, l10n, ref, playlist),
           ),
         SheetAction(
           icon: SolarIconsOutline.pin,
-          label: pinned ? 'Открепить' : 'Закрепить',
+          label: pinned ? context.l.commonUnpin : context.l.commonPin,
           onTap: () => ref.read(libOrderProvider.notifier).togglePin(orderKey),
         ),
         SheetAction(
           icon: SolarIconsOutline.penNewSquare,
-          label: 'Переименовать',
+          label: context.l.commonRename,
           onTap: () => _rename(context, ref, playlist),
         ),
         SheetAction(
           icon: SolarIconsOutline.gallery,
           label: playlist.cover == null
-              ? 'Поставить обложку'
-              : 'Сменить обложку',
+              ? context.l.tlSetCover
+              : context.l.tlChangeCover,
           onTap: () => _changeCover(ref, playlist),
         ),
         if (playlist.cover != null)
           SheetAction(
             icon: SolarIconsOutline.galleryRemove,
-            label: 'Убрать обложку',
+            label: context.l.tlRemoveCover,
             onTap: () {
               deleteCover(playlist.cover);
               ref
@@ -716,7 +742,7 @@ Future<void> showPlaylistMenu(
       [
         SheetAction(
           icon: SolarIconsOutline.trashBinMinimalistic,
-          label: 'Удалить плейлист',
+          label: context.l.tlDeletePlaylist,
           danger: true,
           onTap: () {
             // Удаляем сразу и даём «Отменить» в тосте — как `PlMenu` на ПК:
@@ -730,7 +756,7 @@ Future<void> showPlaylistMenu(
             lib.deletePlaylist(playlist.id);
             context.go('/library');
             messenger.toast(
-              'Плейлист «${playlist.name}» удалён',
+              l10n.tlPlaylistDeleted(playlist.name),
               action: ToastAction(
                 fn: () => lib.restorePlaylist(index, playlist),
                 // Своя обложка живёт файлом в каталоге приложения; удаляем её
@@ -802,7 +828,7 @@ class _RenameDialogState extends State<_RenameDialog> {
         side: BorderSide(color: t.ovlLine),
       ),
       title: Text(
-        'Переименовать',
+        context.l.commonRename,
         style: Theme.of(context).textTheme.titleLarge,
       ),
       content: TextField(
@@ -816,11 +842,11 @@ class _RenameDialogState extends State<_RenameDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Отмена', style: TextStyle(color: t.text2)),
+          child: Text(context.l.commonCancel, style: TextStyle(color: t.text2)),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(_controller.text),
-          child: Text('Сохранить', style: TextStyle(color: t.accent)),
+          child: Text(context.l.commonSave, style: TextStyle(color: t.accent)),
         ),
       ],
     );

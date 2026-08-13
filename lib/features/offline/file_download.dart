@@ -27,6 +27,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../app/providers.dart';
 import '../../core/entities/entities.dart';
 import '../../core/store/app_dirs.dart';
+import '../../core/l10n/l10n.dart';
 import 'offline_store.dart';
 
 const MethodChannel _channel = MethodChannel('bloom/downloads');
@@ -35,14 +36,16 @@ const MethodChannel _channel = MethodChannel('bloom/downloads');
 bool get canSaveFiles => Platform.isAndroid || Platform.isIOS;
 
 /// Куда, по-человечески, — для снекбара и подписей.
-String get saveTargetLabel =>
-    Platform.isIOS ? 'Файлы → На iPhone → Bloom' : 'Музыка/Bloom';
+String saveTargetLabel(AppLocalizations l) =>
+    Platform.isIOS ? l.fdPathIos : l.fdPathAndroid;
 
-/// Сохранить трек файлом. Возвращает путь для показа пользователю.
+/// Сохранить трек файлом. Возвращает путь для показа пользователю; `null` —
+/// файл лёг в место по умолчанию, и назвать его человеческим языком (см.
+/// [saveTargetLabel]) должен уже UI.
 ///
 /// Уже скачанный офлайн трек второй раз не качается — файл просто копируется
 /// из кеша (и, разумеется, из кеша не пропадает).
-Future<String> saveTrackAsFile(
+Future<String?> saveTrackAsFile(
   WidgetRef ref,
   Track track, {
   void Function(double)? onProgress,
@@ -58,11 +61,11 @@ Future<String> saveTrackAsFile(
   } else {
     final provider = ref.read(registryProvider).forEntity(track.id);
     if (provider == null || !provider.canDownload(track)) {
-      throw const FormatException('Этот трек нельзя скачать');
+      throw const DownloadFailure(DownloadFailureKind.notDownloadable);
     }
     final stream = await provider.resolveDownload(track);
     if (stream == null) {
-      throw const FormatException('Этот трек нельзя скачать');
+      throw const DownloadFailure(DownloadFailureKind.notDownloadable);
     }
     // Временный каталог: файл живёт ровно до переноса в медиатеку, а система
     // вправе подчистить его сама, если перенос не случится.
@@ -94,7 +97,7 @@ Future<String> saveTrackAsFile(
     'artist': track.artist,
     'deleteSource': deleteSource,
   });
-  return saved ?? saveTargetLabel;
+  return saved;
 }
 
 /// iOS: кладём файл в `Documents` приложения — ту самую папку, которую система
@@ -104,7 +107,7 @@ Future<String> saveTrackAsFile(
 /// Нативный код тут не нужен: это обычный каталог приложения. Общей медиатеки,
 /// как `Музыка/Bloom` на Android, у iOS для сторонних приложений нет — отсюда
 /// файл человек уже сам утаскивает куда хочет.
-Future<String> _saveToVisibleDir(
+Future<String?> _saveToVisibleDir(
   File source,
   String filename,
   bool deleteSource,
@@ -133,7 +136,7 @@ Future<String> _saveToVisibleDir(
       // Временный файл не удалился — система подчистит его сама.
     }
   }
-  return saveTargetLabel;
+  return null;
 }
 
 /// Сохранить файлами весь список. Возвращает число неудач.
@@ -170,15 +173,35 @@ Future<({int total, int failed})> saveListAsFiles(
   return (total: pending.length, failed: failed);
 }
 
-/// Ошибку канала показываем текстом Android, остальное — как есть.
-String readableSaveError(Object e) {
+/// Почему файл не сохранился. Текста тут нет намеренно — язык интерфейса
+/// известен только UI (`describeSaveError` в `offline_actions.dart`).
+enum DownloadFailureKind {
+  notDownloadable,
+  needPermission,
+  noConnection,
+  unknown,
+}
+
+class DownloadFailure implements Exception {
+  const DownloadFailure(this.kind, [this.detail]);
+
+  final DownloadFailureKind kind;
+
+  /// Текст от платформы для `unknown` — Android присылает своё сообщение.
+  final String? detail;
+}
+
+/// Разобрать пойманное исключение в причину.
+DownloadFailure readableSaveError(Object e) {
+  if (e is DownloadFailure) return e;
   if (e is PlatformException) {
     if (e.code == 'permission') {
-      return 'Нужен доступ к памяти телефона — разрешите и повторите';
+      return const DownloadFailure(DownloadFailureKind.needPermission);
     }
-    return e.message ?? 'Не удалось сохранить файл';
+    return DownloadFailure(DownloadFailureKind.unknown, e.message);
   }
-  if (e is FormatException) return e.message;
-  if (e is SocketException) return 'Нет соединения';
-  return 'Не удалось сохранить: $e';
+  if (e is SocketException) {
+    return const DownloadFailure(DownloadFailureKind.noConnection);
+  }
+  return DownloadFailure(DownloadFailureKind.unknown, '$e');
 }

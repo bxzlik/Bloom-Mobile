@@ -127,16 +127,22 @@ class _SheetShell extends StatelessWidget {
               Positioned.fill(child: SheetBackdrop(cover: backdrop)),
               SafeArea(
                 top: false,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const _Handle(),
-                      ?header,
-                      child,
-                      const SizedBox(height: 10),
-                    ],
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Ручка и шапка закреплены: листаются только пункты, иначе
+                    // в длинной шторке обложка уезжает вверх вместе с ними.
+                    const _Handle(),
+                    ?header,
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [child, const SizedBox(height: 10)],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

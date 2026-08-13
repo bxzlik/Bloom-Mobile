@@ -16,6 +16,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:bloom/core/l10n/l10n.dart';
+
 const _track = Track(
   id: 'sc_1',
   name: 'sleep mode',
@@ -34,6 +36,11 @@ Future<void> _pumpRow(WidgetTester tester, {int? dragIndex}) async {
     ProviderScope(
       overrides: [jsonStoreProvider.overrideWithValue(JsonStore.memory())],
       child: MaterialApp(
+        // Язык прибит гвоздями: иначе проверки текста зависели бы от локали
+        // машины, на которой гоняют тесты.
+        locale: const Locale('ru'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: buildBloomTheme(BloomThemes.dark),
         home: Scaffold(
           // Список настоящий: `ReorderableDelayedDragStartListener` без него

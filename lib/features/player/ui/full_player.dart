@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
@@ -150,7 +151,7 @@ class _Header extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Играет из',
+                    context.l.playerPlayingFrom,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const SizedBox(width: 7),

@@ -26,13 +26,13 @@ import 'package:go_router/go_router.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
-import '../../../shared/util/format.dart';
 import '../../detail/detail_nav.dart';
 import '../../offline/offline_actions.dart';
 import '../lib_order_store.dart';
@@ -43,10 +43,10 @@ import 'tracklist_screen.dart';
 
 enum LibFilter { all, playlists, artists }
 
-const _filterLabels = {
-  LibFilter.all: 'Все',
-  LibFilter.playlists: 'Плейлисты',
-  LibFilter.artists: 'Артисты',
+final _filterLabels = <LibFilter, String Function(AppLocalizations)>{
+  LibFilter.all: (AppLocalizations l) => l.libFilterAll,
+  LibFilter.playlists: (AppLocalizations l) => l.commonPlaylists,
+  LibFilter.artists: (AppLocalizations l) => l.commonArtists,
 };
 
 class LibraryScreen extends ConsumerStatefulWidget {
@@ -298,7 +298,7 @@ class _SystemTiles extends StatelessWidget {
         children: [
           // Иконки — те же, что в десктопном сайдбаре: нота, сердце, часы.
           _SystemTile(
-            title: 'Все треки',
+            title: context.l.commonAllTracks,
             count: lib.inLib.length,
             icon: SolarIconsOutline.musicNote,
             tint: t.sysAllTint,
@@ -307,7 +307,7 @@ class _SystemTiles extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           _SystemTile(
-            title: 'Любимые',
+            title: context.l.commonFavorites,
             count: lib.favs.length,
             icon: SolarIconsBold.heart,
             tint: t.sysFavTint,
@@ -316,7 +316,7 @@ class _SystemTiles extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           _SystemTile(
-            title: 'История',
+            title: context.l.commonHistory,
             count: lib.history.length,
             icon: SolarIconsOutline.clockCircle,
             tint: t.sysHistTint,
@@ -370,7 +370,7 @@ class _SystemTile extends StatelessWidget {
                 children: [
                   Text(title, style: theme.titleMedium),
                   const SizedBox(height: 2),
-                  Text(tracksCount(count), style: theme.bodySmall),
+                  Text(context.l.tracksCount(count), style: theme.bodySmall),
                 ],
               ),
             ],
@@ -408,7 +408,7 @@ class _Chips extends ConsumerWidget {
               icon: SolarIconsOutline.addCircle,
               size: kChipHeight,
               iconSize: 22,
-              tooltip: 'Создать плейлист',
+              tooltip: context.l.commonCreatePlaylist,
               onTap: () => showCreatePlaylistSheet(context, ref),
             ),
           ),
@@ -418,7 +418,7 @@ class _Chips extends ConsumerWidget {
               icon: SolarIconsOutline.refresh,
               size: kChipHeight,
               iconSize: 20,
-              tooltip: 'Авто-обновление плейлистов',
+              tooltip: context.l.libAutoRefreshTooltip,
               background: autoOn ? t.accent : null,
               color: autoOn ? t.accentText : null,
               onTap: () => showPlAutoSheet(context, ref),
@@ -430,7 +430,7 @@ class _Chips extends ConsumerWidget {
               icon: SolarIconsOutline.sort,
               size: kChipHeight,
               iconSize: 20,
-              tooltip: 'Сортировка',
+              tooltip: context.l.commonSort,
               background: sort == LibSort.manual ? null : t.accent,
               color: sort == LibSort.manual ? null : t.accentText,
               onTap: () => _showSortSheet(context, ref),
@@ -439,7 +439,7 @@ class _Chips extends ConsumerWidget {
           const SizedBox(width: 12),
           for (final f in LibFilter.values) ...[
             _FilterChip(
-              label: _filterLabels[f]!,
+              label: _filterLabels[f]!(context.l),
               active: f == active,
               onTap: () => onPick(f),
             ),
@@ -459,17 +459,17 @@ Future<void> _showSortSheet(BuildContext context, WidgetRef ref) {
   final active = ref.read(libOrderProvider).sort;
   return showBloomSheet(
     context: context,
-    header: const SheetLineHeader(
+    header: SheetLineHeader(
       cover: null,
-      title: 'Сортировка',
-      subtitle: 'Библиотека',
+      title: context.l.commonSort,
+      subtitle: context.l.commonLibrary,
     ),
     groups: [
       [
         for (final sort in LibSort.values)
           SheetAction(
             icon: sort.icon,
-            label: sort.label,
+            label: sort.label(context.l),
             onTap: () => ref.read(libOrderProvider.notifier).setSort(sort),
             trailing: sort == active
                 ? Icon(SolarIconsBold.checkCircle, size: 18, color: t.accent)
@@ -478,10 +478,10 @@ Future<void> _showSortSheet(BuildContext context, WidgetRef ref) {
       ],
       // Подсказка про перетаскивание: без неё ручной порядок не найти — он
       // прячется в долгом тапе.
-      const [
+      [
         SheetAction(
           icon: SolarIconsOutline.infoCircle,
-          label: 'В «По умолчанию» плитку можно зажать и перетащить',
+          label: context.l.libDragHint,
         ),
       ],
     ],
@@ -498,6 +498,7 @@ Future<void> _showArtistMenu(
   final key = libKeyOfArtist(artist.id);
   final pinned = ref.read(libOrderProvider).isPinned(key);
   final messenger = ScaffoldMessenger.of(context);
+  final l10n = context.l;
 
   return showBloomSheet(
     context: context,
@@ -505,25 +506,25 @@ Future<void> _showArtistMenu(
     header: SheetLineHeader(
       cover: artist.avatar,
       title: artist.name,
-      subtitle: 'Артист',
+      subtitle: context.l.commonArtist,
       circle: true,
     ),
     groups: [
       [
         SheetAction(
           icon: SolarIconsOutline.pin,
-          label: pinned ? 'Открепить' : 'Закрепить',
+          label: pinned ? context.l.commonUnpin : context.l.commonPin,
           onTap: () => ref.read(libOrderProvider.notifier).togglePin(key),
         ),
       ],
       [
         SheetAction(
           icon: SolarIconsBold.userCheckRounded,
-          label: 'Отписаться',
+          label: context.l.commonUnfollow,
           danger: true,
           onTap: () {
             ref.read(libraryProvider.notifier).toggleFollow(artist);
-            messenger.toast('Подписка снята');
+            messenger.toast(l10n.unfollowedToast);
           },
         ),
       ],
@@ -648,7 +649,7 @@ class _SetTileState extends ConsumerState<_SetTile> {
                 // оставаться целым, даже если название списка длинное.
                 Flexible(
                   child: Text(
-                    tracksCount(playlist.trackIds.length),
+                    context.l.tracksCount(playlist.trackIds.length),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.bodySmall,
@@ -736,9 +737,9 @@ class _Empty extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final text = switch (filter) {
-      LibFilter.artists => 'Подписок пока нет',
-      LibFilter.playlists => 'Плейлистов пока нет',
-      LibFilter.all => 'Создай плейлист или вставь ссылку в поиск',
+      LibFilter.artists => context.l.libEmptyArtists,
+      LibFilter.playlists => context.l.libEmptyPlaylists,
+      LibFilter.all => context.l.libEmptyAll,
     };
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),

@@ -10,11 +10,18 @@ import 'package:bloom/shared/ui/bloom_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:bloom/core/l10n/l10n.dart';
+
 /// Экран-подложка: тост показывается через мессенджер, поэтому нужен Scaffold.
 Future<ScaffoldMessengerState> _pumpHost(WidgetTester tester) async {
   late ScaffoldMessengerState messenger;
   await tester.pumpWidget(
     MaterialApp(
+      // Язык прибит гвоздями: иначе проверки текста зависели бы от локали
+      // машины, на которой гоняют тесты.
+      locale: const Locale('ru'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       theme: buildBloomTheme(BloomThemes.dark),
       home: Scaffold(
         body: Builder(

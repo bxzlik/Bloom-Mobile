@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../app/theme/tokens.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/entities/entities.dart';
 import '../../features/detail/detail_nav.dart';
 import '../../features/offline/offline_store.dart';
@@ -154,7 +155,7 @@ class _Cover extends StatelessWidget {
         Positioned(
           right: 3,
           bottom: 3,
-          child: SourceBadge(track.source, size: 18),
+          child: SourceBadge(track.source, size: kRowBadge),
         ),
       ],
     );
@@ -379,9 +380,9 @@ class _SetRowState extends State<SetRow> {
     final theme = Theme.of(context).textTheme;
     final flight = _flightFor(set.cover, _tag);
     final sub = [
-      set.isAlbum ? 'Альбом' : 'Плейлист',
+      set.isAlbum ? context.l.commonAlbum : context.l.commonPlaylist,
       set.ownerName,
-      if (set.trackCount != null) tracksCount(set.trackCount!),
+      if (set.trackCount != null) context.l.tracksCount(set.trackCount!),
     ].whereType<String>().where((s) => s.isNotEmpty).join(' · ');
 
     return InkWell(
@@ -391,11 +392,20 @@ class _SetRowState extends State<SetRow> {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Row(
           children: [
-            Cover(
-              url: set.cover,
-              size: 48,
-              flight: flight,
-              overlay: SetEqualizer(setId: set.id),
+            Stack(
+              children: [
+                Cover(
+                  url: set.cover,
+                  size: 48,
+                  flight: flight,
+                  overlay: SetEqualizer(setId: set.id),
+                ),
+                Positioned(
+                  right: 3,
+                  bottom: 3,
+                  child: SourceBadge(set.source, size: kRowBadge),
+                ),
+              ],
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -464,7 +474,7 @@ class TrackCard extends ConsumerWidget {
                 Positioned(
                   right: 6,
                   bottom: 6,
-                  child: SourceBadge(track.source, size: 22),
+                  child: SourceBadge(track.source, size: kCardBadge),
                 ),
               ],
             ),
@@ -550,7 +560,7 @@ class _ArtistCardState extends State<ArtistCard> {
           if (followers != null) ...[
             const SizedBox(height: 2),
             Text(
-              '${compactCount(followers)} подписчиков',
+              context.l.followersCount(followers, compactCount(followers)),
               maxLines: 1,
               textAlign: align,
               overflow: TextOverflow.ellipsis,
@@ -598,18 +608,29 @@ class _SetCardState extends State<SetCard> {
     final sub = [
       set.ownerName,
       set.year,
-      if (set.trackCount != null) tracksCount(set.trackCount!),
+      if (set.trackCount != null) context.l.tracksCount(set.trackCount!),
     ].whereType<String>().where((s) => s.isNotEmpty).join(' · ');
 
     final content = LayoutBuilder(
       builder: (context, box) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Cover(
-            url: set.cover,
-            size: box.maxWidth,
-            flight: flight,
-            overlay: SetEqualizer(setId: set.id),
+          // Бейдж площадки — как у карточки трека: в одной ленте выдачи рядом
+          // стоят альбомы разных площадок, и по обложке этого не понять.
+          Stack(
+            children: [
+              Cover(
+                url: set.cover,
+                size: box.maxWidth,
+                flight: flight,
+                overlay: SetEqualizer(setId: set.id),
+              ),
+              Positioned(
+                right: 6,
+                bottom: 6,
+                child: SourceBadge(set.source, size: kCardBadge),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Text(
@@ -645,11 +666,17 @@ class EntityCarousel extends StatelessWidget {
     required this.height,
     required this.itemCount,
     required this.builder,
+    this.padding = 8,
   });
 
   final double height;
   final int itemCount;
   final Widget Function(int index) builder;
+
+  /// Отступ ленты от краёв экрана. По умолчанию 8 — как у списков выдачи, где
+  /// строки уже отбиты своим паддингом. На главной он 16: там ленты стоят
+  /// вровень с заголовками секций и карточками разделов.
+  final double padding;
 
   @override
   Widget build(BuildContext context) {
@@ -657,7 +684,7 @@ class EntityCarousel extends StatelessWidget {
       height: height,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: EdgeInsets.symmetric(horizontal: padding),
         itemCount: itemCount,
         separatorBuilder: (_, _) => const SizedBox(width: 12),
         itemBuilder: (context, i) => builder(i),

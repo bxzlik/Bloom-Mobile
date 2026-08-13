@@ -8,9 +8,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../core/l10n/l10n.dart';
 import '../achievements.dart';
 import '../stats.dart';
 
@@ -34,7 +36,7 @@ class AchievementsSection extends ConsumerWidget {
           children: [
             Icon(SolarIconsOutline.medalStar, size: 16, color: t.iconFg),
             const SizedBox(width: 8),
-            Text('Достижения', style: theme.titleSmall),
+            Text(context.l.profileAchievements, style: theme.titleSmall),
             const Spacer(),
             Text(
               '$done/$total',
@@ -62,23 +64,8 @@ class _AchCard extends StatelessWidget {
   final AchProgress progress;
   final int? unlockedAt;
 
-  static const List<String> _months = [
-    'янв',
-    'фев',
-    'мар',
-    'апр',
-    'мая',
-    'июн',
-    'июл',
-    'авг',
-    'сен',
-    'окт',
-    'ноя',
-    'дек',
-  ];
-
-  String _fmt(int value) =>
-      progress.def.unit == AchUnit.time ? fmtDurLong(value) : '$value';
+  String _fmt(BuildContext context, int value) =>
+      progress.def.unit == AchUnit.time ? fmtDurLong(context, value) : '$value';
 
   @override
   Widget build(BuildContext context) {
@@ -120,7 +107,7 @@ class _AchCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        a.def.name,
+                        a.def.name(context.l),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.titleSmall,
@@ -144,7 +131,7 @@ class _AchCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  a.def.description,
+                  a.def.description(context.l),
                   style: theme.bodySmall?.copyWith(color: t.muted),
                 ),
                 const SizedBox(height: 8),
@@ -164,8 +151,8 @@ class _AchCard extends StatelessWidget {
                   children: [
                     Text(
                       a.maxed
-                          ? 'Максимум'
-                          : '${_fmt(a.value)} / ${_fmt(a.nextTarget!)}',
+                          ? context.l.achMax
+                          : '${_fmt(context, a.value)} / ${_fmt(context, a.nextTarget!)}',
                       style: theme.bodySmall?.copyWith(
                         color: a.maxed ? tierColor(AchTier.gold) : t.text2,
                       ),
@@ -173,7 +160,7 @@ class _AchCard extends StatelessWidget {
                     const Spacer(),
                     if (unlockedAt case final at?)
                       Text(
-                        'получено ${_date(at)}',
+                        context.l.achUnlockedAt(_date(context, at)),
                         style: theme.bodySmall?.copyWith(
                           color: t.muted,
                           fontSize: 11,
@@ -189,8 +176,9 @@ class _AchCard extends StatelessWidget {
     );
   }
 
-  String _date(int ms) {
-    final d = DateTime.fromMillisecondsSinceEpoch(ms);
-    return '${d.day} ${_months[d.month - 1]} ${d.year}';
-  }
+  /// Дата берётся у `intl`, а не собирается вручную: он уже знает и порядок
+  /// частей, и сокращения месяцев для обеих локалей.
+  String _date(BuildContext context, int ms) => DateFormat.yMMMd(
+    Localizations.localeOf(context).languageCode,
+  ).format(DateTime.fromMillisecondsSinceEpoch(ms));
 }
