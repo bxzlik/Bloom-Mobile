@@ -183,6 +183,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get playerQueue => 'Queue';
 
   @override
+  String get playerCopied => 'Copied';
+
+  @override
+  String get playerCopyError => 'Error';
+
+  @override
   String get notifChannelName => 'Playback';
 
   @override
@@ -291,6 +297,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tlEmptyHistory => 'History is empty';
+
+  @override
+  String get histToday => 'Today';
+
+  @override
+  String get histYesterday => 'Yesterday';
+
+  @override
+  String histDaysAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days ago',
+      one: '$count day ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get histWeekAgo => 'A week ago';
 
   @override
   String get tlEmptyAll => 'Your library is empty';
@@ -758,13 +784,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileSaved => 'Profile saved!';
 
   @override
-  String get profileDiscardTitle => 'Discard changes?';
-
-  @override
-  String get profileDiscardBody =>
-      'Everything you changed in your profile will be lost.';
-
-  @override
   String get profileNickname => 'NICKNAME';
 
   @override
@@ -1053,6 +1072,66 @@ class AppLocalizationsEn extends AppLocalizations {
   String setStub(String title) {
     return '“$title” isn’t built yet';
   }
+
+  @override
+  String get swZoneLibrary => 'Library';
+
+  @override
+  String get swZoneQueue => 'Queue';
+
+  @override
+  String get swZoneMini => 'Mini player';
+
+  @override
+  String get swZonePlayer => 'Player';
+
+  @override
+  String get swLeft => 'Swipe left';
+
+  @override
+  String get swRight => 'Swipe right';
+
+  @override
+  String get swActNone => 'Disabled';
+
+  @override
+  String get swActLike => 'Like';
+
+  @override
+  String get swActQueue => 'Add to queue';
+
+  @override
+  String get swActPlayNext => 'Play next';
+
+  @override
+  String get swActNext => 'Next';
+
+  @override
+  String get swActPrev => 'Previous';
+
+  @override
+  String get swActDownload => 'Download';
+
+  @override
+  String get swActDelete => 'Delete';
+
+  @override
+  String get swAddedToQueue => 'Added to queue';
+
+  @override
+  String get swAlreadyInQueue => 'Already in the queue';
+
+  @override
+  String get swPlaysNext => 'Plays next';
+
+  @override
+  String get swLiked => 'Added to favorites';
+
+  @override
+  String get swUnliked => 'Removed from favorites';
+
+  @override
+  String get swRemoved => 'Removed';
 
   @override
   String get apLanguage => 'LANGUAGE';

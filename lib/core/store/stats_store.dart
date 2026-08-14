@@ -70,7 +70,7 @@ class StatsController extends Notifier<StatsState> {
   }
 
   /// Засчитать одно прослушивание в сегодняшний день. Зовётся там же, где
-  /// история, — в момент, когда трек реально пошёл играть.
+  /// история, — когда трек доигран на 90% (или до конца), а не когда начат.
   void addPlay() {
     final key = dayKey(DateTime.now());
     state = state.copyWith(

@@ -156,7 +156,8 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     final shown = likes.length < _likesShown ? likes.length : _likesShown;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+      // Снизу — бары каркаса: они плавают над содержимым.
+      padding: EdgeInsets.fromLTRB(8, 0, 8, 12 + bottomBarsInset(context)),
       children: [
         _Hero(artist: artist),
         if (sets.isNotEmpty) ...[

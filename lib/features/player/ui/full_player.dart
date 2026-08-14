@@ -6,6 +6,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solar_icons/solar_icons.dart';
 
@@ -13,9 +14,14 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/store/library_store.dart';
+import '../../../features/settings/swipe_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_toast.dart';
+import '../../../shared/ui/marquee_text.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/track_actions.dart';
+import '../../../shared/ui/track_flick.dart';
+import '../../../shared/ui/track_swipes.dart';
 import '../../../shared/util/artists.dart';
 import '../../../shared/util/format.dart';
 import '../../detail/artists_sheet.dart';
@@ -24,6 +30,14 @@ import 'queue_sheet.dart';
 
 /// Радиус обложки в плеере — заметно круглее блоков (как в референсе).
 const double _coverRadius = 20;
+
+/// Что уходит в буфер по тапу на название: «Название — Артист», как на ПК
+/// (`TitleCopyOnClick`: `title + ' — ' + artist`). Артиста нет — одно название,
+/// иначе в буфере оставалось бы висящее тире.
+String trackCopyText(Track track) {
+  final artist = track.artist.trim();
+  return artist.isEmpty ? track.name : '${track.name} — $artist';
+}
 
 /// Открыть плеер: выезд снизу.
 void openFullPlayer(BuildContext context) {
@@ -66,6 +80,8 @@ class FullPlayerPage extends ConsumerWidget {
         ..pop();
     });
 
+    final swipes = ref.watch(swipeProvider).of(SwipeZone.player);
+
     return Scaffold(
       backgroundColor: t.bg,
       body: GestureDetector(
@@ -73,44 +89,67 @@ class FullPlayerPage extends ConsumerWidget {
         onVerticalDragEnd: (d) {
           if ((d.primaryVelocity ?? 0) > 260) Navigator.of(context).maybePop();
         },
-        child: SafeArea(
-          child: track == null
-              ? const SizedBox.shrink()
-              : Padding(
-                  // Сверху воздух: шапка не должна липнуть к статус-бару.
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                  child: Column(
-                    children: [
-                      _Header(track: track),
-                      const SizedBox(height: 16),
-                      // Обложка по центру свободного места.
-                      Flexible(
-                        child: Center(
-                          child: AspectRatio(
-                            aspectRatio: 1,
-                            child: _Cover(state: state),
+        // Горизонтальный жест ловится со всего экрана, а едут от него обложка
+        // и подписи: тянуть плеер целиком незачем — шапка и транспорт к треку
+        // не относятся. Своя ловушка прогресса ниже перебивает этот жест, как
+        // и положено ближнему детектору.
+        child: TrackFlick(
+          onLeft: track == null || swipes.left == SwipeAction.none
+              ? null
+              : () => runSwipeAction(context, ref, swipes.left, track: track),
+          onRight: track == null || swipes.right == SwipeAction.none
+              ? null
+              : () => runSwipeAction(context, ref, swipes.right, track: track),
+          builder: (context, shift) => SafeArea(
+            child: track == null
+                ? const SizedBox.shrink()
+                : Padding(
+                    // Сверху воздух: шапка не должна липнуть к статус-бару.
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                    child: Column(
+                      children: [
+                        _Header(track: track),
+                        const SizedBox(height: 16),
+                        // Обложка по центру свободного места.
+                        Flexible(
+                          child: Center(
+                            child: AspectRatio(
+                              aspectRatio: 1,
+                              child: FlickSlide(
+                                shift: shift,
+                                child: _Cover(state: state),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                      // Отступы вокруг названия одинаковые: оно должно стоять
-                      // ровно посередине между обложкой и прогрессом. Снизу
-                      // своего `SizedBox` нет — там те же ~24 набегают из
-                      // ловушки прогресса (`_Progress.slack`) и полей вокруг
-                      // имени артиста.
-                      const SizedBox(height: 24),
-                      _TitleBlock(state: state),
-                      const _Progress(),
-                      const SizedBox(height: 16),
-                      const _Transport(),
-                      const SizedBox(height: 12),
-                      _Tools(queueCount: state.queue.length),
-                      // Воздух до края экрана: вся связка прогресс — транспорт
-                      // — инструменты стоит выше кромки, обложка подожмётся
-                      // сама (она во `Flexible`).
-                      const SizedBox(height: 22),
-                    ],
+                        // Отступы вокруг названия одинаковые: оно должно стоять
+                        // ровно посередине между обложкой и прогрессом. Снизу
+                        // те же ~24 набегают из полей вокруг имени артиста, этой
+                        // восьмёрки и верхней половины ловушки прогресса
+                        // (`_Progress.slack`).
+                        const SizedBox(height: 24),
+                        // Подписи отзываются вдвое слабее обложки: они уже
+                        // самой карточки, и на одном с ней ходу успевали бы
+                        // улететь за край раньше неё.
+                        FlickSlide(
+                          shift: shift,
+                          amplitude: 0.5,
+                          child: _TitleBlock(state: state),
+                        ),
+                        const SizedBox(height: 8),
+                        const _Progress(),
+                        const SizedBox(height: 16),
+                        const _Transport(),
+                        const SizedBox(height: 12),
+                        _Tools(queueCount: state.queue.length),
+                        // Воздух до края экрана: вся связка прогресс —
+                        // транспорт — инструменты стоит выше кромки, обложка
+                        // подожмётся сама (она во `Flexible`).
+                        const SizedBox(height: 22),
+                      ],
+                    ),
                   ),
-                ),
+          ),
         ),
       ),
     );
@@ -286,12 +325,22 @@ class _TitleBlock extends ConsumerWidget {
 
     return Column(
       children: [
-        Text(
-          track.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: theme.headlineSmall,
+        // Тап по названию копирует «Название — Артист» (порт `TitleCopyOnClick`
+        // с ПК). Ловушка шире самой строки — по бокам, а не по высоте: сверху и
+        // снизу отступы выверены, лишние пиксели сдвинули бы весь блок.
+        GestureDetector(
+          onTap: () => _copy(context, track),
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            // Название бежит, если не влезло, — порт `MarqueeTitle` с ПК.
+            // На ходу строка идёт от левого края, в покое стоит по центру.
+            child: MarqueeText(
+              track.name,
+              align: TextAlign.center,
+              style: theme.headlineSmall,
+            ),
+          ),
         ),
         // Отступ до имени даёт сама ловушка под палец: одной строкой текста в
         // 19 px по центру экрана попасть тяжело.
@@ -306,6 +355,22 @@ class _TitleBlock extends ConsumerWidget {
       ],
     );
   }
+
+  /// «Название — Артист» в буфер, как на ПК.
+  Future<void> _copy(BuildContext context, Track track) async {
+    if (track.name.isEmpty) return;
+    final l = context.l;
+    try {
+      await Clipboard.setData(ClipboardData(text: trackCopyText(track)));
+      if (context.mounted) {
+        showToast(context, l.playerCopied, kind: ToastKind.success);
+      }
+    } catch (_) {
+      if (context.mounted) {
+        showToast(context, l.playerCopyError, kind: ToastKind.error);
+      }
+    }
+  }
 }
 
 class _Progress extends ConsumerStatefulWidget {
@@ -319,10 +384,14 @@ class _Progress extends ConsumerStatefulWidget {
   /// высоты, а нажатие ловит всей площадью.
   static const double trackHeight = 5;
 
-  /// Пустота, которая при этом остаётся над и под дорожкой внутри ловушки:
-  /// сверху она заменяет собой отступ от названия, снизу — воздух до времён.
-  /// Поэтому ни того, ни другого отдельным `SizedBox` больше нет.
-  static const double slack = 20;
+  /// Пустота, которая при этом остаётся над и под дорожкой внутри ловушки.
+  ///
+  /// Ловушка симметричная, а вот воздух вокруг дорожки — нет: снизу к пустоте
+  /// прибавляется ещё и верхний отступ строки времён (у `bodyMedium` над
+  /// цифрами есть свой межстрочный запас), и провал под полоской выходит явно
+  /// шире, чем над ней. Поэтому [slack] держим по нижней стороне, а недостачу
+  /// сверху добирает `SizedBox` перед прогрессом.
+  static const double slack = 12;
 
   static const double hit = trackHeight + slack * 2;
 
@@ -386,8 +455,8 @@ class _ProgressState extends ConsumerState<_Progress> {
             ),
           ),
         ),
-        // Времена стоят сразу под ловушкой: воздух до дорожки они получают из
-        // её нижней половины (`_Progress.slack`).
+        // Времена стоят сразу под ловушкой: весь воздух до дорожки они
+        // получают из её нижней половины (`_Progress.slack`).
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Row(

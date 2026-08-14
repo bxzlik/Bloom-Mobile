@@ -36,6 +36,20 @@ const EdgeInsets kTrackRowPadding = EdgeInsets.symmetric(
 const double kTrackRowCover = 52;
 const double kTrackRowHeight = kTrackRowCover + 12;
 
+/// Пометка строки в «Истории»: во сколько трек слушали в последний раз и
+/// сколько раз всего. На десктопе это счётчик у названия и время у правого края
+/// строки — здесь ровно то же.
+@immutable
+class HistoryMark {
+  const HistoryMark({required this.time, required this.count});
+
+  /// Уже отформатированное время («18:32»): формат зависит от локали и от
+  /// системных настроек, а их знает только виджет.
+  final String time;
+
+  final int count;
+}
+
 /// Строка трека: обложка, название/артист, длительность. Тап ставит [queue]
 /// целиком, чтобы работали «дальше»/«назад», а не один трек.
 class TrackRow extends ConsumerWidget {
@@ -46,6 +60,7 @@ class TrackRow extends ConsumerWidget {
     required this.index,
     this.sourceId,
     this.dragIndex,
+    this.mark,
   });
 
   final Track track;
@@ -62,6 +77,9 @@ class TrackRow extends ConsumerWidget {
   /// двигать нечего.
   final int? dragIndex;
 
+  /// Задана только в «Истории» — см. [HistoryMark].
+  final HistoryMark? mark;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return TrackRowShell(
@@ -72,6 +90,7 @@ class TrackRow extends ConsumerWidget {
           .playQueue(queue, index, sourceId: sourceId),
       onMenu: () => showTrackActions(context, ref, track),
       dragIndex: dragIndex,
+      mark: mark,
     );
   }
 }
@@ -87,6 +106,7 @@ class TrackRowShell extends StatelessWidget {
     required this.onTap,
     required this.onMenu,
     this.dragIndex,
+    this.mark,
   });
 
   final Track track;
@@ -106,6 +126,9 @@ class TrackRowShell extends StatelessWidget {
   /// переезжает с обложки на остальную часть строки: два долгих жеста на одном
   /// месте иначе спорят в арене и меню открывается вместо перетаскивания.
   final int? dragIndex;
+
+  /// Задана только в «Истории» — см. [HistoryMark].
+  final HistoryMark? mark;
 
   @override
   Widget build(BuildContext context) {
@@ -131,6 +154,7 @@ class TrackRowShell extends StatelessWidget {
                 track: track,
                 active: active,
                 onMenu: drag == null ? null : onMenu,
+                mark: mark,
               ),
             ),
           ],
@@ -165,16 +189,23 @@ class _Cover extends StatelessWidget {
 /// Строка без обложки: тексты, отметка офлайна, длительность. Отдельным
 /// куском, потому что у тянущихся строк именно на нём висит долгий тап.
 class _Rest extends StatelessWidget {
-  const _Rest({required this.track, required this.active, this.onMenu});
+  const _Rest({
+    required this.track,
+    required this.active,
+    this.onMenu,
+    this.mark,
+  });
 
   final Track track;
   final bool active;
   final VoidCallback? onMenu;
+  final HistoryMark? mark;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
+    final mark = this.mark;
 
     final row = Row(
       children: [
@@ -182,13 +213,25 @@ class _Rest extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                track.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: active
-                    ? theme.titleMedium?.copyWith(color: t.accent)
-                    : theme.titleMedium,
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      track.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: active
+                          ? theme.titleMedium?.copyWith(color: t.accent)
+                          : theme.titleMedium,
+                    ),
+                  ),
+                  // Сколько раз слушали — только когда больше одного: единица
+                  // в истории и так у всех, кроме повторов.
+                  if (mark != null && mark.count > 1) ...[
+                    const SizedBox(width: 6),
+                    _PlayCountBadge(count: mark.count),
+                  ],
+                ],
               ),
               const SizedBox(height: 2),
               Text(
@@ -203,6 +246,13 @@ class _Rest extends StatelessWidget {
           ),
         ),
         _OfflineMark(trackId: track.id),
+        if (mark != null) ...[
+          const SizedBox(width: 10),
+          Text(
+            mark.time,
+            style: theme.bodySmall?.copyWith(color: t.muted, fontSize: 11),
+          ),
+        ],
         const SizedBox(width: 10),
         DurationPill(track: track, active: active),
       ],
@@ -216,6 +266,39 @@ class _Rest extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onLongPress: onMenu,
       child: row,
+    );
+  }
+}
+
+/// Счётчик прослушиваний у названия — акцентная пилюля из десктопной истории
+/// (`historyMeta.count`). Цифра, а не «N раз»: строка узкая, а смысл читается из
+/// самого раздела.
+class _PlayCountBadge extends StatelessWidget {
+  const _PlayCountBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return Container(
+      constraints: const BoxConstraints(minWidth: 18),
+      height: 18,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      decoration: BoxDecoration(
+        color: t.accent,
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Text(
+        '$count',
+        style: TextStyle(
+          color: t.accentText,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          height: 1,
+        ),
+      ),
     );
   }
 }

@@ -25,6 +25,37 @@ const double kHeaderControl = 48;
 /// Высота чипа-фильтра (библиотека, поиск) и круглых кнопок в том же ряду.
 const double kChipHeight = 44;
 
+/// Запас снизу под плавающие бары каркаса — миниплеер и таб-бар.
+///
+/// Каркас держит их поверх содержимого (`Scaffold.extendBody`), поэтому список
+/// идёт до самого низа экрана и просвечивает сквозь поля вокруг карточки
+/// плеера. Плата за это — последние строки навсегда остаются под барами, если
+/// скролл не добрать этим отступом.
+///
+/// Высоту не считаем руками (64 + 8 + 58 + вырез): её кладёт в нижний отступ
+/// `MediaQuery` сам `Scaffold` — при `extendBody` он берёт максимум из выреза
+/// системы и высоты нижних баров. Своя копия числа разъехалась бы с раскладкой
+/// при первой же правке миниплеера.
+///
+/// Вне каркаса (модалка поверх всего) вернёт обычный системный вырез — там это
+/// и нужно.
+double bottomBarsInset(BuildContext context) =>
+    MediaQuery.paddingOf(context).bottom;
+
+/// Хвост `CustomScrollView` на высоту баров: там, где отступ негде дописать к
+/// существующему `SliverPadding` (ветки `if`/`else` с разными списками).
+class SliverBottomBarsInset extends StatelessWidget {
+  const SliverBottomBarsInset({super.key, this.extra = 0});
+
+  /// Дополнительный просвет над барами — сверх их высоты.
+  final double extra;
+
+  @override
+  Widget build(BuildContext context) => SliverToBoxAdapter(
+    child: SizedBox(height: bottomBarsInset(context) + extra),
+  );
+}
+
 /// Иконка из SVG-ассета, перекрашенная в цвет темы. Нужна там, где глиф из
 /// шрифта Solar нарисован криво (library, user-circle) и берётся настоящий
 /// Solar-SVG.

@@ -3,28 +3,36 @@
 /// поэтому проверяется отдельно от обеих.
 library;
 
+import 'package:bloom/app/theme/bloom_theme.dart';
+import 'package:bloom/app/theme/tokens.dart';
 import 'package:bloom/shared/ui/cover_collage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Сколько картинок собрал коллаж. Сами картинки в тесте не грузятся (сети
-/// нет), но виджеты `Image` в дереве стоят — по ним и считаем.
-Future<int> _images(WidgetTester tester, List<String?> covers) async {
-  await tester.pumpWidget(
-    Directionality(
-      textDirection: TextDirection.ltr,
-      child: Center(
-        child: SizedBox(
-          width: 120,
-          height: 120,
-          child: CoverCollage(
-            covers: covers,
-            fallback: const ColoredBox(color: Color(0xFF101010)),
+/// Заглушка раздела — со значком, как в жизни: по нему и видно, сколько раз она
+/// нарисовалась.
+const Widget _fallback = Icon(Icons.history);
+
+Finder get _fallbacks => find.byIcon(Icons.history);
+
+Future<void> _pump(WidgetTester tester, List<String?> covers) =>
+    tester.pumpWidget(
+      MaterialApp(
+        theme: buildBloomTheme(BloomThemes.dark),
+        home: Center(
+          child: SizedBox(
+            width: 120,
+            height: 120,
+            child: CoverCollage(covers: covers, fallback: _fallback),
           ),
         ),
       ),
-    ),
-  );
+    );
+
+/// Сколько картинок собрал коллаж. Сами картинки в тесте не грузятся (сети
+/// нет), но виджеты `Image` в дереве стоят — по ним и считаем.
+Future<int> _images(WidgetTester tester, List<String?> covers) async {
+  await _pump(tester, covers);
   return tester.widgetList(find.byType(Image)).length;
 }
 
@@ -61,7 +69,24 @@ void main() {
 
     testWidgets('обложек нет — остаётся заглушка', (tester) async {
       expect(await _images(tester, [null, '']), 0);
-      expect(find.byType(ColoredBox), findsOneWidget);
+      expect(_fallbacks, findsOneWidget);
+    });
+
+    // `local:` без поднятого каталога обложек — картинки не будет, как и у
+    // сетевой, которая не загрузилась. Заглушка раздела со значком в ячейку не
+    // лезет: четыре таких ячейки давали сетку из четырёх иконок вместо коллажа.
+    testWidgets('ячейка без картинки не повторяет заглушку раздела', (
+      tester,
+    ) async {
+      expect(await _images(tester, ['local:a', 'local:b', 'local:c']), 0);
+      expect(_fallbacks, findsNothing);
+    });
+
+    testWidgets('одна обложка не загрузилась — заглушка на всю площадь', (
+      tester,
+    ) async {
+      expect(await _images(tester, ['local:a']), 0);
+      expect(_fallbacks, findsOneWidget);
     });
   });
 }

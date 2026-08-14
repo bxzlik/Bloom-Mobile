@@ -24,12 +24,15 @@ import '../../../features/offline/file_download.dart';
 import '../../../features/offline/offline_actions.dart';
 import '../../../features/offline/offline_store.dart';
 import '../../../features/player/player_controller.dart';
+import '../../../features/settings/swipe_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/sticky_hero.dart';
+import '../../../shared/ui/track_swipes.dart';
+import '../history_format.dart';
 import '../lib_order_store.dart';
 import '../refresh_playlist.dart';
 import 'list_edit.dart';
@@ -114,8 +117,16 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
     }
 
     final tracks = _apply(source);
-    final keys = _canReorder ? _keysFor(tracks) : const <Key>[];
+    // Ключи нужны не только перетаскиванию: строку можно смахнуть, а список
+    // тут не анимированный — без ключа состояние жеста досталось бы соседу,
+    // который встал на освободившееся место.
+    final keys = _keysFor(tracks);
     final width = MediaQuery.of(context).size.width;
+    // «История» — не просто список треков: строки разложены по дням, и у каждой
+    // видно время прослушивания и счётчик повторов (десктопный `histFlat`).
+    final history = widget.listId == 'history'
+        ? _historyItems(context, tracks, lib.historyById)
+        : null;
 
     return CustomScrollView(
       slivers: [
@@ -169,6 +180,31 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
               ),
             ),
           )
+        else if (history != null)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+            sliver: SliverList.builder(
+              itemCount: history.length,
+              itemBuilder: (context, i) {
+                final item = history[i];
+                final track = item.track;
+                if (track == null) return _HistoryHeader(label: item.label!);
+                return TrackSwipe(
+                  key: keys[item.index],
+                  zone: SwipeZone.library,
+                  track: track,
+                  listId: widget.listId,
+                  child: TrackRow(
+                    track: track,
+                    queue: tracks,
+                    index: item.index,
+                    sourceId: widget.listId,
+                    mark: item.mark,
+                  ),
+                );
+              },
+            ),
+          )
         // Свой порядок списка — строки можно двигать: зажать обложку и тащить,
         // как в очереди и на десктопе.
         else if (_canReorder)
@@ -183,13 +219,18 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
                 borderRadius: BorderRadius.circular(t.radius * 0.85),
                 child: child,
               ),
-              itemBuilder: (context, i) => TrackRow(
+              itemBuilder: (context, i) => TrackSwipe(
                 key: keys[i],
+                zone: SwipeZone.library,
                 track: tracks[i],
-                queue: tracks,
-                index: i,
-                sourceId: widget.listId,
-                dragIndex: i,
+                listId: widget.listId,
+                child: TrackRow(
+                  track: tracks[i],
+                  queue: tracks,
+                  index: i,
+                  sourceId: widget.listId,
+                  dragIndex: i,
+                ),
               ),
             ),
           )
@@ -198,21 +239,35 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
             padding: const EdgeInsets.fromLTRB(8, 10, 8, 12),
             sliver: SliverList.builder(
               itemCount: tracks.length,
-              itemBuilder: (context, i) => TrackRow(
+              itemBuilder: (context, i) => TrackSwipe(
+                key: keys[i],
+                zone: SwipeZone.library,
                 track: tracks[i],
-                queue: tracks,
-                index: i,
-                sourceId: widget.listId,
+                listId: widget.listId,
+                child: TrackRow(
+                  track: tracks[i],
+                  queue: tracks,
+                  index: i,
+                  sourceId: widget.listId,
+                ),
               ),
             ),
           ),
+        // Хвост под бары каркаса — общий для всех веток выше: они плавают над
+        // списком, и последняя строка иначе не вылезает из-под миниплеера.
+        const SliverBottomBarsInset(),
       ],
     );
   }
 
   /// Тянуть строки можно, только когда на экране собственный порядок списка:
   /// при сортировке и поиске видно не его, и перестановка легла бы не туда.
-  bool get _canReorder => _sort == TrackSort.manual && _query.isEmpty;
+  ///
+  /// В «Истории» порядок не свой в принципе: его задаёт время прослушивания, и
+  /// переставленная вручную строка тут же вернулась бы обратно (как и на
+  /// десктопе, где перетаскивание в истории выключено).
+  bool get _canReorder =>
+      _sort == TrackSort.manual && _query.isEmpty && widget.listId != 'history';
 
   /// Ключи строк: один трек может стоять в списке дважды, а `ReorderableList`
   /// на дублях падает — дописываем номер вхождения (как в очереди).
@@ -238,11 +293,39 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
         lib.setLibraryTracks(ids);
       case 'fav':
         lib.setFavTracks(ids);
-      case 'history':
-        lib.setHistoryTracks(ids);
       default:
         lib.setPlaylistTracks(widget.listId, ids);
     }
+  }
+
+  /// Разложить видимые треки «Истории» по дням: перед первой строкой каждого
+  /// дня встаёт заголовок. Считается от ВИДИМОГО списка, поэтому под поиском и
+  /// сортировкой группы идут в том же порядке, что строки, — как на десктопе.
+  List<_HistItem> _historyItems(
+    BuildContext context,
+    List<Track> tracks,
+    Map<String, HistoryEntry> byId,
+  ) {
+    final out = <_HistItem>[];
+    var lastLabel = '';
+    for (var i = 0; i < tracks.length; i++) {
+      final entry = byId[tracks[i].id];
+      if (entry == null) continue;
+      final at = DateTime.fromMillisecondsSinceEpoch(entry.at);
+      final label = historyLabel(context, at);
+      if (label != lastLabel) {
+        out.add(_HistItem.header(label));
+        lastLabel = label;
+      }
+      out.add(
+        _HistItem.row(
+          tracks[i],
+          i,
+          HistoryMark(time: historyTime(context, at), count: entry.count),
+        ),
+      );
+    }
+    return out;
   }
 
   /// Поиск и сортировка применяются к копии: исходный порядок плейлиста
@@ -273,6 +356,53 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
         list.sort((a, b) => a.duration.compareTo(b.duration));
     }
     return list;
+  }
+}
+
+/// Элемент ленты «Истории»: либо заголовок дня, либо строка трека под ним.
+/// Одним списком, а не секциями, — так же устроен десктопный `histFlat`, и
+/// прокрутка остаётся одним `SliverList` без вложенных списков.
+class _HistItem {
+  const _HistItem.header(String this.label)
+    : track = null,
+      index = -1,
+      mark = null;
+
+  const _HistItem.row(Track this.track, this.index, HistoryMark this.mark)
+    : label = null;
+
+  final String? label;
+  final Track? track;
+
+  /// Номер трека в ВИДИМОМ списке: по нему строка ставит очередь, поэтому он
+  /// считается без учёта заголовков.
+  final int index;
+
+  final HistoryMark? mark;
+}
+
+/// Заголовок дня в «Истории» — десктопный `HistoryHeader`: мелко, капсом,
+/// приглушённо, с разрядкой.
+class _HistoryHeader extends StatelessWidget {
+  const _HistoryHeader({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 14, 8, 4),
+      child: Text(
+        label.toUpperCase(),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: t.muted,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
   }
 }
 

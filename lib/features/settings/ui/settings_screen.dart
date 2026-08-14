@@ -12,7 +12,7 @@
 /// же Solar, что на десктопе; исключение «Система»: там монитор, здесь
 /// смартфон.
 ///
-/// Работают «Интерфейс», «Хранилище», «SoundCloud» и «Яндекс.Музыка».
+/// Работают «Свайпы», «Интерфейс», «Хранилище», «SoundCloud» и «Яндекс.Музыка».
 /// Остальные честно говорят, что ещё не сделаны.
 library;
 
@@ -23,6 +23,7 @@ import 'package:solar_icons/solar_icons.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
+import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
 
@@ -35,8 +36,9 @@ class SettingsScreen extends StatelessWidget {
       bottom: false,
       child: ListView(
         // Заголовка экрана нет: вкладка и так подписана иконкой в таб-баре,
-        // а первая группа начинается со своего капсового заголовка.
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+        // а первая группа начинается со своего капсового заголовка. Снизу к
+        // полю добавлены бары каркаса — они плавают над списком.
+        padding: EdgeInsets.fromLTRB(20, 4, 20, 16 + bottomBarsInset(context)),
         children: [
           SettingsGroup(
             title: context.l.setGroupMain,
@@ -50,13 +52,14 @@ class SettingsScreen extends StatelessWidget {
                 title: context.l.setAudio,
               ),
               SettingsRow(
-                icon: SolarIconsOutline.transferHorizontal,
-                title: context.l.setSwipes,
-              ),
-              SettingsRow(
                 icon: SolarIconsOutline.database,
                 title: context.l.setStorage,
                 onTap: () => context.go('/settings/storage'),
+              ),
+              SettingsRow(
+                icon: SolarIconsOutline.transferHorizontal,
+                title: context.l.setSwipes,
+                onTap: () => context.go('/settings/swipes'),
               ),
             ],
           ),

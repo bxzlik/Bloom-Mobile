@@ -21,6 +21,7 @@ import '../features/settings/ui/appearance_screen.dart';
 import '../features/settings/ui/settings_screen.dart';
 import '../features/settings/ui/soundcloud_screen.dart';
 import '../features/settings/ui/storage_screen.dart';
+import '../features/settings/ui/swipes_screen.dart';
 import '../features/settings/ui/yandex_screen.dart';
 import '../features/settings/ui/ytmusic_screen.dart';
 import '../shared/ui/cover_hero.dart';
@@ -156,6 +157,10 @@ final GoRouter bloomRouter = GoRouter(
                 GoRoute(
                   path: 'storage',
                   builder: (_, _) => const _Page(StorageSettingsScreen()),
+                ),
+                GoRoute(
+                  path: 'swipes',
+                  builder: (_, _) => const _Page(SwipesScreen()),
                 ),
               ],
             ),

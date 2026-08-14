@@ -6,7 +6,9 @@
 /// до самого верха экрана, а не до доли высоты.
 ///
 /// Состав по десктопу (`QueueBlock.tsx`): шапка со счётчиком и очисткой,
-/// плоский список с drag-reorder за обложку, смахивание убирает трек.
+/// плоский список с drag-reorder за обложку, смахивание убирает трек. Что
+/// именно делает смахивание, задаётся в настройках («Свайпы» → «Очередь»);
+/// по умолчанию оба направления удаляют, как в референсе.
 /// Разбиение на «Прослушано / Далее» — расширенный вид с ПК — отложено.
 library;
 
@@ -17,9 +19,11 @@ import 'package:solar_icons/solar_icons.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/entities/entities.dart';
+import '../../../features/settings/swipe_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/track_actions.dart';
+import '../../../shared/ui/track_swipes.dart';
 import '../player_controller.dart';
 
 void showQueueSheet(BuildContext context) {
@@ -125,11 +129,11 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
                       color: Colors.white.withValues(alpha: 0.06),
                       child: child,
                     ),
-                    itemBuilder: (context, i) => Dismissible(
+                    itemBuilder: (context, i) => TrackSwipe(
                       key: keys[i],
-                      direction: DismissDirection.endToStart,
-                      background: const _DismissBackground(),
-                      onDismissed: (_) => ctrl.removeAt(i),
+                      zone: SwipeZone.queue,
+                      track: queue[i],
+                      queueIndex: i,
                       child: _QueueRow(
                         track: queue[i],
                         index: i,
@@ -218,29 +222,6 @@ class _QueueHeader extends StatelessWidget {
             onTap: onClear,
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _DismissBackground extends StatelessWidget {
-  const _DismissBackground();
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return ColoredBox(
-      color: t.sysFavIco.withValues(alpha: 0.22),
-      child: Padding(
-        padding: const EdgeInsets.only(right: 22),
-        child: Align(
-          alignment: Alignment.centerRight,
-          child: Icon(
-            SolarIconsOutline.trashBinMinimalistic,
-            size: 20,
-            color: t.sysFavIco,
-          ),
-        ),
       ),
     );
   }

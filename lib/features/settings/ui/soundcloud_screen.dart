@@ -58,151 +58,144 @@ class _SoundCloudSettingsScreenState
     final theme = Theme.of(context).textTheme;
     final settings = ref.watch(settingsProvider);
 
-    return SafeArea(
-      bottom: false,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
-        children: [
-          SubPageHeader(
-            title: 'SoundCloud',
-            onBack: () => context.go('/settings'),
+    return SubPage(
+      title: 'SoundCloud',
+      onBack: () => context.go('/settings'),
+      children: [
+        Text('CLIENT_ID', style: theme.labelSmall),
+        const SizedBox(height: 8),
+        Text(context.l.scHelp, style: theme.bodySmall),
+        const SizedBox(height: 12),
+        Container(
+          height: 46,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: t.pill,
+            borderRadius: BorderRadius.circular(999),
           ),
-          const SizedBox(height: 22),
-          Text('CLIENT_ID', style: theme.labelSmall),
-          const SizedBox(height: 8),
-          Text(context.l.scHelp, style: theme.bodySmall),
-          const SizedBox(height: 12),
-          Container(
-            height: 46,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: t.pill,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    cursorColor: t.accent,
-                    style: theme.titleSmall,
-                    decoration: InputDecoration(
-                      isDense: true,
-                      border: InputBorder.none,
-                      hintText: context.l.scHint,
-                      hintStyle: theme.bodyMedium?.copyWith(color: t.muted),
-                    ),
-                    onSubmitted: (v) =>
-                        ref.read(settingsProvider.notifier).setScClientId(v),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  cursorColor: t.accent,
+                  style: theme.titleSmall,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    border: InputBorder.none,
+                    hintText: context.l.scHint,
+                    hintStyle: theme.bodyMedium?.copyWith(color: t.muted),
+                  ),
+                  onSubmitted: (v) =>
+                      ref.read(settingsProvider.notifier).setScClientId(v),
+                ),
+              ),
+              if (settings.scClientId != null)
+                GestureDetector(
+                  onTap: () {
+                    _controller.clear();
+                    ref.read(settingsProvider.notifier).setScClientId(null);
+                  },
+                  child: Icon(
+                    SolarIconsOutline.closeCircle,
+                    size: 18,
+                    color: t.muted,
                   ),
                 ),
-                if (settings.scClientId != null)
-                  GestureDetector(
-                    onTap: () {
-                      _controller.clear();
-                      ref.read(settingsProvider.notifier).setScClientId(null);
-                    },
-                    child: Icon(
-                      SolarIconsOutline.closeCircle,
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            onPressed: () => ref
+                .read(settingsProvider.notifier)
+                .setScClientId(_controller.text),
+            child: Text(
+              context.l.commonSave,
+              style: TextStyle(color: t.accent),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 46,
+          child: Material(
+            color: t.pill,
+            borderRadius: BorderRadius.circular(999),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: _checking ? null : _check,
+              child: Center(
+                child: _checking
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: t.accent,
+                        ),
+                      )
+                    : Text(
+                        context.l.scCheckConnection,
+                        style: theme.titleSmall,
+                      ),
+              ),
+            ),
+          ),
+        ),
+        if (_result case final r?) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: t.ovlBg,
+              border: Border.all(color: t.ovlLine),
+              borderRadius: BorderRadius.circular(t.radius),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      r.ok
+                          ? SolarIconsBold.checkCircle
+                          : SolarIconsBold.closeCircle,
                       size: 18,
-                      color: t.muted,
+                      color: r.ok ? t.sysAllIco : t.sysFavIco,
                     ),
+                    const SizedBox(width: 8),
+                    Text(
+                      r.ok
+                          ? context.l.scConnectionOk
+                          : context.l.scConnectionFail,
+                      style: theme.titleSmall,
+                    ),
+                  ],
+                ),
+                if (r.clientId != null) ...[
+                  const SizedBox(height: 8),
+                  Text(context.l.scActiveKey, style: theme.bodySmall),
+                  const SizedBox(height: 2),
+                  SelectableText(
+                    r.clientId!,
+                    style: theme.bodyMedium?.copyWith(color: t.text),
                   ),
+                ],
+                if (r.error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    r.error!,
+                    style: theme.bodySmall?.copyWith(color: t.sysFavIco),
+                  ),
+                ],
               ],
             ),
           ),
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              onPressed: () => ref
-                  .read(settingsProvider.notifier)
-                  .setScClientId(_controller.text),
-              child: Text(
-                context.l.commonSave,
-                style: TextStyle(color: t.accent),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 46,
-            child: Material(
-              color: t.pill,
-              borderRadius: BorderRadius.circular(999),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: _checking ? null : _check,
-                child: Center(
-                  child: _checking
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.2,
-                            color: t.accent,
-                          ),
-                        )
-                      : Text(
-                          context.l.scCheckConnection,
-                          style: theme.titleSmall,
-                        ),
-                ),
-              ),
-            ),
-          ),
-          if (_result case final r?) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: t.ovlBg,
-                border: Border.all(color: t.ovlLine),
-                borderRadius: BorderRadius.circular(t.radius),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        r.ok
-                            ? SolarIconsBold.checkCircle
-                            : SolarIconsBold.closeCircle,
-                        size: 18,
-                        color: r.ok ? t.sysAllIco : t.sysFavIco,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        r.ok
-                            ? context.l.scConnectionOk
-                            : context.l.scConnectionFail,
-                        style: theme.titleSmall,
-                      ),
-                    ],
-                  ),
-                  if (r.clientId != null) ...[
-                    const SizedBox(height: 8),
-                    Text(context.l.scActiveKey, style: theme.bodySmall),
-                    const SizedBox(height: 2),
-                    SelectableText(
-                      r.clientId!,
-                      style: theme.bodyMedium?.copyWith(color: t.text),
-                    ),
-                  ],
-                  if (r.error != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      r.error!,
-                      style: theme.bodySmall?.copyWith(color: t.sysFavIco),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
         ],
-      ),
+      ],
     );
   }
 }

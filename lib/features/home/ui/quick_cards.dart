@@ -43,7 +43,9 @@ class QuickCards extends ConsumerWidget {
           Expanded(
             child: _QuickCard(
               covers: lib.historyTracks.map((tr) => tr.cover),
-              icon: SolarIconsBold.clockCircle,
+              // Значки — те же, что у плиток библиотеки: залитое сердце и
+              // КОНТУРНЫЕ часы. Bold-часы здесь превращались в глухой кружок.
+              icon: SolarIconsOutline.clockCircle,
               tint: t.sysHistTint,
               iconColor: t.sysHistIco,
               title: context.l.commonHistory,

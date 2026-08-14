@@ -19,7 +19,6 @@ import '../../../app/theme/tokens.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/cover_hero.dart';
-import '../../player/ui/mini_player.dart';
 import '../../profile/profile_store.dart';
 import '../../profile/ui/profile_avatar.dart';
 import '../discover_store.dart';
@@ -42,7 +41,7 @@ class HomeScreen extends StatelessWidget {
             child: ListView(
               // Снизу — воздух под миниплеер и таб-бар: они плавают над
               // содержимым, и без запаса последняя лента уезжает под них.
-              padding: const EdgeInsets.only(bottom: kMiniPlayerHeight + 16),
+              padding: EdgeInsets.only(bottom: bottomBarsInset(context) + 16),
               children: const [
                 ContinueCard(),
                 QuickCards(),

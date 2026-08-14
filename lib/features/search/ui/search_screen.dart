@@ -546,7 +546,13 @@ class _SetGrid extends StatelessWidget {
     final cell = (width - _gridPad * 2 - _gridGap) / 2;
 
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(_gridPad, 8, _gridPad, 16),
+      // Снизу — бары каркаса: они плавают над выдачей.
+      padding: EdgeInsets.fromLTRB(
+        _gridPad,
+        8,
+        _gridPad,
+        16 + bottomBarsInset(context),
+      ),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: _gridGap,
@@ -574,7 +580,13 @@ class _ArtistGrid extends StatelessWidget {
     final cell = (width - _gridPad * 2 - _gridGap * 2) / 3;
 
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(_gridPad, 8, _gridPad, 16),
+      // Снизу — бары каркаса: они плавают над выдачей.
+      padding: EdgeInsets.fromLTRB(
+        _gridPad,
+        8,
+        _gridPad,
+        16 + bottomBarsInset(context),
+      ),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: _gridGap,
@@ -678,7 +690,8 @@ class _ResultsView extends StatelessWidget {
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+      // Снизу — бары каркаса: они плавают над выдачей.
+      padding: EdgeInsets.fromLTRB(8, 4, 8, 12 + bottomBarsInset(context)),
       children: sections,
     );
   }

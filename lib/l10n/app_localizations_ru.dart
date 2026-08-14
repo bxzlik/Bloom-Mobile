@@ -189,6 +189,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get playerQueue => 'Очередь';
 
   @override
+  String get playerCopied => 'Скопировано';
+
+  @override
+  String get playerCopyError => 'Ошибка';
+
+  @override
   String get notifChannelName => 'Воспроизведение';
 
   @override
@@ -297,6 +303,28 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get tlEmptyHistory => 'История пуста';
+
+  @override
+  String get histToday => 'Сегодня';
+
+  @override
+  String get histYesterday => 'Вчера';
+
+  @override
+  String histDaysAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count дней назад',
+      many: '$count дней назад',
+      few: '$count дня назад',
+      one: '$count день назад',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get histWeekAgo => 'Неделю назад';
 
   @override
   String get tlEmptyAll => 'В библиотеке пока пусто';
@@ -766,13 +794,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get profileSaved => 'Профиль сохранён!';
 
   @override
-  String get profileDiscardTitle => 'Отменить правку?';
-
-  @override
-  String get profileDiscardBody =>
-      'Всё, что вы наменяли в профиле, не сохранится.';
-
-  @override
   String get profileNickname => 'НИКНЕЙМ';
 
   @override
@@ -1061,6 +1082,66 @@ class AppLocalizationsRu extends AppLocalizations {
   String setStub(String title) {
     return '«$title» ещё не сделан';
   }
+
+  @override
+  String get swZoneLibrary => 'Библиотека';
+
+  @override
+  String get swZoneQueue => 'Очередь';
+
+  @override
+  String get swZoneMini => 'Мини-плеер';
+
+  @override
+  String get swZonePlayer => 'Плеер';
+
+  @override
+  String get swLeft => 'Свайп влево';
+
+  @override
+  String get swRight => 'Свайп вправо';
+
+  @override
+  String get swActNone => 'Отключено';
+
+  @override
+  String get swActLike => 'Лайк';
+
+  @override
+  String get swActQueue => 'Добавить в очередь';
+
+  @override
+  String get swActPlayNext => 'Следующим';
+
+  @override
+  String get swActNext => 'Следующий';
+
+  @override
+  String get swActPrev => 'Предыдущий';
+
+  @override
+  String get swActDownload => 'Скачать';
+
+  @override
+  String get swActDelete => 'Удалить';
+
+  @override
+  String get swAddedToQueue => 'Добавлено в очередь';
+
+  @override
+  String get swAlreadyInQueue => 'Уже в очереди';
+
+  @override
+  String get swPlaysNext => 'Заиграет следующим';
+
+  @override
+  String get swLiked => 'Добавлено в любимые';
+
+  @override
+  String get swUnliked => 'Убрано из любимых';
+
+  @override
+  String get swRemoved => 'Убрано';
 
   @override
   String get apLanguage => 'ЯЗЫК';

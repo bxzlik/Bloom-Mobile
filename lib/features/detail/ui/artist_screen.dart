@@ -229,7 +229,8 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
             )
           else
             SliverList.list(children: _sections()),
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+          // Просвет в конце — плюс бары каркаса: они плавают над содержимым.
+          const SliverBottomBarsInset(extra: 16),
         ],
       ),
     );
@@ -297,7 +298,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         EntityCarousel(
           height: 168,
           itemCount: similar.length,
-          builder: (i) => ArtistCard(artist: similar[i]),
+          builder: (i) => ArtistCard(artist: similar[i], centerLabel: true),
         ),
       ],
       if (_tracks.isNotEmpty) ...[

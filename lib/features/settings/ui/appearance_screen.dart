@@ -41,194 +41,180 @@ class AppearanceScreen extends ConsumerWidget {
     final controller = ref.read(settingsProvider.notifier);
     final theme = Theme.of(context).textTheme;
 
-    return SafeArea(
-      bottom: false,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
-        children: [
-          SubPageHeader(
-            title: context.l.setInterface,
-            onBack: () => context.go('/settings'),
-          ),
-          const SizedBox(height: 22),
-          Text(context.l.apLanguage, style: theme.labelSmall),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              for (final locale in kLocales) ...[
-                if (locale != kLocales.first) const SizedBox(width: 12),
-                Expanded(
-                  child: _LanguageCard(
-                    locale: locale,
-                    // Пока язык не выбран руками, активной считается та
-                    // карточка, на которой приложение сейчас говорит — иначе
-                    // при системном языке не подсвечена ни одна.
-                    active:
-                        (settings.locale ?? Localizations.localeOf(context))
-                            .languageCode ==
-                        locale.languageCode,
-                    onTap: () => controller.setLocale(locale),
-                  ),
+    return SubPage(
+      title: context.l.setInterface,
+      onBack: () => context.go('/settings'),
+      children: [
+        Text(context.l.apLanguage, style: theme.labelSmall),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            for (final locale in kLocales) ...[
+              if (locale != kLocales.first) const SizedBox(width: 12),
+              Expanded(
+                child: _LanguageCard(
+                  locale: locale,
+                  // Пока язык не выбран руками, активной считается та
+                  // карточка, на которой приложение сейчас говорит — иначе
+                  // при системном языке не подсвечена ни одна.
+                  active:
+                      (settings.locale ?? Localizations.localeOf(context))
+                          .languageCode ==
+                      locale.languageCode,
+                  onTap: () => controller.setLocale(locale),
                 ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 26),
-          Text(context.l.apTheme, style: theme.labelSmall),
-          const SizedBox(height: 10),
-          _SettingsCard(
-            onTap: () => _pickTheme(context, ref),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(context.l.apThemeRow, style: theme.titleMedium),
-                      const SizedBox(height: 3),
-                      Text(settings.preset.name, style: theme.bodySmall),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 14),
-                _ThemeDots(preset: settings.preset),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Авто-акцент — тот же тоггл, что в десктопной секции «Интерфейс»:
-          // ручного выбора акцента нет ни там, ни здесь.
-          _SettingsCard(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(context.l.apAutoAccent, style: theme.titleMedium),
-                      const SizedBox(height: 3),
-                      Text(context.l.apAutoAccentSub, style: theme.bodySmall),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 14),
-                BloomSwitch(
-                  value: settings.autoAccent,
-                  onChanged: controller.setAutoAccent,
-                ),
-              ],
-            ),
-          ),
-          // Яркость — отдельной карточкой под тогглом, ровно как на ПК: она
-          // нужна, только пока авто-акцент включён.
-          if (settings.autoAccent) ...[
-            const SizedBox(height: 12),
-            _SettingsCard(
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        context.l.apAutoAccentLevel,
-                        style: theme.titleMedium,
-                      ),
-                      const Spacer(),
-                      Text(
-                        '${(settings.autoAccentL * 100).round()} %',
-                        style: theme.bodySmall,
-                      ),
-                    ],
-                  ),
-                  Slider(
-                    value: settings.autoAccentL,
-                    min: kAutoAccentLMin,
-                    max: kAutoAccentLMax,
-                    onChanged: controller.setAutoAccentL,
-                  ),
-                ],
               ),
-            ),
+            ],
           ],
-          const SizedBox(height: 12),
-          // Бейджи стоят тут же, в блоке темы, и сразу после авто-акцента — тот
-          // же порядок, что в десктопной секции «Интерфейс»: настройка про
-          // акцент, а не про скругления. Тексты — из `dict.ts`
-          // (`settings.interface.accentBadges`).
-          _SettingsCard(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(context.l.apBadgesTitle, style: theme.titleMedium),
-                      const SizedBox(height: 3),
-                      Text(context.l.apBadgesSubtitle, style: theme.bodySmall),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 14),
-                BloomSwitch(
-                  value: settings.accentBadges,
-                  onChanged: controller.setAccentBadges,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 26),
-          Row(
+        ),
+        const SizedBox(height: 26),
+        Text(context.l.apTheme, style: theme.labelSmall),
+        const SizedBox(height: 10),
+        _SettingsCard(
+          onTap: () => _pickTheme(context, ref),
+          child: Row(
             children: [
-              Text(context.l.apCorners, style: theme.labelSmall),
-              const Spacer(),
-              Text('${settings.radius.round()} px', style: theme.bodySmall),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(context.l.apThemeRow, style: theme.titleMedium),
+                    const SizedBox(height: 3),
+                    Text(settings.preset.name, style: theme.bodySmall),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              _ThemeDots(preset: settings.preset),
             ],
           ),
-          Slider(
-            value: settings.radius,
-            min: 0,
-            max: 28,
-            divisions: 28,
-            onChanged: controller.setRadius,
-          ),
-          const SizedBox(height: 8),
-          // Живой пример: по нему видно и радиус, и акцент разом.
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: t.pill,
-              borderRadius: BorderRadius.circular(t.radius),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: t.accent,
-                    borderRadius: BorderRadius.circular(t.radius * 0.72),
-                  ),
-                  child: Icon(
-                    SolarIconsBold.play,
-                    size: 20,
-                    color: t.accentText,
-                  ),
+        ),
+        const SizedBox(height: 12),
+        // Авто-акцент — тот же тоггл, что в десктопной секции «Интерфейс»:
+        // ручного выбора акцента нет ни там, ни здесь.
+        _SettingsCard(
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(context.l.apAutoAccent, style: theme.titleMedium),
+                    const SizedBox(height: 3),
+                    Text(context.l.apAutoAccentSub, style: theme.bodySmall),
+                  ],
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(context.l.apPreviewTitle, style: theme.titleSmall),
-                      const SizedBox(height: 2),
-                      Text(context.l.apPreviewSubtitle, style: theme.bodySmall),
-                    ],
-                  ),
+              ),
+              const SizedBox(width: 14),
+              BloomSwitch(
+                value: settings.autoAccent,
+                onChanged: controller.setAutoAccent,
+              ),
+            ],
+          ),
+        ),
+        // Яркость — отдельной карточкой под тогглом, ровно как на ПК: она
+        // нужна, только пока авто-акцент включён.
+        if (settings.autoAccent) ...[
+          const SizedBox(height: 12),
+          _SettingsCard(
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Text(context.l.apAutoAccentLevel, style: theme.titleMedium),
+                    const Spacer(),
+                    Text(
+                      '${(settings.autoAccentL * 100).round()} %',
+                      style: theme.bodySmall,
+                    ),
+                  ],
+                ),
+                Slider(
+                  value: settings.autoAccentL,
+                  min: kAutoAccentLMin,
+                  max: kAutoAccentLMax,
+                  onChanged: controller.setAutoAccentL,
                 ),
               ],
             ),
           ),
         ],
-      ),
+        const SizedBox(height: 12),
+        // Бейджи стоят тут же, в блоке темы, и сразу после авто-акцента — тот
+        // же порядок, что в десктопной секции «Интерфейс»: настройка про
+        // акцент, а не про скругления. Тексты — из `dict.ts`
+        // (`settings.interface.accentBadges`).
+        _SettingsCard(
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(context.l.apBadgesTitle, style: theme.titleMedium),
+                    const SizedBox(height: 3),
+                    Text(context.l.apBadgesSubtitle, style: theme.bodySmall),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              BloomSwitch(
+                value: settings.accentBadges,
+                onChanged: controller.setAccentBadges,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 26),
+        Row(
+          children: [
+            Text(context.l.apCorners, style: theme.labelSmall),
+            const Spacer(),
+            Text('${settings.radius.round()} px', style: theme.bodySmall),
+          ],
+        ),
+        Slider(
+          value: settings.radius,
+          min: 0,
+          max: 28,
+          divisions: 28,
+          onChanged: controller.setRadius,
+        ),
+        const SizedBox(height: 8),
+        // Живой пример: по нему видно и радиус, и акцент разом.
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: t.pill,
+            borderRadius: BorderRadius.circular(t.radius),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: t.accent,
+                  borderRadius: BorderRadius.circular(t.radius * 0.72),
+                ),
+                child: Icon(SolarIconsBold.play, size: 20, color: t.accentText),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(context.l.apPreviewTitle, style: theme.titleSmall),
+                    const SizedBox(height: 2),
+                    Text(context.l.apPreviewSubtitle, style: theme.bodySmall),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

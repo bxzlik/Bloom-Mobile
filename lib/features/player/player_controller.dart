@@ -151,6 +151,26 @@ int indexAfterReorder(int current, int from, int target) {
   return current;
 }
 
+/// Очередь после «Следующим»: [track] встаёт сразу за играющим ([index]), а
+/// если он в очереди уже стоял — переезжает оттуда, а не дублируется (порт
+/// `enqueue(..., 'next')` с десктопа). Возвращает новый порядок и новый номер
+/// играющего.
+///
+/// Отдельной функцией — ровно как [indexAfterReorder]: перестановка вокруг
+/// играющего трека тихо ломается (играет то же, а «дальше» уводит не туда), и
+/// проверять её надо списком, а не на глаз.
+(List<Track>, int) queueWithNext(List<Track> queue, int index, Track track) {
+  final current = (index >= 0 && index < queue.length) ? queue[index] : null;
+  if (current != null && current.id == track.id) return (queue, index);
+  final rest = [
+    for (final t in queue)
+      if (t.id != track.id) t,
+  ];
+  // Номер играющего считаем уже ПОСЛЕ изъятия: трек могли выдернуть сверху.
+  final at = current == null ? -1 : rest.indexWhere((t) => t.id == current.id);
+  return ([...rest]..insert(at + 1, track), at < 0 ? index : at);
+}
+
 /// Перемешанная копия [tracks]. Трек с номером [keep] встаёт первым и в тасовке
 /// не участвует (`-1` — оставлять некого, мешаем всё), остальные — Фишер—Йетс.
 ///
@@ -184,6 +204,11 @@ class PlaybackController extends Notifier<PlaybackState>
   /// первым звуком — дёргать системный диалог на старте приложения незачем.
   bool _askedForNotifications = false;
 
+  /// Прослушивание текущего трека уже засчитано. Сбрасывается только при смене
+  /// трека (в [_load]) — как `_playCredited` на десктопе, поэтому второй круг
+  /// повтора одного трека второй раз не считается.
+  bool _credited = false;
+
   @override
   PlaybackState build() {
     final handler = ref.read(audioHandlerProvider);
@@ -192,6 +217,8 @@ class PlaybackController extends Notifier<PlaybackState>
       handler.player.processingStateStream.listen((s) {
         if (s == ProcessingState.completed) _onCompleted();
       }),
+      // Зачёт прослушивания — на 90% трека, как на десктопе.
+      handler.player.positionStream.listen(_maybeCredit),
       // Снимок сессии — на каждую смену play/pause: именно на паузе человек
       // чаще всего и уходит из приложения.
       handler.player.playingStream.listen((_) => _saveResume()),
@@ -235,6 +262,33 @@ class PlaybackController extends Notifier<PlaybackState>
 
   BloomAudioHandler get _handler => ref.read(audioHandlerProvider);
   AudioPlayer get _player => _handler.player;
+
+  /// Доля трека, после которой прослушивание засчитывается, — десктопный порог
+  /// `creditPlay`.
+  static const double _creditAt = 0.9;
+
+  /// Тик позиции: доиграли до порога — засчитываем. Пока идёт загрузка нового
+  /// трека, тики принадлежат ещё прошлому — и засчитались бы не тому, кто их
+  /// наиграл (на десктопе от этого спасает то, что `curId` меняется только
+  /// после успешного резолва).
+  void _maybeCredit(Duration position) {
+    if (_credited || state.loading) return;
+    final total = _player.duration;
+    if (total == null || total <= Duration.zero) return;
+    if (position.inMilliseconds >= total.inMilliseconds * _creditAt) _credit();
+  }
+
+  /// Засчитать прослушивание: история и дневной журнал. Одна точка на всё, как
+  /// `creditPlay` на десктопе, и зовётся она НЕ на старте: трек, который
+  /// пролистнули или который не заиграл, прослушанным не считается.
+  void _credit() {
+    if (_credited) return;
+    final track = state.track;
+    if (track == null) return;
+    _credited = true;
+    ref.read(libraryProvider.notifier).pushHistory(track);
+    ref.read(statsProvider.notifier).addPlay();
+  }
 
   /// Поставить очередь и заиграть с [index]. [sourceId] — список, из которого
   /// она набрана (см. [PlaybackState.sourceId]); не передали — считаем, что
@@ -306,6 +360,8 @@ class PlaybackController extends Notifier<PlaybackState>
     final track = state.queue[index];
     final gen = ++_generation;
     state = state.copyWith(index: index, loading: true, clearError: true);
+    // Текущим стал другой трек — зачёт для него начинается заново.
+    _credited = false;
     // Название в шторке ставим сразу, не дожидаясь ссылки на стрим.
     _handler
       ..setTrack(track, queueIndex: index)
@@ -338,11 +394,6 @@ class PlaybackController extends Notifier<PlaybackState>
       if (gen != _generation) return;
       state = state.copyWith(loading: false);
       _handler.setResolving(false);
-      // История пишется в момент, когда трек реально пошёл играть, а не когда
-      // его выбрали: иначе перелистывание очереди засорит её всем подряд.
-      ref.read(libraryProvider.notifier).pushHistory(track);
-      // Дневной журнал ведётся рядом с историей — как `loadPlay` на десктопе.
-      ref.read(statsProvider.notifier).addPlay();
       // Снимок «Продолжить» — сразу на новом треке: подписка на playingStream
       // при переходе внутри очереди молчит (плеер и так играл), и до тика
       // таймера карточка звала бы обратно на прошлый трек.
@@ -359,6 +410,9 @@ class PlaybackController extends Notifier<PlaybackState>
   }
 
   void _onCompleted() {
+    // Трек доиграл до конца — засчитываем, если ещё не: короткий мог и не
+    // попасть на тик с порогом.
+    _credit();
     if (state.repeat == PlayerRepeat.one) {
       _player.seek(Duration.zero);
       unawaited(_player.play());
@@ -472,6 +526,58 @@ class PlaybackController extends Notifier<PlaybackState>
     _handler
       ..setQueue(q)
       ..setTrack(state.track, queueIndex: index);
+  }
+
+  /// Дописать трек в конец очереди — порт десктопного `addToQueue`
+  /// (`enqueue(..., 'end')`). Возвращает `false`, если трек в очереди уже стоит:
+  /// второй раз он туда не встаёт, и вызывающему есть о чём сказать.
+  ///
+  /// Пустая очередь дополнять нечего — трек просто начинает играть, как и на
+  /// десктопе.
+  bool addToQueue(Track track) {
+    if (state.queue.isEmpty) {
+      unawaited(playQueue([track], 0));
+      return true;
+    }
+    if (state.queue.any((t) => t.id == track.id)) return false;
+    final q = [...state.queue, track];
+    // Снимок «до перемешки» пополняем тоже: иначе выключение перемешки
+    // откатило бы очередь к состоянию без добавленного трека.
+    final orig = _origQueue;
+    if (orig != null) _origQueue = [...orig, track];
+    state = state.copyWith(queue: q);
+    _handler.setQueue(q);
+    _saveResume();
+    return true;
+  }
+
+  /// Поставить трек сразу после текущего — порт `playNextInQueue`
+  /// (`enqueue(..., 'next')`). Уже стоящий в очереди трек не дублируется, а
+  /// переезжает на новое место.
+  void playNext(Track track) {
+    if (state.queue.isEmpty) {
+      unawaited(playQueue([track], 0));
+      return;
+    }
+    final current = state.track;
+    // «Следующим» самого играющего — ничего не делаем: он бы выпал из очереди
+    // и вставился сам за собой, а номер текущего уехал бы мимо.
+    if (current != null && current.id == track.id) return;
+    final (q, index) = queueWithNext(state.queue, state.index, track);
+    // Снимок «до перемешки» правим тем же способом: в нём тот же играющий трек,
+    // просто в другом порядке.
+    final orig = _origQueue;
+    if (orig != null) {
+      final at = current == null
+          ? -1
+          : orig.indexWhere((t) => t.id == current.id);
+      _origQueue = queueWithNext(orig, at, track).$1;
+    }
+    state = state.copyWith(queue: q, index: index);
+    _handler
+      ..setQueue(q)
+      ..setTrack(state.track, queueIndex: index);
+    _saveResume();
   }
 
   /// Убрать трек из очереди (смахивание строки). Порт `removeFromQueue`.

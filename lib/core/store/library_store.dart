@@ -184,6 +184,12 @@ class LibraryState {
   List<Track> get historyTracks =>
       history.map((h) => tracks[h.trackId]).whereType<Track>().toList();
 
+  /// Запись истории по id трека — экрану «Истории» нужен не только сам трек, но
+  /// и когда его слушали и сколько раз.
+  Map<String, HistoryEntry> get historyById => {
+    for (final h in history) h.trackId: h,
+  };
+
   List<Track> tracksOf(UserPlaylist pl) =>
       pl.trackIds.map((id) => tracks[id]).whereType<Track>().toList();
 
@@ -366,6 +372,23 @@ class LibraryController extends Notifier<LibraryState> {
     _savePlaylists();
   }
 
+  /// Снимок библиотеки целиком — для «Отменить» после удаления смахиванием.
+  ///
+  /// Именно всё состояние, а не список id: удаление трека из «Всех треков»
+  /// каскадом чистит лайки, плейлисты и историю (см. [deleteTrack]), и вернуть
+  /// это по частям нельзя. Состояние неизменяемое, снимок — одна ссылка.
+  LibraryState snapshot() => state;
+
+  void restoreSnapshot(LibraryState snap) {
+    state = snap;
+    _saveTracks();
+    _saveLib();
+    _saveFavs();
+    _saveHistory();
+    _savePlaylists();
+    _saveFollows();
+  }
+
   /// Правка «Всех треков» целиком: [ids] — новый состав И порядок, первый
   /// сверху. Выпавшее из списка удаляется НАСКВОЗЬ, как [deleteTrack]: трек вне
   /// библиотеки, но в плейлисте — состояние, которого больше нигде не бывает.
@@ -441,6 +464,10 @@ class LibraryController extends Notifier<LibraryState> {
   /// Отметить прослушивание: трек уезжает наверх истории без дублей. В
   /// библиотеку он при этом НЕ попадает (как и на десктопе) — только в
   /// хранилище, чтобы историю было чем показать и заиграть.
+  ///
+  /// Зовётся из плеера, когда прослушивание засчитано (90% трека либо конец), а
+  /// не когда трек выбрали: иначе перелистывание очереди засорило бы историю
+  /// всем подряд.
   void pushHistory(Track track) {
     // Счётчик прослушиваний переезжает вместе с записью наверх: он и есть
     // основа статистики профиля, потерять его при подъёме нельзя.

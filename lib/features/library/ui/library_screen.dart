@@ -1,5 +1,6 @@
 /// Библиотека. Раскладка из референса: лента системных плиток, ряд чипов
-/// (`+`, `↻`, фильтры) и сетка в две колонки.
+/// (`+`, `↻`, фильтры) и сетка в две колонки. Первые два ряда прибиты, а
+/// листается только сетка под ними.
 ///
 /// Своей кнопки импорта здесь нет: как и на десктопе, ссылка вставляется в
 /// поле поиска — он же и разбирает её (плейлист, альбом, трек, аккаунт).
@@ -122,68 +123,83 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
     return SafeArea(
       bottom: false,
-      child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: _SystemTiles(lib: lib)),
+      child: Column(
+        children: [
+          _SystemTiles(lib: lib),
           // Просвет вместо снятой строки импорта: чипы иначе липнут к плиткам.
-          const SliverToBoxAdapter(child: SizedBox(height: 8)),
-          SliverToBoxAdapter(
-            child: _Chips(
-              active: _filter,
-              onPick: (f) => setState(() => _filter = f),
+          const SizedBox(height: 8),
+          _Chips(active: _filter, onPick: (f) => setState(() => _filter = f)),
+          // Листается только сетка: системные плитки и чипы прибиты сверху,
+          // иначе фильтр, которым только что переключили список, уезжает за
+          // край вместе с ним.
+          Expanded(
+            child: CustomScrollView(
+              slivers: [
+                if (entries.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _Empty(filter: _filter),
+                  )
+                else
+                  SliverPadding(
+                    // Снизу к полю сетки добавлены бары каркаса: они плавают
+                    // над списком, и последний ряд плиток иначе не выкрутить
+                    // из-под миниплеера.
+                    padding: EdgeInsets.fromLTRB(
+                      _gridPad,
+                      4,
+                      _gridPad,
+                      _gridPad + bottomBarsInset(context),
+                    ),
+                    sliver: SliverGrid(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: _gridGap,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 0.78,
+                          ),
+                      delegate: SliverChildBuilderDelegate((context, i) {
+                        final entry = entries[i];
+                        final pinned = order.isPinned(entry.key);
+                        final playlist = entry.playlist;
+                        final tile = playlist != null
+                            ? _SetTile(
+                                playlist: playlist,
+                                lib: lib,
+                                pinned: pinned,
+                              )
+                            : _ArtistTile(
+                                followed: entry.follow!,
+                                pinned: pinned,
+                              );
+                        return _DragCell(
+                          key: ValueKey(entry.key),
+                          index: i,
+                          width: tileWidth,
+                          enabled: draggable,
+                          // Закреплённые живут отдельной группой наверху — как
+                          // `getGroupRank` на ПК: перемешать их с остальными значило
+                          // бы уронить плитку туда, откуда её тут же вынесет вверх.
+                          accepts: (from) =>
+                              order.isPinned(entries[from].key) == pinned,
+                          onMove: (from, to) => _move(entries, from, to),
+                          onMenu: () => playlist != null
+                              ? showPlaylistMenu(
+                                  context,
+                                  ref,
+                                  playlist,
+                                  lib.tracksOf(playlist),
+                                )
+                              : _showArtistMenu(context, ref, entry.follow!),
+                          child: tile,
+                        );
+                      }, childCount: entries.length),
+                    ),
+                  ),
+              ],
             ),
           ),
-          if (entries.isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: _Empty(filter: _filter),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                _gridPad,
-                4,
-                _gridPad,
-                _gridPad,
-              ),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: _gridGap,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 0.78,
-                ),
-                delegate: SliverChildBuilderDelegate((context, i) {
-                  final entry = entries[i];
-                  final pinned = order.isPinned(entry.key);
-                  final playlist = entry.playlist;
-                  final tile = playlist != null
-                      ? _SetTile(playlist: playlist, lib: lib, pinned: pinned)
-                      : _ArtistTile(followed: entry.follow!, pinned: pinned);
-                  return _DragCell(
-                    key: ValueKey(entry.key),
-                    index: i,
-                    width: tileWidth,
-                    enabled: draggable,
-                    // Закреплённые живут отдельной группой наверху — как
-                    // `getGroupRank` на ПК: перемешать их с остальными значило
-                    // бы уронить плитку туда, откуда её тут же вынесет вверх.
-                    accepts: (from) =>
-                        order.isPinned(entries[from].key) == pinned,
-                    onMove: (from, to) => _move(entries, from, to),
-                    onMenu: () => playlist != null
-                        ? showPlaylistMenu(
-                            context,
-                            ref,
-                            playlist,
-                            lib.tracksOf(playlist),
-                          )
-                        : _showArtistMenu(context, ref, entry.follow!),
-                    child: tile,
-                  );
-                }, childCount: entries.length),
-              ),
-            ),
         ],
       ),
     );

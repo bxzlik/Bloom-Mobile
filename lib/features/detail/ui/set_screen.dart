@@ -225,6 +225,9 @@ class _SetScreenState extends ConsumerState<SetScreen> {
                 ),
               ),
             ),
+          // Хвост под бары каркаса: они плавают над списком, и последняя строка
+          // иначе остаётся под миниплеером.
+          const SliverBottomBarsInset(),
         ],
       ),
     );

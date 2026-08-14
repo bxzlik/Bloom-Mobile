@@ -255,6 +255,9 @@ class _ListEditorState extends ConsumerState<ListEditor> {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final width = MediaQuery.sizeOf(context).width;
+    // Панель правки плавает над списком, а под ней — миниплеер и таб-бар
+    // каркаса: их высоту она обходит сверху, а список — снизу.
+    final inset = bottomBarsInset(context);
 
     return PopScope(
       // Системное «назад» в режиме правки — это ✕, а не выход со страницы.
@@ -280,9 +283,9 @@ class _ListEditorState extends ConsumerState<ListEditor> {
                 onRename: () => setState(() => _renaming = true),
               ),
               SliverPadding(
-                // Снизу — место под плавающую панель: последняя строка не
-                // должна оставаться под ней.
-                padding: const EdgeInsets.fromLTRB(8, 10, 8, 92),
+                // Снизу — место под плавающую панель и бары каркаса: последняя
+                // строка не должна оставаться под ними.
+                padding: EdgeInsets.fromLTRB(8, 10, 8, 92 + inset),
                 sliver: SliverReorderableList(
                   itemCount: _tracks.length,
                   onReorder: _reorder,
@@ -296,7 +299,10 @@ class _ListEditorState extends ConsumerState<ListEditor> {
                     final track = _tracks[i];
                     return _EditRow(
                       key: ValueKey(track.id),
-                      index: i,
+                      // «Историю» правят только составом: её порядок — это
+                      // время прослушивания, и перестановка руками не пережила
+                      // бы ближайшего же трека.
+                      index: widget.listId == 'history' ? null : i,
                       track: track,
                       selected: _selected.contains(track.id),
                       onTap: () => _toggle(track.id),
@@ -309,7 +315,7 @@ class _ListEditorState extends ConsumerState<ListEditor> {
           Positioned(
             left: 12,
             right: 12,
-            bottom: 12,
+            bottom: 12 + inset,
             child: _renaming
                 ? _RenameBar(
                     initial: _name,
@@ -466,7 +472,9 @@ class _EditRow extends StatelessWidget {
     required this.onTap,
   });
 
-  final int index;
+  /// Номер строки для перетаскивания. `null` — порядок этого списка не свой
+  /// («История» стоит по времени прослушивания), и тащить строку некуда.
+  final int? index;
   final Track track;
   final bool selected;
   final VoidCallback onTap;
@@ -475,6 +483,8 @@ class _EditRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
+    final drag = index;
+    final Widget cover = Cover(url: track.cover, size: 52);
 
     return InkWell(
       onTap: onTap,
@@ -485,10 +495,10 @@ class _EditRow extends StatelessWidget {
           children: [
             _Check(on: selected),
             const SizedBox(width: 12),
-            ReorderableDelayedDragStartListener(
-              index: index,
-              child: Cover(url: track.cover, size: 52),
-            ),
+            if (drag == null)
+              cover
+            else
+              ReorderableDelayedDragStartListener(index: drag, child: cover),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

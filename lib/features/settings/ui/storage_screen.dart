@@ -29,65 +29,55 @@ class StorageSettingsScreen extends ConsumerWidget {
     final files = ref.watch(offlineProvider).files;
     final offline = ref.read(offlineProvider.notifier);
 
-    return SafeArea(
-      bottom: false,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
-        children: [
-          SubPageHeader(
-            title: context.l.setStorage,
-            onBack: () => context.go('/settings'),
-          ),
-          const SizedBox(height: 22),
-          FutureBuilder<({int bytes, int count})>(
-            // Ключ по составу кеша: без него FutureBuilder не пересчитает
-            // размер после очистки и покажет прежние мегабайты.
-            key: ValueKey(files.length),
-            future: offline.stats(),
-            builder: (context, snap) {
-              final stats = snap.data;
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: t.pill,
-                  borderRadius: BorderRadius.circular(t.radius),
-                ),
-                child: Row(
-                  children: [
-                    Icon(SolarIconsOutline.database, size: 22, color: t.iconFg),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            context.l.stOfflineCache,
-                            style: theme.titleSmall,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            stats == null
-                                ? context.l.stCounting
-                                : context.l.stCacheStats(
-                                    stats.count,
-                                    _size(context.l, stats.bytes),
-                                  ),
-                            style: theme.bodySmall,
-                          ),
-                        ],
-                      ),
+    return SubPage(
+      title: context.l.setStorage,
+      onBack: () => context.go('/settings'),
+      children: [
+        FutureBuilder<({int bytes, int count})>(
+          // Ключ по составу кеша: без него FutureBuilder не пересчитает
+          // размер после очистки и покажет прежние мегабайты.
+          key: ValueKey(files.length),
+          future: offline.stats(),
+          builder: (context, snap) {
+            final stats = snap.data;
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: t.pill,
+                borderRadius: BorderRadius.circular(t.radius),
+              ),
+              child: Row(
+                children: [
+                  Icon(SolarIconsOutline.database, size: 22, color: t.iconFg),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(context.l.stOfflineCache, style: theme.titleSmall),
+                        const SizedBox(height: 2),
+                        Text(
+                          stats == null
+                              ? context.l.stCounting
+                              : context.l.stCacheStats(
+                                  stats.count,
+                                  _size(context.l, stats.bytes),
+                                ),
+                          style: theme.bodySmall,
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          Text(context.l.stHelp, style: theme.bodySmall),
-          const SizedBox(height: 20),
-          _ClearButton(enabled: files.isNotEmpty),
-        ],
-      ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        Text(context.l.stHelp, style: theme.bodySmall),
+        const SizedBox(height: 20),
+        _ClearButton(enabled: files.isNotEmpty),
+      ],
     );
   }
 }

@@ -398,6 +398,18 @@ abstract class AppLocalizations {
   /// **'Queue'**
   String get playerQueue;
 
+  /// desktop: player.toast.copied
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get playerCopied;
+
+  /// desktop: player.toast.copyError
+  ///
+  /// In en, this message translates to:
+  /// **'Error'**
+  String get playerCopyError;
+
   /// No description provided for @notifChannelName.
   ///
   /// In en, this message translates to:
@@ -607,6 +619,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'History is empty'**
   String get tlEmptyHistory;
+
+  /// desktop: historyLabel() group header in the History view
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get histToday;
+
+  /// No description provided for @histYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get histYesterday;
+
+  /// No description provided for @histDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} day ago} other{{count} days ago}}'**
+  String histDaysAgo(int count);
+
+  /// No description provided for @histWeekAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'A week ago'**
+  String get histWeekAgo;
 
   /// No description provided for @tlEmptyAll.
   ///
@@ -1376,18 +1412,6 @@ abstract class AppLocalizations {
   /// **'Profile saved!'**
   String get profileSaved;
 
-  /// No description provided for @profileDiscardTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Discard changes?'**
-  String get profileDiscardTitle;
-
-  /// No description provided for @profileDiscardBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Everything you changed in your profile will be lost.'**
-  String get profileDiscardBody;
-
   /// No description provided for @profileNickname.
   ///
   /// In en, this message translates to:
@@ -1909,6 +1933,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'“{title}” isn’t built yet'**
   String setStub(String title);
+
+  /// No description provided for @swZoneLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Library'**
+  String get swZoneLibrary;
+
+  /// No description provided for @swZoneQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Queue'**
+  String get swZoneQueue;
+
+  /// No description provided for @swZoneMini.
+  ///
+  /// In en, this message translates to:
+  /// **'Mini player'**
+  String get swZoneMini;
+
+  /// No description provided for @swZonePlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Player'**
+  String get swZonePlayer;
+
+  /// No description provided for @swLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe left'**
+  String get swLeft;
+
+  /// No description provided for @swRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe right'**
+  String get swRight;
+
+  /// No description provided for @swActNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get swActNone;
+
+  /// No description provided for @swActLike.
+  ///
+  /// In en, this message translates to:
+  /// **'Like'**
+  String get swActLike;
+
+  /// No description provided for @swActQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to queue'**
+  String get swActQueue;
+
+  /// desktop: lib.ctx.playNext — insert right after the current track
+  ///
+  /// In en, this message translates to:
+  /// **'Play next'**
+  String get swActPlayNext;
+
+  /// No description provided for @swActNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get swActNext;
+
+  /// No description provided for @swActPrev.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get swActPrev;
+
+  /// No description provided for @swActDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get swActDownload;
+
+  /// No description provided for @swActDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get swActDelete;
+
+  /// No description provided for @swAddedToQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to queue'**
+  String get swAddedToQueue;
+
+  /// No description provided for @swAlreadyInQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Already in the queue'**
+  String get swAlreadyInQueue;
+
+  /// No description provided for @swPlaysNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Plays next'**
+  String get swPlaysNext;
+
+  /// No description provided for @swLiked.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to favorites'**
+  String get swLiked;
+
+  /// No description provided for @swUnliked.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed from favorites'**
+  String get swUnliked;
+
+  /// No description provided for @swRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed'**
+  String get swRemoved;
 
   /// desktop: settings.interface.cat.language
   ///

@@ -63,7 +63,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final flight = _flight;
 
     return ListView(
-      padding: EdgeInsets.zero,
+      // Только снизу: сверху баннер уходит под статус-бар, а внизу над
+      // содержимым плавают миниплеер и таб-бар.
+      padding: EdgeInsets.only(bottom: bottomBarsInset(context)),
       children: [
         _Banner(profile: profile, flight: flight),
         HeroContent(

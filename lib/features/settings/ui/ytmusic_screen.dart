@@ -27,78 +27,70 @@ class YtmusicSettingsScreen extends StatelessWidget {
     final l = context.l;
     final theme = Theme.of(context).textTheme;
 
-    return SafeArea(
-      bottom: false,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
-        children: [
-          SubPageHeader(
-            title: 'YouTube Music',
-            onBack: () => context.go('/settings'),
-          ),
-          const SizedBox(height: 22),
+    return SubPage(
+      title: 'YouTube Music',
+      onBack: () => context.go('/settings'),
+      children: [
+        Row(
+          children: [
+            const PlatformLogo(MusicSource.ytmusic, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('YouTube Music', style: theme.titleSmall),
+                  const SizedBox(height: 2),
+                  Text(
+                    l.ytmConfigured,
+                    style: theme.bodySmall?.copyWith(color: _ok),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
 
-          Row(
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: t.ovlBg,
+            border: Border.all(color: t.ovlLine),
+            borderRadius: BorderRadius.circular(t.radius),
+          ),
+          child: Row(
             children: [
-              const PlatformLogo(MusicSource.ytmusic, size: 22),
-              const SizedBox(width: 10),
+              const Icon(Icons.check_rounded, size: 24, color: _ok),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('YouTube Music', style: theme.titleSmall),
-                    const SizedBox(height: 2),
                     Text(
                       l.ytmConfigured,
-                      style: theme.bodySmall?.copyWith(color: _ok),
+                      style: theme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      l.ytmNoAuth,
+                      style: theme.bodySmall?.copyWith(color: t.text2),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
+        ),
+        const SizedBox(height: 14),
 
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: t.ovlBg,
-              border: Border.all(color: t.ovlLine),
-              borderRadius: BorderRadius.circular(t.radius),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.check_rounded, size: 24, color: _ok),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l.ytmConfigured,
-                        style: theme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        l.ytmNoAuth,
-                        style: theme.bodySmall?.copyWith(color: t.text2),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          Text(
-            l.ytmHelp,
-            style: theme.bodySmall?.copyWith(color: t.text2, height: 1.6),
-          ),
-        ],
-      ),
+        Text(
+          l.ytmHelp,
+          style: theme.bodySmall?.copyWith(color: t.text2, height: 1.6),
+        ),
+      ],
     );
   }
 }

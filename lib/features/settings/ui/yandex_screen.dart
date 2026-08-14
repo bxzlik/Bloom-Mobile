@@ -50,84 +50,74 @@ class _YandexSettingsScreenState extends ConsumerState<YandexSettingsScreen> {
     final theme = Theme.of(context).textTheme;
     final s = ref.watch(ymAuthProvider);
 
-    return SafeArea(
-      bottom: false,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
-        children: [
-          SubPageHeader(
-            title: l.sourceYandex,
-            onBack: () => context.go('/settings'),
-          ),
-          const SizedBox(height: 22),
-
-          // Шапка: логотип, название, статус подключения.
-          Row(
-            children: [
-              const PlatformLogo(MusicSource.yandex, size: 22),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(l.sourceYandex, style: theme.titleSmall),
-                    const SizedBox(height: 2),
-                    Text(
-                      s.checking
-                          ? l.ymChecking
-                          : s.authed
-                          ? l.ymConnected
-                          : l.ymNotConnected,
-                      style: theme.bodySmall?.copyWith(
-                        color: s.authed && !s.checking
-                            ? const Color(0xFF1DB954)
-                            : t.muted,
-                      ),
+    return SubPage(
+      title: l.sourceYandex,
+      onBack: () => context.go('/settings'),
+      children: [
+        // Шапка: логотип, название, статус подключения.
+        Row(
+          children: [
+            const PlatformLogo(MusicSource.yandex, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l.sourceYandex, style: theme.titleSmall),
+                  const SizedBox(height: 2),
+                  Text(
+                    s.checking
+                        ? l.ymChecking
+                        : s.authed
+                        ? l.ymConnected
+                        : l.ymNotConnected,
+                    style: theme.bodySmall?.copyWith(
+                      color: s.authed && !s.checking
+                          ? const Color(0xFF1DB954)
+                          : t.muted,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 18),
-
-          if (s.authed) ...[
-            _PlusBadge(hasPlus: s.hasPlus),
-            const SizedBox(height: 16),
-            _PillButton(
-              label: l.ymLogout,
-              onTap: () => ref.read(ymAuthProvider.notifier).logout(),
             ),
-          ] else ...[
-            Text(l.ymLoginHint, style: theme.bodySmall),
-            const SizedBox(height: 14),
-            _PillButton(
-              label: l.ymConnect,
-              accent: true,
-              busy: s.connecting && s.userCode == null,
-              onTap: s.connecting
-                  ? null
-                  : () => ref.read(ymAuthProvider.notifier).startAuth(),
-            ),
-            if (s.userCode case final code?) ...[
-              const SizedBox(height: 16),
-              _CodeCard(code: code, verifyUrl: s.verifyUrl),
-            ],
           ],
+        ),
+        const SizedBox(height: 18),
 
-          if (s.note case final note?) ...[
-            const SizedBox(height: 14),
-            Text(
-              _noteText(l, note),
-              style: theme.bodySmall?.copyWith(
-                color: note.kind == YmAuthNoteKind.error
-                    ? t.sysFavIco
-                    : t.text2,
-              ),
-            ),
+        if (s.authed) ...[
+          _PlusBadge(hasPlus: s.hasPlus),
+          const SizedBox(height: 16),
+          _PillButton(
+            label: l.ymLogout,
+            onTap: () => ref.read(ymAuthProvider.notifier).logout(),
+          ),
+        ] else ...[
+          Text(l.ymLoginHint, style: theme.bodySmall),
+          const SizedBox(height: 14),
+          _PillButton(
+            label: l.ymConnect,
+            accent: true,
+            busy: s.connecting && s.userCode == null,
+            onTap: s.connecting
+                ? null
+                : () => ref.read(ymAuthProvider.notifier).startAuth(),
+          ),
+          if (s.userCode case final code?) ...[
+            const SizedBox(height: 16),
+            _CodeCard(code: code, verifyUrl: s.verifyUrl),
           ],
         ],
-      ),
+
+        if (s.note case final note?) ...[
+          const SizedBox(height: 14),
+          Text(
+            _noteText(l, note),
+            style: theme.bodySmall?.copyWith(
+              color: note.kind == YmAuthNoteKind.error ? t.sysFavIco : t.text2,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

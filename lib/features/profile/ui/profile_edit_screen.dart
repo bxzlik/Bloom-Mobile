@@ -73,8 +73,13 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       _bio.text.trim() != _saved.bio ||
       _status.text.trim() != _saved.status;
 
+  /// Стрелка «назад» взведена: следующее нажатие бросит правку.
+  bool _armed = false;
+  Timer? _disarm;
+
   @override
   void dispose() {
+    _disarm?.cancel();
     _name.dispose();
     _bio.dispose();
     _status.dispose();
@@ -168,45 +173,22 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     context.go('/home/profile');
   }
 
-  Future<void> _cancel() async {
-    if (_dirty && !await _confirmDrop()) return;
+  /// Уход с непустой правкой спрашивает вторым нажатием на саму стрелку — как
+  /// удаление своей темы в «Оформлении»: модалки на такое тут нет.
+  void _cancel() {
+    if (_dirty && !_armed) {
+      setState(() => _armed = true);
+      // Само остывает — иначе взведённая стрелка так и ждёт промаха.
+      _disarm?.cancel();
+      _disarm = Timer(const Duration(seconds: 3), () {
+        if (mounted) setState(() => _armed = false);
+      });
+      return;
+    }
     // Выбранные, но не сохранённые файлы — мусор, на который никто не сошлётся.
     if (_draft.avatar != _saved.avatar) unawaited(deleteCover(_draft.avatar));
     if (_draft.banner != _saved.banner) unawaited(deleteCover(_draft.banner));
-    if (mounted) context.go('/home/profile');
-  }
-
-  Future<bool> _confirmDrop() async {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: t.blockColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(t.radius),
-        ),
-        title: Text(context.l.profileDiscardTitle, style: theme.titleLarge),
-        content: Text(
-          context.l.profileDiscardBody,
-          style: theme.bodyMedium?.copyWith(color: t.text2),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(context.l.commonBack, style: TextStyle(color: t.text2)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(
-              context.l.commonDiscard,
-              style: TextStyle(color: t.sysFavIco),
-            ),
-          ),
-        ],
-      ),
-    );
-    return ok == true;
+    context.go('/home/profile');
   }
 
   // ── Раскладка ─────────────────────────────────────────────────────────────
@@ -216,7 +198,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     final t = context.bloom;
 
     return PopScope(
-      // Системное «назад» — это «Отмена» со всеми её вопросами.
+      // Системное «назад» — та же «Отмена»: первое взводит стрелку, второе
+      // бросает правку.
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _cancel();
@@ -236,8 +219,13 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                   children: [
                     Row(
                       children: [
+                        // Взведённая — красная корзина: без модалки видно, что
+                        // следующий тап бросит правку.
                         CircleIconButton(
-                          icon: SolarIconsOutline.altArrowLeft,
+                          icon: _armed
+                              ? SolarIconsBold.trashBinMinimalistic
+                              : SolarIconsOutline.altArrowLeft,
+                          color: _armed ? t.sysFavIco : null,
                           onTap: _cancel,
                         ),
                         const Spacer(),
