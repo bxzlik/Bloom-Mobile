@@ -59,7 +59,9 @@ class _PlAutoBody extends ConsumerWidget {
     final state = ref.watch(plAutoProvider);
     final auto = ref.read(plAutoProvider.notifier);
     final lib = ref.watch(libraryProvider);
-    final candidates = lib.playlists.where((p) => p.sourceUrl != null).toList();
+    final candidates = lib.playlists
+        .where((p) => p.sources.isNotEmpty)
+        .toList();
     final selected = candidates.where((p) => state.ids.contains(p.id)).length;
     final allSelected = candidates.isNotEmpty && selected == candidates.length;
 
@@ -231,7 +233,9 @@ class _Hero extends ConsumerWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.45),
+                          // Чипы лежат прямо на фоне шторки, а он тут обычный
+                          // фон темы — плёнка блока, а не чёрный.
+                          color: t.pill,
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
@@ -341,9 +345,11 @@ class _IntervalRow extends StatelessWidget {
               for (final min in kPlAutoIntervals) ...[
                 Expanded(
                   child: Material(
+                    // Невыбранный сегмент — плёнка поверх блока, в который он
+                    // вложен: чёрный на плашке блока читался бы дырой.
                     color: min == value
                         ? (enabled ? t.accent : t.pill)
-                        : Colors.black.withValues(alpha: 0.35),
+                        : t.iconBg,
                     borderRadius: BorderRadius.circular(999),
                     clipBehavior: Clip.antiAlias,
                     child: InkWell(
@@ -494,7 +500,8 @@ class _Footer extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: Material(
-              color: canRun ? t.accent : Colors.black.withValues(alpha: 0.45),
+              // Кнопка стоит на фоне шторки: погашенная — плашка темы.
+              color: canRun ? t.accent : t.pill,
               borderRadius: BorderRadius.circular(999),
               clipBehavior: Clip.antiAlias,
               child: InkWell(

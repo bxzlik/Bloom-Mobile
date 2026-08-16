@@ -3,7 +3,12 @@
 /// OAuth device-flow: «Подключить» → открывается страница Яндекс ID и
 /// показывается код → идёт поллинг токена. Всё состояние живёт в
 /// [ymAuthProvider]; здесь только вид и перевод типизированных причин.
+///
+/// Раскладка — [PlatformPage]: знак площадки посреди экрана, статус под ним,
+/// действие внизу. Инструкция с ПК живёт в шторке под карточкой.
 library;
+
+import 'dart:async' show scheduleMicrotask;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -15,8 +20,8 @@ import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../providers/yandex/ym_auth.dart';
 import '../../../shared/ui/bloom_toast.dart';
-import '../../../shared/ui/platform_logo.dart';
-import '../../../shared/ui/subpage_header.dart';
+import '../../../shared/ui/glass.dart';
+import 'platform_page.dart';
 
 class YandexSettingsScreen extends ConsumerStatefulWidget {
   const YandexSettingsScreen({super.key});
@@ -27,21 +32,41 @@ class YandexSettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _YandexSettingsScreenState extends ConsumerState<YandexSettingsScreen> {
+  /// Контроллер держим ссылкой: в [dispose] `ref` уже мёртв и бросает
+  /// `Bad state: Cannot use "ref" after the widget was disposed`.
+  late final YmAuthController _auth = ref.read(ymAuthProvider.notifier);
+
   @override
   void initState() {
     super.initState();
     // Статус перечитываем при открытии экрана, а поллинг гасим при уходе —
     // как `useEffect` в десктопной секции.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ref.read(ymAuthProvider.notifier).refresh();
+      if (mounted) _auth.refresh();
     });
   }
 
   @override
   void dispose() {
-    ref.read(ymAuthProvider.notifier).cancelAuth();
+    // Отмена меняет состояние провайдера, на который подписан этот же экран, а
+    // он в момент `dispose` уже мёртв: синхронный вызов роняет ассерт
+    // `_lifecycleState != defunct`. Микрозадача переносит её за разбор дерева.
+    scheduleMicrotask(_auth.cancelAuth);
     super.dispose();
   }
+
+  void _guide() => showPlatformGuide(
+    context,
+    source: MusicSource.yandex,
+    title: context.l.ymGuideTitle,
+    steps: [
+      context.l.ymStep1,
+      context.l.ymStep2,
+      context.l.ymStep3,
+      context.l.ymStep4,
+    ],
+    note: context.l.ymGuideNote,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -50,73 +75,67 @@ class _YandexSettingsScreenState extends ConsumerState<YandexSettingsScreen> {
     final theme = Theme.of(context).textTheme;
     final s = ref.watch(ymAuthProvider);
 
-    return SubPage(
-      title: l.sourceYandex,
-      onBack: () => context.go('/settings'),
-      children: [
-        // Шапка: логотип, название, статус подключения.
-        Row(
-          children: [
-            const PlatformLogo(MusicSource.yandex, size: 22),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(l.sourceYandex, style: theme.titleSmall),
-                  const SizedBox(height: 2),
-                  Text(
-                    s.checking
-                        ? l.ymChecking
-                        : s.authed
-                        ? l.ymConnected
-                        : l.ymNotConnected,
-                    style: theme.bodySmall?.copyWith(
-                      color: s.authed && !s.checking
-                          ? const Color(0xFF1DB954)
-                          : t.muted,
-                    ),
-                  ),
-                ],
+    final note = s.note == null
+        ? null
+        : Padding(
+            padding: const EdgeInsets.only(top: 14),
+            child: Text(
+              _noteText(l, s.note!),
+              textAlign: TextAlign.center,
+              style: theme.bodySmall?.copyWith(
+                color: s.note!.kind == YmAuthNoteKind.error
+                    ? t.sysFavIco
+                    : t.text2,
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 18),
+          );
 
-        if (s.authed) ...[
-          _PlusBadge(hasPlus: s.hasPlus),
-          const SizedBox(height: 16),
-          _PillButton(
+    return PlatformPage(
+      source: MusicSource.yandex,
+      onBack: () => context.go('/settings'),
+      status: s.checking
+          ? l.ymChecking
+          : s.authed
+          ? l.ymConnected
+          : l.ymNotConnected,
+      statusColor: s.authed && !s.checking ? kPlatformOk : null,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (s.authed)
+            _PlusBadge(hasPlus: s.hasPlus)
+          else ...[
+            PlatformCard(
+              source: MusicSource.yandex,
+              title: l.ymGuideTitle,
+              subtitle: l.ymGuideSubtitle,
+              onTap: _guide,
+            ),
+            if (s.userCode case final code?) ...[
+              const SizedBox(height: 12),
+              _CodeCard(code: code, verifyUrl: s.verifyUrl),
+            ],
+          ],
+          ?note,
+        ],
+      ),
+      actions: [
+        if (s.authed)
+          PlatformButton(
             label: l.ymLogout,
             onTap: () => ref.read(ymAuthProvider.notifier).logout(),
-          ),
-        ] else ...[
-          Text(l.ymLoginHint, style: theme.bodySmall),
-          const SizedBox(height: 14),
-          _PillButton(
+          )
+        else if (s.userCode case final _?)
+          PlatformButton(
+            label: l.ymOpenPage,
+            onTap: () => openVerifyPage(s.verifyUrl ?? 'https://ya.ru/device'),
+          )
+        else
+          PlatformButton(
             label: l.ymConnect,
-            accent: true,
-            busy: s.connecting && s.userCode == null,
-            onTap: s.connecting
-                ? null
-                : () => ref.read(ymAuthProvider.notifier).startAuth(),
+            busy: s.connecting,
+            onTap: () => ref.read(ymAuthProvider.notifier).startAuth(),
           ),
-          if (s.userCode case final code?) ...[
-            const SizedBox(height: 16),
-            _CodeCard(code: code, verifyUrl: s.verifyUrl),
-          ],
-        ],
-
-        if (s.note case final note?) ...[
-          const SizedBox(height: 14),
-          Text(
-            _noteText(l, note),
-            style: theme.bodySmall?.copyWith(
-              color: note.kind == YmAuthNoteKind.error ? t.sysFavIco : t.text2,
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -149,7 +168,7 @@ class _PlusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final l = context.l;
-    final body = Theme.of(context).textTheme.bodySmall;
+    final body = Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.5);
     // Как на десктопе: первая половина фразы выделена, вторая — обычным
     // текстом. Статус неизвестен — одна серая строка.
     return switch (hasPlus) {
@@ -159,35 +178,35 @@ class _PlusBadge extends StatelessWidget {
             TextSpan(
               text: l.ymPlusActiveA,
               style: body?.copyWith(
-                color: const Color(0xFF1DB954),
+                color: kPlatformOk,
                 fontWeight: FontWeight.w700,
               ),
             ),
             TextSpan(text: ' ${l.ymPlusActiveB}', style: body),
           ],
         ),
+        textAlign: TextAlign.center,
       ),
       false => Text.rich(
         TextSpan(
           children: [
             TextSpan(
               text: l.ymPlusNoneA,
-              style: body?.copyWith(
-                color: t.text2,
-                fontWeight: FontWeight.w700,
-              ),
+              style: body?.copyWith(color: t.text, fontWeight: FontWeight.w700),
             ),
             TextSpan(text: ' ${l.ymPlusNoneB}', style: body),
           ],
         ),
+        textAlign: TextAlign.center,
       ),
-      null => Text(l.ymPlusUnknown, style: body),
+      null => Text(l.ymPlusUnknown, style: body, textAlign: TextAlign.center),
     };
   }
 }
 
-/// Код устройства: крупные цифры (тап — копировать) и повторное открытие
-/// страницы подтверждения, если браузер не открылся сам.
+/// Код устройства: крупные цифры (тап — копировать) и адрес страницы
+/// подтверждения. Открыть её повторно можно кнопкой внизу — браузер не всегда
+/// поднимается сам.
 class _CodeCard extends StatelessWidget {
   const _CodeCard({required this.code, required this.verifyUrl});
 
@@ -201,96 +220,48 @@ class _CodeCard extends StatelessWidget {
     final theme = Theme.of(context).textTheme;
     final url = verifyUrl ?? 'https://ya.ru/device';
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: t.ovlBg,
-        border: Border.all(color: t.ovlLine),
-        borderRadius: BorderRadius.circular(t.radius),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(text: '${l.ymCodePromptA} ', style: theme.bodySmall),
-                TextSpan(
-                  text: url,
-                  style: theme.bodySmall?.copyWith(
-                    color: t.text,
-                    fontWeight: FontWeight.w700,
+    return GlassBox(
+      borderRadius: BorderRadius.circular(t.radius),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(text: '${l.ymCodePromptA} ', style: theme.bodySmall),
+                  TextSpan(
+                    text: url,
+                    style: theme.bodySmall?.copyWith(
+                      color: t.text,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-                TextSpan(text: ' ${l.ymCodePromptB}', style: theme.bodySmall),
-              ],
+                  TextSpan(text: ' ${l.ymCodePromptB}', style: theme.bodySmall),
+                ],
+              ),
+              textAlign: TextAlign.center,
             ),
-          ),
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: () {
-              Clipboard.setData(ClipboardData(text: code));
-              showToast(context, l.ymCodeCopied);
-            },
-            child: Text(
-              code,
-              style: theme.headlineSmall?.copyWith(
-                color: t.accent,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 3,
+            const SizedBox(height: 12),
+            // Тап по коду копирует его: набирать цифры руками в чужом браузере
+            // неудобно.
+            GestureDetector(
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: code));
+                showToast(context, l.ymCodeCopied);
+              },
+              child: Text(
+                code,
+                textAlign: TextAlign.center,
+                style: theme.headlineSmall?.copyWith(
+                  color: t.accent,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 3,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          _PillButton(label: l.ymOpenPage, onTap: () => openVerifyPage(url)),
-        ],
-      ),
-    );
-  }
-}
-
-class _PillButton extends StatelessWidget {
-  const _PillButton({
-    required this.label,
-    required this.onTap,
-    this.accent = false,
-    this.busy = false,
-  });
-
-  final String label;
-  final VoidCallback? onTap;
-  final bool accent;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    return SizedBox(
-      height: 46,
-      child: Material(
-        color: accent ? t.accent : t.pill,
-        borderRadius: BorderRadius.circular(999),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: busy ? null : onTap,
-          child: Center(
-            child: busy
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.2,
-                      color: accent ? t.accentText : t.accent,
-                    ),
-                  )
-                : Text(
-                    label,
-                    style: theme.titleSmall?.copyWith(
-                      color: accent ? t.accentText : null,
-                    ),
-                  ),
-          ),
+          ],
         ),
       ),
     );

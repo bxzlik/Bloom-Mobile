@@ -18,6 +18,7 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
+import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../../shared/ui/track_swipes.dart';
 import '../swipe_store.dart';
@@ -35,10 +36,7 @@ class SwipesScreen extends ConsumerWidget {
       children: [
         for (final zone in SwipeZone.values) ...[
           if (zone != SwipeZone.values.first) const SizedBox(height: 26),
-          Text(
-            swipeZoneLabel(context.l, zone).toUpperCase(),
-            style: Theme.of(context).textTheme.labelSmall,
-          ),
+          SettingsCaption(swipeZoneLabel(context.l, zone).toUpperCase()),
           const SizedBox(height: 10),
           _Preview(zone: zone, pair: settings.of(zone)),
           const SizedBox(height: 12),
@@ -70,8 +68,9 @@ Widget _zoneIcon(BuildContext context, SwipeZone zone) {
   );
 }
 
-/// Плашка-превью: слева значок действия по свайпу влево, справа — по свайпу
-/// вправо, посередине само место. Значки тихие: это не кнопки, а картинка.
+/// Плашка-превью: значки стоят со стороны, откуда приходит движение — слева
+/// действие свайпа вправо, справа — свайпа влево, посередине само место.
+/// Значки тихие: это не кнопки, а картинка.
 class _Preview extends StatelessWidget {
   const _Preview({required this.zone, required this.pair});
 
@@ -80,22 +79,19 @@ class _Preview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Container(
-      height: 96,
-      padding: const EdgeInsets.symmetric(horizontal: 22),
-      decoration: BoxDecoration(
-        color: t.pill,
-        borderRadius: BorderRadius.circular(t.radius),
-      ),
-      child: Row(
-        children: [
-          _PreviewIcon(icon: swipeActionIcon(pair.left)),
-          const Spacer(),
-          _zoneIcon(context, zone),
-          const Spacer(),
-          _PreviewIcon(icon: swipeActionIcon(pair.right)),
-        ],
+    return GlassBox(
+      child: Container(
+        height: 96,
+        padding: const EdgeInsets.symmetric(horizontal: 22),
+        child: Row(
+          children: [
+            _PreviewIcon(icon: swipeActionIcon(pair.right)),
+            const Spacer(),
+            _zoneIcon(context, zone),
+            const Spacer(),
+            _PreviewIcon(icon: swipeActionIcon(pair.left)),
+          ],
+        ),
       ),
     );
   }
@@ -120,17 +116,13 @@ class _SidesCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
-    return Material(
-      color: t.pill,
-      borderRadius: BorderRadius.circular(t.radius),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          _SideRow(zone: zone, isLeft: true, action: pair.left),
-          _SideRow(zone: zone, isLeft: false, action: pair.right),
-        ],
-      ),
+    return SettingsGroupCard(
+      // Линия начинается под текстом строки: 16 поля + 20 значка + 14 зазора.
+      dividerInset: 50,
+      rows: [
+        _SideRow(zone: zone, isLeft: true, action: pair.left),
+        _SideRow(zone: zone, isLeft: false, action: pair.right),
+      ],
     );
   }
 }
@@ -153,7 +145,7 @@ class _SideRow extends ConsumerWidget {
     return InkWell(
       onTap: () => _pickAction(context, ref, zone, isLeft, action),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
         child: Row(
           children: [
             Icon(
@@ -173,9 +165,10 @@ class _SideRow extends ConsumerWidget {
                     style: theme.titleMedium,
                   ),
                   const SizedBox(height: 3),
+                  // Ярче общего `bodySmall` — как выбранное в строках «Плеера».
                   Text(
                     swipeActionLabel(context.l, action),
-                    style: theme.bodySmall,
+                    style: theme.bodySmall?.copyWith(color: t.text2),
                   ),
                 ],
               ),
@@ -241,9 +234,8 @@ class _ActionTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
       child: Material(
-        // Тот же чёрный с прозрачностью, что у блоков шторки ([SheetPanel]):
-        // токен-плёнка накрыла бы фон шторки насмерть.
-        color: Colors.black.withValues(alpha: 0.55),
+        // Та же заливка, что у блоков шторки ([SheetPanel]).
+        color: sheetPanelColor(context),
         borderRadius: BorderRadius.circular(t.radius),
         clipBehavior: Clip.antiAlias,
         child: InkWell(

@@ -16,11 +16,23 @@ import '../../core/store/cover_store.dart';
 import 'bloom_mark.dart';
 import 'cover_collage.dart';
 import 'cover_hero.dart';
+import 'glass.dart';
 
 /// Высота управляющих элементов шапки: круглых кнопок, пилюли профиля, поля
 /// поиска и пилюли-заголовка подстраницы. В референсе шапка заметно крупнее,
 /// чем была у нас (42), — держим все элементы шапки ровно этой высоты.
-const double kHeaderControl = 48;
+///
+/// Одно число на всё приложение: свёрнутые бары детальных страниц, поиск,
+/// пилюля площадки в плеере и онбординг считают свои размеры от него, поэтому
+/// шапка растёт везде разом и ряды не разъезжаются.
+const double kHeaderControl = 51;
+
+/// Кегль названия внутри пилюли шапки: имя приложения на главной, раздел на
+/// подстранице, запрос в поиске.
+///
+/// Отдельным числом, а не `titleMedium` темы: тот же стиль носят строки треков
+/// и подписи карточек, и растить его ради шапки нельзя.
+const double kHeaderTitleSize = 16;
 
 /// Высота чипа-фильтра (библиотека, поиск) и круглых кнопок в том же ряду.
 const double kChipHeight = 44;
@@ -86,7 +98,7 @@ class CircleIconButton extends StatelessWidget {
     required this.icon,
     this.onTap,
     this.size = kHeaderControl,
-    this.iconSize = 22,
+    this.iconSize = 23,
     this.background,
     this.color,
     this.tooltip,
@@ -103,10 +115,13 @@ class CircleIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final button = Material(
-      color: background ?? t.pill,
+    // Со своей заливкой (акцент под play, прозрачная у кнопок миниплеера)
+    // кнопка стеклом не становится: этот цвет — состояние, а не поверхность
+    // темы.
+    final button = GlassBox(
+      color: background,
+      enabled: background == null,
       shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: SizedBox(
@@ -163,7 +178,7 @@ class GlassIconButton extends StatelessWidget {
     required this.icon,
     required this.onTap,
     this.size = kHeaderControl,
-    this.iconSize = 22,
+    this.iconSize = 23,
     this.background,
     this.color,
   });
@@ -275,7 +290,7 @@ class CircleSvgButton extends StatelessWidget {
     required this.asset,
     this.onTap,
     this.size = kHeaderControl,
-    this.iconSize = 22,
+    this.iconSize = 23,
   });
 
   final String asset;
@@ -285,11 +300,8 @@ class CircleSvgButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Material(
-      color: t.pill,
+    return GlassBox(
       shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: SizedBox(
@@ -489,8 +501,10 @@ class Cover extends StatelessWidget {
 
     // Пустая обложка — приглушённый знак bloom, как `.ps-cover-empty` на
     // десктопе (там глиф с opacity .12).
+    // Цвет сплошной, а не плёнка: над картинкой-фоном полупрозрачная заглушка
+    // показывала обои и плитка читалась дыркой в списке.
     Widget placeholder() => DecoratedBox(
-      decoration: BoxDecoration(color: t.ovlBg, borderRadius: shape),
+      decoration: BoxDecoration(color: t.coverEmpty, borderRadius: shape),
       child: Center(
         child: BloomMark(size: size * 0.34, color: t.text, opacity: 0.16),
       ),

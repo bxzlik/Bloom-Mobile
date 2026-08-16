@@ -16,6 +16,7 @@ import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../library/ui/create_playlist_sheet.dart';
+import '../../player/play_source.dart';
 import '../discover_store.dart';
 
 /// Заголовок секции с местом под значок площадки справа от текста.
@@ -76,8 +77,18 @@ class DiscoverSection extends ConsumerWidget {
             height: 194,
             padding: 16,
             itemCount: tracks.length,
-            builder: (i) =>
-                TrackCard(track: tracks[i], queue: tracks, index: i),
+            builder: (i) => TrackCard(
+              track: tracks[i],
+              queue: tracks,
+              index: i,
+              source: PlainSource(
+                id: 'discover:${mode.name}',
+                label: mode == DiscoverMode.charts
+                    ? context.l.homeCharts
+                    : context.l.homeNewReleases,
+                icon: PlainSourceIcon.chart,
+              ),
+            ),
           ),
           DiscoverAlbums(:final albums) => EntityCarousel(
             height: 194,
@@ -112,7 +123,16 @@ class RecentSection extends ConsumerWidget {
           height: 194,
           padding: 16,
           itemCount: recent.length,
-          builder: (i) => TrackCard(track: recent[i], queue: recent, index: i),
+          builder: (i) => TrackCard(
+            track: recent[i],
+            queue: recent,
+            index: i,
+            source: PlainSource(
+              id: 'recent',
+              label: context.l.homeRecent,
+              icon: PlainSourceIcon.clock,
+            ),
+          ),
         ),
       ],
     );
@@ -246,7 +266,7 @@ class _NewPlaylistCard extends ConsumerWidget {
               width: _PlaylistCardState._size,
               height: _PlaylistCardState._size,
               decoration: BoxDecoration(
-                color: t.ovlBg,
+                color: t.coverEmpty,
                 borderRadius: BorderRadius.circular(t.radius * 0.72),
               ),
               child: Icon(

@@ -168,7 +168,6 @@ class _CardShell extends ConsumerWidget {
                   icon: playing ? SolarIconsBold.pause : SolarIconsBold.play,
                   iconSize: 16,
                   size: _height,
-                  background: t.pill,
                   onTap: onPlay,
                 ),
                 const SizedBox(width: 8),
@@ -274,7 +273,14 @@ class _SeekPill extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: theme.bodySmall?.copyWith(fontSize: 11),
+                        // Не `muted`: он считается от плашки темы, а подпись
+                        // лежит на заливке прогресса акцентом — там серый от
+                        // темы сливается с фоном. Цвет текста темы с
+                        // прозрачностью читается и на дорожке, и на заливке.
+                        style: theme.bodySmall?.copyWith(
+                          fontSize: 11,
+                          color: t.text.withValues(alpha: 0.75),
+                        ),
                       ),
                     ],
                   ),

@@ -89,7 +89,7 @@ class CoverCollage extends StatelessWidget {
   /// Ячейка без картинки — глухая плашка подложки, без значка: рядом с
   /// соседними такими же коллаж читается как одно приглушённое пятно, а не как
   /// сетка иконок.
-  Widget _blank(BloomTokens t) => ColoredBox(color: t.ovlBg);
+  Widget _blank(BloomTokens t) => ColoredBox(color: t.coverEmpty);
 
   /// Доля коллажа: `Expanded` в обе стороны — ряды и колонки делят площадь
   /// поровну, размер задаёт родитель.

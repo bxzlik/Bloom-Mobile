@@ -73,6 +73,13 @@ class BloomTokens extends ThemeExtension<BloomTokens> {
   final Color sysAllTint;
   final Color sysAllIco;
 
+  /// Подложка на месте отсутствующей обложки — СПЛОШНАЯ.
+  ///
+  /// Ровно тот цвет, который плёнка `ovlBg` даёт над фоном темы, но уже
+  /// смешанный: заглушке нельзя быть полупрозрачной, иначе с картинкой-фоном
+  /// сквозь неё видно обои и плитка читается дыркой, а не пустой обложкой.
+  final Color coverEmpty;
+
   /// Радиус скругления (`--radius`), по умолчанию 14.
   final double radius;
 
@@ -107,6 +114,7 @@ class BloomTokens extends ThemeExtension<BloomTokens> {
     required this.sysHistIco,
     required this.sysAllTint,
     required this.sysAllIco,
+    required this.coverEmpty,
     required this.radius,
   });
 
@@ -168,6 +176,7 @@ class BloomTokens extends ThemeExtension<BloomTokens> {
       sysHistIco: const Color(0xFFFFB400),
       sysAllTint: const Color(0xFF2D83A8).withValues(alpha: 0.16),
       sysAllIco: const Color(0xFF4FB2D8),
+      coverEmpty: _mix(blockColor, ovl, 0.03),
       radius: radius,
     );
   }

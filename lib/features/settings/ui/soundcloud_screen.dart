@@ -1,5 +1,9 @@
 /// Настройки SoundCloud: ручной `client_id` и проверка соединения.
 ///
+/// Раскладка — [PlatformPage]: знак площадки посреди экрана, действия внизу.
+/// В покое страница свёрнута (настраивать обычно нечего — ключ подбирается
+/// сам), «Настроить» раскрывает карточку с инструкцией, поле ключа и проверку.
+///
 /// Обе операции портированы вместе с провайдером: `setManualClientId` сбрасывает
 /// авто-кеш, `checkConnection` сначала сбрасывает его же и потом делает тестовый
 /// поиск — то есть показывает, каким ключом всё реально работает сейчас.
@@ -11,11 +15,13 @@ import 'package:go_router/go_router.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../providers/soundcloud/models.dart';
 import '../../../providers/soundcloud/soundcloud.dart' as sc;
-import '../../../shared/ui/subpage_header.dart';
+import '../../../shared/ui/glass.dart';
+import 'platform_page.dart';
 
 class SoundCloudSettingsScreen extends ConsumerStatefulWidget {
   const SoundCloudSettingsScreen({super.key});
@@ -30,6 +36,10 @@ class _SoundCloudSettingsScreenState
   late final TextEditingController _controller = TextEditingController(
     text: ref.read(settingsProvider).scClientId ?? '',
   );
+
+  /// Раскрыт ли блок настройки. В покое страница показывает только знак: свой
+  /// ключ нужен редко.
+  bool _open = false;
   bool _checking = false;
   ScCheckResult? _result;
 
@@ -39,6 +49,17 @@ class _SoundCloudSettingsScreenState
     super.dispose();
   }
 
+  void _save() {
+    ref.read(settingsProvider.notifier).setScClientId(_controller.text);
+    setState(() {});
+  }
+
+  void _clear() {
+    _controller.clear();
+    ref.read(settingsProvider.notifier).setScClientId(null);
+    setState(() {});
+  }
+
   Future<void> _check() async {
     setState(() {
       _checking = true;
@@ -46,154 +67,160 @@ class _SoundCloudSettingsScreenState
     });
     final result = await sc.checkConnection();
     if (!mounted) return;
+    // Авто-подбор сработал, а поле пустое — подставим ключ, чтобы его можно
+    // было сохранить (то же, что на ПК).
+    if (result.ok && _controller.text.trim().isEmpty) {
+      final id = result.clientId;
+      if (id != null) _controller.text = id;
+    }
     setState(() {
       _checking = false;
       _result = result;
     });
   }
 
+  void _guide() => showPlatformGuide(
+    context,
+    source: MusicSource.soundcloud,
+    title: context.l.scGuideTitle,
+    steps: [
+      context.l.scStep1,
+      context.l.scStep2,
+      context.l.scStep3,
+      context.l.scStep4,
+      context.l.scStep5,
+    ],
+    note: context.l.scHelp,
+  );
+
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final settings = ref.watch(settingsProvider);
+    final l = context.l;
+    final saved = ref.watch(settingsProvider).scClientId;
 
-    return SubPage(
-      title: 'SoundCloud',
+    return PlatformPage(
+      source: MusicSource.soundcloud,
       onBack: () => context.go('/settings'),
+      status: saved == null ? l.scStatusAuto : l.scStatusManual,
+      body: _open ? _buildForm(saved) : null,
+      actions: [
+        PlatformButton(
+          label: _open
+              ? l.commonHide
+              : saved == null
+              ? l.scSetup
+              : l.scReconfigure,
+          onTap: () => setState(() => _open = !_open),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildForm(String? saved) {
+    final t = context.bloom;
+    final l = context.l;
+    final theme = Theme.of(context).textTheme;
+    // Правка в поле ещё не сохранена — левая кнопка предлагает сохранить;
+    // иначе она чистит уже сохранённый ключ.
+    final changed = _controller.text.trim() != (saved ?? '');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('CLIENT_ID', style: theme.labelSmall),
-        const SizedBox(height: 8),
-        Text(context.l.scHelp, style: theme.bodySmall),
-        const SizedBox(height: 12),
-        Container(
-          height: 46,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: t.pill,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  cursorColor: t.accent,
-                  style: theme.titleSmall,
-                  decoration: InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    hintText: context.l.scHint,
-                    hintStyle: theme.bodyMedium?.copyWith(color: t.muted),
+        PlatformCard(
+          source: MusicSource.soundcloud,
+          title: l.scGuideTitle,
+          subtitle: l.scGuideSubtitle,
+          onTap: _guide,
+        ),
+        const Center(child: OrLabel()),
+        GlassBox(
+          borderRadius: BorderRadius.circular(t.radius),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    cursorColor: t.accent,
+                    style: theme.bodyMedium?.copyWith(color: t.text),
+                    onChanged: (_) => setState(() {}),
+                    onSubmitted: (_) => _save(),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 18),
+                      hintText: l.scHint,
+                      hintStyle: theme.bodyMedium?.copyWith(color: t.muted),
+                    ),
                   ),
-                  onSubmitted: (v) =>
-                      ref.read(settingsProvider.notifier).setScClientId(v),
                 ),
-              ),
-              if (settings.scClientId != null)
-                GestureDetector(
-                  onTap: () {
-                    _controller.clear();
-                    ref.read(settingsProvider.notifier).setScClientId(null);
-                  },
-                  child: Icon(
-                    SolarIconsOutline.closeCircle,
-                    size: 18,
+                // «?» внутри поля — как на референсе: инструкция нужна ровно
+                // тогда, когда смотришь на пустое поле.
+                IconButton(
+                  onPressed: _guide,
+                  icon: Icon(
+                    SolarIconsOutline.questionCircle,
+                    size: 20,
                     color: t.muted,
                   ),
                 ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton(
-            onPressed: () => ref
-                .read(settingsProvider.notifier)
-                .setScClientId(_controller.text),
-            child: Text(
-              context.l.commonSave,
-              style: TextStyle(color: t.accent),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 46,
-          child: Material(
-            color: t.pill,
-            borderRadius: BorderRadius.circular(999),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: _checking ? null : _check,
-              child: Center(
-                child: _checking
-                    ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.2,
-                          color: t.accent,
-                        ),
-                      )
-                    : Text(
-                        context.l.scCheckConnection,
-                        style: theme.titleSmall,
-                      ),
-              ),
-            ),
-          ),
-        ),
-        if (_result case final r?) ...[
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: t.ovlBg,
-              border: Border.all(color: t.ovlLine),
-              borderRadius: BorderRadius.circular(t.radius),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      r.ok
-                          ? SolarIconsBold.checkCircle
-                          : SolarIconsBold.closeCircle,
-                      size: 18,
-                      color: r.ok ? t.sysAllIco : t.sysFavIco,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      r.ok
-                          ? context.l.scConnectionOk
-                          : context.l.scConnectionFail,
-                      style: theme.titleSmall,
-                    ),
-                  ],
-                ),
-                if (r.clientId != null) ...[
-                  const SizedBox(height: 8),
-                  Text(context.l.scActiveKey, style: theme.bodySmall),
-                  const SizedBox(height: 2),
-                  SelectableText(
-                    r.clientId!,
-                    style: theme.bodyMedium?.copyWith(color: t.text),
-                  ),
-                ],
-                if (r.error != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    r.error!,
-                    style: theme.bodySmall?.copyWith(color: t.sysFavIco),
-                  ),
-                ],
               ],
             ),
           ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: PlatformButton(
+                label: changed ? l.commonSave : l.commonClear,
+                height: 48,
+                onTap: changed
+                    ? _save
+                    : saved == null && _controller.text.isEmpty
+                    ? null
+                    : _clear,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: PlatformButton(
+                label: l.scCheckConnection,
+                height: 48,
+                busy: _checking,
+                onTap: _check,
+              ),
+            ),
+          ],
+        ),
+        if (_result case final r?) ...[
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Icon(
+                r.ok ? SolarIconsBold.checkCircle : SolarIconsBold.closeCircle,
+                size: 18,
+                color: r.ok ? kPlatformOk : t.sysFavIco,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  r.ok ? l.scConnectionOk : l.scConnectionFail,
+                  style: theme.bodyMedium?.copyWith(color: t.text),
+                ),
+              ),
+            ],
+          ),
+          if (r.clientId case final id?) ...[
+            const SizedBox(height: 6),
+            Text('${l.scActiveKey}: $id', style: theme.bodySmall),
+          ],
+          if (r.error case final error?) ...[
+            const SizedBox(height: 6),
+            Text(error, style: theme.bodySmall?.copyWith(color: t.sysFavIco)),
+          ],
         ],
       ],
     );

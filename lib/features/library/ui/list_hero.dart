@@ -62,7 +62,9 @@ class ListHeroBackground extends StatelessWidget {
       _ => (t.ovlBg, t.muted, SolarIconsBold.musicNote),
     };
     return ColoredBox(
-      color: tint,
+      // Тинт раздела мешаем с поверхностью темы: как плёнка он показывал бы
+      // сквозь шапку картинку-фон, а шапка обязана быть своего цвета.
+      color: Color.alphaBlend(tint, t.blockColor),
       child: Center(child: Icon(icon, size: 64, color: color)),
     );
   }

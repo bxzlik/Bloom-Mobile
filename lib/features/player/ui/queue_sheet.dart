@@ -21,22 +21,16 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/entities/entities.dart';
 import '../../../features/settings/swipe_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/track_actions.dart';
 import '../../../shared/ui/track_swipes.dart';
 import '../player_controller.dart';
 
 void showQueueSheet(BuildContext context) {
-  showModalBottomSheet<void>(
-    context: context,
-    // Корневой навигатор — как у всех наших шторок: иначе таб-бар и миниплеер
-    // остаются поверх затемнения.
-    useRootNavigator: true,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    barrierColor: Colors.black.withValues(alpha: 0.5),
-    builder: (_) => const _QueueSheet(),
-  );
+  // Корневой навигатор и стекло затемнения — общие у всех наших шторок
+  // (`showBloomModal`): иначе таб-бар и миниплеер остаются поверх затемнения.
+  showBloomModal<void>(context: context, builder: (_) => const _QueueSheet());
 }
 
 class _QueueSheet extends ConsumerStatefulWidget {
@@ -102,14 +96,13 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(t.radius * 1.7),
         ),
-        child: ColoredBox(
-          color: t.bg,
+        child: SheetSurface(
           child: SafeArea(
             top: false,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const _Handle(),
+                const SheetHandle(),
                 _QueueHeader(
                   count: queue.length,
                   shuffle: state.shuffle,
@@ -145,25 +138,6 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Handle extends StatelessWidget {
-  const _Handle();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 10, bottom: 6),
-      child: Container(
-        width: 38,
-        height: 4,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.35),
-          borderRadius: BorderRadius.circular(999),
         ),
       ),
     );

@@ -109,9 +109,11 @@ void main() {
     expect(result.changed, 1);
     expect(result.failed, 0);
     final playlists = c.read(libraryProvider).playlists;
+    // Новый трек лёг НАВЕРХ, старый остался на месте: обновление подмешивает, а
+    // не заменяет состав.
     expect(playlists.firstWhere((p) => p.id == one.id).trackIds, [
-      'sc_1',
       'sc_2',
+      'sc_1',
     ]);
     expect(playlists.firstWhere((p) => p.id == two.id).trackIds, isEmpty);
 
@@ -120,6 +122,80 @@ void main() {
     expect(state.runs[one.id]?.added, 1);
     expect(state.lastRun, greaterThan(0));
     expect(state.busy, isNull);
+  });
+
+  test(
+    'несколько источников: новое сверху, добавленное руками на месте',
+    () async {
+      final sc = _FakeSoundCloud({
+        'https://sc/one': [_track('sc_1')],
+        'https://sc/two': [_track('sc_9')],
+      });
+      final c = _container(sc, JsonStore.memory());
+      final lib = c.read(libraryProvider.notifier);
+      final pl = lib.createPlaylist(
+        'Свой',
+        tracks: [_track('my_1')],
+        sourceUrl: 'https://sc/one',
+      );
+      lib.setPlaylistSources(pl.id, [
+        const PlSourceRef(url: 'https://sc/one'),
+        const PlSourceRef(url: 'https://sc/two'),
+      ]);
+
+      final auto = c.read(plAutoProvider.notifier);
+      auto.setIds([pl.id]);
+      final result = await auto.runSweep(silent: true);
+
+      expect(result.added, 2);
+      expect(c.read(libraryProvider).playlists.single.trackIds, [
+        'sc_1',
+        'sc_9',
+        'my_1',
+      ]);
+    },
+  );
+
+  test('один упавший источник не отменяет остальные', () async {
+    final sc = _FakeSoundCloud({
+      'https://sc/one': null,
+      'https://sc/two': [_track('sc_9')],
+    });
+    final c = _container(sc, JsonStore.memory());
+    final lib = c.read(libraryProvider.notifier);
+    final pl = lib.createPlaylist('Свой', tracks: [_track('my_1')]);
+    lib.setPlaylistSources(pl.id, [
+      const PlSourceRef(url: 'https://sc/one'),
+      const PlSourceRef(url: 'https://sc/two'),
+    ]);
+
+    final auto = c.read(plAutoProvider.notifier);
+    auto.setIds([pl.id]);
+    final result = await auto.runSweep(silent: true);
+
+    // Частичный успех — это успех: недоступную коллекцию могли удалить.
+    expect(result.added, 1);
+    expect(result.failed, 0);
+    expect(c.read(libraryProvider).playlists.single.trackIds, ['sc_9', 'my_1']);
+  });
+
+  test('старая одиночная ссылка становится источником при загрузке', () {
+    final store = JsonStore.memory();
+    // Плейлист, записанный версией без списка источников.
+    store.write('playlists', [
+      {
+        'id': 'pl_1',
+        'name': 'Старый',
+        'trackIds': <String>[],
+        'sourceUrl': 'https://sc/one',
+        'createdAt': 1,
+      },
+    ]);
+
+    final c = _container(_FakeSoundCloud(const {}), store);
+    final pl = c.read(libraryProvider).playlists.single;
+    expect(pl.sources.map((s) => s.url), ['https://sc/one']);
+    expect(c.read(plAutoProvider.notifier).candidates().single.id, 'pl_1');
   });
 
   test('упавший источник не стирает состав плейлиста', () async {

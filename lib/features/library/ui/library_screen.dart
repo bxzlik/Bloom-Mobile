@@ -34,6 +34,7 @@ import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
+import '../../../shared/ui/glass.dart';
 import '../../detail/detail_nav.dart';
 import '../../offline/offline_actions.dart';
 import '../lib_order_store.dart';
@@ -366,30 +367,46 @@ class _SystemTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
-    return Material(
-      color: tint,
-      borderRadius: BorderRadius.circular(t.radius),
+    // Плитка ВСЕГДА своего цвета и всегда сплошная — ни фон, ни стекло сквозь
+    // неё не идут (его слово). Цвет — тот же тинт раздела, но уже смешанный с
+    // поверхностью темы, а не плёнка поверх страницы: над картинкой-фоном
+    // плёнка показывала обои. К правому краю цвет слегка приглушается — плитка
+    // остаётся одноцветной, но не выглядит плоской заливкой.
+    final base = Color.alphaBlend(tint, t.blockColor);
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [base, Color.alphaBlend(t.bg.withValues(alpha: 0.45), base)],
+          stops: const [0.35, 1],
+        ),
+        borderRadius: BorderRadius.circular(t.radius),
+      ),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          width: 190,
-          padding: const EdgeInsets.all(14),
-          alignment: Alignment.bottomLeft,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Icon(icon, size: 24, color: color),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: theme.titleMedium),
-                  const SizedBox(height: 2),
-                  Text(context.l.tracksCount(count), style: theme.bodySmall),
-                ],
-              ),
-            ],
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            width: 190,
+            padding: const EdgeInsets.all(14),
+            alignment: Alignment.bottomLeft,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(icon, size: 24, color: color),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: theme.titleMedium),
+                    const SizedBox(height: 2),
+                    Text(context.l.tracksCount(count), style: theme.bodySmall),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -461,7 +478,6 @@ class _Chips extends ConsumerWidget {
             ),
             const SizedBox(width: 8),
           ],
-          SizedBox(width: 8, child: ColoredBox(color: t.bg)),
         ],
       ),
     );
@@ -566,10 +582,12 @@ class _FilterChip extends StatelessWidget {
     return Center(
       child: SizedBox(
         height: kChipHeight,
-        child: Material(
-          color: active ? t.accent : t.pill,
+        child: GlassBox(
+          // Выбранный чип залит акцентом — это состояние, а не поверхность
+          // темы, поэтому стеклом он не становится.
+          color: active ? t.accent : null,
+          enabled: !active,
           borderRadius: BorderRadius.circular(999),
-          clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onTap,
             child: Padding(

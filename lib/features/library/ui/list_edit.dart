@@ -1,10 +1,10 @@
 /// Режим правки списка библиотеки: чекбоксы у строк, перетаскивание, нижняя
 /// панель действий над выделением, правка имени и обложки плейлиста.
 ///
-/// Всё, что меняет САМ список — состав, порядок, имя, обложку, — копится в
-/// черновике и записывается разом по ✓; ✕ выбрасывает черновик целиком. А вот
-/// «в плейлист» и «в любимые» пишут в ДРУГИЕ списки, и откатывать их этим ✕
-/// было бы нечем — они применяются сразу.
+/// Всё, что меняет САМ список — состав, порядок, имя, обложку, источники
+/// обновления, — копится в черновике и записывается разом по ✓; ✕ выбрасывает
+/// черновик целиком. А вот «в плейлист» и «в любимые» пишут в ДРУГИЕ списки, и
+/// откатывать их этим ✕ было бы нечем — они применяются сразу.
 ///
 /// Что значит «убрать» — зависит от списка: из плейлиста трек просто уходит, из
 /// «Любимых» снимается лайк, из «Истории» пропадает запись, а из «Всех треков»
@@ -30,7 +30,9 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/sticky_hero.dart';
 import '../../../shared/ui/track_actions.dart';
+import '../local_tracks.dart';
 import 'list_hero.dart';
+import 'pl_sources_editor.dart';
 
 class ListEditor extends ConsumerStatefulWidget {
   const ListEditor({
@@ -67,6 +69,7 @@ class _ListEditorState extends ConsumerState<ListEditor> {
   late final List<Track> _tracks = [...widget.tracks];
   late String _name = widget.title;
   late String? _cover = widget.playlist?.cover;
+  late List<PlSourceRef> _sources = widget.playlist?.sources ?? const [];
 
   final Set<String> _selected = {};
 
@@ -88,7 +91,15 @@ class _ListEditorState extends ConsumerState<ListEditor> {
   bool get _dirty =>
       _name != widget.title ||
       _cover != _playlist?.cover ||
-      !listEquals(_ids, _idsWas);
+      !listEquals(_ids, _idsWas) ||
+      _sourcesChanged;
+
+  /// Источники сравниваем по ссылкам: название площадка могла отдать другое, а
+  /// привязка от этого не изменилась.
+  bool get _sourcesChanged => !listEquals(
+    [for (final s in _sources) s.url],
+    [for (final s in _playlist?.sources ?? const <PlSourceRef>[]) s.url],
+  );
 
   // ── Правка ────────────────────────────────────────────────────────────────
 
@@ -171,6 +182,12 @@ class _ListEditorState extends ConsumerState<ListEditor> {
         for (final id in gone) {
           unawaited(offline.remove(id));
         }
+        // То же со своими файлами — и обязательно ДО правки списка: после неё
+        // треков в хранилище уже нет, и узнать, за какими из них стояла копия,
+        // будет нечем.
+        unawaited(
+          forgetLocalTracks(localTracksOf(ref.read(libraryProvider), gone)),
+        );
         lib.setLibraryTracks(_ids);
       case 'fav':
         lib.setFavTracks(_ids);
@@ -181,6 +198,7 @@ class _ListEditorState extends ConsumerState<ListEditor> {
         if (pl != null) {
           lib.setPlaylistTracks(pl.id, _ids);
           if (_name.trim().isNotEmpty) lib.renamePlaylist(pl.id, _name);
+          if (_sourcesChanged) lib.setPlaylistSources(pl.id, _sources);
           if (_cover != pl.cover) {
             lib.setPlaylistCover(pl.id, _cover);
             // Старая своя картинка живёт файлом в каталоге приложения.
@@ -282,6 +300,16 @@ class _ListEditorState extends ConsumerState<ListEditor> {
                 onCover: _pickCover,
                 onRename: () => setState(() => _renaming = true),
               ),
+              // Источники есть только у плейлиста: встроенным разделам тянуть
+              // треки неоткуда. Секция стоит НАД списком, как на ПК, — она
+              // относится ко всему плейлисту, а не к строкам под ней.
+              if (_playlist != null)
+                SliverToBoxAdapter(
+                  child: PlSourcesEditor(
+                    sources: _sources,
+                    onChanged: (next) => setState(() => _sources = next),
+                  ),
+                ),
               SliverPadding(
                 // Снизу — место под плавающую панель и бары каркаса: последняя
                 // строка не должна оставаться под ними.

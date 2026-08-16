@@ -36,6 +36,15 @@ Future<void> initCoverStore() async {
 
 bool isLocalCover(String? cover) => cover != null && cover.startsWith(_prefix);
 
+/// Значение поля `cover` для своей картинки с именем [name]. Нужно тем, кто
+/// кладёт картинку в каталог мимо здешних функций: обложки своих треков
+/// вынимает из тегов нативная сторона, и в Dart приходит уже готовое имя файла.
+String localCoverRef(String name) => '$_prefix$name';
+
+/// Каталог своих картинок; `null` — он не поднялся. Отдаётся наружу ровно для
+/// того же: нативной стороне нужно, куда писать вынутую из тега обложку.
+String? coversDirPath() => _dir?.path;
+
 /// Абсолютный путь своей обложки; `null` — если это не своя обложка или
 /// каталог не поднялся.
 String? localCoverPath(String? cover) {
@@ -114,14 +123,51 @@ Future<String?> pickImageFile({int maxSide = 2048}) async {
   }
 }
 
+/// Разводит имена файлов, записанных в одну миллисекунду: выбор нескольких
+/// картинок разом — обычное дело, и второй файл затёр бы первый.
+int _copySeq = 0;
+
 /// Положить готовые байты картинкой приложения. Возвращает значение поля
 /// (`local:...`) или `null`, если записать не вышло.
-Future<String?> saveLocalImage(Uint8List bytes, {String prefix = 'img'}) async {
+///
+/// Расширение — только ради честного имени: картинку с диска Flutter узнаёт по
+/// самим байтам, а вот выгрузка пресета берёт по имени mime-тип.
+Future<String?> saveLocalImage(
+  Uint8List bytes, {
+  String prefix = 'img',
+  String ext = 'png',
+}) async {
   final dir = _dir;
   if (dir == null) return null;
   try {
-    final name = '${prefix}_${DateTime.now().millisecondsSinceEpoch}.png';
+    final name =
+        '${prefix}_${DateTime.now().millisecondsSinceEpoch}_${_copySeq++}.$ext';
     await File('${dir.path}/$name').writeAsBytes(bytes, flush: true);
+    return '$_prefix$name';
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Скопировать готовый файл к себе КАК ЕСТЬ, сохранив расширение. Возвращает
+/// значение поля (`local:...`) или `null`, если скопировать не вышло.
+///
+/// Отличие от [pickCover]: там картинка едет через `image_picker` с
+/// `maxWidth`, то есть пережимается в JPEG. Для картинок кастомизации это
+/// недопустимо — анимация гифки пережатия не переживает.
+Future<String?> copyLocalFile(File source, {String prefix = 'img'}) async {
+  final dir = _dir;
+  if (dir == null) return null;
+  try {
+    final ext = source.path.split('.').last.toLowerCase();
+    // Расширение берём только если оно похоже на расширение: у файла из
+    // галереи его может не быть вовсе, и тогда в имя уехал бы весь путь.
+    final suffix = ext.isNotEmpty && ext.length <= 5 && !ext.contains('/')
+        ? '.$ext'
+        : '.img';
+    final name =
+        '${prefix}_${DateTime.now().millisecondsSinceEpoch}_${_copySeq++}$suffix';
+    await source.copy('${dir.path}/$name');
     return '$_prefix$name';
   } catch (_) {
     return null;

@@ -18,6 +18,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/entities/entities.dart';
 import '../../core/store/json_store.dart';
 import '../../core/store/library_store.dart' show jsonStoreProvider;
+import 'play_source.dart';
 
 /// Сколько треков очереди уносим в снимок. Длинная очередь режется с ТЕКУЩЕГО
 /// трека (см. [ResumeData.capture]): продолжают слушать вперёд, а не назад.
@@ -31,7 +32,7 @@ class ResumeData {
     required this.position,
     required this.savedAt,
     this.paused = true,
-    this.sourceId,
+    this.source,
   });
 
   /// Треки очереди снимками. Пустой быть не может — иначе снимка нет вовсе.
@@ -48,8 +49,10 @@ class ResumeData {
   /// Стояли на паузе (иначе — играли и приложение закрыли на ходу).
   final bool paused;
 
-  /// Откуда набрана очередь — см. `PlaybackState.sourceId`.
-  final String? sourceId;
+  /// Откуда набрана очередь — см. `PlaybackState.source`. Переживает
+  /// перезапуск вместе с очередью: пилюля источника в плеере обязана называть
+  /// тот же список, что и до убийства процесса.
+  final PlaySource? source;
 
   Track get track => queue[index];
 
@@ -59,7 +62,7 @@ class ResumeData {
     required int index,
     required Duration position,
     required bool paused,
-    String? sourceId,
+    PlaySource? source,
     DateTime? at,
   }) {
     final from = queue.length <= kResumeQueueLimit
@@ -75,7 +78,7 @@ class ResumeData {
       index: index - from,
       position: position,
       paused: paused,
-      sourceId: sourceId,
+      source: source,
       savedAt: at ?? DateTime.now(),
     );
   }
@@ -86,7 +89,7 @@ class ResumeData {
     'posMs': position.inMilliseconds,
     'savedAt': savedAt.millisecondsSinceEpoch,
     'paused': paused,
-    if (sourceId != null) 'sourceId': sourceId,
+    if (source != null) 'source': source!.toJson(),
   };
 
   static ResumeData? fromJson(Object? json) {
@@ -107,7 +110,7 @@ class ResumeData {
         (json['savedAt'] as num?)?.toInt() ?? 0,
       ),
       paused: json['paused'] as bool? ?? true,
-      sourceId: json['sourceId'] as String?,
+      source: PlaySource.fromJson(json['source']),
     );
   }
 }

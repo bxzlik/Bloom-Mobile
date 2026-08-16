@@ -22,10 +22,15 @@ import '../../app/providers.dart';
 import '../../core/entities/entities.dart';
 import '../../core/store/library_store.dart';
 import '../../core/store/stats_store.dart';
+import '../library/local_tracks.dart';
 import '../offline/offline_store.dart';
 import 'audio_handler.dart';
 import 'notification_permission.dart';
+import 'play_source.dart';
 import 'resume_store.dart';
+import 'sleep_timer_store.dart';
+import 'speed_store.dart';
+import 'track_swap_dir.dart';
 
 enum PlayerRepeat { off, all, one }
 
@@ -91,14 +96,14 @@ class PlaybackState {
   final PlayerRepeat repeat;
   final bool shuffle;
 
-  /// Откуда набрана очередь: id плейлиста/альбома площадки, id библиотечного
-  /// списка (`all` / `fav` / `history` / `pl_…`). `null` — очередь ниоткуда:
-  /// один трек из поиска, «Популярные» артиста.
+  /// Откуда набрана очередь: раздел библиотеки, альбом площадки, страница
+  /// артиста, выдача поиска (см. [PlaySource]). `null` — источника нет вовсе.
   ///
-  /// Нужен только карточкам: по нему плитка сета показывает эквалайзер, как
-  /// строка трека — вместо длительности. Вычислить его из очереди нельзя: один
-  /// и тот же состав легко лежит сразу в двух списках.
-  final String? sourceId;
+  /// Нужен двоим: пилюле в шапке плеера (что именно играет) и карточкам — по
+  /// [sourceId] плитка сета показывает эквалайзер, как строка трека вместо
+  /// длительности. Вычислить его из очереди нельзя: один и тот же состав легко
+  /// лежит сразу в двух списках.
+  final PlaySource? source;
 
   const PlaybackState({
     this.queue = const [],
@@ -107,11 +112,14 @@ class PlaybackState {
     this.error,
     this.repeat = PlayerRepeat.off,
     this.shuffle = false,
-    this.sourceId,
+    this.source,
   });
 
   Track? get track =>
       (index >= 0 && index < queue.length) ? queue[index] : null;
+
+  /// Ключ источника для сравнения с id списка — см. [PlaySource.id].
+  String? get sourceId => source?.id;
 
   PlaybackState copyWith({
     List<Track>? queue,
@@ -121,7 +129,7 @@ class PlaybackState {
     bool clearError = false,
     PlayerRepeat? repeat,
     bool? shuffle,
-    String? sourceId,
+    PlaySource? source,
     bool clearSource = false,
   }) => PlaybackState(
     queue: queue ?? this.queue,
@@ -130,7 +138,7 @@ class PlaybackState {
     error: clearError ? null : (error ?? this.error),
     repeat: repeat ?? this.repeat,
     shuffle: shuffle ?? this.shuffle,
-    sourceId: clearSource ? null : (sourceId ?? this.sourceId),
+    source: clearSource ? null : (source ?? this.source),
   );
 }
 
@@ -235,7 +243,92 @@ class PlaybackController extends Notifier<PlaybackState>
       }
       if (handler.commands == this) handler.commands = null;
     });
+    // Скорость и питч — своя настройка (`speed_store`), а плеер здесь: ставим
+    // их сами и держим подписку. Порт `bootstrapSpeed` + `setPlaybackRate` с
+    // десктопа: сохранённая скорость должна работать с первого же трека, а не
+    // с момента, когда человек откроет пикер.
+    ref.listen(speedProvider, (_, next) => unawaited(_applySpeed(next)));
+    unawaited(_applySpeed(ref.read(speedProvider)));
+    // Таймер сна: стор тикает временем, паузу и затухание делаем здесь — плеер
+    // наш. Слушаем каждый тик, а не только заведение таймера: остаток на нуле
+    // и есть команда «пора».
+    ref.listen(sleepTimerProvider, (_, next) => _applySleep(next));
+    ref.onDispose(_stopFade);
     return const PlaybackState();
+  }
+
+  /// Тик затухания перед сном. Не `null` — громкость сейчас крутится вниз.
+  Timer? _fadeTick;
+
+  /// Реакция на состояние таймера сна.
+  ///
+  /// Времени своего не держим: единственные часы — `endsAt` в сторе, поэтому
+  /// «сколько осталось» и здесь считается от него. Тик стора идёт раз в
+  /// секунду, а затухание крутится своим тиком в 100 мс: посекундными ступенями
+  /// уход громкости слышен.
+  void _applySleep(SleepTimerState sleep) {
+    if (sleep.expired) {
+      _fireSleep();
+      return;
+    }
+    if (sleep.mode != SleepMode.timer || !sleep.fade) {
+      _stopFade();
+      return;
+    }
+    if (sleep.remaining <= kSleepFade) {
+      _fadeTick ??= Timer.periodic(
+        const Duration(milliseconds: 100),
+        (_) => _fadeStep(),
+      );
+    } else {
+      // Таймер продлили или перезавели — вышли из зоны затухания.
+      _stopFade();
+    }
+  }
+
+  /// Шаг затухания: громкость = доля непрожитого окна [kSleepFade].
+  void _fadeStep() {
+    final endsAt = ref.read(sleepTimerProvider).endsAt;
+    if (endsAt == null) {
+      _stopFade();
+      return;
+    }
+    final left = endsAt.difference(ref.read(sleepClockProvider)());
+    final k = (left.inMilliseconds / kSleepFade.inMilliseconds).clamp(0.0, 1.0);
+    unawaited(_player.setVolume(k));
+    // Ноль — не повод жать паузу самим: это сделает тик стора через
+    // [_fireSleep], и одной точкой останова меньше поводов разъехаться.
+  }
+
+  /// Вернуть громкость на место. Зовётся отовсюду, где затухание кончилось —
+  /// хоть срабатыванием, хоть отменой таймера: недокрученная громкость иначе
+  /// осталась бы и на следующем прослушивании.
+  void _stopFade() {
+    if (_fadeTick == null) return;
+    _fadeTick!.cancel();
+    _fadeTick = null;
+    unawaited(_player.setVolume(1));
+  }
+
+  /// Время вышло: пауза, громкость на место, таймер снять.
+  void _fireSleep() {
+    _fadeTick?.cancel();
+    _fadeTick = null;
+    unawaited(_player.pause());
+    unawaited(_player.setVolume(1));
+    ref.read(sleepTimerProvider.notifier).cancel();
+  }
+
+  /// Скорость и питч на плеер. Повторять на каждый трек не надо: just_audio
+  /// держит обе величины у себя и переставляет их на новый источник сам.
+  Future<void> _applySpeed(SpeedSettings speed) async {
+    await _player.setSpeed(speed.rate);
+    try {
+      await _player.setPitch(speed.pitch);
+    } catch (_) {
+      // Питч умеет только Android (ExoPlayer). На остальных площадках канал
+      // отвечает ошибкой — там nightcore просто не звучит, но темп работает.
+    }
   }
 
   /// Как часто обновляем позицию в снимке сессии. Реже — заметный откат назад
@@ -255,7 +348,7 @@ class PlaybackController extends Notifier<PlaybackState>
             index: state.index,
             position: _player.position,
             paused: !_player.playing,
-            sourceId: state.sourceId,
+            source: state.source,
           ),
         );
   }
@@ -290,34 +383,34 @@ class PlaybackController extends Notifier<PlaybackState>
     ref.read(statsProvider.notifier).addPlay();
   }
 
-  /// Поставить очередь и заиграть с [index]. [sourceId] — список, из которого
-  /// она набрана (см. [PlaybackState.sourceId]); не передали — считаем, что
-  /// очередь ниоткуда, и старый источник сбрасываем.
+  /// Поставить очередь и заиграть с [index]. [source] — откуда она набрана
+  /// (см. [PlaybackState.source]); не передали — считаем, что очередь ниоткуда,
+  /// и старый источник сбрасываем.
   ///
   /// При включённой перемешке новая очередь сразу ставится перемешанной:
   /// порядок очереди у нас и есть порядок воспроизведения, иначе флаг перемешки
   /// висел бы, а треки шли подряд.
-  Future<void> playQueue(List<Track> tracks, int index, {String? sourceId}) {
+  Future<void> playQueue(List<Track> tracks, int index, {PlaySource? source}) {
     if (state.shuffle && tracks.length > 1) {
       return _start(
         shuffledQueue(tracks, index, _rnd),
         0,
-        sourceId: sourceId,
+        source: source,
         orig: tracks,
       );
     }
-    return _start(tracks, index, sourceId: sourceId, orig: null);
+    return _start(tracks, index, source: source, orig: null);
   }
 
   /// «Перемешать» с карточки списка: включает перемешку и начинает со
   /// случайного трека, а не с первого. Порт `playShuffledFromSource`.
-  Future<void> playQueueShuffled(List<Track> tracks, {String? sourceId}) {
+  Future<void> playQueueShuffled(List<Track> tracks, {PlaySource? source}) {
     if (tracks.isEmpty) return Future.value();
     state = state.copyWith(shuffle: true);
     return _start(
       shuffledQueue(tracks, -1, _rnd),
       0,
-      sourceId: sourceId,
+      source: source,
       orig: tracks,
     );
   }
@@ -325,7 +418,7 @@ class PlaybackController extends Notifier<PlaybackState>
   Future<void> _start(
     List<Track> tracks,
     int index, {
-    required String? sourceId,
+    required PlaySource? source,
     required List<Track>? orig,
     Duration? startAt,
   }) async {
@@ -335,22 +428,24 @@ class PlaybackController extends Notifier<PlaybackState>
       queue: tracks,
       index: index,
       clearError: true,
-      sourceId: sourceId,
-      clearSource: sourceId == null,
+      source: source,
+      clearSource: source == null,
     );
     _handler.setQueue(tracks);
     await _load(index, startAt: startAt);
   }
 
-  /// Один трек — очередь из него же.
-  Future<void> play(Track track) => playQueue([track], 0);
+  /// Один трек — очередь из него же, и в пилюле стоит он сам (десктопный
+  /// источник `single`).
+  Future<void> play(Track track) =>
+      playQueue([track], 0, source: PlainSource.single(track));
 
   /// Продолжить прошлую сессию — очередь из снимка, с той же позиции
   /// (карточка «Продолжить» на главной). Порт `restoreResumeQueue`.
   Future<void> resumeSession(ResumeData data) => _start(
     data.queue,
     data.index,
-    sourceId: data.sourceId,
+    source: data.source,
     orig: null,
     // Первые пару секунд перематывать некуда — начинаем с начала трека.
     startAt: data.position > const Duration(seconds: 2) ? data.position : null,
@@ -358,6 +453,10 @@ class PlaybackController extends Notifier<PlaybackState>
 
   Future<void> _load(int index, {Duration? startAt}) async {
     final track = state.queue[index];
+    // Куда «поехал» показ — считаем ровно здесь, на реальном переключении:
+    // слои анимации в плеере и миниплеере обязаны ехать в одну сторону, а к
+    // моменту перерисовки прошлый номер в очереди уже потерян.
+    commitSwapDir(state.queue, index);
     final gen = ++_generation;
     state = state.copyWith(index: index, loading: true, clearError: true);
     // Текущим стал другой трек — зачёт для него начинается заново.
@@ -377,6 +476,16 @@ class PlaybackController extends Notifier<PlaybackState>
       final offlinePath = ref.read(offlineProvider.notifier).pathOf(track.id);
       if (offlinePath != null) {
         await _player.setFilePath(offlinePath, initialPosition: startAt);
+      } else if (isLocalTrack(track)) {
+        // Свой файл с телефона: площадки за ним нет, спрашивать некого. Копия
+        // внутри приложения приходит как `file://`, чужой файл — как
+        // `content://`, и тому и другому нужен общий `AudioSource.uri`.
+        final uri = localTrackUri(track);
+        if (uri == null) throw const LocalFileGone();
+        await _player.setAudioSource(
+          AudioSource.uri(uri),
+          initialPosition: startAt,
+        );
       } else {
         final provider = ref.read(registryProvider).forEntity(track.id);
         if (provider == null) {
@@ -413,6 +522,14 @@ class PlaybackController extends Notifier<PlaybackState>
     // Трек доиграл до конца — засчитываем, если ещё не: короткий мог и не
     // попасть на тик с порогом.
     _credit();
+    // Таймер сна «до конца трека» бьёт и повтор, и переход по очереди: его для
+    // того и ставили — чтобы после ЭТОГО трека стало тихо.
+    if (ref.read(sleepTimerProvider).mode == SleepMode.endOfTrack) {
+      _player.seek(Duration.zero);
+      _player.pause();
+      ref.read(sleepTimerProvider.notifier).cancel();
+      return;
+    }
     if (state.repeat == PlayerRepeat.one) {
       _player.seek(Duration.zero);
       unawaited(_player.play());
@@ -431,19 +548,32 @@ class PlaybackController extends Notifier<PlaybackState>
   /// саму очередь (см. [toggleShuffle]), и «следующий» всегда следующий.
   Future<void> next() async {
     final q = state.queue;
-    if (q.isEmpty) return;
+    if (q.isEmpty) {
+      cancelSwapSilent();
+      return;
+    }
+    // Направление задаём явно: на закольцовке (последний → первый) сравнение
+    // номеров дало бы «назад».
+    markSwapDir(1);
     await _load((state.index + 1) % q.length);
   }
 
   /// Назад: первые 3 секунды — к предыдущему треку, дальше — в начало текущего
   /// (привычное поведение транспорта).
   Future<void> prev() async {
-    if (state.queue.isEmpty) return;
+    if (state.queue.isEmpty) {
+      cancelSwapSilent();
+      return;
+    }
     if (_player.position > const Duration(seconds: 3)) {
+      // Трек не меняется — снимаем «не анимировать» сами: жест был, а смены
+      // не вышло, и флаг достался бы следующей, настоящей смене.
+      cancelSwapSilent();
       await _player.seek(Duration.zero);
       return;
     }
     final i = (state.index - 1 + state.queue.length) % state.queue.length;
+    markSwapDir(-1);
     await _load(i);
   }
 

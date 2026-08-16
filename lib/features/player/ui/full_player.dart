@@ -14,19 +14,35 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/store/library_store.dart';
+import '../../../features/customization/custom_store.dart';
+import '../../../features/customization/ui/image_thumb.dart';
 import '../../../features/settings/swipe_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/marquee_text.dart';
-import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/track_actions.dart';
 import '../../../shared/ui/track_flick.dart';
 import '../../../shared/ui/track_swipes.dart';
 import '../../../shared/util/artists.dart';
 import '../../../shared/util/format.dart';
 import '../../detail/artists_sheet.dart';
+import '../../lyrics/lyrics_store.dart';
+import '../../lyrics/lyrics_style_store.dart';
+import '../../lyrics/ui/lyrics_view.dart';
 import '../player_controller.dart';
+import '../player_style_store.dart';
+import '../player_view_store.dart';
+import '../sleep_timer_store.dart';
+import '../slider_style_store.dart';
+import '../speed_store.dart';
+import '../track_anim_store.dart';
 import 'queue_sheet.dart';
+import 'sleep_sheet.dart';
+import 'slider_shapes.dart';
+import 'source_pill.dart';
+import 'speed_sheet.dart';
+import 'track_swap.dart';
+import 'vinyl_disc.dart';
 
 /// Радиус обложки в плеере — заметно круглее блоков (как в референсе).
 const double _coverRadius = 20;
@@ -58,26 +74,64 @@ void openFullPlayer(BuildContext context) {
   );
 }
 
-class FullPlayerPage extends ConsumerWidget {
+class FullPlayerPage extends ConsumerStatefulWidget {
   const FullPlayerPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FullPlayerPage> createState() => _FullPlayerPageState();
+}
+
+class _FullPlayerPageState extends ConsumerState<FullPlayerPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Текст просим сразу на открытии плеера, даже если панель закрыта: от
+    // того, нашёлся ли он, зависит САМА кнопка «Т» — на треке без текста её
+    // быть не должно (порт `useLyricsBtnVisible` с ПК).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref
+          .read(lyricsProvider.notifier)
+          .ensureFor(ref.read(playbackProvider).track);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final t = context.bloom;
     final state = ref.watch(playbackProvider);
     final track = state.track;
+    final lyricsOpen = ref.watch(lyricsOpenProvider);
+    final lyricsMode = ref.watch(lyricsStyleProvider).mode;
 
     // Очередь могла опустеть под нами: смахнули последний трек в шторке, пришла
     // остановка из системы. Играть больше нечего — плеер тогда превращается в
     // чёрный экран без единого органа управления, из которого не выйти ничем,
     // кроме свайпа вниз. Закрываем его сами, вместе со шторками поверх.
-    ref.listen(playbackProvider, (_, next) {
+    ref.listen(playbackProvider, (prev, next) {
+      // Текст тянем на КАЖДОЙ смене трека, как на ПК (`loadPlay` →
+      // `requestLyrics`), а не только при открытой панели: иначе неоткуда
+      // узнать, прятать ли кнопку «Т».
+      if (prev?.track?.id != next.track?.id) {
+        ref.read(lyricsProvider.notifier).ensureFor(next.track);
+      }
       if (next.track != null) return;
       final route = ModalRoute.of(context);
       if (route == null || !route.isActive) return;
       Navigator.of(context)
         ..popUntil((r) => r == route)
         ..pop();
+    });
+
+    // У нового трека текста не нашлось — панель закрываем сами (порт
+    // `useLyricsBridge` с ПК). Ловим именно ПЕРЕХОД в «пусто»: на загрузке
+    // панель не трогаем, иначе она мигала бы на каждой смене трека.
+    ref.listen(lyricsProvider, (prev, next) {
+      if (next.status != LyricsStatus.empty ||
+          prev?.status == LyricsStatus.empty) {
+        return;
+      }
+      ref.read(lyricsOpenProvider.notifier).state = false;
     });
 
     final swipes = ref.watch(swipeProvider).of(SwipeZone.player);
@@ -96,10 +150,22 @@ class FullPlayerPage extends ConsumerWidget {
         child: TrackFlick(
           onLeft: track == null || swipes.left == SwipeAction.none
               ? null
-              : () => runSwipeAction(context, ref, swipes.left, track: track),
+              : () => runSwipeAction(
+                  context,
+                  ref,
+                  swipes.left,
+                  track: track,
+                  fromFlick: true,
+                ),
           onRight: track == null || swipes.right == SwipeAction.none
               ? null
-              : () => runSwipeAction(context, ref, swipes.right, track: track),
+              : () => runSwipeAction(
+                  context,
+                  ref,
+                  swipes.right,
+                  track: track,
+                  fromFlick: true,
+                ),
           builder: (context, shift) => SafeArea(
             child: track == null
                 ? const SizedBox.shrink()
@@ -108,18 +174,40 @@ class FullPlayerPage extends ConsumerWidget {
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                     child: Column(
                       children: [
-                        _Header(track: track),
+                        _Header(track: track, state: state),
                         const SizedBox(height: 16),
-                        // Обложка по центру свободного места.
-                        Flexible(
-                          child: Center(
-                            child: AspectRatio(
-                              aspectRatio: 1,
-                              child: FlickSlide(
-                                shift: shift,
-                                child: _Cover(state: state),
-                              ),
-                            ),
+                        // Обложка по центру свободного места — или текст на её
+                        // месте, если выбран вид «вместо обложки». В виде
+                        // «поверх» обложка остаётся, а текст ложится на неё
+                        // самой карточкой (см. `_Cover`).
+                        // Именно `Expanded`, а не `Flexible`: панель текста —
+                        // скролл, и по свободным ограничениям он берёт высоту
+                        // по СОДЕРЖИМОМУ. Пока текст грузится, содержимое —
+                        // одна строчка «Загрузка текста…», колонка схлопывалась
+                        // и весь низ экрана уезжал вверх (поймал он). Обложке
+                        // это ничего не меняет: её `Center` и раньше занимал
+                        // всё свободное место.
+                        Expanded(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 260),
+                            child:
+                                lyricsOpen && lyricsMode == LyricsMode.replace
+                                ? const _LyricsPane(key: ValueKey('lyrics'))
+                                : Center(
+                                    key: const ValueKey('cover'),
+                                    child: AspectRatio(
+                                      aspectRatio: 1,
+                                      child: FlickSlide(
+                                        shift: shift,
+                                        child: _Cover(
+                                          state: state,
+                                          lyricsOpen:
+                                              lyricsOpen &&
+                                              lyricsMode == LyricsMode.overlay,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                           ),
                         ),
                         // Отступы вокруг названия одинаковые: оно должно стоять
@@ -157,51 +245,29 @@ class FullPlayerPage extends ConsumerWidget {
 }
 
 class _Header extends ConsumerWidget {
-  const _Header({required this.track});
+  const _Header({required this.track, required this.state});
 
-  /// Текущий трек: его площадка стоит в пилюле «Играет из», он же уходит в
-  /// меню под тремя точками.
+  /// Текущий трек — он уходит в меню под тремя точками.
   final Track track;
 
-  /// Пилюля «Играет из» — та же плёнка и та же высота, что у круглых кнопок по
-  /// краям: шапка читается одной ровной строкой, а не ступенькой.
-  static const double _pillHeight = kHeaderControl;
+  /// Состояние плеера: пилюле нужны источник очереди и флаг перемешки.
+  final PlaybackState state;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
     return Row(
       children: [
         CircleIconButton(
           icon: SolarIconsOutline.altArrowDown,
-          iconSize: 22,
+          iconSize: 23,
           onTap: () => Navigator.of(context).maybePop(),
         ),
+        // Пилюля источника — та же плёнка и та же высота, что у круглых кнопок
+        // по краям: шапка читается одной ровной строкой, а не ступенькой. Имя
+        // источника бывает длинным, поэтому она забирает весь остаток ширины и
+        // ужимается по содержимому уже внутри.
         Expanded(
-          child: Center(
-            child: Container(
-              height: _pillHeight,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: t.pill,
-                borderRadius: BorderRadius.circular(_pillHeight / 2),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    context.l.playerPlayingFrom,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(width: 7),
-                  // Логотип площадки — тот же SVG, что на десктопе; берётся из
-                  // самого трека, поэтому переключение площадок ничего тут не
-                  // потребует.
-                  PlatformLogo(track.source, size: 15),
-                ],
-              ),
-            ),
-          ),
+          child: SourcePill(source: state.source, shuffle: state.shuffle),
         ),
         CircleIconButton(
           icon: SolarIconsOutline.menuDots,
@@ -212,24 +278,143 @@ class _Header extends ConsumerWidget {
   }
 }
 
+/// Текст на месте обложки — вид «вместо обложки».
+///
+/// Занимает ВСЁ свободное место колонки, а не квадрат обложки: строк на экран
+/// влезает заметно больше, и ради этого вид и заводился.
+class _LyricsPane extends StatelessWidget {
+  const _LyricsPane({super.key});
+
+  @override
+  Widget build(BuildContext context) => const LyricsView(
+    padding: EdgeInsets.fromLTRB(8, 24, 8, 24),
+    // Своя раскладка: крупнее и по левому краю — коробка тут во всю ширину
+    // экрана, а не квадрат обложки (см. `LyricsLayout`).
+    layout: LyricsLayout.replace,
+  );
+}
+
 class _Cover extends ConsumerWidget {
-  const _Cover({required this.state});
+  const _Cover({required this.state, this.lyricsOpen = false});
 
   final PlaybackState state;
+
+  /// Панель текста поверх обложки открыта — вид «поверх обложки».
+  final bool lyricsOpen;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final track = state.track!;
     final isFav = ref.watch(libraryProvider).isFav(track.id);
+    final anim = ref.watch(trackAnimProvider).of(TrackAnimSurface.player);
+    // Пластинка (`playerStyle: 'vinyl'` с ПК): круглая обложка, вращение и
+    // тёмная этикетка по центру.
+    final vinyl = ref.watch(playerStyleProvider).isVinyl;
     return LayoutBuilder(
       builder: (context, box) {
         final side = box.biggest.shortestSide;
+        // Круг — тот же радиус, доведённый до половины стороны: всё, что
+        // обрезается рамкой обложки (сама картинка, панель текста), становится
+        // круглым разом.
+        final radius = vinyl ? side / 2 : _coverRadius;
+        // Крутим ТОЛЬКО пока идёт звук — десктопное `vinyl-paused`
+        // (`animation-play-state:paused`). Состояние берём у самого плеера, а
+        // не у `PlaybackState`: там его нет, а пауза из шторки и с гарнитуры
+        // обязана останавливать диск так же, как кнопка на экране.
+        final player = ref.watch(audioPlayerProvider);
         return Stack(
           children: [
-            Cover(url: track.cover, size: side, radius: _coverRadius),
+            // Слои смены трека клипует сама рамка обложки, а картинки внутри
+            // идут БЕЗ своего радиуса: иначе уезжающая показывала бы
+            // скруглённый угол посреди кадра. Кнопки стоят рядом со слоями, а
+            // не внутри, — ♡ и ⊕ никуда не едут (на ПК у них свой z-index).
+            SizedBox(
+              width: side,
+              height: side,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(radius),
+                child: VinylSpin(
+                  // Вращается вся стопка слоёв смены трека, а не одна текущая
+                  // картинка: иначе приезжающая обложка встала бы ровно, а
+                  // уезжающая продолжала крутиться — два разных движения в
+                  // одном кадре.
+                  //
+                  // Начальное состояние берём у плеера (`playing`), дальше за
+                  // ним следит поток: он отдаёт значение не сразу, а первый
+                  // кадр диск уже обязан либо крутиться, либо стоять.
+                  enabled: vinyl,
+                  spinning: player.playing,
+                  playing: player.playingStream,
+                  child: TrackSwap(
+                    id: track.id,
+                    kind: anim.cover,
+                    child: Cover(
+                      // Своя обложка из «Кастомизации» важнее обложки трека —
+                      // десктопный `coverOverride`.
+                      url:
+                          ref.watch(customSrcProvider(CustomCtx.cover)) ??
+                          track.cover,
+                      size: side,
+                      radius: 0,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // Этикетка — порт `.ps-cover.vinyl-mode::after`. Стоит НАД
+            // обложкой, но под панелью текста и кнопками (на ПК у неё
+            // z-index 3, у них 4) и, само собой, не крутится вместе с диском.
+            if (vinyl)
+              Positioned(
+                left: 0,
+                top: 0,
+                width: side,
+                height: side,
+                child: Center(child: VinylLabel(size: side * VinylLabel.share)),
+              ),
+            // Панель текста поверх обложки — порт `.lyrics-panel` с ПК: та же
+            // подложка (цвет блока, 96%) и то же появление (прозрачность плюс
+            // лёгкий наплыв). Рисуется ВСЕГДА, видимость даёт прозрачность:
+            // иначе анимации не из чего играть. Кнопки ♡ и ⊕ стоят ПОСЛЕ неё —
+            // остаются нажимаемыми поверх текста, как на ПК.
             Positioned(
-              left: 16,
-              bottom: 16,
+              left: 0,
+              top: 0,
+              width: side,
+              height: side,
+              child: IgnorePointer(
+                ignoring: !lyricsOpen,
+                child: AnimatedOpacity(
+                  opacity: lyricsOpen ? 1 : 0,
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOut,
+                  child: AnimatedScale(
+                    scale: lyricsOpen ? 1 : 0.97,
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOut,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(radius),
+                      child: ColoredBox(
+                        color: context.bloom.blockColor.withValues(alpha: 0.96),
+                        child: LyricsView(
+                          active: lyricsOpen,
+                          // В круге текст обязан отступить от краёв заметно
+                          // сильнее, иначе строки упираются в дугу (на ПК ровно
+                          // это и делает `.vinyl-mode #lyricsPanel` — 52 px на
+                          // диске 380, наши 14%).
+                          padding: vinyl
+                              ? EdgeInsets.all(side * 0.14)
+                              : const EdgeInsets.fromLTRB(14, 28, 14, 28),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 10,
+              bottom: 10,
               child: _CoverButton(
                 icon: isFav ? SolarIconsBold.heart : SolarIconsOutline.heart,
                 color: isFav ? const Color(0xFFFF5578) : Colors.white,
@@ -241,11 +426,11 @@ class _Cover extends ConsumerWidget {
             // сидят на одном коде 0xec4a и рисуются знаком «±» из
             // калькуляторной группы. В референсе тут и так ⊕.
             Positioned(
-              right: 16,
-              bottom: 16,
+              right: 10,
+              bottom: 10,
               child: _CoverButton(
                 icon: SolarIconsOutline.addCircle,
-                iconSize: 28,
+                iconSize: 24,
                 onTap: () => showAddToPlaylistSheet(context, ref, track),
               ),
             ),
@@ -262,7 +447,7 @@ class _Cover extends ConsumerWidget {
 class _CoverButton extends StatelessWidget {
   const _CoverButton({
     required this.icon,
-    this.iconSize = 26,
+    this.iconSize = 22,
     this.color,
     this.onTap,
   });
@@ -282,7 +467,7 @@ class _CoverButton extends StatelessWidget {
       child: CircleIconButton(
         icon: icon,
         iconSize: iconSize,
-        size: 56,
+        size: 48,
         background: Colors.black.withValues(alpha: 0.45),
         color: color ?? Colors.white,
         onTap: onTap,
@@ -310,11 +495,16 @@ class _TitleBlock extends ConsumerWidget {
         state.error == null &&
         (track.artistId != null || parseArtists(track.artist).length > 1);
 
+    // Куда прижаты название с артистом — настройка «Выравнивание заголовка»
+    // (порт десктопного `titleAlign`, там это классы `.title-left/.title-right`
+    // на `#playerContent`).
+    final align = ref.watch(titleAlignProvider);
+
     final subtitle = Text(
       state.error ?? track.artist,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      textAlign: TextAlign.center,
+      textAlign: align.text,
       // Крупнее общей подписи (13): в плеере под названием стоит одна
       // строка, и она должна читаться с руки.
       style: theme.bodyMedium?.copyWith(
@@ -323,36 +513,62 @@ class _TitleBlock extends ConsumerWidget {
       ),
     );
 
-    return Column(
-      children: [
-        // Тап по названию копирует «Название — Артист» (порт `TitleCopyOnClick`
-        // с ПК). Ловушка шире самой строки — по бокам, а не по высоте: сверху и
-        // снизу отступы выверены, лишние пиксели сдвинули бы весь блок.
-        GestureDetector(
-          onTap: () => _copy(context, track),
-          behavior: HitTestBehavior.opaque,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            // Название бежит, если не влезло, — порт `MarqueeTitle` с ПК.
-            // На ходу строка идёт от левого края, в покое стоит по центру.
-            child: MarqueeText(
-              track.name,
-              align: TextAlign.center,
-              style: theme.headlineSmall,
+    // Ловушка под палец шире самой строки — но только со СВОБОДНОЙ стороны:
+    // прижатый заголовок обязан начинаться там же, где полоса прогресса и время
+    // под ней, а лишние 20 px по краю утаскивали бы его внутрь. По центру
+    // отступ остаётся с обеих сторон: там он ничего не двигает, только держит
+    // строку от краёв.
+    final pad = switch (align) {
+      TitleAlign.left => const EdgeInsets.only(right: 20),
+      TitleAlign.center => const EdgeInsets.symmetric(horizontal: 20),
+      TitleAlign.right => const EdgeInsets.only(left: 20),
+    };
+
+    // Слои подписи занимают всю ширину колонки — иначе слайд считался бы от
+    // ширины самого текста и короткое название ехало бы заметно меньше
+    // длинного. Куда встают сами строки внутри — дело колонки: строка, которая
+    // влезла, шириной равна тексту, и одним `textAlign` её не подвинуть.
+    return SizedBox(
+      width: double.infinity,
+      child: TrackSwap(
+        id: track.id,
+        kind: ref.watch(trackAnimProvider).of(TrackAnimSurface.player).text,
+        child: Column(
+          crossAxisAlignment: align.cross,
+          children: [
+            // Тап по названию копирует «Название — Артист» (порт
+            // `TitleCopyOnClick` с ПК). Ловушка шире самой строки — по бокам, а
+            // не по высоте: сверху и снизу отступы выверены, лишние пиксели
+            // сдвинули бы весь блок.
+            GestureDetector(
+              onTap: () => _copy(context, track),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: pad,
+                // Название бежит, если не влезло, — порт `MarqueeTitle` с ПК.
+                // На ходу строка идёт от левого края, в покое — по настройке.
+                child: MarqueeText(
+                  track.name,
+                  align: align.text,
+                  style: theme.headlineSmall,
+                ),
+              ),
             ),
-          ),
+            // Отступ до имени даёт сама ловушка под палец: одной строкой текста
+            // в 19 px по центру экрана попасть тяжело.
+            GestureDetector(
+              onTap: canOpen
+                  ? () => openTrackArtist(context, ref, track)
+                  : null,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: pad + const EdgeInsets.symmetric(vertical: 7),
+                child: subtitle,
+              ),
+            ),
+          ],
         ),
-        // Отступ до имени даёт сама ловушка под палец: одной строкой текста в
-        // 19 px по центру экрана попасть тяжело.
-        GestureDetector(
-          onTap: canOpen ? () => openTrackArtist(context, ref, track) : null,
-          behavior: HitTestBehavior.opaque,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 20),
-            child: subtitle,
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -376,12 +592,16 @@ class _TitleBlock extends ConsumerWidget {
 class _Progress extends ConsumerStatefulWidget {
   const _Progress();
 
-  /// Толщина дорожки и высота ловушки под палец.
+  /// Толщина дорожки обычного типа и высота ловушки под палец.
   ///
   /// Слайдер без кружка и без ореола ужимается по высоте до самой дорожки, а в
   /// 5 px пальцем не попасть — перемотать получалось, только ткнув точно в
   /// полоску. Растягиваем его на [hit]: дорожку он рисует по центру своей
   /// высоты, а нажатие ловит всей площадью.
+  ///
+  /// Ловушка одна на все типы слайдера, хотя дорожки у них разной толщины
+  /// (`sliderTrackHeight`, самая высокая — волна в 28): иначе смена типа
+  /// двигала бы под собой времена и весь низ плеера.
   static const double trackHeight = 5;
 
   /// Пустота, которая при этом остаётся над и под дорожкой внутри ловушки.
@@ -425,6 +645,14 @@ class _ProgressState extends ConsumerState<_Progress> {
         ref.watch(playheadProvider).value ??
         (position: Duration.zero, total: Duration.zero);
 
+    // Картинка ползунка декодируется асинхронно: пока её нет (или её не
+    // выбирали), дорожка живёт без пуговки, как и раньше.
+    final thumb = ref.watch(sliderThumbProvider).value;
+    final style = ref.watch(sliderStyleProvider);
+    // Узор волны — свой на каждый трек, как на ПК (`regenWave` на смену
+    // трека); id и есть зерно.
+    final seed = ref.watch(playbackProvider.select((s) => s.track?.id)) ?? '';
+
     final max = head.total.inMilliseconds.toDouble();
     final live = max <= 0
         ? 0.0
@@ -438,14 +666,17 @@ class _ProgressState extends ConsumerState<_Progress> {
         SizedBox(
           height: _Progress.hit,
           child: SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              trackShape: const RoundedRectSliderTrackShape(),
-              // Дорожка в плеере толще общей (3): это главный орган
-              // управления экрана, а не строка настройки.
-              trackHeight: _Progress.trackHeight,
-              // Без кружка — как в референсе: позицию показывает сам край
-              // залитой части. Тянуть и тыкать по дорожке это не мешает.
-              thumbShape: SliderComponentShape.noThumb,
+            // Вид дорожки и пуговки — целиком из типа слайдера (настройка
+            // «Плеер → Слайдер»). У обычного типа это ровно то, что было:
+            // дорожка в 5 (толще общей тройки — это главный орган управления
+            // экрана, а не строка настройки) и без кружка, если в
+            // «Кастомизации» не выбрали картинку ползунка.
+            data: bloomSliderTheme(
+              SliderTheme.of(context),
+              style: style,
+              tokens: context.bloom,
+              thumbImage: thumb,
+              waveSeed: seed.hashCode,
             ),
             child: Slider(
               value: value,
@@ -602,6 +833,38 @@ class _Transport extends ConsumerWidget {
   }
 }
 
+/// Кнопка таймера сна. Отдельным виджетом, а не строчкой в [_Tools]: пока
+/// таймер идёт, состояние тикает раз в секунду, и перерисовывать из-за этого
+/// весь ряд инструментов незачем.
+///
+/// Идущий таймер показывает остаток ВМЕСТО луны — тем же приёмом, что кнопка
+/// скорости показывает `1.25×`.
+class _SleepButton extends ConsumerWidget {
+  const _SleepButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sleep = ref.watch(sleepTimerProvider);
+    // Метка нужна своя: остаток вместо иконки скринридер прочёл бы как голое
+    // «23:14», без единого слова о том, что это вообще такое.
+    return Semantics(
+      button: true,
+      label: context.l.playerSleep,
+      child: _FlatIcon(
+        icon: sleep.mode == SleepMode.endOfTrack
+            ? SolarIconsBold.moonSleep
+            : SolarIconsOutline.moonSleep,
+        size: 26,
+        label: sleep.mode == SleepMode.timer
+            ? sleepLabel(sleep.remaining)
+            : null,
+        active: sleep.active,
+        onTap: () => showSleepSheet(context),
+      ),
+    );
+  }
+}
+
 class _FlatIcon extends StatelessWidget {
   const _FlatIcon({
     required this.icon,
@@ -610,6 +873,7 @@ class _FlatIcon extends StatelessWidget {
     this.active = false,
     this.badge,
     this.mark,
+    this.label,
   });
 
   final IconData icon;
@@ -622,9 +886,19 @@ class _FlatIcon extends StatelessWidget {
   /// различаем режимы кнопки, чтобы не подменять саму иконку.
   final Widget? mark;
 
+  /// Надпись ВМЕСТО иконки — перенос `.cc-cap` с ПК: кнопка скорости при
+  /// значении не 1× показывает само значение, а не спидометр.
+  final String? label;
+
+  /// Ширина коробки надписи. Фиксированная, а не по тексту: иначе ряд
+  /// инструментов расходился бы на каждой смене скорости. Длинное значение
+  /// (`1.35×`) внутри неё поджимается [FittedBox].
+  static const double _labelWidth = 34;
+
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
+    final color = active ? t.accent : t.iconFg;
     return InkResponse(
       onTap: onTap,
       radius: 26,
@@ -633,7 +907,26 @@ class _FlatIcon extends StatelessWidget {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            Icon(icon, size: size, color: active ? t.accent : t.iconFg),
+            if (label == null)
+              Icon(icon, size: size, color: color)
+            else
+              SizedBox(
+                width: _labelWidth,
+                height: size,
+                child: FittedBox(
+                  child: Text(
+                    label!,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
+                      height: 1,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ),
             if (badge != null)
               Positioned(
                 right: -6,
@@ -686,21 +979,44 @@ class _FlatIcon extends StatelessWidget {
   }
 }
 
-class _Tools extends StatelessWidget {
+class _Tools extends ConsumerWidget {
   const _Tools({required this.queueCount});
 
   final int queueCount;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Скорость: пока она 1×, кнопка — обычный спидометр; иначе на её месте
+    // само значение, как `cc-cap` в десктопном транспорте.
+    final rate = ref.watch(speedProvider).rate;
+    final lyricsOpen = ref.watch(lyricsOpenProvider);
+    // Кнопки «Т» нет, пока текст не нашёлся, — как на ПК
+    // (`useLyricsBtnVisible`). Открытую панель кнопка переживает в любом
+    // случае: иначе её было бы нечем закрыть.
+    final lyricsFound = ref.watch(lyricsProvider).status == LyricsStatus.ready;
+
     return _Block(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          const _FlatIcon(icon: SolarIconsOutline.text, size: 26),
+          if (lyricsFound || lyricsOpen)
+            _FlatIcon(
+              icon: SolarIconsOutline.text,
+              size: 26,
+              active: lyricsOpen,
+              onTap: () =>
+                  ref.read(lyricsOpenProvider.notifier).state = !lyricsOpen,
+            ),
           const _FlatIcon(icon: SolarIconsOutline.tuning, size: 26),
-          const _FlatIcon(icon: SolarIconsOutline.speedometerMiddle, size: 26),
+          const _SleepButton(),
+          _FlatIcon(
+            icon: SolarIconsOutline.speedometerMiddle,
+            size: 26,
+            label: rate == 1 ? null : speedLabel(rate),
+            active: rate != 1,
+            onTap: () => showSpeedSheet(context),
+          ),
           _FlatIcon(
             icon: SolarIconsOutline.playlistMinimalistic,
             size: 26,

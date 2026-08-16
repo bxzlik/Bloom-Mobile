@@ -1,29 +1,82 @@
 /// Миниплеер — плавающая карточка над таб-баром.
 ///
 /// Вид взят с десктопного `#miniPlayer` в режиме `mp-floating`: сплошная
-/// заливка `block-color` (сама карточка непрозрачна), рамка `ovl-line`, радиус
+/// заливка `pill` (сама карточка непрозрачна), рамка `ovl-line`, радиус
 /// темы, отступы по 8. Карточка и правда плавает: каркас пускает содержимое
 /// под неё, и в поля по краям видно список. Тап и свайп вверх разворачивают
 /// плеер.
+///
+/// Фон, индикаторы прогресса, форма обложки и скругление углов настраиваются —
+/// [MiniStyle], порт десктопных `mp*`-префов.
 library;
+
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../core/entities/entities.dart';
+import '../../../core/store/cover_store.dart';
+import '../../../core/store/library_store.dart';
+import '../../../features/customization/custom_store.dart';
 import '../../../features/settings/swipe_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/marquee_text.dart';
 import '../../../shared/ui/track_flick.dart';
 import '../../../shared/ui/track_swipes.dart';
+import '../mini_style_store.dart';
 import '../player_controller.dart';
+import '../track_anim_store.dart';
 import 'full_player.dart';
+import 'track_swap.dart';
 
 /// Высота карточки. Раньше её занимали и чужие экраны — отмеряли себе запас
 /// снизу, чтобы список не уезжал под плеер. Теперь запас берётся из
 /// `bottomBarsInset`, и число нужно только самой карточке.
 const double _cardHeight = 64;
+
+/// Сторона обложки в карточке.
+const double _coverSize = 44;
+
+/// Зазор между обложкой и кольцом прогресса (десктопный `RING_GAP`).
+const double _ringGap = 4;
+
+/// Насколько штрих кольца утоплен внутрь бокса, чтобы не срезался его краем
+/// (десктопный `RING_INSET`).
+const double _ringInset = 2;
+
+const double _ringStroke = 2.5;
+
+/// Доля прослушанного, 0..1 — общий счёт для всех трёх индикаторов.
+double _progressFrac(WidgetRef ref) {
+  final head =
+      ref.watch(playheadProvider).value ??
+      (position: Duration.zero, total: Duration.zero);
+  final total = head.total.inMilliseconds;
+  return total <= 0
+      ? 0.0
+      : (head.position.inMilliseconds / total).clamp(0.0, 1.0);
+}
+
+/// Цвет артиста под названием.
+///
+/// Обычный `muted` считается от плашки темы, а под подписью в карточке может
+/// оказаться что угодно: тонировка от обложки, сама обложка картинкой, заливка
+/// прогресса акцентом. На них серый от темы садится в фон и артиста не
+/// разобрать — поэтому берём цвет текста темы с прозрачностью: он остаётся
+/// контрастным к любой из этих подложек и всё равно тише белого названия.
+Color _artistColor(BloomTokens t) => t.text.withValues(alpha: 0.75);
+
+/// Скругление углов карточки в пикселях.
+double _cardRadius(MiniRadius radius, double themeRadius) => switch (radius) {
+  MiniRadius.none => 0,
+  MiniRadius.soft => themeRadius * 0.5,
+  MiniRadius.rounded => themeRadius,
+  MiniRadius.pill => _cardHeight / 2,
+};
 
 class MiniPlayer extends ConsumerWidget {
   const MiniPlayer({super.key});
@@ -35,20 +88,43 @@ class MiniPlayer extends ConsumerWidget {
     final track = state.track;
     if (track == null) return const SizedBox.shrink();
 
-    final player = ref.watch(audioPlayerProvider);
     final theme = Theme.of(context).textTheme;
 
     final swipes = ref.watch(swipeProvider).of(SwipeZone.mini);
+    final anim = ref.watch(trackAnimProvider).of(TrackAnimSurface.mini);
+    final style = ref.watch(miniStyleProvider);
+
+    // Своя обложка из «Кастомизации» важнее обложки трека — десктопный
+    // `coverOverride`. Она же идёт в фон карточки и в цвет фона: считать надо с
+    // той картинки, которую видно.
+    final cover = ref.watch(customSrcProvider(CustomCtx.cover)) ?? track.cover;
+    // Пока цвет считается (или если обложку не прочитать) — заливка темы.
+    final tint = style.bg == MiniBg.coverColor
+        ? ref.watch(miniCoverColorProvider(cover)).value
+        : null;
+    final visible = MiniButton.values.where(style.hasButton).toList();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
       child: TrackFlick(
         onLeft: swipes.left == SwipeAction.none
             ? null
-            : () => runSwipeAction(context, ref, swipes.left, track: track),
+            : () => runSwipeAction(
+                context,
+                ref,
+                swipes.left,
+                track: track,
+                fromFlick: true,
+              ),
         onRight: swipes.right == SwipeAction.none
             ? null
-            : () => runSwipeAction(context, ref, swipes.right, track: track),
+            : () => runSwipeAction(
+                context,
+                ref,
+                swipes.right,
+                track: track,
+                fromFlick: true,
+              ),
         builder: (context, shift) => GestureDetector(
           onTap: () => openFullPlayer(context),
           onVerticalDragEnd: (d) {
@@ -58,105 +134,401 @@ class MiniPlayer extends ConsumerWidget {
           // название, ползущее из-под кнопок, читалось бы как сбой раскладки.
           child: FlickSlide(
             shift: shift,
-            child: Container(
-              height: _cardHeight,
-              decoration: BoxDecoration(
-                color: t.blockColor,
-                border: Border.all(color: t.ovlLine),
-                borderRadius: BorderRadius.circular(t.radius),
+            child: GlassBox(
+              color: tint,
+              // Стекло — только у фона «Тема», как на ПК (`body.glass-mode
+              // .mp-bg-theme #miniPlayer`). У «Цвета обложки» заливка и так
+              // тёмная (L 0.09–0.18), и полупрозрачной поверх тёмного фона она
+              // сходится с ним в чёрный — настройка фона перестаёт читаться.
+              // Фон-картинка непрозрачна сама по себе, и размывать под ней
+              // подложку незачем.
+              enabled: style.bg == MiniBg.theme,
+              borderSide: BorderSide(color: t.ovlLine),
+              borderRadius: BorderRadius.circular(
+                _cardRadius(style.radius, t.radius),
               ),
-              clipBehavior: Clip.antiAlias,
-              child: Stack(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: Row(
-                      children: [
-                        Cover(url: track.cover, size: 44),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Название бежит, если не влезло, — как `#mpTitle` на
-                              // ПК; артист под ним остаётся с эллипсисом.
-                              MarqueeText(track.name, style: theme.titleSmall),
-                              const SizedBox(height: 2),
-                              Text(
-                                state.error ?? track.artist,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: state.error != null
-                                    ? theme.bodySmall?.copyWith(
-                                        color: t.sysFavIco,
-                                      )
-                                    : theme.bodySmall,
+              child: SizedBox(
+                height: _cardHeight,
+                child: Stack(
+                  children: [
+                    // Фон-обложка и заливка прогресса лежат ПОД содержимым —
+                    // порядком в стопке, а не z-index, как на ПК.
+                    if (style.bg == MiniBg.cover)
+                      Positioned.fill(child: _CoverBackdrop(cover: cover)),
+                    if (style.progress.fill)
+                      Positioned.fill(child: _FillProgress(tint: tint)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Row(
+                        children: [
+                          _MiniCover(
+                            trackId: track.id,
+                            cover: cover,
+                            anim: anim.cover,
+                            shape: style.shape,
+                            ring: style.progress.ring,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TrackSwap(
+                              id: track.id,
+                              kind: anim.text,
+                              tuning: TrackSwapTuning.mini,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Название бежит, если не влезло, — как
+                                  // `#mpTitle` на ПК; артист под ним остаётся с
+                                  // эллипсисом.
+                                  MarqueeText(
+                                    track.name,
+                                    style: theme.titleSmall,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    state.error ?? track.artist,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.bodySmall?.copyWith(
+                                      color: state.error != null
+                                          ? t.sysFavIco
+                                          : _artistColor(t),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        CircleIconButton(
-                          icon: SolarIconsOutline.skipPrevious,
-                          size: 38,
-                          iconSize: 20,
-                          background: Colors.transparent,
-                          onTap: ref.read(playbackProvider.notifier).prev,
-                        ),
-                        const SizedBox(width: 4),
-                        if (state.loading)
-                          // Кружок тот же, что у play — на переходе трека кнопка не
-                          // должна пропадать из строки.
-                          Container(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(
-                              color: t.accent,
-                              shape: BoxShape.circle,
-                            ),
-                            padding: const EdgeInsets.all(9),
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.2,
-                              color: t.accentText,
-                            ),
-                          )
-                        else
-                          StreamBuilder<bool>(
-                            stream: player.playingStream,
-                            initialData: player.playing,
-                            builder: (context, snap) => CircleIconButton(
-                              icon: snap.data == true
-                                  ? SolarIconsBold.pause
-                                  : SolarIconsBold.play,
-                              iconSize: 18,
-                              size: 38,
-                              background: t.accent,
-                              color: t.accentText,
-                              onTap: ref.read(playbackProvider.notifier).toggle,
                             ),
                           ),
-                        const SizedBox(width: 4),
-                        CircleIconButton(
-                          icon: SolarIconsOutline.skipNext,
-                          size: 38,
-                          iconSize: 20,
-                          background: Colors.transparent,
-                          onTap: ref.read(playbackProvider.notifier).next,
-                        ),
-                      ],
+                          // Порядок кнопок задан самим перечислением, набор —
+                          // настройкой; убранная не оставляет после себя
+                          // зазора, иначе подпись упиралась бы в пустоту.
+                          for (var i = 0; i < visible.length; i++) ...[
+                            SizedBox(width: i == 0 ? 8 : 4),
+                            _MiniButton(
+                              button: visible[i],
+                              track: track,
+                              loading: state.loading,
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: _Hairline(),
-                  ),
-                ],
+                    if (style.progress.line)
+                      const Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: _Hairline(),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Кнопка в строке карточки. Какие из них стоят — настройка «Кнопки
+/// управления» ([MiniButton]).
+class _MiniButton extends ConsumerWidget {
+  const _MiniButton({
+    required this.button,
+    required this.track,
+    required this.loading,
+  });
+
+  final MiniButton button;
+  final Track track;
+
+  /// Идёт переход на другой трек — место play занимает кружок ожидания.
+  final bool loading;
+
+  static const double _size = 38;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.bloom;
+    switch (button) {
+      case MiniButton.prev:
+        return CircleIconButton(
+          icon: SolarIconsOutline.skipPrevious,
+          size: _size,
+          iconSize: 20,
+          background: Colors.transparent,
+          onTap: ref.read(playbackProvider.notifier).prev,
+        );
+      case MiniButton.next:
+        return CircleIconButton(
+          icon: SolarIconsOutline.skipNext,
+          size: _size,
+          iconSize: 20,
+          background: Colors.transparent,
+          onTap: ref.read(playbackProvider.notifier).next,
+        );
+      case MiniButton.fav:
+        final fav = ref.watch(
+          libraryProvider.select((lib) => lib.isFav(track.id)),
+        );
+        return CircleIconButton(
+          icon: fav ? SolarIconsBold.heart : SolarIconsOutline.heart,
+          size: _size,
+          iconSize: 20,
+          background: Colors.transparent,
+          color: fav ? t.sysFavIco : null,
+          onTap: () => ref.read(libraryProvider.notifier).toggleFav(track),
+        );
+      case MiniButton.play:
+        if (loading) {
+          // Кружок тот же, что у play — на переходе трека кнопка не должна
+          // пропадать из строки.
+          return Container(
+            width: _size,
+            height: _size,
+            decoration: BoxDecoration(color: t.accent, shape: BoxShape.circle),
+            padding: const EdgeInsets.all(9),
+            child: CircularProgressIndicator(
+              strokeWidth: 2.2,
+              color: t.accentText,
+            ),
+          );
+        }
+        final player = ref.watch(audioPlayerProvider);
+        return StreamBuilder<bool>(
+          stream: player.playingStream,
+          initialData: player.playing,
+          builder: (context, snap) => CircleIconButton(
+            icon: snap.data == true
+                ? SolarIconsBold.pause
+                : SolarIconsBold.play,
+            iconSize: 18,
+            size: _size,
+            background: t.accent,
+            color: t.accentText,
+            onTap: ref.read(playbackProvider.notifier).toggle,
+          ),
+        );
+    }
+  }
+}
+
+/// Обложка карточки: скруглённый квадрат или круг, при включённом индикаторе —
+/// в кольце прогресса.
+///
+/// Кольцо рисуется ЗА пределами обложки и в раскладке места не занимает
+/// (десктопный `#mpCircleRing` — абсолютный слой в `#mpCoverWrap`): иначе от
+/// одной галочки в настройках разъезжалась бы вся строка.
+class _MiniCover extends StatelessWidget {
+  const _MiniCover({
+    required this.trackId,
+    required this.cover,
+    required this.anim,
+    required this.shape,
+    required this.ring,
+  });
+
+  final String trackId;
+  final String? cover;
+  final TrackAnimKind anim;
+  final MiniCoverShape shape;
+  final bool ring;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final radius = shape == MiniCoverShape.circle
+        ? _coverSize / 2
+        : t.radius * 0.72;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // Слои смены трека клипует рамка обложки, картинка внутри идёт без
+        // своего радиуса — иначе уезжающая показывала бы скруглённый угол
+        // посреди кадра.
+        SizedBox(
+          width: _coverSize,
+          height: _coverSize,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(radius),
+            child: TrackSwap(
+              id: trackId,
+              kind: anim,
+              tuning: TrackSwapTuning.mini,
+              child: Cover(url: cover, size: _coverSize, radius: 0),
+            ),
+          ),
+        ),
+        if (ring)
+          Positioned(
+            left: -_ringGap,
+            top: -_ringGap,
+            child: IgnorePointer(child: _RingProgress(coverRadius: radius)),
+          ),
+      ],
+    );
+  }
+}
+
+/// Кольцо прогресса вокруг обложки. Форма повторяет обложку: у круглой — круг,
+/// у скруглённой — та же рамка, отодвинутая на зазор.
+class _RingProgress extends ConsumerWidget {
+  const _RingProgress({required this.coverRadius});
+
+  final double coverRadius;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.bloom;
+    return CustomPaint(
+      size: const Size.square(_coverSize + _ringGap * 2),
+      painter: _RingPainter(
+        frac: _progressFrac(ref),
+        // Приглушено, как на ПК: на автоакценте от обложки кольцо в полную силу
+        // полыхает вокруг картинки и перетягивает внимание с самой карточки.
+        color: t.accent.withValues(alpha: 0.7),
+        track: t.ovlLine,
+        // Круглой обложке кольцо кладём кругом, а не квадратом с большим
+        // радиусом: у скруглённого прямоугольника с r = половине стороны углы
+        // всё равно чуть спрямляются.
+        radius: coverRadius >= _coverSize / 2
+            ? null
+            : coverRadius + _ringGap - _ringInset,
+      ),
+    );
+  }
+}
+
+class _RingPainter extends CustomPainter {
+  const _RingPainter({
+    required this.frac,
+    required this.color,
+    required this.track,
+    required this.radius,
+  });
+
+  final double frac;
+  final Color color;
+  final Color track;
+
+  /// Радиус углов кольца; `null` — круг.
+  final double? radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final box = Rect.fromLTWH(
+      0,
+      0,
+      size.width,
+      size.height,
+    ).deflate(_ringInset);
+    // Обход начинается с верхней середины и идёт по часовой — прогресс должен
+    // расти оттуда же, откуда его ждут у круглого индикатора.
+    final path = radius == null
+        ? (Path()..addArc(box, -math.pi / 2, 2 * math.pi))
+        : _roundedPath(box, radius!);
+
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _ringStroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(path, line..color = track);
+    if (frac <= 0) return;
+    final metric = path.computeMetrics().first;
+    canvas.drawPath(
+      metric.extractPath(0, metric.length * frac),
+      line..color = color,
+    );
+  }
+
+  /// Скруглённый прямоугольник, начатый с верхней середины (десктопный `d`).
+  static Path _roundedPath(Rect box, double r) {
+    final c = box.center.dx;
+    return Path()
+      ..moveTo(c, box.top)
+      ..lineTo(box.right - r, box.top)
+      ..quadraticBezierTo(box.right, box.top, box.right, box.top + r)
+      ..lineTo(box.right, box.bottom - r)
+      ..quadraticBezierTo(box.right, box.bottom, box.right - r, box.bottom)
+      ..lineTo(box.left + r, box.bottom)
+      ..quadraticBezierTo(box.left, box.bottom, box.left, box.bottom - r)
+      ..lineTo(box.left, box.top + r)
+      ..quadraticBezierTo(box.left, box.top, box.left + r, box.top)
+      ..lineTo(c, box.top);
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) =>
+      old.frac != frac ||
+      old.color != color ||
+      old.track != track ||
+      old.radius != radius;
+}
+
+/// Обложка фоном карточки — десктопный `#mpBgImgLayer` с его же фильтром
+/// (`brightness(.38) saturate(.7)`): без притемнения подпись на светлой
+/// картинке не читается.
+class _CoverBackdrop extends StatelessWidget {
+  const _CoverBackdrop({required this.cover});
+
+  final String? cover;
+
+  /// Яркость и насыщенность фоновой картинки.
+  static const double _brightness = 0.38;
+  static const double _saturation = 0.7;
+
+  /// Веса яркости каналов — те же, что у CSS-фильтра `saturate`.
+  static const double _lr = 0.2126;
+  static const double _lg = 0.7152;
+  static const double _lb = 0.0722;
+
+  static double _diag(double weight) =>
+      _brightness * (weight + (1 - weight) * _saturation);
+
+  static double _off(double weight) =>
+      _brightness * (weight * (1 - _saturation));
+
+  @override
+  Widget build(BuildContext context) {
+    final image = coverImage(cover);
+    if (image == null) return const SizedBox.shrink();
+    return ColorFiltered(
+      colorFilter: ColorFilter.matrix(<double>[
+        _diag(_lr), _off(_lg), _off(_lb), 0, 0, //
+        _off(_lr), _diag(_lg), _off(_lb), 0, 0, //
+        _off(_lr), _off(_lg), _diag(_lb), 0, 0, //
+        0, 0, 0, 1, 0, //
+      ]),
+      child: Image(image: image, fit: BoxFit.cover),
+    );
+  }
+}
+
+/// Прогресс заливкой фона — десктопный `#mpBgProgress`.
+class _FillProgress extends ConsumerWidget {
+  const _FillProgress({required this.tint});
+
+  /// Фон карточки в режиме «Цвет обложки»; `null` — фон не тонирован.
+  final Color? tint;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.bloom;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: FractionallySizedBox(
+        widthFactor: _progressFrac(ref),
+        heightFactor: 1,
+        // На тонированном фоне заливка строится от тона самого трека
+        // (осветлённый доминант): акцент приложения смотрелся там чужеродно —
+        // синяя полоса поверх красной карточки.
+        child: ColoredBox(
+          color: tint == null
+              ? t.accent.withValues(alpha: 0.18)
+              : Color.lerp(tint, const Color(0xFFFFFFFF), 0.05)!,
         ),
       ),
     );
@@ -170,13 +542,7 @@ class _Hairline extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
-    final head =
-        ref.watch(playheadProvider).value ??
-        (position: Duration.zero, total: Duration.zero);
-    final total = head.total.inMilliseconds;
-    final frac = total <= 0
-        ? 0.0
-        : (head.position.inMilliseconds / total).clamp(0.0, 1.0);
+    final frac = _progressFrac(ref);
     return SizedBox(
       height: 2,
       child: Align(

@@ -100,6 +100,19 @@ Color accentFromHsl(CoverHsl hsl, double level) {
   return HSLColor.fromAHSL(1, hsl.h % 360, s, l).toColor();
 }
 
+/// Доминантный HSL → фон миниплеера в режиме «Цвет обложки» (десктопный
+/// `extractMpBgColor`).
+///
+/// Светлота держится в тёмном коридоре, чтобы карточка не выбивалась из
+/// интерфейса, а насыщенность подрезана: на тёмном тоне высокая S даёт цветной
+/// шум.
+Color miniBgFromHsl(CoverHsl hsl) => HSLColor.fromAHSL(
+  1,
+  hsl.h % 360,
+  (hsl.s * 0.78).clamp(0.0, 0.58),
+  (hsl.l * 0.45).clamp(0.09, 0.18),
+).toColor();
+
 /// Картинка провайдера в виде `ui.Image`; `null` — сеть/файл не отдали.
 Future<ui.Image?> _load(ImageProvider provider) {
   final completer = Completer<ui.Image?>();

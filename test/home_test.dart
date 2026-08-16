@@ -10,6 +10,7 @@ import 'package:bloom/core/store/json_store.dart';
 import 'package:bloom/core/store/library_store.dart';
 import 'package:bloom/features/home/discover_store.dart';
 import 'package:bloom/features/home/ui/home_sections.dart';
+import 'package:bloom/features/player/play_source.dart';
 import 'package:bloom/features/player/resume_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -114,13 +115,16 @@ void main() {
         index: 1,
         position: const Duration(seconds: 90),
         paused: true,
-        sourceId: 'pl_1',
+        source: const LibSource('pl_1'),
       );
       final read = ResumeData.fromJson(saved.toJson());
       expect(read, isNotNull);
       expect(read!.track.id, 'sc_b');
       expect(read.position, const Duration(seconds: 90));
-      expect(read.sourceId, 'pl_1');
+      // Источник переживает запись целиком, а не одним id: пилюля в шапке
+      // плеера после перезапуска обязана назвать тот же список.
+      expect(read.source, isA<LibSource>());
+      expect(read.source?.id, 'pl_1');
       expect(read.paused, isTrue);
     });
 

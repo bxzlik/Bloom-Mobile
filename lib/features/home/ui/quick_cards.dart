@@ -15,6 +15,7 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/cover_collage.dart';
+import '../../../shared/ui/glass.dart';
 
 class QuickCards extends ConsumerWidget {
   const QuickCards({super.key});
@@ -95,55 +96,56 @@ class _QuickCard extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: Opacity(
         opacity: empty ? 0.6 : 1,
-        child: Container(
-          height: _height,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: t.blockColor,
-            border: Border.all(color: t.ovlLine),
-            borderRadius: BorderRadius.circular(t.radius),
-          ),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(t.radius * 0.72),
-                child: SizedBox(
-                  width: _thumb,
-                  height: _thumb,
-                  child: CoverCollage(
-                    covers: covers,
-                    // Обложек нет — на их месте тинт раздела со своим значком,
-                    // как у плиток библиотеки.
-                    fallback: ColoredBox(
-                      color: tint,
-                      child: Icon(icon, size: 22, color: iconColor),
+        child: GlassBox(
+          color: t.blockColor,
+          borderSide: BorderSide(color: t.ovlLine),
+          child: Container(
+            height: _height,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(t.radius * 0.72),
+                  child: SizedBox(
+                    width: _thumb,
+                    height: _thumb,
+                    child: CoverCollage(
+                      covers: covers,
+                      // Обложек нет — на их месте тинт раздела со своим
+                      // значком, как у плиток библиотеки. Смешанный с
+                      // поверхностью, а не плёнкой: сквозь плёнку видно и
+                      // картинку-фон, и стекло самой плашки.
+                      fallback: ColoredBox(
+                        color: Color.alphaBlend(tint, t.blockColor),
+                        child: Icon(icon, size: 22, color: iconColor),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.titleMedium,
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      context.l.tracksCount(count),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.bodySmall,
-                    ),
-                  ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.titleMedium,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        context.l.tracksCount(count),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.bodySmall,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

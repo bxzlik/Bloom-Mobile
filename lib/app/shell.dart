@@ -7,17 +7,22 @@
 /// остаются под ними навсегда: он берётся из [bottomBarsInset].
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../core/l10n/l10n.dart';
+import '../features/customization/ui/app_background.dart';
+import '../core/store/settings_store.dart';
 import '../features/player/ui/mini_player.dart';
 import '../features/profile/achievements.dart';
 import '../shared/ui/atoms.dart';
 import '../shared/ui/bloom_toast.dart';
 import '../shared/ui/cover_hero.dart';
+import '../shared/ui/glass.dart';
 import 'theme/tokens.dart';
 
 class BloomShell extends ConsumerStatefulWidget {
@@ -66,22 +71,32 @@ class _BloomShellState extends ConsumerState<BloomShell> {
     ref.listen(achievementsProvider, (_, _) => _sync());
     final shell = widget.shell;
     return Scaffold(
-      backgroundColor: t.bg,
+      // Картинка фона лежит под каркасом — тогда своей заливки у него нет.
+      backgroundColor: ref.watch(backgroundOnProvider)
+          ? Colors.transparent
+          : t.bg,
       extendBody: true,
       body: shell,
       // Бары именно в `bottomNavigationBar`, а не колонкой в `body`: только так
       // плавающий тост встаёт НАД миниплеером, а не поверх него. На раскладку
       // это не влияет — Scaffold точно так же отдаёт им низ, а телу остаток.
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const MiniPlayer(),
-          _NavBar(
-            index: shell.currentIndex,
-            onTap: (i) =>
-                shell.goBranch(i, initialLocation: i == shell.currentIndex),
-          ),
-        ],
+      //
+      // Группа стекла у баров СВОЯ, отдельная от страницы: они лежат поверх
+      // списка, и с общим снимком подложки уходящие под них строки в размытие
+      // бы не попали.
+      bottomNavigationBar: GlassGroup(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const MiniPlayer(),
+            _NavBar(
+              style: ref.watch(settingsProvider).navStyle,
+              index: shell.currentIndex,
+              onTap: (i) =>
+                  shell.goBranch(i, initialLocation: i == shell.currentIndex),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -195,6 +210,7 @@ class _NavSpec {
     this.activeIcon,
     this.svg,
     this.activeSvg,
+    this.motion = _NavMotion.wiggle,
   }) : assert(
          (icon != null && activeIcon != null) ||
              (svg != null && activeSvg != null),
@@ -208,11 +224,36 @@ class _NavSpec {
   final IconData? activeIcon;
   final String? svg;
   final String? activeSvg;
+
+  /// Чем иконка отвечает на выбор своей вкладки — см. [_NavMotion].
+  final _NavMotion motion;
 }
 
-class _NavBar extends StatelessWidget {
-  const _NavBar({required this.index, required this.onTap});
+/// Высота ряда иконок у прижатых к низу стилей.
+const double kNavBarHeight = 58;
 
+/// Высота плавающих стилей. Больше прижатых намеренно: панель кончается до
+/// краёв экрана, и в тех же 58 она на фоне пустых полей вокруг читается
+/// мельче, чем бар во всю ширину.
+const double kNavBarFloatHeight = 68;
+
+/// Размер глифа в баре. У плавающих крупнее — вслед за высотой панели, иначе
+/// прибавка уходит в пустые поля над иконками и бар выглядит просто рыхлым.
+const double _kNavIcon = 24;
+const double _kNavFloatIcon = 27;
+
+/// Просвет между плавающей панелью и краями экрана — те же 8, что у карточки
+/// миниплеера над ней.
+const double _kFloatGap = 8;
+
+class _NavBar extends StatelessWidget {
+  const _NavBar({
+    required this.style,
+    required this.index,
+    required this.onTap,
+  });
+
+  final NavBarStyle style;
   final int index;
   final ValueChanged<int> onTap;
 
@@ -236,73 +277,245 @@ class _NavBar extends StatelessWidget {
       label: (l) => l.navSettings,
       icon: SolarIconsOutline.settings,
       activeIcon: SolarIconsBold.settings,
+      motion: _NavMotion.spin,
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: t.bg,
-        border: Border(top: BorderSide(color: t.ovlLine)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 58,
-          child: Row(
-            children: [
-              for (var i = 0; i < _items.length; i++)
-                Expanded(
-                  child: _NavItem(
-                    spec: _items[i],
-                    active: i == index,
-                    onTap: () => onTap(i),
-                  ),
-                ),
-            ],
+    final floating = style == NavBarStyle.floating || style == NavBarStyle.pill;
+    final height = floating ? kNavBarFloatHeight : kNavBarHeight;
+    // Ряд у всех стилей один: три таба делят ширину поровну. Капсула от
+    // плавающей панели отличается только радиусом — иконки в ней стоят там
+    // же, а не жмутся к середине.
+    final row = Row(
+      children: [
+        for (var i = 0; i < _items.length; i++)
+          Expanded(
+            child: _NavItem(
+              spec: _items[i],
+              active: i == index,
+              iconSize: floating ? _kNavFloatIcon : _kNavIcon,
+              onTap: () => onTap(i),
+            ),
           ),
-        ),
-      ),
+      ],
     );
+
+    switch (style) {
+      // Прижатые к низу: заливка уходит под системный вырез, ряд иконок из
+      // него выводит `SafeArea`.
+      case NavBarStyle.bar:
+      case NavBarStyle.rounded:
+        final rounded = style == NavBarStyle.rounded;
+        // Заливка одна на все четыре стиля — та же `pill`, что у шапки главной
+        // и строк настроек: бары обязаны читаться как элементы интерфейса, а
+        // не как продолжение фона. В стекле она полупрозрачна, и сквозь бар
+        // видно уходящий под него список.
+        return GlassBox(
+          borderRadius: rounded
+              // Радиус темы, но не мельче 10: на нуле «скруглённый» стиль
+              // ничем не отличался бы от обычного.
+              ? BorderRadius.vertical(
+                  top: Radius.circular(math.max(t.radius, 10)),
+                )
+              : BorderRadius.zero,
+          // При скруглении рамка обязана быть одинаковой со всех сторон —
+          // нижняя всё равно уходит за край экрана; у прямого бара линия
+          // только сверху, поэтому ему нужна своя форма.
+          borderSide: rounded ? BorderSide(color: t.ovlLine) : null,
+          shape: rounded ? null : Border(top: BorderSide(color: t.ovlLine)),
+          child: SafeArea(
+            top: false,
+            child: SizedBox(height: height, child: row),
+          ),
+        );
+
+      // Плавающие: панель кончается до низа экрана, вырез системы отдан
+      // просвету под ней — иначе она села бы на жестовую полосу.
+      case NavBarStyle.floating:
+      case NavBarStyle.pill:
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            _kFloatGap,
+            0,
+            _kFloatGap,
+            MediaQuery.paddingOf(context).bottom + _kFloatGap,
+          ),
+          child: GlassBox(
+            borderSide: BorderSide(color: t.ovlLine),
+            borderRadius: BorderRadius.circular(
+              // Капсула круглая по определению, а не по теме: её углы —
+              // всегда половина высоты, что бы ни стояло в «Скруглениях».
+              style == NavBarStyle.pill ? height / 2 : t.radius,
+            ),
+            child: SizedBox(height: height, child: row),
+          ),
+        );
+    }
   }
 }
 
-class _NavItem extends StatelessWidget {
+// ─── Оживление иконок бара ──────────────────────────────────────────────────
+
+/// Наплыв outline→bold и цвета. В такт со сменой самой вкладки
+/// ([kTabTransition]): бар и содержимое обязаны идти одним темпом, иначе
+/// заливка глифа договаривает уже поверх новой страницы.
+const Duration kNavMorph = kTabTransition;
+
+/// Чем иконка отвечает на выбор своей вкладки. Жест — свой на глиф, а не общий
+/// на бар: одно и то же движение на всех трёх иконках выглядит как дёрганье
+/// бара, а не как отклик конкретной.
+enum _NavMotion {
+  /// Качок вправо-влево с затуханием. Домик и ящик библиотеки стоят на
+  /// «земле» — им идёт качнуться, как задетой вещи.
+  wiggle,
+
+  /// Оборот вокруг центра — шестерёнке настроек. Она круглая и симметричная:
+  /// поворот на ней читается как вращение, а качок — как перекос.
+  spin,
+}
+
+/// Отклик живёт отдельно от наплыва и заметно дольше него: это ответ под
+/// пальцем, ему нормально догорать уже после того, как вкладка встала.
+const Duration kNavWiggle = Duration(milliseconds: 380);
+const Duration kNavSpin = Duration(milliseconds: 520);
+
+/// Размах первого взмаха качка.
+const double kWiggleMax = 9 * math.pi / 180;
+
+/// Затухающий качок: три полувзмаха — вправо, влево, вправо. Взмахи даёт
+/// синус, а множитель `(1 − t)` их гасит и ровно в конце обнуляет угол, так
+/// что иконка успокаивается сама, а не сбрасывается в ноль рывком.
+double _wiggleAngle(double t) =>
+    kWiggleMax * math.sin(t * math.pi * 3) * (1 - t);
+
+/// Оборот с выбегом: стартует быстро и тормозит к концу — шестерёнку будто
+/// крутанули пальцем, а не провернули мотором. Полный круг, а не половина:
+/// зубцы у неё частые, и на половине глаз не поймёт, что она вернулась.
+double _spinAngle(double t) => 2 * math.pi * Curves.easeOutCubic.transform(t);
+
+class _NavItem extends StatefulWidget {
   const _NavItem({
     required this.spec,
     required this.active,
+    required this.iconSize,
     required this.onTap,
   });
 
   final _NavSpec spec;
   final bool active;
+  final double iconSize;
   final VoidCallback onTap;
+
+  @override
+  State<_NavItem> createState() => _NavItemState();
+}
+
+class _NavItemState extends State<_NavItem> with TickerProviderStateMixin {
+  /// 0 — покой, 1 — активный таб. Стартует «доехавшим»: на первом кадре
+  /// приложения наплывать неоткуда.
+  late final AnimationController _morph = AnimationController(
+    vsync: this,
+    duration: kNavMorph,
+    value: widget.active ? 1 : 0,
+  );
+
+  /// Жест иконки: качок или оборот, смотря по [_NavSpec.motion].
+  late final AnimationController _react = AnimationController(
+    vsync: this,
+    duration: widget.spec.motion == _NavMotion.spin ? kNavSpin : kNavWiggle,
+  );
+
+  @override
+  void didUpdateWidget(_NavItem old) {
+    super.didUpdateWidget(old);
+    if (widget.active == old.active) return;
+    if (widget.active) {
+      _morph.forward();
+      _react.forward(from: 0);
+    } else {
+      _morph.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _morph.dispose();
+    _react.dispose();
+    super.dispose();
+  }
+
+  void _tap() {
+    // Повторный тап по своей же вкладке не меняет `active` (и жеста из
+    // `didUpdateWidget` не будет), но что-то делает — сбрасывает ветку в
+    // корень. Отвечаем на него тем же жестом, иначе тап выглядит потерянным.
+    if (widget.active) _react.forward(from: 0);
+    widget.onTap();
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final color = active ? t.accent : t.iconFgSb;
-    final glyph = active ? spec.activeIcon : spec.icon;
-    final svg = active ? spec.activeSvg : spec.svg;
-
     return Semantics(
       button: true,
-      selected: active,
-      label: spec.label(context.l),
+      selected: widget.active,
+      label: widget.spec.label(context.l),
       // Без подложки и без ряби: активный таб отличается заливкой глифа
       // (bold вместо outline) и цветом акцента — этого достаточно, а
       // material-ripple на голом фоне читается как посторонний круг.
       child: GestureDetector(
-        onTap: onTap,
+        onTap: _tap,
         behavior: HitTestBehavior.opaque,
         child: Center(
-          child: svg != null
-              ? SvgIcon(svg, size: 24, color: color)
-              : Icon(glyph, size: 24, color: color),
+          child: AnimatedBuilder(
+            animation: Listenable.merge([_morph, _react]),
+            builder: (context, _) {
+              // В покое контроллер стоит на 1 (жест доигран), и обе формы там
+              // дают ту же картинку, что при 0: качок обнулён затуханием, а
+              // оборот — это полный круг. Отдельного «покоя» заводить не надо.
+              final angle = widget.spec.motion == _NavMotion.spin
+                  ? _spinAngle(_react.value)
+                  : _wiggleAngle(_react.value);
+              return Transform.rotate(angle: angle, child: _icons(t));
+            },
+          ),
         ),
       ),
     );
   }
+
+  /// Два слоя друг на друге: bold проявляется поверх outline.
+  ///
+  /// Кривые подобраны так, чтобы слои перекрывались, а не разошлись в
+  /// середине: outline держится первую треть на полной непрозрачности и
+  /// уходит, когда заливка уже набрала вес. Иначе на половине перехода
+  /// суммарная альфа контура проседает и иконка на кадр тускнеет.
+  Widget _icons(BloomTokens t) {
+    final m = _morph.value;
+    // Покой — полный контраст (`text`), а не приглушённый `iconFgSb`: в баре
+    // всего три глифа, и тусклые они читаются как выключенные. Активный таб
+    // и без разницы в яркости виден — по заливке и акценту.
+    final color = Color.lerp(t.text, t.accent, m)!;
+    final fill = Curves.easeOut.transform(m);
+    final line = 1 - const Interval(0.35, 1).transform(m);
+    final spec = widget.spec;
+
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        if (line > 0) _layer(spec.icon, spec.svg, color, line),
+        if (fill > 0) _layer(spec.activeIcon, spec.activeSvg, color, fill),
+      ],
+    );
+  }
+
+  Widget _layer(IconData? glyph, String? svg, Color color, double opacity) =>
+      Opacity(
+        opacity: opacity.clamp(0, 1),
+        child: svg != null
+            ? SvgIcon(svg, size: widget.iconSize, color: color)
+            : Icon(glyph, size: widget.iconSize, color: color),
+      );
 }

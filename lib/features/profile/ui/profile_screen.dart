@@ -22,6 +22,7 @@ import '../../../core/store/cover_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
+import '../../../shared/ui/glass.dart';
 import '../../player/player_controller.dart';
 import '../profile_store.dart';
 import 'achievements_section.dart';
@@ -138,46 +139,45 @@ class _Tabs extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: t.pill,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        children: [
-          for (var i = 0; i < _items.length; i++)
-            Expanded(
-              child: GestureDetector(
-                onTap: () => onChanged(i),
-                behavior: HitTestBehavior.opaque,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 9),
-                  decoration: BoxDecoration(
-                    color: i == index ? t.accent : Colors.transparent,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        _items[i].icon,
-                        size: 15,
-                        color: i == index ? t.accentText : t.text2,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _items[i].label(context.l),
-                        style: theme.titleSmall?.copyWith(
+    return GlassBox(
+      borderRadius: BorderRadius.circular(999),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Row(
+          children: [
+            for (var i = 0; i < _items.length; i++)
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => onChanged(i),
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    decoration: BoxDecoration(
+                      color: i == index ? t.accent : Colors.transparent,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _items[i].icon,
+                          size: 15,
                           color: i == index ? t.accentText : t.text2,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        Text(
+                          _items[i].label(context.l),
+                          style: theme.titleSmall?.copyWith(
+                            color: i == index ? t.accentText : t.text2,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -349,32 +349,31 @@ class _AboutBox extends StatelessWidget {
     // карандашом, лезть в неё из этого блока незачем.
     if (bio.isEmpty && status.isEmpty) return const SizedBox.shrink();
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: BoxDecoration(
-        color: t.pill,
-        borderRadius: BorderRadius.circular(t.radius * 0.85),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (bio.isNotEmpty)
-            Text(
-              bio,
-              style: theme.bodyMedium?.copyWith(color: t.text2, height: 1.45),
-            ),
-          if (status.isNotEmpty) ...[
-            if (bio.isNotEmpty) const SizedBox(height: 4),
-            Text(
-              '"$status"',
-              style: theme.bodyMedium?.copyWith(
-                color: t.muted,
-                fontStyle: FontStyle.italic,
+    return GlassBox(
+      borderRadius: BorderRadius.circular(t.radius * 0.85),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (bio.isNotEmpty)
+              Text(
+                bio,
+                style: theme.bodyMedium?.copyWith(color: t.text2, height: 1.45),
               ),
-            ),
+            if (status.isNotEmpty) ...[
+              if (bio.isNotEmpty) const SizedBox(height: 4),
+              Text(
+                '"$status"',
+                style: theme.bodyMedium?.copyWith(
+                  color: t.muted,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

@@ -39,6 +39,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonUpload => 'Загрузить';
 
   @override
+  String get commonHide => 'Скрыть';
+
+  @override
+  String get commonClear => 'Очистить';
+
+  @override
+  String get commonOr => 'или';
+
+  @override
   String get commonPin => 'Закрепить';
 
   @override
@@ -117,6 +126,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonAlreadyInLibrary => 'Уже в библиотеке';
 
   @override
+  String get commonUnknownArtist => 'Неизвестный';
+
+  @override
   String get commonOfflineBadge => 'офлайн';
 
   @override
@@ -183,16 +195,68 @@ class AppLocalizationsRu extends AppLocalizations {
   String get homeNewReleases => 'Новинки';
 
   @override
-  String get playerPlayingFrom => 'Играет из';
+  String get playerQueue => 'Очередь';
 
   @override
-  String get playerQueue => 'Очередь';
+  String playerSourceSearch(String query) {
+    return 'Поиск: $query';
+  }
 
   @override
   String get playerCopied => 'Скопировано';
 
   @override
   String get playerCopyError => 'Ошибка';
+
+  @override
+  String get playerSpeed => 'Скорость';
+
+  @override
+  String get playerSpeedCustom => 'Своя скорость';
+
+  @override
+  String get playerSpeedReset => 'Сбросить на 1×';
+
+  @override
+  String get playerSpeedNightcore => 'Nightcore';
+
+  @override
+  String get playerSpeedNightcoreSub => 'Тон едет вместе со скоростью';
+
+  @override
+  String get playerSleep => 'Таймер сна';
+
+  @override
+  String get playerSleepMin => 'мин';
+
+  @override
+  String playerSleepMinutes(int count) {
+    return '$count мин';
+  }
+
+  @override
+  String playerSleepLeft(String time) {
+    return 'Осталось $time';
+  }
+
+  @override
+  String get playerSleepEndOfTrack => 'До конца трека';
+
+  @override
+  String get playerSleepCustom => 'Своё время';
+
+  @override
+  String get playerSleepExtend => '+5 минут';
+
+  @override
+  String get playerSleepCancel => 'Выключить таймер';
+
+  @override
+  String get playerSleepFade => 'Плавное затухание';
+
+  @override
+  String get playerSleepFadeSub =>
+      'Последние 20 секунд громкость уходит в ноль';
 
   @override
   String get notifChannelName => 'Воспроизведение';
@@ -479,7 +543,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get paNothingToRefresh =>
-      'Обновлять нечего: ни один плейлист не импортирован по ссылке. Вставьте ссылку в поле поиска — импортированный плейлист запомнит источник.';
+      'Обновлять нечего: ни у одного плейлиста нет источников. Привяжите ссылку в правке плейлиста — или импортируйте плейлист по ссылке, он запомнит её сам.';
 
   @override
   String get paRefreshing => 'Идёт обновление…';
@@ -555,6 +619,25 @@ class AppLocalizationsRu extends AppLocalizations {
   String rpNewTracks(int count) {
     return 'Новых треков: $count';
   }
+
+  @override
+  String get psTitle => 'Источники обновления';
+
+  @override
+  String get psHint =>
+      'Привяжите плейлисты, альбомы или лайки с любых площадок — «Обновить треки» добавит из них новые треки наверх плейлиста.';
+
+  @override
+  String get psAddHint => 'Вставьте ссылку на плейлист, альбом или профиль…';
+
+  @override
+  String get psAdd => 'Привязать';
+
+  @override
+  String get psRemove => 'Отвязать';
+
+  @override
+  String get psDuplicate => 'Этот источник уже привязан';
 
   @override
   String get iuUnrecognized => 'Не удалось распознать ссылку';
@@ -1084,6 +1167,242 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get pvGroupTitle => 'Заголовок';
+
+  @override
+  String get pvTitleAlign => 'Выравнивание заголовка';
+
+  @override
+  String get pvTitleAlignLeft => 'Слева';
+
+  @override
+  String get pvTitleAlignLeftSub => 'заголовок слева';
+
+  @override
+  String get pvTitleAlignCenter => 'По центру';
+
+  @override
+  String get pvTitleAlignCenterSub => 'заголовок по центру';
+
+  @override
+  String get pvTitleAlignRight => 'Справа';
+
+  @override
+  String get pvTitleAlignRightSub => 'заголовок справа';
+
+  @override
+  String get pvGroupLook => 'Внешний вид';
+
+  @override
+  String get pvStyleRow => 'Стиль плеера';
+
+  @override
+  String get pvStyleStandard => 'Стандартный';
+
+  @override
+  String get pvStyleStandardSub => 'классический вид с обложкой';
+
+  @override
+  String get pvStyleVinyl => 'Пластинка';
+
+  @override
+  String get pvStyleVinylSub => 'виниловый диск с вращением';
+
+  @override
+  String get pvGroupSlider => 'Слайдер';
+
+  @override
+  String get pvSliderRow => 'Тип слайдера';
+
+  @override
+  String get pvSliderSub => 'стиль полосы прогресса';
+
+  @override
+  String get pvSliderStandard => 'Обычный';
+
+  @override
+  String get pvSliderThin => 'Тонкий';
+
+  @override
+  String get pvSliderWave => 'Волновой';
+
+  @override
+  String get pvGroupAnim => 'Смена трека';
+
+  @override
+  String get pvAnimPlayer => 'Плеер';
+
+  @override
+  String get pvAnimPlayerSub =>
+      'полноэкранный плеер — обложка и подпись настраиваются отдельно';
+
+  @override
+  String get pvAnimMini => 'Миниплеер';
+
+  @override
+  String get pvAnimMiniSub => 'карточка над таб-баром';
+
+  @override
+  String get pvAnimCover => 'Обложка';
+
+  @override
+  String get pvAnimText => 'Название и артист';
+
+  @override
+  String get pvAnimNone => 'Нет';
+
+  @override
+  String get pvAnimSlide => 'Слайд';
+
+  @override
+  String get pvAnimFade => 'Затухание';
+
+  @override
+  String get pvGroupLyrics => 'Текст песни';
+
+  @override
+  String get pvLyricsRow => 'Оформление';
+
+  @override
+  String get pvLyricsMode => 'Вид';
+
+  @override
+  String get pvLyricsModeSub => 'куда девается обложка, когда включён текст';
+
+  @override
+  String get pvLyricsModeOverlay => 'Поверх обложки';
+
+  @override
+  String get pvLyricsModeReplace => 'Вместо обложки';
+
+  @override
+  String get pvLyricsFill => 'Заливка';
+
+  @override
+  String get pvLyricsFillSub =>
+      'чем меряется прогресс по строке; дробные варианты нужны синхронному тексту';
+
+  @override
+  String get pvLyricsFillLine => 'По строкам';
+
+  @override
+  String get pvLyricsFillWord => 'По словам';
+
+  @override
+  String get pvLyricsFillLetter => 'По буквам';
+
+  @override
+  String get pvLyricsFillWipe => 'Плавная';
+
+  @override
+  String get pvLyricsFx => 'Эффект';
+
+  @override
+  String get pvLyricsFxSub => 'как загорается то, что поётся сейчас';
+
+  @override
+  String get pvLyricsFxNone => 'Нет';
+
+  @override
+  String get pvLyricsFxFade => 'Мягко';
+
+  @override
+  String get pvLyricsFxGlow => 'Свечение';
+
+  @override
+  String get pvLyricsFxSpring => 'Пружина';
+
+  @override
+  String get pvGroupMini => 'Мини-плеер';
+
+  @override
+  String get pvMiniBgRow => 'Фон';
+
+  @override
+  String get pvMiniBgSub => 'чем залита карточка над таб-баром';
+
+  @override
+  String get pvMiniBgTheme => 'Стандартный';
+
+  @override
+  String get pvMiniBgCoverColor => 'Цвет обложки';
+
+  @override
+  String get pvMiniBgCover => 'Сама обложка';
+
+  @override
+  String get pvMiniProgressRow => 'Индикаторы прогресса';
+
+  @override
+  String get pvMiniProgressSub => 'можно включить сразу несколько';
+
+  @override
+  String get pvMiniProgressNone => 'Нет';
+
+  @override
+  String get pvMiniProgressLine => 'Линия внизу';
+
+  @override
+  String get pvMiniProgressFill => 'Заливка фона';
+
+  @override
+  String get pvMiniProgressRing => 'Кольцо на обложке';
+
+  @override
+  String get pvMiniShapeRow => 'Форма обложки';
+
+  @override
+  String get pvMiniShapeRounded => 'Закруглённая';
+
+  @override
+  String get pvMiniShapeCircle => 'Круг';
+
+  @override
+  String get pvMiniRadiusRow => 'Скругление границ';
+
+  @override
+  String get pvMiniRadiusNone => 'Нет';
+
+  @override
+  String get pvMiniRadiusSoft => 'Мягкое';
+
+  @override
+  String get pvMiniRadiusRounded => 'Закруглённое';
+
+  @override
+  String get pvMiniRadiusPill => 'Круглое (Pill)';
+
+  @override
+  String get pvMiniButtonsRow => 'Кнопки управления';
+
+  @override
+  String get pvMiniButtonsSub => 'что стоит в строке справа от названия';
+
+  @override
+  String get pvMiniButtonsNone => 'Нет';
+
+  @override
+  String get pvMiniButtonPrev => 'Предыдущий';
+
+  @override
+  String get pvMiniButtonPlay => 'Плей/Пауза';
+
+  @override
+  String get pvMiniButtonNext => 'Следующий';
+
+  @override
+  String get pvMiniButtonFav => 'Лайк';
+
+  @override
+  String get playerLyrics => 'Текст песни';
+
+  @override
+  String get lyricsLoading => 'Загрузка текста…';
+
+  @override
+  String get lyricsNotFound => 'Текст не найден';
+
+  @override
   String get swZoneLibrary => 'Библиотека';
 
   @override
@@ -1210,6 +1529,24 @@ class AppLocalizationsRu extends AppLocalizations {
       'По умолчанию бейджи источников в своих фирменных цветах; включи — красить в акцент';
 
   @override
+  String get apNavBar => 'ТАБ-БАР';
+
+  @override
+  String get apNavBarRow => 'Таб-бар';
+
+  @override
+  String get apNavBarPlain => 'Обычный';
+
+  @override
+  String get apNavBarRounded => 'Скруглённый';
+
+  @override
+  String get apNavBarFloating => 'Плавающий';
+
+  @override
+  String get apNavBarPill => 'Пилюля';
+
+  @override
   String get scHelp =>
       'Обычно не нужен: ключ подбирается сам — скрейпом сайта, а если не вышло, перебором известных. Своё значение имеет смысл вбить, если SoundCloud перестал отвечать.';
 
@@ -1227,6 +1564,39 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get scActiveKey => 'Активный ключ';
+
+  @override
+  String get scSetup => 'Настроить';
+
+  @override
+  String get scReconfigure => 'Перенастроить';
+
+  @override
+  String get scStatusAuto => 'Ключ подбирается автоматически';
+
+  @override
+  String get scStatusManual => 'Работает со своим client_id';
+
+  @override
+  String get scGuideTitle => 'Как получить client_id';
+
+  @override
+  String get scGuideSubtitle => 'Пошаговая инструкция — обычно она не нужна';
+
+  @override
+  String get scStep1 => 'Открой **soundcloud.com** в браузере на компьютере';
+
+  @override
+  String get scStep2 => 'Нажми **F12** → вкладка **Network**';
+
+  @override
+  String get scStep3 => 'Нажми play на любом треке';
+
+  @override
+  String get scStep4 => 'Найди запрос к **api-v2.soundcloud.com**';
+
+  @override
+  String get scStep5 => 'Скопируй параметр **client_id** из URL';
 
   @override
   String get ymChecking => 'Проверяю…';
@@ -1295,6 +1665,30 @@ class AppLocalizationsRu extends AppLocalizations {
   String get ymErrNetwork => 'Яндекс не отвечает';
 
   @override
+  String get ymGuideTitle => 'Как подключить Яндекс.Музыку';
+
+  @override
+  String get ymGuideSubtitle => 'Вход через Яндекс ID — четыре шага';
+
+  @override
+  String get ymStep1 => 'Нажми **Подключить Яндекс.Музыку**';
+
+  @override
+  String get ymStep2 =>
+      'Откроется страница **ya.ru/device** — войди в свой аккаунт';
+
+  @override
+  String get ymStep3 =>
+      'Введи там код, который покажет Bloom (тап по коду копирует его)';
+
+  @override
+  String get ymStep4 => 'Вернись в приложение — подключение подхватится само';
+
+  @override
+  String get ymGuideNote =>
+      'Без подписки Яндекс Плюс часть треков не проигрывается — их можно слушать с других площадок.';
+
+  @override
   String get ytmConfigured => 'Настроен';
 
   @override
@@ -1305,34 +1699,91 @@ class AppLocalizationsRu extends AppLocalizations {
       'Поиск, страницы и импорт по ссылке работают без авторизации. Воспроизведение и скачивание идут напрямую с YouTube.';
 
   @override
+  String get ytmGuideTitle => 'Что уже работает';
+
+  @override
+  String get ytmGuideSubtitle => 'Подключать ничего не нужно';
+
+  @override
+  String get ytmStep1 =>
+      'Поиск, страницы артистов, альбомов и плейлистов — **без входа**';
+
+  @override
+  String get ytmStep2 =>
+      'Импорт по ссылке: вставь ссылку на альбом или плейлист в **Библиотеке**';
+
+  @override
+  String get ytmStep3 =>
+      'Воспроизведение и скачивание идут напрямую с **YouTube**';
+
+  @override
   String get stOfflineCache => 'Офлайн-кеш треков';
+
+  @override
+  String get stLyrics => 'Тексты';
+
+  @override
+  String get stCustom => 'Кастомизация';
 
   @override
   String get stCounting => 'Считаю…';
 
   @override
-  String stCacheStats(int count, String size) {
-    return '$count треков · $size';
+  String get stUsed => 'Занято';
+
+  @override
+  String get stManage => 'Очистка данных';
+
+  @override
+  String stFiles(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count файлов',
+      many: '$count файлов',
+      few: '$count файла',
+      one: '$count файл',
+    );
+    return '$_temp0';
   }
 
   @override
-  String get stHelp =>
-      'Скачанные треки играют без сети и не тратят трафик. Лежат внутри приложения — другим плеерам не видны и удаляются вместе с Bloom.';
+  String stUsedOf(String percent, String total) {
+    return '$percent% из $total';
+  }
 
   @override
-  String get stClear => 'Очистить офлайн-кеш';
-
-  @override
-  String get stClearTitle => 'Очистить офлайн-кеш?';
+  String get stClearAll => 'Очистить всё';
 
   @override
   String get stClearBody =>
       'Скачанные копии будут удалены, и эти треки перестанут играть без сети. Из библиотеки и плейлистов они никуда не денутся.';
 
   @override
+  String get stClearLyricsBody =>
+      'Сохранённые тексты будут удалены — при следующем воспроизведении они загрузятся заново.';
+
+  @override
+  String get stClearCustomBody =>
+      'Все загруженные картинки будут удалены. Если какая-то стоит фоном или обложкой — она сбросится.';
+
+  @override
+  String get stClearAllBody =>
+      'Кеши — офлайн-копии, тексты и картинки — будут удалены. Библиотека и плейлисты не затрагиваются.';
+
+  @override
   String stCleared(int count) {
     return 'Офлайн-кеш очищен, удалено файлов: $count';
   }
+
+  @override
+  String get stLyricsCleared => 'Кеш текстов очищен';
+
+  @override
+  String get stCustomCleared => 'Библиотека кастомизации очищена';
+
+  @override
+  String get stAllCleared => 'Данные очищены';
 
   @override
   String stBytes(String value) {
@@ -1353,4 +1804,283 @@ class AppLocalizationsRu extends AppLocalizations {
   String stGigabytes(String value) {
     return '$value ГБ';
   }
+
+  @override
+  String get ltImportTitle => 'Свои треки';
+
+  @override
+  String get ltImportDesc =>
+      'Что Bloom делает с файлом, добавленным плюсом во «Всех треках». Уже добавленные треки не меняются.';
+
+  @override
+  String get ltImportInPlace => 'На месте';
+
+  @override
+  String get ltImportInPlaceTip =>
+      'Файл остаётся там, где лежит, и места не занимает. Удалите или перенесёте его — трек перестанет играть.';
+
+  @override
+  String get ltImportCopy => 'В Bloom';
+
+  @override
+  String get ltImportCopyTip =>
+      'Bloom копирует файл к себе. Трек играет, даже если оригинала больше нет, но место занято дважды.';
+
+  @override
+  String ltAdded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Добавлено $count треков',
+      many: 'Добавлено $count треков',
+      few: 'Добавлено $count трека',
+      one: 'Добавлен $count трек',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get ltNothingAdded =>
+      'Нечего добавить: эти треки уже в библиотеке или формат не поддерживается';
+
+  @override
+  String get ltImportFailed => 'Не удалось открыть выбор файлов';
+
+  @override
+  String get ltFileGone => 'Файл недоступен';
+
+  @override
+  String get custLibrary => 'Библиотека';
+
+  @override
+  String get custPresets => 'Пресеты';
+
+  @override
+  String get custAddUrl => 'Добавить по URL';
+
+  @override
+  String get custUpload => 'Загрузить';
+
+  @override
+  String get custLibraryEmpty => 'Библиотека пуста — добавьте фото или GIF';
+
+  @override
+  String get custAdded => 'Добавлено!';
+
+  @override
+  String get custBadUrl => 'Введите корректный URL изображения';
+
+  @override
+  String custFilesAdded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Добавлено $count файлов',
+      many: 'Добавлено $count файлов',
+      few: 'Добавлено $count файла',
+      one: 'Добавлен $count файл',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get custCtxBg => 'Фон';
+
+  @override
+  String get custCtxCover => 'Обложка';
+
+  @override
+  String get custCtxSlider => 'Слайдер';
+
+  @override
+  String get custBlur => 'Размытие';
+
+  @override
+  String get custDim => 'Затемнение';
+
+  @override
+  String get custImageGone => 'Картинка недоступна';
+
+  @override
+  String get custOnlyForBg => 'Только для фона';
+
+  @override
+  String get custPresetCreate => 'Создать пресет';
+
+  @override
+  String get custImport => 'Импорт';
+
+  @override
+  String get custPresetsEmpty => 'Сохраните текущие настройки как пресет';
+
+  @override
+  String get custPresetNameHint => 'Назовите пресет…';
+
+  @override
+  String custPresetSaved(String name) {
+    return 'Пресет «$name» сохранён!';
+  }
+
+  @override
+  String get custPresetNothing =>
+      'Нечего сохранять — сначала поставьте фон, обложку или слайдер';
+
+  @override
+  String custPresetsFull(int limit) {
+    return 'Больше $limit пресетов не поместится';
+  }
+
+  @override
+  String get custPresetUntitled => 'Без названия';
+
+  @override
+  String custPresetSlots(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count картинок',
+      many: '$count картинок',
+      few: '$count картинки',
+      one: '$count картинка',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get custPresetApply => 'Применить';
+
+  @override
+  String get custPresetExport => 'Экспортировать';
+
+  @override
+  String custPresetApplied(String name) {
+    return 'Пресет «$name» применён';
+  }
+
+  @override
+  String get custPresetExported => 'Пресет сохранён в файл';
+
+  @override
+  String get custImportBad => 'Не удалось прочитать файл — неверный формат';
+
+  @override
+  String custImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Импортировано $count пресетов',
+      many: 'Импортировано $count пресетов',
+      few: 'Импортировано $count пресета',
+      one: 'Импортирован $count пресет',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get apCoverAsBg => 'Обложка трека как фон';
+
+  @override
+  String get apCoverAsBgSub =>
+      'Использовать обложку текущего трека как фон приложения';
+
+  @override
+  String get apTrGroup => 'ПРОЗРАЧНОСТЬ';
+
+  @override
+  String get apTrTitle => 'Прозрачность';
+
+  @override
+  String apTrOn(int percent) {
+    return 'Включено ($percent%)';
+  }
+
+  @override
+  String get apTrOff => 'Выключено';
+
+  @override
+  String get apTrLevel => 'Уровень прозрачности';
+
+  @override
+  String get apTrBrightness => 'Яркость стекла';
+
+  @override
+  String get apTrBlur => 'Размытие стекла';
+
+  @override
+  String get apTrOverlays => 'Прозрачность оверлеев';
+
+  @override
+  String get apTrOverlaysSub => 'Стекло для шторок, меню и диалогов';
+
+  @override
+  String get onbTagline => 'твой личный плеер';
+
+  @override
+  String get onbHelloSub => 'Пара шагов — и плеер будет настроен под тебя';
+
+  @override
+  String get onbHelloCta => 'Поехали';
+
+  @override
+  String get onbNext => 'Далее';
+
+  @override
+  String get onbBack => 'Назад';
+
+  @override
+  String get onbDone => 'Готово';
+
+  @override
+  String get onbProfileTitle => 'Расскажи о себе';
+
+  @override
+  String get onbProfileSub =>
+      'Аватар, обложка и имя. Всё это можно поменять позже в профиле.';
+
+  @override
+  String get onbAddCover => 'Добавить обложку профиля';
+
+  @override
+  String get onbThemeTitle => 'Выбери оформление';
+
+  @override
+  String get onbThemeSub =>
+      'Тема применяется сразу — посмотри, как она выглядит.';
+
+  @override
+  String get onbThemeHint => 'Больше тем — в настройках';
+
+  @override
+  String get onbMusicTitle => 'Подключи музыку';
+
+  @override
+  String get onbMusicSub =>
+      'Войди в свои площадки — их треки сразу появятся в поиске.';
+
+  @override
+  String get onbMusicPlatforms => 'ПЛОЩАДКИ';
+
+  @override
+  String get onbMusicSkip =>
+      'Ничего из этого не обязательно — всё есть в настройках';
+
+  @override
+  String get onbPlatConnected => 'Подключено';
+
+  @override
+  String get onbPlatNotConnected => 'Не подключено';
+
+  @override
+  String get onbPlatCheck => 'Проверить';
+
+  @override
+  String onbWelcome(String name) {
+    return 'Привет, $name!';
+  }
+
+  @override
+  String get onbWelcomeSub => 'Добро пожаловать в Bloom';
+
+  @override
+  String get onbReplay => 'Показать онбординг снова';
 }

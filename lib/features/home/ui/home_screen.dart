@@ -19,6 +19,7 @@ import '../../../app/theme/tokens.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/cover_hero.dart';
+import '../../../shared/ui/glass.dart';
 import '../../profile/profile_store.dart';
 import '../../profile/ui/profile_avatar.dart';
 import '../discover_store.dart';
@@ -71,21 +72,25 @@ class _TopBar extends StatelessWidget {
           // Пилюля профиля: знак bloom + имя. Знак без подложки — он и так
           // читается на плёнке пилюли. Высота ровно как у круглых кнопок
           // справа, иначе шапка выглядит съехавшей.
-          Container(
-            height: kHeaderControl,
-            padding: const EdgeInsets.fromLTRB(15, 0, 19, 0),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: t.pill,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                BloomMark(size: 20, color: t.text),
-                const SizedBox(width: 10),
-                Text('Bloom', style: Theme.of(context).textTheme.titleMedium),
-              ],
+          GlassBox(
+            borderRadius: BorderRadius.circular(999),
+            child: Container(
+              height: kHeaderControl,
+              padding: const EdgeInsets.fromLTRB(15, 0, 19, 0),
+              alignment: Alignment.center,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  BloomMark(size: 22, color: t.text),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Bloom',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontSize: kHeaderTitleSize,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const Spacer(),

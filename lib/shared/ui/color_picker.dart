@@ -10,16 +10,14 @@ import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 
 import '../../app/theme/tokens.dart';
 import '../../core/l10n/l10n.dart';
+import 'bloom_sheet.dart';
 
 /// Открыть пикер. Возвращает выбранный цвет или `null`, если закрыли.
 Future<Color?> showBloomColorPicker(BuildContext context, Color initial) {
-  return showModalBottomSheet<Color>(
+  // Корневой навигатор и стекло затемнения — общие у всех наших шторок
+  // (`showBloomModal`): иначе шторка остаётся под таб-баром и миниплеером.
+  return showBloomModal<Color>(
     context: context,
-    // Корневой навигатор: иначе шторка остаётся под таб-баром и миниплеером.
-    useRootNavigator: true,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    barrierColor: Colors.black.withValues(alpha: 0.5),
     builder: (_) => _ColorPickerSheet(initial: initial),
   );
 }
@@ -92,8 +90,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(t.radius * 1.7),
         ),
-        child: ColoredBox(
-          color: t.bg,
+        child: SheetSurface(
           child: SafeArea(
             top: false,
             child: Padding(

@@ -13,8 +13,13 @@ import 'core/store/json_store.dart';
 import 'core/store/library_store.dart';
 import 'core/store/settings_store.dart';
 import 'core/store/stats_store.dart';
+import 'features/customization/ui/app_background.dart';
+import 'features/library/local_tracks.dart';
 import 'features/library/pl_auto_store.dart';
+import 'features/lyrics/lyrics_cache.dart';
+import 'features/lyrics/lyrics_store.dart';
 import 'features/offline/offline_store.dart';
+import 'features/onboarding/onboarding_store.dart';
 import 'features/player/audio_handler.dart';
 import 'features/player/player_controller.dart';
 import 'features/settings/auto_accent.dart';
@@ -34,6 +39,11 @@ Future<void> main() async {
   final store = await JsonStore.open();
   await initCoverStore();
   await initOfflineStore();
+  await initLocalTracks();
+  // Кеш текстов песен — свой каталог с файлами, а не запись в `bloom.json`:
+  // текст весит килобайтами, и класть его в файл библиотеки значило бы
+  // переписывать её целиком на каждую найденную песню.
+  final lyricsCache = await openLyricsCache();
 
   // Канал уведомлений заводится ДО первого кадра, поэтому `context.l` тут ещё
   // неоткуда взять — переводы грузим напрямую из делегата. Язык тот же, что
@@ -71,9 +81,14 @@ Future<void> main() async {
     overrides: [
       jsonStoreProvider.overrideWithValue(store),
       audioHandlerProvider.overrideWithValue(handler),
+      lyricsCacheProvider.overrideWithValue(lyricsCache),
     ],
   );
   container.read(playbackProvider);
+  // Пройден ли онбординг — ДО первого маршрута: `redirect` роутера смотрит на
+  // флаг, который выставляет этот провайдер, и опоздание показало бы главную
+  // на долю секунды раньше мастера.
+  container.read(onboardedProvider);
   // Токен Яндекса поднимаем сразу: пока стор не создан, площадка считается
   // выключенной и первый же поиск прошёл бы мимо неё.
   container.read(ymAuthProvider);
@@ -99,6 +114,11 @@ class BloomApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = ref.watch(settingsProvider).tokens;
+    // Картинка фона живёт ПОД интерфейсом, и заливку снимают ровно те, кто
+    // обязан её пропустить: страницы роутера, каркас и страницы артиста и
+    // сета (см. `pageBackground`). Полноэкранный плеер и шторки поверх него
+    // остаются сплошными — фон в плеере пользователь видеть не хочет.
+    final bgOn = ref.watch(backgroundOnProvider);
     // Системные бары красим под тему — иначе на светлой теме белые иконки
     // статус-бара исчезают.
     SystemChrome.setSystemUIOverlayStyle(
@@ -126,7 +146,10 @@ class BloomApp extends ConsumerWidget {
       // Свой ключ мессенджера: тосты бывают и без экрана — авто-обновление
       // плейлистов ходит по таймеру.
       scaffoldMessengerKey: bloomMessengerKey,
-      theme: buildBloomTheme(tokens),
+      theme: buildBloomTheme(tokens, transparentPages: bgOn),
+      // Фон — под навигатором: он один на всё приложение и не должен ни
+      // перерисовываться на каждом переходе, ни ехать вместе со страницей.
+      builder: (_, child) => AppBackground(child: child ?? const SizedBox()),
       routerConfig: bloomRouter,
     );
   }

@@ -16,16 +16,20 @@
 /// Остальные честно говорят, что ещё не сделаны.
 library;
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
+import '../../onboarding/onboarding_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
+import '../../../shared/ui/subpage_header.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -69,15 +73,30 @@ class SettingsScreen extends StatelessWidget {
               SettingsRow(
                 icon: SolarIconsOutline.musicNote,
                 title: context.l.setPlayer,
+                onTap: () => context.go('/settings/player'),
               ),
               SettingsRow(
                 icon: SolarIconsOutline.sidebar,
                 title: context.l.setInterface,
                 onTap: () => context.go('/settings/appearance'),
               ),
+            ],
+          ),
+          // Кастомизация — своя группа с двумя строками, а не один пункт, как
+          // на ПК: там это раздел с двумя вкладками внутри, а здесь две
+          // самостоятельные страницы (так его показал пользователь на макете).
+          SettingsGroup(
+            title: context.l.setCustomization,
+            rows: [
               SettingsRow(
-                icon: SolarIconsOutline.album,
-                title: context.l.setCustomization,
+                icon: SolarIconsOutline.gallery,
+                title: context.l.custLibrary,
+                onTap: () => context.go('/settings/media'),
+              ),
+              SettingsRow(
+                icon: SolarIconsOutline.box,
+                title: context.l.custPresets,
+                onTap: () => context.go('/settings/presets'),
               ),
             ],
           ),
@@ -103,12 +122,26 @@ class SettingsScreen extends StatelessWidget {
                 title: 'Last.fm',
                 leading: const ServiceLogo(Service.lastfm, size: 20),
               ),
-              SettingsRow(
-                title: 'Genius',
-                leading: const ServiceLogo(Service.genius, size: 20),
-              ),
             ],
           ),
+          // Повтор онбординга — только в отладочной сборке, как `showOnboarding()`
+          // в консоли на ПК: в релизе мастер показывается один раз за установку.
+          if (kDebugMode)
+            Consumer(
+              builder: (context, ref, _) => SettingsGroup(
+                title: 'DEBUG',
+                rows: [
+                  SettingsRow(
+                    icon: SolarIconsOutline.magicStick,
+                    title: context.l.onbReplay,
+                    onTap: () {
+                      ref.read(onboardedProvider.notifier).reset();
+                      context.go('/onboarding');
+                    },
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -123,47 +156,16 @@ class SettingsGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(6, 20, 6, 8),
-          // Ярче общего `labelSmall`: в списке без описаний капсовый заголовок
-          // остался единственным ориентиром, приглушённый `muted` его терял.
-          child: Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(color: t.text2),
-          ),
+          child: SettingsCaption(title),
         ),
-        Container(
-          decoration: BoxDecoration(
-            color: t.pill,
-            borderRadius: BorderRadius.circular(t.radius),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              for (var i = 0; i < rows.length; i++) ...[
-                if (i > 0)
-                  Padding(
-                    // 14 паддинга + 24 иконки + 14 зазора: линия начинается
-                    // ровно под текстом строки.
-                    padding: const EdgeInsets.only(left: 52),
-                    // Половина от обычной рамки: строки уже сгруппированы
-                    // контейнером, разделителю достаточно едва намекать.
-                    child: Divider(
-                      height: 1,
-                      color: t.ovlLine.withValues(alpha: t.ovlLine.a * 0.5),
-                    ),
-                  ),
-                rows[i],
-              ],
-            ],
-          ),
-        ),
+        // 14 паддинга + 24 иконки + 14 зазора: линия начинается ровно под
+        // текстом строки.
+        SettingsGroupCard(rows: rows, dividerInset: 52),
       ],
     );
   }
@@ -191,8 +193,8 @@ class SettingsRow extends StatelessWidget {
     return InkWell(
       onTap: onTap ?? () => _showStub(context, title),
       child: Padding(
-        // 20 по вертикали + 20 строки текста = 60 на строку.
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
+        // 22 по вертикали + 20 строки текста = 64 на строку.
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 22),
         child: Row(
           children: [
             SizedBox(

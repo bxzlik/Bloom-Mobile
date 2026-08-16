@@ -12,6 +12,7 @@ import '../../core/l10n/l10n.dart';
 import '../../core/entities/entities.dart';
 import '../../features/detail/detail_nav.dart';
 import '../../features/offline/offline_store.dart';
+import '../../features/player/play_source.dart';
 import '../../features/player/player_controller.dart';
 import '../util/format.dart';
 import 'atoms.dart';
@@ -58,7 +59,7 @@ class TrackRow extends ConsumerWidget {
     required this.track,
     required this.queue,
     required this.index,
-    this.sourceId,
+    this.source,
     this.dragIndex,
     this.mark,
   });
@@ -67,10 +68,10 @@ class TrackRow extends ConsumerWidget {
   final List<Track> queue;
   final int index;
 
-  /// Список, из которого взята [queue] — см. [PlaybackState.sourceId]. Строка
-  /// внутри плейлиста заводит его целиком, поэтому плитка этого плейлиста тоже
-  /// должна показать эквалайзер.
-  final String? sourceId;
+  /// Откуда взята [queue] — см. [PlaybackState.source]. Строка внутри
+  /// плейлиста заводит его целиком: плитка этого плейлиста должна показать
+  /// эквалайзер, а пилюля в плеере — назвать его.
+  final PlaySource? source;
 
   /// Номер строки в `ReorderableList` — см. [TrackRowShell.dragIndex]. `null` в
   /// списках, где порядок не свой: в выдаче поиска и на страницах площадок
@@ -87,7 +88,7 @@ class TrackRow extends ConsumerWidget {
       active: ref.watch(playbackProvider).track?.id == track.id,
       onTap: () => ref
           .read(playbackProvider.notifier)
-          .playQueue(queue, index, sourceId: sourceId),
+          .playQueue(queue, index, source: source),
       onMenu: () => showTrackActions(context, ref, track),
       dragIndex: dragIndex,
       mark: mark,
@@ -526,12 +527,17 @@ class TrackCard extends ConsumerWidget {
     required this.track,
     required this.queue,
     required this.index,
+    this.source,
     this.size = 132,
   });
 
   final Track track;
   final List<Track> queue;
   final int index;
+
+  /// Откуда взята [queue] — см. [TrackRow.source].
+  final PlaySource? source;
+
   final double size;
 
   @override
@@ -541,7 +547,9 @@ class TrackCard extends ConsumerWidget {
     final active = ref.watch(playbackProvider).track?.id == track.id;
 
     return GestureDetector(
-      onTap: () => ref.read(playbackProvider.notifier).playQueue(queue, index),
+      onTap: () => ref
+          .read(playbackProvider.notifier)
+          .playQueue(queue, index, source: source),
       onLongPress: () => showTrackActions(context, ref, track),
       behavior: HitTestBehavior.opaque,
       child: SizedBox(

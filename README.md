@@ -19,8 +19,8 @@ A mobile player: Yandex Music, SoundCloud, and YouTube Music in a single app
 | Platform | Notes |
 | --- | --- |
 | 🟠 **SoundCloud** | Native streaming |
-| 🔴 **YouTube Music** | Not started |
-| 🟡 **Yandex Music** | Not started |
+| 🔴 **YouTube Music** | Native streaming |
+| 🟡 **Yandex Music** | Native streaming |
 
 ## 🚀 Development
 

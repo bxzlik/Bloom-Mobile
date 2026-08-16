@@ -21,6 +21,34 @@ import 'json_store.dart';
 /// Сколько записей держим в истории.
 const int kHistoryLimit = 200;
 
+/// Источник «Обновить треки»: привязанная к плейлисту внешняя коллекция —
+/// плейлист, альбом или профиль (лайки) любой площадки. Их может быть сколько
+/// угодно и с разных площадок, как на десктопе (`PlSourceRef`).
+///
+/// Легаси-вида `scLikes` (лайки SC-пользователя по user-id, без URL) у нас
+/// никогда не было: «Лайки <ник>» и здесь заводятся ссылкой на профиль, и это
+/// обычный [url].
+class PlSourceRef {
+  const PlSourceRef({required this.url, this.title});
+
+  final String url;
+
+  /// Название коллекции на момент привязки — только для строки в списке.
+  final String? title;
+
+  Map<String, dynamic> toJson() => {
+    'url': url,
+    if (title != null) 'title': title,
+  };
+
+  static PlSourceRef? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final url = json['url'];
+    if (url is! String || url.isEmpty) return null;
+    return PlSourceRef(url: url, title: json['title'] as String?);
+  }
+}
+
 class UserPlaylist {
   final String id;
   final String name;
@@ -28,8 +56,9 @@ class UserPlaylist {
   final String? cover;
   final String? description;
 
-  /// Ссылка, из которой плейлист импортирован — для «обновить треки».
-  final String? sourceUrl;
+  /// Откуда «Обновить треки» тянет новые треки. Пусто — плейлист свой, и
+  /// обновлять его неоткуда.
+  final List<PlSourceRef> sources;
 
   /// Импортированный альбом. Хранится так же, как плейлист, но вкладка
   /// «Альбомы» показывает только их.
@@ -42,7 +71,7 @@ class UserPlaylist {
     this.trackIds = const [],
     this.cover,
     this.description,
-    this.sourceUrl,
+    this.sources = const [],
     this.isAlbum = false,
     this.createdAt = 0,
   });
@@ -52,14 +81,14 @@ class UserPlaylist {
     List<String>? trackIds,
     String? cover,
     String? description,
-    String? sourceUrl,
+    List<PlSourceRef>? sources,
   }) => UserPlaylist(
     id: id,
     name: name ?? this.name,
     trackIds: trackIds ?? this.trackIds,
     cover: cover ?? this.cover,
     description: description ?? this.description,
-    sourceUrl: sourceUrl ?? this.sourceUrl,
+    sources: sources ?? this.sources,
     isAlbum: isAlbum,
     createdAt: createdAt,
   );
@@ -70,7 +99,7 @@ class UserPlaylist {
     'trackIds': trackIds,
     if (cover != null) 'cover': cover,
     if (description != null) 'description': description,
-    if (sourceUrl != null) 'sourceUrl': sourceUrl,
+    if (sources.isNotEmpty) 'sources': [for (final s in sources) s.toJson()],
     if (isAlbum) 'isAlbum': true,
     'createdAt': createdAt,
   };
@@ -80,6 +109,17 @@ class UserPlaylist {
     final id = json['id'];
     final name = json['name'];
     if (id is! String || name is! String) return null;
+    final sources = [
+      for (final raw in (json['sources'] as List?) ?? const [])
+        ?PlSourceRef.fromJson(raw),
+    ];
+    // Плейлисты, заведённые до списка источников, хранят одну ссылку в
+    // `sourceUrl` — она и становится их единственным источником (десктопный
+    // `migratePlSources`).
+    final legacy = json['sourceUrl'];
+    if (sources.isEmpty && legacy is String && legacy.isNotEmpty) {
+      sources.add(PlSourceRef(url: legacy));
+    }
     return UserPlaylist(
       id: id,
       name: name,
@@ -87,7 +127,7 @@ class UserPlaylist {
           (json['trackIds'] as List?)?.whereType<String>().toList() ?? const [],
       cover: json['cover'] as String?,
       description: json['description'] as String?,
-      sourceUrl: json['sourceUrl'] as String?,
+      sources: sources,
       isAlbum: json['isAlbum'] == true,
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
     );
@@ -511,6 +551,7 @@ class LibraryController extends Notifier<LibraryState> {
     List<Track> tracks = const [],
     String? cover,
     String? sourceUrl,
+    String? sourceTitle,
     bool isAlbum = false,
   }) {
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -524,7 +565,12 @@ class LibraryController extends Notifier<LibraryState> {
           : name.trim(),
       trackIds: tracks.map((t) => t.id).toList(),
       cover: cover ?? (tracks.isEmpty ? null : tracks.first.cover),
-      sourceUrl: sourceUrl,
+      // Ссылка, из которой плейлист завели, сразу становится его первым
+      // источником обновления — остальные привязывают уже руками, в редакторе.
+      sources: [
+        if (sourceUrl != null && sourceUrl.trim().isNotEmpty)
+          PlSourceRef(url: sourceUrl.trim(), title: sourceTitle),
+      ],
       isAlbum: isAlbum,
       createdAt: now,
     );
@@ -549,11 +595,16 @@ class LibraryController extends Notifier<LibraryState> {
       trackIds: p.trackIds,
       cover: cover,
       description: p.description,
-      sourceUrl: p.sourceUrl,
+      sources: p.sources,
       isAlbum: p.isAlbum,
       createdAt: p.createdAt,
     ),
   );
+
+  /// Привязки «Обновить треки» целиком — их правит редактор плейлиста
+  /// (`PlSourcesEditor` на ПК).
+  void setPlaylistSources(String id, List<PlSourceRef> sources) =>
+      _updatePlaylist(id, (p) => p.copyWith(sources: [...sources]));
 
   void deletePlaylist(String id) {
     state = state.copyWith(
@@ -582,17 +633,24 @@ class LibraryController extends Notifier<LibraryState> {
 
   /// То же для пачки — выделение из режима правки списка. Порядок внутри пачки
   /// сохраняется, уже лежащие в плейлисте треки пропускаются.
-  void addTracksToPlaylist(String id, List<Track> batch) {
+  ///
+  /// Возвращает, сколько треков реально прибавилось: «Обновить треки» считает
+  /// новинки именно так — сравнивать составы снаружи было бы нечем, пока идёт
+  /// сеть, плейлист мог измениться.
+  int addTracksToPlaylist(String id, List<Track> batch) {
     addToLibrary(batch);
+    var added = 0;
     _updatePlaylist(id, (p) {
       final have = p.trackIds.toSet();
       final add = [
         for (final t in batch)
-          if (!have.contains(t.id)) t.id,
+          if (have.add(t.id)) t.id,
       ];
+      added = add.length;
       if (add.isEmpty) return p;
       return p.copyWith(trackIds: [...add, ...p.trackIds]);
     });
+    return added;
   }
 
   void removeTrackFromPlaylist(String id, String trackId) => _updatePlaylist(
@@ -601,21 +659,11 @@ class LibraryController extends Notifier<LibraryState> {
   );
 
   /// Правка плейлиста целиком: [trackIds] — новый состав И порядок. В отличие
-  /// от [replacePlaylistTracks] сюда приходят только id: треки уже в
-  /// хранилище, добавлять нечего, а вот выпавшие из состава могут стать
-  /// никому не нужными.
+  /// от [addTracksToPlaylist] сюда приходят только id: треки уже в хранилище,
+  /// добавлять нечего, а вот выпавшие из состава могут стать никому не нужными.
   void setPlaylistTracks(String id, List<String> trackIds) {
     _updatePlaylist(id, (p) => p.copyWith(trackIds: trackIds));
     _prune();
-  }
-
-  /// Заменить состав плейлиста целиком — «обновить треки» из источника.
-  void replacePlaylistTracks(String id, List<Track> tracks) {
-    addToLibrary(tracks);
-    _updatePlaylist(
-      id,
-      (p) => p.copyWith(trackIds: tracks.map((t) => t.id).toList()),
-    );
   }
 
   void _updatePlaylist(String id, UserPlaylist Function(UserPlaylist) f) {

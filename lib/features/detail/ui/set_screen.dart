@@ -16,6 +16,8 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/store/library_store.dart';
+import '../../../features/customization/ui/app_background.dart';
+import '../../../features/player/play_source.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
@@ -106,40 +108,43 @@ class _SetScreenState extends ConsumerState<SetScreen> {
     if (_tracks.isEmpty) return;
     ref
         .read(playbackProvider.notifier)
-        .playQueue(_tracks, 0, sourceId: _set.id);
+        .playQueue(_tracks, 0, source: SetSource(_set));
   }
 
   void _shuffle() {
     if (_tracks.isEmpty) return;
     ref
         .read(playbackProvider.notifier)
-        .playQueueShuffled(_tracks, sourceId: _set.id);
+        .playQueueShuffled(_tracks, source: SetSource(_set));
   }
 
-  /// Есть ли уже сохранённая копия — ищем по ссылке источника, тому же полю, по
-  /// которому «Обновить треки» находит источник импортированного плейлиста.
+  /// Есть ли уже сохранённая копия — ищем по ссылке источника, среди тех же
+  /// привязок, из которых «Обновить треки» тянет новые треки.
   bool get _saved =>
       _set.sourceUrl != null &&
       ref
           .read(libraryProvider)
           .playlists
-          .any((p) => p.sourceUrl != null && p.sourceUrl == _set.sourceUrl);
+          .any((p) => p.sources.any((s) => s.url == _set.sourceUrl));
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
     final queue = _tracks;
-    // Уже сохранённая копия ищется по ссылке источника — то же поле, по
-    // которому «Обновить треки» находит источник импортированного плейлиста.
+    // Уже сохранённая копия ищется по ссылке источника — среди тех же привязок,
+    // из которых «Обновить треки» тянет новые треки.
     final saved =
         _set.sourceUrl != null &&
         ref
             .watch(libraryProvider)
             .playlists
-            .any((p) => p.sourceUrl != null && p.sourceUrl == _set.sourceUrl);
+            .any((p) => p.sources.any((s) => s.url == _set.sourceUrl));
 
     return Scaffold(
-      backgroundColor: t.bg,
+      // Под страницей может лежать картинка фона — тогда своей заливки нет.
+      backgroundColor: ref.watch(backgroundOnProvider)
+          ? Colors.transparent
+          : t.bg,
       body: CustomScrollView(
         slivers: [
           DetailHero(
@@ -221,7 +226,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
                   track: _tracks[i],
                   queue: _tracks,
                   index: i,
-                  sourceId: _set.id,
+                  source: SetSource(_set),
                 ),
               ),
             ),
@@ -261,6 +266,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
           tracks: _tracks,
           cover: _set.cover,
           sourceUrl: _set.sourceUrl,
+          sourceTitle: _set.title,
           isAlbum: _set.isAlbum,
         );
     _toast(

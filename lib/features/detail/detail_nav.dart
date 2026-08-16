@@ -29,10 +29,11 @@ Future<void> openArtist(
   String artistId, {
   Artist? initial,
   CoverFlight? flight,
-}) => Navigator.of(context).push(
-  detailPageRoute<void>(
-    (_) => ArtistScreen(artistId: artistId, initial: initial, flight: flight),
-  ),
+}) => openArtistIn(
+  Navigator.of(context),
+  artistId,
+  initial: initial,
+  flight: flight,
 );
 
 /// Страница альбома или плейлиста площадки (не библиотечного — тот открывается
@@ -41,6 +42,26 @@ Future<void> openSet(
   BuildContext context,
   Playlist set, {
   CoverFlight? flight,
-}) => Navigator.of(
-  context,
-).push(detailPageRoute<void>((_) => SetScreen(set: set, flight: flight)));
+}) => openSetIn(Navigator.of(context), set, flight: flight);
+
+/// То же, но навигатор передан снаружи: пилюля источника открывает страницу из
+/// полноэкранного плеера, а он лежит в КОРНЕВОМ навигаторе — своего контекста
+/// вкладки у него нет (см. `currentBranchNavigator`).
+Future<void> openArtistIn(
+  NavigatorState navigator,
+  String artistId, {
+  Artist? initial,
+  CoverFlight? flight,
+}) => navigator.push(
+  detailPageRoute<void>(
+    (_) => ArtistScreen(artistId: artistId, initial: initial, flight: flight),
+  ),
+);
+
+Future<void> openSetIn(
+  NavigatorState navigator,
+  Playlist set, {
+  CoverFlight? flight,
+}) => navigator.push(
+  detailPageRoute<void>((_) => SetScreen(set: set, flight: flight)),
+);

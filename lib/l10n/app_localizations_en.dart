@@ -39,6 +39,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonUpload => 'Upload';
 
   @override
+  String get commonHide => 'Hide';
+
+  @override
+  String get commonClear => 'Clear';
+
+  @override
+  String get commonOr => 'or';
+
+  @override
   String get commonPin => 'Pin';
 
   @override
@@ -117,6 +126,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonAlreadyInLibrary => 'Already in your library';
 
   @override
+  String get commonUnknownArtist => 'Unknown';
+
+  @override
   String get commonOfflineBadge => 'offline';
 
   @override
@@ -177,16 +189,68 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeNewReleases => 'New releases';
 
   @override
-  String get playerPlayingFrom => 'Playing from';
+  String get playerQueue => 'Queue';
 
   @override
-  String get playerQueue => 'Queue';
+  String playerSourceSearch(String query) {
+    return 'Search: $query';
+  }
 
   @override
   String get playerCopied => 'Copied';
 
   @override
   String get playerCopyError => 'Error';
+
+  @override
+  String get playerSpeed => 'Speed';
+
+  @override
+  String get playerSpeedCustom => 'Custom speed';
+
+  @override
+  String get playerSpeedReset => 'Reset to 1×';
+
+  @override
+  String get playerSpeedNightcore => 'Nightcore';
+
+  @override
+  String get playerSpeedNightcoreSub => 'Pitch follows the speed';
+
+  @override
+  String get playerSleep => 'Sleep timer';
+
+  @override
+  String get playerSleepMin => 'min';
+
+  @override
+  String playerSleepMinutes(int count) {
+    return '$count min';
+  }
+
+  @override
+  String playerSleepLeft(String time) {
+    return '$time left';
+  }
+
+  @override
+  String get playerSleepEndOfTrack => 'Until end of track';
+
+  @override
+  String get playerSleepCustom => 'Custom time';
+
+  @override
+  String get playerSleepExtend => '+5 minutes';
+
+  @override
+  String get playerSleepCancel => 'Turn off timer';
+
+  @override
+  String get playerSleepFade => 'Fade out';
+
+  @override
+  String get playerSleepFadeSub =>
+      'Volume drops to zero over the last 20 seconds';
 
   @override
   String get notifChannelName => 'Playback';
@@ -471,7 +535,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paNothingToRefresh =>
-      'Nothing to refresh: no playlist was imported from a link. Paste a link into the search field — an imported playlist remembers its source.';
+      'Nothing to refresh: no playlist has sources yet. Link one while editing a playlist — or import a playlist from a link and it remembers its own.';
 
   @override
   String get paRefreshing => 'Refreshing…';
@@ -547,6 +611,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String rpNewTracks(int count) {
     return 'New tracks: $count';
   }
+
+  @override
+  String get psTitle => 'Update sources';
+
+  @override
+  String get psHint =>
+      'Link playlists, albums or likes from any platform — “Refresh tracks” will add new tracks from them to the top of this playlist.';
+
+  @override
+  String get psAddHint => 'Paste a playlist, album or profile link…';
+
+  @override
+  String get psAdd => 'Link';
+
+  @override
+  String get psRemove => 'Unlink';
+
+  @override
+  String get psDuplicate => 'This source is already linked';
 
   @override
   String get iuUnrecognized => 'Couldn’t make sense of that link';
@@ -1074,6 +1157,242 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get pvGroupTitle => 'Title';
+
+  @override
+  String get pvTitleAlign => 'Title alignment';
+
+  @override
+  String get pvTitleAlignLeft => 'Left';
+
+  @override
+  String get pvTitleAlignLeftSub => 'title on the left';
+
+  @override
+  String get pvTitleAlignCenter => 'Center';
+
+  @override
+  String get pvTitleAlignCenterSub => 'title centered';
+
+  @override
+  String get pvTitleAlignRight => 'Right';
+
+  @override
+  String get pvTitleAlignRightSub => 'title on the right';
+
+  @override
+  String get pvGroupLook => 'Appearance';
+
+  @override
+  String get pvStyleRow => 'Player style';
+
+  @override
+  String get pvStyleStandard => 'Standard';
+
+  @override
+  String get pvStyleStandardSub => 'the classic look with a square cover';
+
+  @override
+  String get pvStyleVinyl => 'Vinyl';
+
+  @override
+  String get pvStyleVinylSub => 'a spinning vinyl record';
+
+  @override
+  String get pvGroupSlider => 'Slider';
+
+  @override
+  String get pvSliderRow => 'Slider type';
+
+  @override
+  String get pvSliderSub => 'style of the progress bar';
+
+  @override
+  String get pvSliderStandard => 'Standard';
+
+  @override
+  String get pvSliderThin => 'Thin';
+
+  @override
+  String get pvSliderWave => 'Wave';
+
+  @override
+  String get pvGroupAnim => 'Track change';
+
+  @override
+  String get pvAnimPlayer => 'Player';
+
+  @override
+  String get pvAnimPlayerSub =>
+      'the full screen player — cover and title are configured separately';
+
+  @override
+  String get pvAnimMini => 'Mini player';
+
+  @override
+  String get pvAnimMiniSub => 'the card above the tab bar';
+
+  @override
+  String get pvAnimCover => 'Cover';
+
+  @override
+  String get pvAnimText => 'Title and artist';
+
+  @override
+  String get pvAnimNone => 'None';
+
+  @override
+  String get pvAnimSlide => 'Slide';
+
+  @override
+  String get pvAnimFade => 'Fade';
+
+  @override
+  String get pvGroupLyrics => 'Lyrics';
+
+  @override
+  String get pvLyricsRow => 'Style';
+
+  @override
+  String get pvLyricsMode => 'View';
+
+  @override
+  String get pvLyricsModeSub => 'where the cover goes once lyrics are on';
+
+  @override
+  String get pvLyricsModeOverlay => 'Over the cover';
+
+  @override
+  String get pvLyricsModeReplace => 'Instead of the cover';
+
+  @override
+  String get pvLyricsFill => 'Fill';
+
+  @override
+  String get pvLyricsFillSub =>
+      'what measures progress along the line; granular fills need synced lyrics';
+
+  @override
+  String get pvLyricsFillLine => 'By line';
+
+  @override
+  String get pvLyricsFillWord => 'By word';
+
+  @override
+  String get pvLyricsFillLetter => 'By letter';
+
+  @override
+  String get pvLyricsFillWipe => 'Smooth';
+
+  @override
+  String get pvLyricsFx => 'Effect';
+
+  @override
+  String get pvLyricsFxSub => 'how the part being sung lights up';
+
+  @override
+  String get pvLyricsFxNone => 'None';
+
+  @override
+  String get pvLyricsFxFade => 'Soft';
+
+  @override
+  String get pvLyricsFxGlow => 'Glow';
+
+  @override
+  String get pvLyricsFxSpring => 'Spring';
+
+  @override
+  String get pvGroupMini => 'Mini player';
+
+  @override
+  String get pvMiniBgRow => 'Background';
+
+  @override
+  String get pvMiniBgSub => 'what fills the card above the tab bar';
+
+  @override
+  String get pvMiniBgTheme => 'Standard';
+
+  @override
+  String get pvMiniBgCoverColor => 'Cover color';
+
+  @override
+  String get pvMiniBgCover => 'The cover itself';
+
+  @override
+  String get pvMiniProgressRow => 'Progress indicators';
+
+  @override
+  String get pvMiniProgressSub => 'several can be on at once';
+
+  @override
+  String get pvMiniProgressNone => 'None';
+
+  @override
+  String get pvMiniProgressLine => 'Line at the bottom';
+
+  @override
+  String get pvMiniProgressFill => 'Background fill';
+
+  @override
+  String get pvMiniProgressRing => 'Ring around the cover';
+
+  @override
+  String get pvMiniShapeRow => 'Cover shape';
+
+  @override
+  String get pvMiniShapeRounded => 'Rounded';
+
+  @override
+  String get pvMiniShapeCircle => 'Circle';
+
+  @override
+  String get pvMiniRadiusRow => 'Corner rounding';
+
+  @override
+  String get pvMiniRadiusNone => 'None';
+
+  @override
+  String get pvMiniRadiusSoft => 'Soft';
+
+  @override
+  String get pvMiniRadiusRounded => 'Rounded';
+
+  @override
+  String get pvMiniRadiusPill => 'Pill';
+
+  @override
+  String get pvMiniButtonsRow => 'Controls';
+
+  @override
+  String get pvMiniButtonsSub => 'what stands in the row right of the title';
+
+  @override
+  String get pvMiniButtonsNone => 'None';
+
+  @override
+  String get pvMiniButtonPrev => 'Previous';
+
+  @override
+  String get pvMiniButtonPlay => 'Play/Pause';
+
+  @override
+  String get pvMiniButtonNext => 'Next';
+
+  @override
+  String get pvMiniButtonFav => 'Like';
+
+  @override
+  String get playerLyrics => 'Lyrics';
+
+  @override
+  String get lyricsLoading => 'Loading lyrics…';
+
+  @override
+  String get lyricsNotFound => 'Lyrics not found';
+
+  @override
   String get swZoneLibrary => 'Library';
 
   @override
@@ -1200,6 +1519,24 @@ class AppLocalizationsEn extends AppLocalizations {
       'Source badges use their brand colors by default; enable to tint them with the accent';
 
   @override
+  String get apNavBar => 'TAB BAR';
+
+  @override
+  String get apNavBarRow => 'Tab bar';
+
+  @override
+  String get apNavBarPlain => 'Standard';
+
+  @override
+  String get apNavBarRounded => 'Rounded top';
+
+  @override
+  String get apNavBarFloating => 'Floating';
+
+  @override
+  String get apNavBarPill => 'Pill';
+
+  @override
   String get scHelp =>
       'Usually not needed: the key is picked up automatically — by scraping the site, and failing that by trying known ones. Setting your own makes sense if SoundCloud stopped responding.';
 
@@ -1217,6 +1554,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get scActiveKey => 'Active key';
+
+  @override
+  String get scSetup => 'Set up';
+
+  @override
+  String get scReconfigure => 'Reconfigure';
+
+  @override
+  String get scStatusAuto => 'The key is picked up automatically';
+
+  @override
+  String get scStatusManual => 'Running on your own client_id';
+
+  @override
+  String get scGuideTitle => 'How to get a client_id';
+
+  @override
+  String get scGuideSubtitle => 'Step-by-step guide — usually not needed';
+
+  @override
+  String get scStep1 => 'Open **soundcloud.com** in a desktop browser';
+
+  @override
+  String get scStep2 => 'Press **F12** → the **Network** tab';
+
+  @override
+  String get scStep3 => 'Press play on any track';
+
+  @override
+  String get scStep4 => 'Find the request to **api-v2.soundcloud.com**';
+
+  @override
+  String get scStep5 => 'Copy the **client_id** parameter from the URL';
 
   @override
   String get ymChecking => 'Checking…';
@@ -1284,6 +1654,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ymErrNetwork => 'Yandex is not responding';
 
   @override
+  String get ymGuideTitle => 'How to connect Yandex Music';
+
+  @override
+  String get ymGuideSubtitle => 'Sign in with Yandex ID — four steps';
+
+  @override
+  String get ymStep1 => 'Press **Connect Yandex Music**';
+
+  @override
+  String get ymStep2 =>
+      'The **ya.ru/device** page opens — sign in to your account';
+
+  @override
+  String get ymStep3 => 'Enter the code Bloom shows (tap the code to copy it)';
+
+  @override
+  String get ymStep4 =>
+      'Come back to the app — the connection is picked up on its own';
+
+  @override
+  String get ymGuideNote =>
+      'Without a Yandex Plus subscription some tracks won\'t play — those can be listened to from other platforms.';
+
+  @override
   String get ytmConfigured => 'Configured';
 
   @override
@@ -1294,34 +1688,89 @@ class AppLocalizationsEn extends AppLocalizations {
       'Search, pages and link import work without auth. Playback and downloads come straight from YouTube.';
 
   @override
+  String get ytmGuideTitle => 'What already works';
+
+  @override
+  String get ytmGuideSubtitle => 'Nothing to connect';
+
+  @override
+  String get ytmStep1 =>
+      'Search, artist, album and playlist pages — **no sign-in**';
+
+  @override
+  String get ytmStep2 =>
+      'Link import: paste an album or playlist link in the **Library**';
+
+  @override
+  String get ytmStep3 =>
+      'Playback and downloads come straight from **YouTube**';
+
+  @override
   String get stOfflineCache => 'Offline track cache';
+
+  @override
+  String get stLyrics => 'Lyrics';
+
+  @override
+  String get stCustom => 'Customization';
 
   @override
   String get stCounting => 'Counting…';
 
   @override
-  String stCacheStats(int count, String size) {
-    return '$count tracks · $size';
+  String get stUsed => 'Used';
+
+  @override
+  String get stManage => 'Clear data';
+
+  @override
+  String stFiles(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files',
+      one: '$count file',
+    );
+    return '$_temp0';
   }
 
   @override
-  String get stHelp =>
-      'Downloaded tracks play without a network and use no data. They live inside the app — other players can’t see them, and they are removed together with Bloom.';
+  String stUsedOf(String percent, String total) {
+    return '$percent% of $total';
+  }
 
   @override
-  String get stClear => 'Clear offline cache';
-
-  @override
-  String get stClearTitle => 'Clear the offline cache?';
+  String get stClearAll => 'Clear all';
 
   @override
   String get stClearBody =>
       'The downloaded copies will be deleted and those tracks will stop playing without a network. They stay in your library and playlists.';
 
   @override
+  String get stClearLyricsBody =>
+      'The saved lyrics will be deleted — they are fetched again on the next playback.';
+
+  @override
+  String get stClearCustomBody =>
+      'All uploaded images will be deleted. If one is currently set as a background or a cover, it will be reset.';
+
+  @override
+  String get stClearAllBody =>
+      'The caches — offline copies, lyrics and images — will be deleted. Your library and playlists are not affected.';
+
+  @override
   String stCleared(int count) {
     return 'Offline cache cleared, files deleted: $count';
   }
+
+  @override
+  String get stLyricsCleared => 'Lyrics cache cleared';
+
+  @override
+  String get stCustomCleared => 'Customization library cleared';
+
+  @override
+  String get stAllCleared => 'App data cleared';
 
   @override
   String stBytes(String value) {
@@ -1342,4 +1791,274 @@ class AppLocalizationsEn extends AppLocalizations {
   String stGigabytes(String value) {
     return '$value GB';
   }
+
+  @override
+  String get ltImportTitle => 'Your own tracks';
+
+  @override
+  String get ltImportDesc =>
+      'What Bloom does with a file you add with + in All tracks. Tracks already added stay as they are.';
+
+  @override
+  String get ltImportInPlace => 'In place';
+
+  @override
+  String get ltImportInPlaceTip =>
+      'The file stays where it is and takes no extra space. Delete or move it and the track stops playing.';
+
+  @override
+  String get ltImportCopy => 'Into Bloom';
+
+  @override
+  String get ltImportCopyTip =>
+      'Bloom copies the file into itself. The track plays even if the original is gone, but the space is used twice.';
+
+  @override
+  String ltAdded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Added $count tracks',
+      one: 'Added $count track',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get ltNothingAdded =>
+      'Nothing to add: these tracks are already in the library, or the format is unsupported';
+
+  @override
+  String get ltImportFailed => 'Could not open the file picker';
+
+  @override
+  String get ltFileGone => 'File is not available';
+
+  @override
+  String get custLibrary => 'Library';
+
+  @override
+  String get custPresets => 'Presets';
+
+  @override
+  String get custAddUrl => 'Add by URL';
+
+  @override
+  String get custUpload => 'Upload';
+
+  @override
+  String get custLibraryEmpty => 'Library is empty — add a photo or GIF';
+
+  @override
+  String get custAdded => 'Added!';
+
+  @override
+  String get custBadUrl => 'Enter a valid image URL';
+
+  @override
+  String custFilesAdded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files added',
+      one: '$count file added',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get custCtxBg => 'Background';
+
+  @override
+  String get custCtxCover => 'Cover';
+
+  @override
+  String get custCtxSlider => 'Slider';
+
+  @override
+  String get custBlur => 'Blur';
+
+  @override
+  String get custDim => 'Dim';
+
+  @override
+  String get custImageGone => 'Image unavailable';
+
+  @override
+  String get custOnlyForBg => 'Background only';
+
+  @override
+  String get custPresetCreate => 'Create preset';
+
+  @override
+  String get custImport => 'Import';
+
+  @override
+  String get custPresetsEmpty => 'Save the current settings as a preset';
+
+  @override
+  String get custPresetNameHint => 'Name the preset...';
+
+  @override
+  String custPresetSaved(String name) {
+    return 'Preset “$name” saved!';
+  }
+
+  @override
+  String get custPresetNothing =>
+      'Nothing is applied — set a background, cover or slider first';
+
+  @override
+  String custPresetsFull(int limit) {
+    return 'No room for more presets — the limit is $limit';
+  }
+
+  @override
+  String get custPresetUntitled => 'Untitled';
+
+  @override
+  String custPresetSlots(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count images',
+      one: '$count image',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get custPresetApply => 'Apply';
+
+  @override
+  String get custPresetExport => 'Export';
+
+  @override
+  String custPresetApplied(String name) {
+    return 'Preset “$name” applied';
+  }
+
+  @override
+  String get custPresetExported => 'Preset saved to file';
+
+  @override
+  String get custImportBad => 'Could not read file — invalid format';
+
+  @override
+  String custImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count presets imported',
+      one: '$count preset imported',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get apCoverAsBg => 'Track cover as background';
+
+  @override
+  String get apCoverAsBgSub =>
+      'Use the current track cover as the app background';
+
+  @override
+  String get apTrGroup => 'TRANSPARENCY';
+
+  @override
+  String get apTrTitle => 'Transparency';
+
+  @override
+  String apTrOn(int percent) {
+    return 'On ($percent%)';
+  }
+
+  @override
+  String get apTrOff => 'Off';
+
+  @override
+  String get apTrLevel => 'Transparency level';
+
+  @override
+  String get apTrBrightness => 'Glass brightness';
+
+  @override
+  String get apTrBlur => 'Glass blur';
+
+  @override
+  String get apTrOverlays => 'Overlay transparency';
+
+  @override
+  String get apTrOverlaysSub => 'Glass for sheets, menus and dialogs';
+
+  @override
+  String get onbTagline => 'your personal player';
+
+  @override
+  String get onbHelloSub => 'A few quick steps and the player is yours';
+
+  @override
+  String get onbHelloCta => 'Let\'s go';
+
+  @override
+  String get onbNext => 'Next';
+
+  @override
+  String get onbBack => 'Back';
+
+  @override
+  String get onbDone => 'Done';
+
+  @override
+  String get onbProfileTitle => 'Tell us about yourself';
+
+  @override
+  String get onbProfileSub =>
+      'Avatar, cover and name. You can change all of it later in your profile.';
+
+  @override
+  String get onbAddCover => 'Add profile cover';
+
+  @override
+  String get onbThemeTitle => 'Pick a look';
+
+  @override
+  String get onbThemeSub => 'The theme applies instantly — see how it feels.';
+
+  @override
+  String get onbThemeHint => 'More themes live in settings';
+
+  @override
+  String get onbMusicTitle => 'Connect your music';
+
+  @override
+  String get onbMusicSub =>
+      'Sign in to your platforms — their tracks show up in search right away.';
+
+  @override
+  String get onbMusicPlatforms => 'PLATFORMS';
+
+  @override
+  String get onbMusicSkip =>
+      'None of this is required — it all lives in settings';
+
+  @override
+  String get onbPlatConnected => 'Connected';
+
+  @override
+  String get onbPlatNotConnected => 'Not connected';
+
+  @override
+  String get onbPlatCheck => 'Check';
+
+  @override
+  String onbWelcome(String name) {
+    return 'Hi, $name!';
+  }
+
+  @override
+  String get onbWelcomeSub => 'Welcome to Bloom';
+
+  @override
+  String get onbReplay => 'Show onboarding again';
 }

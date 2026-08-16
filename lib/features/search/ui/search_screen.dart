@@ -17,14 +17,16 @@ import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme/tokens.dart';
+import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/l10n/source_label.dart';
-import '../../../core/entities/entities.dart';
 import '../../../core/providers/music_provider.dart';
 import '../../../core/providers/registry.dart';
+import '../../../features/player/play_source.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/entity_tiles.dart';
+import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/skeleton.dart';
 import 'profile_view.dart';
@@ -102,6 +104,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   /// Номер запроса: ответ на устаревший поиск не должен перебить свежий.
   int _generation = 0;
 
+  /// Запрос, по которому стоит ВЫДАЧА, — не то же, что текст в поле: его уже
+  /// правят под следующий поиск, а очередь набирается из того, что на экране.
+  String _lastQuery = '';
+
   @override
   void dispose() {
     _controller.dispose();
@@ -114,6 +120,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     if (query.isEmpty) return;
     final gen = ++_generation;
     setState(() {
+      _lastQuery = query;
       _loading = true;
       _error = null;
       _profile = null;
@@ -240,7 +247,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         child: Text(text, style: theme.bodyMedium?.copyWith(color: t.muted)),
       );
     }
-    return _ResultsView(results: _results, filter: _filter);
+    return _ResultsView(results: _results, filter: _filter, query: _lastQuery);
   }
 }
 
@@ -260,50 +267,54 @@ class _SearchField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    return Container(
-      height: kHeaderControl,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: t.pill,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        children: [
-          Icon(SolarIconsOutline.magnifier, size: 20, color: t.muted),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              focusNode: focusNode,
-              autofocus: true,
-              onSubmitted: (_) => onSubmit(),
-              textInputAction: TextInputAction.search,
-              style: Theme.of(context).textTheme.titleMedium,
-              cursorColor: t.accent,
-              decoration: InputDecoration(
-                isDense: true,
-                border: InputBorder.none,
-                hintText: context.l.searchHint,
-                hintStyle: Theme.of(
+    return GlassBox(
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        height: kHeaderControl,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            Icon(SolarIconsOutline.magnifier, size: 21, color: t.muted),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                controller: controller,
+                focusNode: focusNode,
+                autofocus: true,
+                onSubmitted: (_) => onSubmit(),
+                textInputAction: TextInputAction.search,
+                // Запрос — того же кегля, что название раздела в соседних
+                // шапках: поле стоит на их месте и обязано читаться так же.
+                style: Theme.of(
                   context,
-                ).textTheme.titleMedium?.copyWith(color: t.muted),
+                ).textTheme.titleMedium?.copyWith(fontSize: kHeaderTitleSize),
+                cursorColor: t.accent,
+                decoration: InputDecoration(
+                  isDense: true,
+                  border: InputBorder.none,
+                  hintText: context.l.searchHint,
+                  hintStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontSize: kHeaderTitleSize,
+                    color: t.muted,
+                  ),
+                ),
               ),
             ),
-          ),
-          ValueListenableBuilder<TextEditingValue>(
-            valueListenable: controller,
-            builder: (context, value, _) => value.text.isEmpty
-                ? const SizedBox.shrink()
-                : GestureDetector(
-                    onTap: onClear,
-                    child: Icon(
-                      SolarIconsOutline.closeCircle,
-                      size: 18,
-                      color: t.muted,
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: controller,
+              builder: (context, value, _) => value.text.isEmpty
+                  ? const SizedBox.shrink()
+                  : GestureDetector(
+                      onTap: onClear,
+                      child: Icon(
+                        SolarIconsOutline.closeCircle,
+                        size: 18,
+                        color: t.muted,
+                      ),
                     ),
-                  ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -327,10 +338,8 @@ class _PlatformButton extends ConsumerWidget {
     final activeId = ref.watch(activeProviderIdProvider);
     final provider = registry.byId(activeId);
 
-    return Material(
-      color: t.pill,
+    return GlassBox(
       shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => _pickSource(context, ref, onPicked),
         child: SizedBox(
@@ -338,8 +347,8 @@ class _PlatformButton extends ConsumerWidget {
           height: kHeaderControl,
           child: Center(
             child: provider == null
-                ? Icon(SolarIconsOutline.widget_4, size: 22, color: t.iconFg)
-                : PlatformLogo(provider.source, size: 22),
+                ? Icon(SolarIconsOutline.widget_4, size: 23, color: t.iconFg)
+                : PlatformLogo(provider.source, size: 23),
           ),
         ),
       ),
@@ -501,10 +510,10 @@ class _Chip extends StatelessWidget {
     final t = context.bloom;
     // Активный чип — заливка акцентом с контрастной надписью, как в референсе.
     final fg = active ? t.accentText : t.text2;
-    return Material(
-      color: active ? t.accent : t.pill,
+    return GlassBox(
+      color: active ? t.accent : null,
+      enabled: !active,
       borderRadius: BorderRadius.circular(999),
-      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
@@ -601,10 +610,17 @@ class _ArtistGrid extends StatelessWidget {
 }
 
 class _ResultsView extends StatelessWidget {
-  const _ResultsView({required this.results, required this.filter});
+  const _ResultsView({
+    required this.results,
+    required this.filter,
+    required this.query,
+  });
 
   final SearchResults results;
   final SearchFilter filter;
+
+  /// Запрос — он же подпись источника в пилюле плеера («Поиск: …»).
+  final String query;
 
   bool _shows(SearchFilter section) =>
       filter == SearchFilter.all || filter == section;
@@ -649,7 +665,15 @@ class _ResultsView extends StatelessWidget {
         for (var i = 0; i < shownTracks; i++)
           // Очередь — весь список, а не превью: с четвёртой строки
           // проигрывание должно ехать дальше по выдаче.
-          TrackRow(track: tracks[i], queue: tracks, index: i),
+          TrackRow(
+            track: tracks[i],
+            queue: tracks,
+            index: i,
+            source: PlainSource.search(
+              query,
+              context.l.playerSourceSearch(query),
+            ),
+          ),
       ],
       if (_shows(SearchFilter.artists) && results.artists.isNotEmpty) ...[
         if (titled) SectionTitle(context.l.commonArtists),

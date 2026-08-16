@@ -21,6 +21,7 @@ import '../../core/store/cover_store.dart';
 import 'atoms.dart';
 import 'bloom_mark.dart';
 import 'cover_hero.dart';
+import 'glass.dart';
 import 'sticky_hero.dart';
 
 class DetailHero extends StatelessWidget {
@@ -148,8 +149,10 @@ class _Background extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
+    // Заливка сплошная, а не плёнка `ovlBg`: с картинкой-фоном сквозь шапку
+    // без обложки были видны обои — заголовок висел прямо на них.
     Widget empty() => ColoredBox(
-      color: t.ovlBg,
+      color: t.coverEmpty,
       child: Center(child: BloomMark(size: 96, color: t.text, opacity: 0.16)),
     );
 
@@ -200,10 +203,10 @@ class HeroActions extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Material(
-            color: enabled ? t.accent : t.pill,
+          child: GlassBox(
+            color: enabled ? t.accent : null,
+            enabled: !enabled,
             borderRadius: BorderRadius.circular(999),
-            clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: onPlay,
               child: Padding(

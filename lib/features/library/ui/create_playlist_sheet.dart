@@ -176,7 +176,7 @@ class _AddBodyState extends ConsumerState<_AddBody> {
     key: const ValueKey('main'),
     mainAxisSize: MainAxisSize.min,
     children: [
-      _FieldRow(
+      SheetField(
         controller: _name,
         hint: context.l.cpNameHint,
         autofocus: true,
@@ -200,12 +200,16 @@ class _AddBodyState extends ConsumerState<_AddBody> {
     key: const ValueKey('import'),
     mainAxisSize: MainAxisSize.min,
     children: [
-      _FieldRow(
+      SheetField(
         controller: _url,
         hint: context.l.cpLinkHint,
         autofocus: true,
         busy: _busy,
-        source: detectLinkSource(_url.text),
+        // Значок площадки внутри поля — как только ссылка узнана.
+        trailing: switch (detectLinkSource(_url.text)) {
+          final source? => PlatformLogo(source, size: 18),
+          null => null,
+        },
         onChanged: (_) => setState(() {}),
         onSubmit: _runImport,
       ),
@@ -278,132 +282,6 @@ class _AddBodyState extends ConsumerState<_AddBody> {
       ),
     ],
   );
-}
-
-/// Поле шторки с галочкой справа. Галочка появляется вместе с текстом — до
-/// него кнопке нечего делать (то же условие, что в `lam-check` на ПК).
-class _FieldRow extends StatelessWidget {
-  const _FieldRow({
-    required this.controller,
-    required this.hint,
-    required this.onChanged,
-    required this.onSubmit,
-    this.autofocus = false,
-    this.busy = false,
-    this.source,
-  });
-
-  final TextEditingController controller;
-  final String hint;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onSubmit;
-  final bool autofocus;
-  final bool busy;
-
-  /// Площадка, узнанная по ссылке, — значок внутри поля.
-  final MusicSource? source;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final filled = controller.text.trim().isNotEmpty;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                // Как и блоки шторки: чёрный с прозрачностью, а не плёнка
-                // темы — под шторкой лежит размытый фон.
-                color: Colors.black.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(t.radius),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: controller,
-                      autofocus: autofocus,
-                      cursorColor: t.accent,
-                      textInputAction: TextInputAction.done,
-                      style: theme.titleMedium,
-                      decoration: InputDecoration(
-                        isDense: true,
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                        ),
-                        hintText: hint,
-                        hintStyle: theme.titleMedium?.copyWith(color: t.muted),
-                      ),
-                      onChanged: onChanged,
-                      onSubmitted: (_) => onSubmit(),
-                    ),
-                  ),
-                  if (source != null) ...[
-                    const SizedBox(width: 8),
-                    PlatformLogo(source!, size: 18),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          // Ширина ряда меняется вместе с кнопкой — иначе поле дёргалось бы
-          // рывком на первом же символе.
-          AnimatedSize(
-            duration: const Duration(milliseconds: 160),
-            curve: Curves.easeOut,
-            child: filled
-                ? Padding(
-                    padding: const EdgeInsets.only(left: 10),
-                    child: _ConfirmButton(busy: busy, onTap: onSubmit),
-                  )
-                : const SizedBox(height: 54),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ConfirmButton extends StatelessWidget {
-  const _ConfirmButton({required this.busy, required this.onTap});
-
-  final bool busy;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Material(
-      color: t.accent,
-      borderRadius: BorderRadius.circular(t.radius),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: busy ? null : onTap,
-        child: SizedBox(
-          width: 54,
-          height: 54,
-          child: busy
-              ? Center(
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: t.accentText,
-                    ),
-                  ),
-                )
-              : Icon(Icons.check_rounded, size: 24, color: t.accentText),
-        ),
-      ),
-    );
-  }
 }
 
 /// Строка шторки. Своя, а не `SheetAction`: те закрывают шторку по нажатию, а

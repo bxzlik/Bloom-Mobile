@@ -1,8 +1,10 @@
 package com.bxzlik.bloom
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.StatFs
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
@@ -14,6 +16,9 @@ import java.io.File
  * поднять активити из уведомления и с экрана блокировки.
  */
 class MainActivity : AudioServiceActivity() {
+
+    /** Системные диалоги файлов (SAF): пресеты кастомизации и свои треки. */
+    private val files by lazy { FilesChannel(this) }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -56,6 +61,59 @@ class MainActivity : AudioServiceActivity() {
                 "save" -> saveToMusic(call, result)
                 else -> result.notImplemented()
             }
+        }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "bloom/files",
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "saveText" -> files.saveText(
+                    filename = call.argument<String>("filename") ?: "bloom.json",
+                    content = call.argument<String>("content").orEmpty(),
+                    mime = call.argument<String>("mime") ?: "application/json",
+                    result = result,
+                )
+                "openText" -> files.openText(result)
+                // Свои треки: выбор аудио и возврат разрешения на чужой файл.
+                "pickAudio" -> files.pickAudio(
+                    mode = call.argument<String>("mode") ?: "inPlace",
+                    tracksDir = call.argument<String>("tracksDir").orEmpty(),
+                    coversDir = call.argument<String>("coversDir").orEmpty(),
+                    known = call.argument<List<String>>("known") ?: emptyList(),
+                    result = result,
+                )
+                "releaseAudio" -> files.releaseAudio(
+                    uri = call.argument<String>("uri").orEmpty(),
+                    result = result,
+                )
+                // Память телефона — знаменатель кольца в «Хранилище». Считаем
+                // по тому тому, где лежат данные приложения: на аппаратах с
+                // адаптируемой картой это может быть не системный раздел.
+                "diskSpace" -> diskSpace(result)
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    /**
+     * Ответ системного диалога файла. Своё обрабатываем первыми и только потом
+     * зовём `super`: без него плагины (тот же выбор картинки) остались бы без
+     * своих результатов.
+     */
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (files.onActivityResult(requestCode, resultCode, data)) return
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    /** Сколько всего места на томе с данными приложения и сколько свободно. */
+    private fun diskSpace(result: MethodChannel.Result) {
+        try {
+            val stat = StatFs(filesDir.absolutePath)
+            result.success(mapOf("total" to stat.totalBytes, "free" to stat.availableBytes))
+        } catch (e: Exception) {
+            // Тома нет или он не читается — экран просто не покажет долю.
+            result.success(null)
         }
     }
 

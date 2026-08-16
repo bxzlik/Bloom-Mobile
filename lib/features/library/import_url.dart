@@ -4,11 +4,10 @@
 /// одиночный трек или артиста отклоняется — на ПК так же: импортировать «в
 /// плейлист» одну песню незачем, для этого есть меню трека.
 ///
-/// Источник (`sourceUrl`) привязывается только к СОЗДАННОМУ плейлисту. К
-/// существующему — намеренно нет: обновление у нас заменяет состав целиком
-/// (`refreshPlaylistFromSource`), и привязка стёрла бы всё, что в него добавили
-/// руками. На ПК источников список и обновление подмешивает новое — там это
-/// безопасно, у нас нет.
+/// Импортированная коллекция становится источником «Обновить треки» — и у
+/// созданного плейлиста, и у того, в который импортировали (привязок может быть
+/// сколько угодно, с разных площадок). Затереть этим ничего нельзя: обновление
+/// только подмешивает новые треки наверх (`refreshPlaylistFromSource`).
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -166,6 +165,7 @@ Future<ImportResult> importUrlInto(
         tracks: tracks,
         cover: source.cover,
         sourceUrl: url.trim(),
+        sourceTitle: source.title,
         isAlbum: source.isAlbum,
       );
       return ImportResult(
@@ -198,17 +198,23 @@ Future<ImportResult> importUrlInto(
     case ImportTargetKind.playlist:
       final id = target.playlistId!;
       // Плейлист мог исчезнуть, пока тянулись треки: тогда добавлять некуда.
-      final before = read().playlists
-          .where((p) => p.id == id)
-          .map((p) => p.trackIds.toSet())
-          .firstOrNull;
+      final before = read().playlists.where((p) => p.id == id).firstOrNull;
       if (before == null) {
         throw const ImportException(ImportFailure.playlistGone);
       }
-      library.addTracksToPlaylist(id, tracks);
+      final added = library.addTracksToPlaylist(id, tracks);
+      // Коллекция становится ещё одним источником «Обновить треки» — если её
+      // сюда ещё не привязывали.
+      final link = url.trim();
+      if (!before.sources.any((s) => s.url == link)) {
+        library.setPlaylistSources(id, [
+          ...before.sources,
+          PlSourceRef(url: link, title: source.title),
+        ]);
+      }
       return ImportResult(
         title: source.title,
-        added: tracks.where((t) => !before.contains(t.id)).length,
+        added: added,
         total: tracks.length,
         createdId: id,
       );

@@ -13,6 +13,7 @@ import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
+import '../../../shared/ui/glass.dart';
 import '../achievements.dart';
 import '../stats.dart';
 
@@ -74,104 +75,102 @@ class _AchCard extends StatelessWidget {
     final a = progress;
     final medal = a.tier == null ? t.muted : tierColor(a.tier!);
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: t.pill,
-        borderRadius: BorderRadius.circular(t.radius),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Медаль гаснет, пока не взят ни один тир, — то же, что класс `on`
-          // на десктопе.
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: medal.withValues(alpha: a.unlocked ? 0.16 : 0.06),
-              borderRadius: BorderRadius.circular(t.radius * 0.7),
+    return GlassBox(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Медаль гаснет, пока не взят ни один тир, — то же, что класс `on`
+            // на десктопе.
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: medal.withValues(alpha: a.unlocked ? 0.16 : 0.06),
+                borderRadius: BorderRadius.circular(t.radius * 0.7),
+              ),
+              child: Icon(
+                a.def.icon,
+                size: 22,
+                color: a.unlocked ? medal : t.muted,
+              ),
             ),
-            child: Icon(
-              a.def.icon,
-              size: 22,
-              color: a.unlocked ? medal : t.muted,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        a.def.name(context.l),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.titleSmall,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          a.def.name(context.l),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.titleSmall,
+                        ),
                       ),
-                    ),
-                    for (var i = 0; i < kTierOrder.length; i++)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4),
-                        child: Container(
-                          width: 7,
-                          height: 7,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: i < a.tierReached
-                                ? tierColor(kTierOrder[i])
-                                : t.track,
+                      for (var i = 0; i < kTierOrder.length; i++)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: i < a.tierReached
+                                  ? tierColor(kTierOrder[i])
+                                  : t.track,
+                            ),
                           ),
                         ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    a.def.description(context.l),
+                    style: theme.bodySmall?.copyWith(color: t.muted),
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value: a.ratio,
+                      minHeight: 5,
+                      backgroundColor: t.track,
+                      valueColor: AlwaysStoppedAnimation(
+                        a.unlocked ? medal : t.text.withValues(alpha: 0.35),
                       ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  a.def.description(context.l),
-                  style: theme.bodySmall?.copyWith(color: t.muted),
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: a.ratio,
-                    minHeight: 5,
-                    backgroundColor: t.track,
-                    valueColor: AlwaysStoppedAnimation(
-                      a.unlocked ? medal : t.text.withValues(alpha: 0.35),
                     ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Text(
-                      a.maxed
-                          ? context.l.achMax
-                          : '${_fmt(context, a.value)} / ${_fmt(context, a.nextTarget!)}',
-                      style: theme.bodySmall?.copyWith(
-                        color: a.maxed ? tierColor(AchTier.gold) : t.text2,
-                      ),
-                    ),
-                    const Spacer(),
-                    if (unlockedAt case final at?)
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
                       Text(
-                        context.l.achUnlockedAt(_date(context, at)),
+                        a.maxed
+                            ? context.l.achMax
+                            : '${_fmt(context, a.value)} / ${_fmt(context, a.nextTarget!)}',
                         style: theme.bodySmall?.copyWith(
-                          color: t.muted,
-                          fontSize: 11,
+                          color: a.maxed ? tierColor(AchTier.gold) : t.text2,
                         ),
                       ),
-                  ],
-                ),
-              ],
+                      const Spacer(),
+                      if (unlockedAt case final at?)
+                        Text(
+                          context.l.achUnlockedAt(_date(context, at)),
+                          style: theme.bodySmall?.copyWith(
+                            color: t.muted,
+                            fontSize: 11,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

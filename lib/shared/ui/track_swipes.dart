@@ -16,9 +16,11 @@ import 'package:solar_icons/solar_icons.dart';
 import '../../core/entities/entities.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/store/library_store.dart';
+import '../../features/library/local_tracks.dart';
 import '../../features/offline/offline_actions.dart';
 import '../../features/offline/offline_store.dart';
 import '../../features/player/player_controller.dart';
+import '../../features/player/track_swap_dir.dart';
 import '../../features/settings/swipe_store.dart';
 import 'bloom_toast.dart';
 import 'swipe_row.dart';
@@ -117,6 +119,7 @@ void runSwipeAction(
   required Track track,
   String? listId,
   int? queueIndex,
+  bool fromFlick = false,
 }) {
   final messenger = ScaffoldMessenger.of(context);
   final l = context.l;
@@ -135,9 +138,14 @@ void runSwipeAction(
     case SwipeAction.playNext:
       player.playNext(track);
       messenger.toast(l.swPlaysNext);
+    // Смену «под пальцем» слои `TrackSwap` не анимируют: содержимое уже увёл
+    // за край сам жест (см. `markSwapSilent`). Флаг одноразовый, поэтому
+    // ставится только здесь — на действиях, которые трек точно сменят.
     case SwipeAction.next:
+      if (fromFlick) markSwapSilent();
       unawaited(player.next());
     case SwipeAction.prev:
+      if (fromFlick) markSwapSilent();
       unawaited(player.prev());
     case SwipeAction.download:
       unawaited(toggleTrackOffline(messenger, l, ref, track));
@@ -195,8 +203,13 @@ void _removeFromList(
     l.swRemoved,
     action: ToastAction(
       fn: () => lib.restoreSnapshot(before),
+      // Файлы удаляем только когда отменять уже поздно: «Отменить» вернёт
+      // снимок библиотеки, а стёртую копию своего трека — нет.
       onExpire: listId == 'all'
-          ? () => unawaited(offline.remove(track.id))
+          ? () {
+              unawaited(offline.remove(track.id));
+              unawaited(forgetLocalTracks([track]));
+            }
           : null,
     ),
   );

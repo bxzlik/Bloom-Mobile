@@ -1,55 +1,54 @@
-/// Перетянуть треки плейлиста из его источника — порт десктопного
+/// Перетянуть треки плейлиста из его источников — порт десктопного
 /// `refreshPlaylistSilent`.
 ///
-/// Сам импорт живёт в поиске (ссылка в поле поиска, как на десктопе); здесь
-/// только повторный резолв уже сохранённой ссылки. Поэтому разбираем ровно те
-/// же виды: коллекцию (плейлист/альбом) и аккаунт — у «Лайков <ник>» источником
-/// записана ссылка на профиль.
+/// Источников у плейлиста может быть несколько и с разных площадок
+/// ([UserPlaylist.sources]): каждый резолвится общим путём импорта
+/// (`resolveCollectionUrl`), поэтому разбираются ровно те же виды ссылок —
+/// коллекция (плейлист/альбом) и аккаунт, у которого берутся лайки.
+///
+/// Состав НЕ заменяется: новые треки ложатся наверх плейлиста, всё, что в него
+/// добавили руками, остаётся на месте. Иначе привязать чужую коллекцию к своему
+/// плейлисту было бы нельзя — первое же обновление стёрло бы его.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
-import '../../core/providers/music_provider.dart';
+import '../../core/entities/entities.dart';
 import '../../core/providers/registry.dart';
 import '../../core/store/library_store.dart';
 import '../../core/l10n/l10n.dart';
 import '../../shared/ui/bloom_toast.dart';
+import 'import_url.dart';
 
-/// Обновить состав плейлиста из [UserPlaylist.sourceUrl].
+/// Обновить состав плейлиста из всех его [UserPlaylist.sources].
 ///
-/// Возвращает, сколько треков прибавилось; `null` — источник не ответил или
-/// ссылка больше не разбирается. Пустой ответ считаем ошибкой, а не «плейлист
-/// опустел»: затирать состав тем, что площадка не отдала, нельзя.
+/// Возвращает, сколько треков прибавилось; `null` — обновлять неоткуда или НИ
+/// ОДИН источник не ответил. Упавший источник не отменяет остальные: частичный
+/// успех считаем успехом — привязанную коллекцию могли удалить на площадке.
 Future<int?> refreshPlaylistFromSource(
   ProviderRegistry registry,
   LibraryController library,
   UserPlaylist playlist,
 ) async {
-  final url = playlist.sourceUrl;
-  if (url == null) return null;
-  try {
-    final found = await registry.resolveUrlAny(url);
-    if (found == null) return null;
-    final tracks = switch (found.resolved) {
-      ResolvedSet(playlist: final p) =>
-        (p.isAlbum
-                ? await found.provider.getAlbum(p.id)
-                : await found.provider.getPlaylist(p.id))
-            ?.tracks,
-      // Ссылка на аккаунт — плейлист собран из его лайков.
-      ResolvedProfile(:final profile) => profile.likes,
-      _ => null,
-    };
-    if (tracks == null || tracks.isEmpty) return null;
-    final had = playlist.trackIds.toSet();
-    library.replacePlaylistTracks(playlist.id, tracks);
-    return tracks.where((t) => !had.contains(t.id)).length;
-  } catch (_) {
-    // Один недоступный плейлист не должен прерывать остальные.
-    return null;
+  if (playlist.sources.isEmpty) return null;
+
+  // Источники тянем по очереди: их обычно единицы, а параллель зря душит
+  // площадки.
+  final fresh = <Track>[];
+  for (final source in playlist.sources) {
+    try {
+      fresh.addAll((await resolveCollectionUrl(registry, source.url)).tracks);
+    } catch (_) {
+      // Один недоступный источник не должен прерывать остальные.
+    }
   }
+  // Пустой ответ считаем ошибкой, а не «в источниках ничего не осталось».
+  if (fresh.isEmpty) return null;
+
+  // Дубли и порядок разбирает сам стор: состав мог измениться, пока шла сеть.
+  return library.addTracksToPlaylist(playlist.id, fresh);
 }
 
 /// «Обновить треки» одного плейлиста — кнопка в его шапке (порт пункта

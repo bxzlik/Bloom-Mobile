@@ -27,7 +27,12 @@ TextStyle bloomText({
   fontVariations: [FontVariation('wght', weight.toDouble())],
 );
 
-ThemeData buildBloomTheme(BloomTokens t) {
+/// [transparentPages] — под интерфейсом лежит картинка фона: страницы должны
+/// её пропускать, поэтому заливки самих поверхностей и фона перехода между
+/// страницами гасим (иначе фон был бы виден только сквозь щели по краям, а на
+/// время перехода и вовсе закрывался бы сплошным).
+ThemeData buildBloomTheme(BloomTokens t, {bool transparentPages = false}) {
+  final pageBg = transparentPages ? Colors.transparent : t.bg;
   final scheme = ColorScheme(
     brightness: t.isLight ? Brightness.light : Brightness.dark,
     primary: t.accent,
@@ -47,8 +52,8 @@ ThemeData buildBloomTheme(BloomTokens t) {
     useMaterial3: true,
     brightness: scheme.brightness,
     colorScheme: scheme,
-    scaffoldBackgroundColor: t.bg,
-    canvasColor: t.bg,
+    scaffoldBackgroundColor: pageBg,
+    canvasColor: pageBg,
     fontFamily: kFontFamily,
     // Переход между страницами. Дефолт Android — предиктивный: пока тянешь
     // системный жест «назад», страница сжимается в карточку и в щель видно
@@ -58,7 +63,7 @@ ThemeData buildBloomTheme(BloomTokens t) {
     pageTransitionsTheme: PageTransitionsTheme(
       builders: {
         for (final p in TargetPlatform.values)
-          p: FadeForwardsPageTransitionsBuilder(backgroundColor: t.bg),
+          p: FadeForwardsPageTransitionsBuilder(backgroundColor: pageBg),
       },
     ),
     // Нажатие НЕ подсвечивается вообще: ни ряби, ни плёнки под пальцем.

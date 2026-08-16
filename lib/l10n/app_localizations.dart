@@ -158,6 +158,24 @@ abstract class AppLocalizations {
   /// **'Upload'**
   String get commonUpload;
 
+  /// phone only: collapses the setup block on a platform page
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get commonHide;
+
+  /// No description provided for @commonClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get commonClear;
+
+  /// phone only: separator between the guide card and manual input
+  ///
+  /// In en, this message translates to:
+  /// **'or'**
+  String get commonOr;
+
   /// desktop: settings.interface.titlebar.item.pin
   ///
   /// In en, this message translates to:
@@ -314,6 +332,12 @@ abstract class AppLocalizations {
   /// **'Already in your library'**
   String get commonAlreadyInLibrary;
 
+  /// desktop: common.unknownArtist — a local file whose tags carry no artist
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get commonUnknownArtist;
+
   /// desktop: lib.plmenu.offlineBadge
   ///
   /// In en, this message translates to:
@@ -386,17 +410,17 @@ abstract class AppLocalizations {
   /// **'New releases'**
   String get homeNewReleases;
 
-  /// No description provided for @playerPlayingFrom.
-  ///
-  /// In en, this message translates to:
-  /// **'Playing from'**
-  String get playerPlayingFrom;
-
   /// desktop: settings.view.mpEl.queue
   ///
   /// In en, this message translates to:
   /// **'Queue'**
   String get playerQueue;
+
+  /// Подпись источника очереди, набранной из выдачи поиска
+  ///
+  /// In en, this message translates to:
+  /// **'Search: {query}'**
+  String playerSourceSearch(String query);
 
   /// desktop: player.toast.copied
   ///
@@ -409,6 +433,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Error'**
   String get playerCopyError;
+
+  /// desktop: player.aria.speed (Playback speed)
+  ///
+  /// In en, this message translates to:
+  /// **'Speed'**
+  String get playerSpeed;
+
+  /// desktop: player.speed.custom
+  ///
+  /// In en, this message translates to:
+  /// **'Custom speed'**
+  String get playerSpeedCustom;
+
+  /// desktop: player.speed.reset
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to 1×'**
+  String get playerSpeedReset;
+
+  /// desktop: player.speed.nightcore
+  ///
+  /// In en, this message translates to:
+  /// **'Nightcore'**
+  String get playerSpeedNightcore;
+
+  /// desktop: player.speed.nightcoreSub
+  ///
+  /// In en, this message translates to:
+  /// **'Pitch follows the speed'**
+  String get playerSpeedNightcoreSub;
+
+  /// Мобильная фича, десктопного оригинала нет
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep timer'**
+  String get playerSleep;
+
+  /// Подпись под числом на карточке-пресете таймера сна
+  ///
+  /// In en, this message translates to:
+  /// **'min'**
+  String get playerSleepMin;
+
+  /// Время таймера сна в пилюле и на краях полосы
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min'**
+  String playerSleepMinutes(int count);
+
+  /// Остаток таймера сна в шапке шторки
+  ///
+  /// In en, this message translates to:
+  /// **'{time} left'**
+  String playerSleepLeft(String time);
+
+  /// No description provided for @playerSleepEndOfTrack.
+  ///
+  /// In en, this message translates to:
+  /// **'Until end of track'**
+  String get playerSleepEndOfTrack;
+
+  /// No description provided for @playerSleepCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom time'**
+  String get playerSleepCustom;
+
+  /// No description provided for @playerSleepExtend.
+  ///
+  /// In en, this message translates to:
+  /// **'+5 minutes'**
+  String get playerSleepExtend;
+
+  /// No description provided for @playerSleepCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off timer'**
+  String get playerSleepCancel;
+
+  /// No description provided for @playerSleepFade.
+  ///
+  /// In en, this message translates to:
+  /// **'Fade out'**
+  String get playerSleepFade;
+
+  /// No description provided for @playerSleepFadeSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume drops to zero over the last 20 seconds'**
+  String get playerSleepFadeSub;
 
   /// No description provided for @notifChannelName.
   ///
@@ -893,7 +1007,7 @@ abstract class AppLocalizations {
   /// No description provided for @paNothingToRefresh.
   ///
   /// In en, this message translates to:
-  /// **'Nothing to refresh: no playlist was imported from a link. Paste a link into the search field — an imported playlist remembers its source.'**
+  /// **'Nothing to refresh: no playlist has sources yet. Link one while editing a playlist — or import a playlist from a link and it remembers its own.'**
   String get paNothingToRefresh;
 
   /// No description provided for @paRefreshing.
@@ -1009,6 +1123,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'New tracks: {count}'**
   String rpNewTracks(int count);
+
+  /// No description provided for @psTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update sources'**
+  String get psTitle;
+
+  /// No description provided for @psHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Link playlists, albums or likes from any platform — “Refresh tracks” will add new tracks from them to the top of this playlist.'**
+  String get psHint;
+
+  /// No description provided for @psAddHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste a playlist, album or profile link…'**
+  String get psAddHint;
+
+  /// No description provided for @psAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get psAdd;
+
+  /// No description provided for @psRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlink'**
+  String get psRemove;
+
+  /// No description provided for @psDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'This source is already linked'**
+  String get psDuplicate;
 
   /// No description provided for @iuUnrecognized.
   ///
@@ -1934,6 +2084,474 @@ abstract class AppLocalizations {
   /// **'“{title}” isn’t built yet'**
   String setStub(String title);
 
+  /// desktop: settings.view.titleAlign — the group holding it
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get pvGroupTitle;
+
+  /// desktop: settings.view.titleAlign
+  ///
+  /// In en, this message translates to:
+  /// **'Title alignment'**
+  String get pvTitleAlign;
+
+  /// No description provided for @pvTitleAlignLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Left'**
+  String get pvTitleAlignLeft;
+
+  /// No description provided for @pvTitleAlignLeftSub.
+  ///
+  /// In en, this message translates to:
+  /// **'title on the left'**
+  String get pvTitleAlignLeftSub;
+
+  /// No description provided for @pvTitleAlignCenter.
+  ///
+  /// In en, this message translates to:
+  /// **'Center'**
+  String get pvTitleAlignCenter;
+
+  /// No description provided for @pvTitleAlignCenterSub.
+  ///
+  /// In en, this message translates to:
+  /// **'title centered'**
+  String get pvTitleAlignCenterSub;
+
+  /// No description provided for @pvTitleAlignRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Right'**
+  String get pvTitleAlignRight;
+
+  /// No description provided for @pvTitleAlignRightSub.
+  ///
+  /// In en, this message translates to:
+  /// **'title on the right'**
+  String get pvTitleAlignRightSub;
+
+  /// the group holding the player style row
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get pvGroupLook;
+
+  /// desktop: settings.view.style
+  ///
+  /// In en, this message translates to:
+  /// **'Player style'**
+  String get pvStyleRow;
+
+  /// desktop: settings.view.style.standard
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get pvStyleStandard;
+
+  /// No description provided for @pvStyleStandardSub.
+  ///
+  /// In en, this message translates to:
+  /// **'the classic look with a square cover'**
+  String get pvStyleStandardSub;
+
+  /// desktop: settings.view.style.vinyl
+  ///
+  /// In en, this message translates to:
+  /// **'Vinyl'**
+  String get pvStyleVinyl;
+
+  /// No description provided for @pvStyleVinylSub.
+  ///
+  /// In en, this message translates to:
+  /// **'a spinning vinyl record'**
+  String get pvStyleVinylSub;
+
+  /// the group holding the slider type row
+  ///
+  /// In en, this message translates to:
+  /// **'Slider'**
+  String get pvGroupSlider;
+
+  /// desktop: settings.view.slider
+  ///
+  /// In en, this message translates to:
+  /// **'Slider type'**
+  String get pvSliderRow;
+
+  /// desktop: settings.view.slider.desc
+  ///
+  /// In en, this message translates to:
+  /// **'style of the progress bar'**
+  String get pvSliderSub;
+
+  /// desktop: settings.view.slider.default
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get pvSliderStandard;
+
+  /// desktop: settings.view.slider.thin
+  ///
+  /// In en, this message translates to:
+  /// **'Thin'**
+  String get pvSliderThin;
+
+  /// desktop: settings.view.slider.wave
+  ///
+  /// In en, this message translates to:
+  /// **'Wave'**
+  String get pvSliderWave;
+
+  /// desktop: settings.view.tab.anim
+  ///
+  /// In en, this message translates to:
+  /// **'Track change'**
+  String get pvGroupAnim;
+
+  /// desktop: settings.view.trackAnim.player
+  ///
+  /// In en, this message translates to:
+  /// **'Player'**
+  String get pvAnimPlayer;
+
+  /// No description provided for @pvAnimPlayerSub.
+  ///
+  /// In en, this message translates to:
+  /// **'the full screen player — cover and title are configured separately'**
+  String get pvAnimPlayerSub;
+
+  /// desktop: settings.view.trackAnim.bar
+  ///
+  /// In en, this message translates to:
+  /// **'Mini player'**
+  String get pvAnimMini;
+
+  /// No description provided for @pvAnimMiniSub.
+  ///
+  /// In en, this message translates to:
+  /// **'the card above the tab bar'**
+  String get pvAnimMiniSub;
+
+  /// desktop: settings.view.trackAnim.cover
+  ///
+  /// In en, this message translates to:
+  /// **'Cover'**
+  String get pvAnimCover;
+
+  /// desktop: settings.view.trackAnim.text
+  ///
+  /// In en, this message translates to:
+  /// **'Title and artist'**
+  String get pvAnimText;
+
+  /// No description provided for @pvAnimNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get pvAnimNone;
+
+  /// No description provided for @pvAnimSlide.
+  ///
+  /// In en, this message translates to:
+  /// **'Slide'**
+  String get pvAnimSlide;
+
+  /// No description provided for @pvAnimFade.
+  ///
+  /// In en, this message translates to:
+  /// **'Fade'**
+  String get pvAnimFade;
+
+  /// desktop: settings.view.lyrics
+  ///
+  /// In en, this message translates to:
+  /// **'Lyrics'**
+  String get pvGroupLyrics;
+
+  /// settings row that opens the lyrics style sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Style'**
+  String get pvLyricsRow;
+
+  /// No description provided for @pvLyricsMode.
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get pvLyricsMode;
+
+  /// No description provided for @pvLyricsModeSub.
+  ///
+  /// In en, this message translates to:
+  /// **'where the cover goes once lyrics are on'**
+  String get pvLyricsModeSub;
+
+  /// No description provided for @pvLyricsModeOverlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Over the cover'**
+  String get pvLyricsModeOverlay;
+
+  /// No description provided for @pvLyricsModeReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Instead of the cover'**
+  String get pvLyricsModeReplace;
+
+  /// desktop: settings.view.lyricsStyle.fill
+  ///
+  /// In en, this message translates to:
+  /// **'Fill'**
+  String get pvLyricsFill;
+
+  /// No description provided for @pvLyricsFillSub.
+  ///
+  /// In en, this message translates to:
+  /// **'what measures progress along the line; granular fills need synced lyrics'**
+  String get pvLyricsFillSub;
+
+  /// No description provided for @pvLyricsFillLine.
+  ///
+  /// In en, this message translates to:
+  /// **'By line'**
+  String get pvLyricsFillLine;
+
+  /// No description provided for @pvLyricsFillWord.
+  ///
+  /// In en, this message translates to:
+  /// **'By word'**
+  String get pvLyricsFillWord;
+
+  /// No description provided for @pvLyricsFillLetter.
+  ///
+  /// In en, this message translates to:
+  /// **'By letter'**
+  String get pvLyricsFillLetter;
+
+  /// No description provided for @pvLyricsFillWipe.
+  ///
+  /// In en, this message translates to:
+  /// **'Smooth'**
+  String get pvLyricsFillWipe;
+
+  /// desktop: settings.view.lyricsStyle.fx
+  ///
+  /// In en, this message translates to:
+  /// **'Effect'**
+  String get pvLyricsFx;
+
+  /// No description provided for @pvLyricsFxSub.
+  ///
+  /// In en, this message translates to:
+  /// **'how the part being sung lights up'**
+  String get pvLyricsFxSub;
+
+  /// No description provided for @pvLyricsFxNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get pvLyricsFxNone;
+
+  /// No description provided for @pvLyricsFxFade.
+  ///
+  /// In en, this message translates to:
+  /// **'Soft'**
+  String get pvLyricsFxFade;
+
+  /// No description provided for @pvLyricsFxGlow.
+  ///
+  /// In en, this message translates to:
+  /// **'Glow'**
+  String get pvLyricsFxGlow;
+
+  /// No description provided for @pvLyricsFxSpring.
+  ///
+  /// In en, this message translates to:
+  /// **'Spring'**
+  String get pvLyricsFxSpring;
+
+  /// desktop: settings.view.miniPlayer
+  ///
+  /// In en, this message translates to:
+  /// **'Mini player'**
+  String get pvGroupMini;
+
+  /// desktop: settings.view.mpBg
+  ///
+  /// In en, this message translates to:
+  /// **'Background'**
+  String get pvMiniBgRow;
+
+  /// No description provided for @pvMiniBgSub.
+  ///
+  /// In en, this message translates to:
+  /// **'what fills the card above the tab bar'**
+  String get pvMiniBgSub;
+
+  /// No description provided for @pvMiniBgTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get pvMiniBgTheme;
+
+  /// No description provided for @pvMiniBgCoverColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover color'**
+  String get pvMiniBgCoverColor;
+
+  /// No description provided for @pvMiniBgCover.
+  ///
+  /// In en, this message translates to:
+  /// **'The cover itself'**
+  String get pvMiniBgCover;
+
+  /// desktop: settings.view.mpProgress
+  ///
+  /// In en, this message translates to:
+  /// **'Progress indicators'**
+  String get pvMiniProgressRow;
+
+  /// No description provided for @pvMiniProgressSub.
+  ///
+  /// In en, this message translates to:
+  /// **'several can be on at once'**
+  String get pvMiniProgressSub;
+
+  /// No description provided for @pvMiniProgressNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get pvMiniProgressNone;
+
+  /// No description provided for @pvMiniProgressLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Line at the bottom'**
+  String get pvMiniProgressLine;
+
+  /// No description provided for @pvMiniProgressFill.
+  ///
+  /// In en, this message translates to:
+  /// **'Background fill'**
+  String get pvMiniProgressFill;
+
+  /// No description provided for @pvMiniProgressRing.
+  ///
+  /// In en, this message translates to:
+  /// **'Ring around the cover'**
+  String get pvMiniProgressRing;
+
+  /// desktop: settings.view.mpCoverShape
+  ///
+  /// In en, this message translates to:
+  /// **'Cover shape'**
+  String get pvMiniShapeRow;
+
+  /// No description provided for @pvMiniShapeRounded.
+  ///
+  /// In en, this message translates to:
+  /// **'Rounded'**
+  String get pvMiniShapeRounded;
+
+  /// No description provided for @pvMiniShapeCircle.
+  ///
+  /// In en, this message translates to:
+  /// **'Circle'**
+  String get pvMiniShapeCircle;
+
+  /// desktop: settings.view.mpRounded
+  ///
+  /// In en, this message translates to:
+  /// **'Corner rounding'**
+  String get pvMiniRadiusRow;
+
+  /// No description provided for @pvMiniRadiusNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get pvMiniRadiusNone;
+
+  /// No description provided for @pvMiniRadiusSoft.
+  ///
+  /// In en, this message translates to:
+  /// **'Soft'**
+  String get pvMiniRadiusSoft;
+
+  /// No description provided for @pvMiniRadiusRounded.
+  ///
+  /// In en, this message translates to:
+  /// **'Rounded'**
+  String get pvMiniRadiusRounded;
+
+  /// No description provided for @pvMiniRadiusPill.
+  ///
+  /// In en, this message translates to:
+  /// **'Pill'**
+  String get pvMiniRadiusPill;
+
+  /// desktop: settings.view.mpHide
+  ///
+  /// In en, this message translates to:
+  /// **'Controls'**
+  String get pvMiniButtonsRow;
+
+  /// No description provided for @pvMiniButtonsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'what stands in the row right of the title'**
+  String get pvMiniButtonsSub;
+
+  /// No description provided for @pvMiniButtonsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get pvMiniButtonsNone;
+
+  /// No description provided for @pvMiniButtonPrev.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get pvMiniButtonPrev;
+
+  /// No description provided for @pvMiniButtonPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Play/Pause'**
+  String get pvMiniButtonPlay;
+
+  /// No description provided for @pvMiniButtonNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get pvMiniButtonNext;
+
+  /// No description provided for @pvMiniButtonFav.
+  ///
+  /// In en, this message translates to:
+  /// **'Like'**
+  String get pvMiniButtonFav;
+
+  /// desktop: player.lyrics
+  ///
+  /// In en, this message translates to:
+  /// **'Lyrics'**
+  String get playerLyrics;
+
+  /// desktop: lyrics.loading
+  ///
+  /// In en, this message translates to:
+  /// **'Loading lyrics…'**
+  String get lyricsLoading;
+
+  /// desktop: lyrics.notFound
+  ///
+  /// In en, this message translates to:
+  /// **'Lyrics not found'**
+  String get lyricsNotFound;
+
   /// No description provided for @swZoneLibrary.
   ///
   /// In en, this message translates to:
@@ -2180,6 +2798,42 @@ abstract class AppLocalizations {
   /// **'Source badges use their brand colors by default; enable to tint them with the accent'**
   String get apBadgesSubtitle;
 
+  /// phone only: the desktop app navigates from a sidebar
+  ///
+  /// In en, this message translates to:
+  /// **'TAB BAR'**
+  String get apNavBar;
+
+  /// No description provided for @apNavBarRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Tab bar'**
+  String get apNavBarRow;
+
+  /// No description provided for @apNavBarPlain.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get apNavBarPlain;
+
+  /// No description provided for @apNavBarRounded.
+  ///
+  /// In en, this message translates to:
+  /// **'Rounded top'**
+  String get apNavBarRounded;
+
+  /// No description provided for @apNavBarFloating.
+  ///
+  /// In en, this message translates to:
+  /// **'Floating'**
+  String get apNavBarFloating;
+
+  /// No description provided for @apNavBarPill.
+  ///
+  /// In en, this message translates to:
+  /// **'Pill'**
+  String get apNavBarPill;
+
   /// No description provided for @scHelp.
   ///
   /// In en, this message translates to:
@@ -2215,6 +2869,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Active key'**
   String get scActiveKey;
+
+  /// No description provided for @scSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up'**
+  String get scSetup;
+
+  /// No description provided for @scReconfigure.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconfigure'**
+  String get scReconfigure;
+
+  /// No description provided for @scStatusAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'The key is picked up automatically'**
+  String get scStatusAuto;
+
+  /// No description provided for @scStatusManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Running on your own client_id'**
+  String get scStatusManual;
+
+  /// desktop: settings.sc.help.title
+  ///
+  /// In en, this message translates to:
+  /// **'How to get a client_id'**
+  String get scGuideTitle;
+
+  /// No description provided for @scGuideSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Step-by-step guide — usually not needed'**
+  String get scGuideSubtitle;
+
+  /// desktop: settings.sc.step1.* (**bold** marks what to look for)
+  ///
+  /// In en, this message translates to:
+  /// **'Open **soundcloud.com** in a desktop browser'**
+  String get scStep1;
+
+  /// No description provided for @scStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'Press **F12** → the **Network** tab'**
+  String get scStep2;
+
+  /// No description provided for @scStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'Press play on any track'**
+  String get scStep3;
+
+  /// No description provided for @scStep4.
+  ///
+  /// In en, this message translates to:
+  /// **'Find the request to **api-v2.soundcloud.com**'**
+  String get scStep4;
+
+  /// No description provided for @scStep5.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy the **client_id** parameter from the URL'**
+  String get scStep5;
 
   /// desktop: settings.ym.checking
   ///
@@ -2342,6 +3062,48 @@ abstract class AppLocalizations {
   /// **'Yandex is not responding'**
   String get ymErrNetwork;
 
+  /// No description provided for @ymGuideTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How to connect Yandex Music'**
+  String get ymGuideTitle;
+
+  /// No description provided for @ymGuideSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Yandex ID — four steps'**
+  String get ymGuideSubtitle;
+
+  /// No description provided for @ymStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'Press **Connect Yandex Music**'**
+  String get ymStep1;
+
+  /// No description provided for @ymStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'The **ya.ru/device** page opens — sign in to your account'**
+  String get ymStep2;
+
+  /// No description provided for @ymStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the code Bloom shows (tap the code to copy it)'**
+  String get ymStep3;
+
+  /// No description provided for @ymStep4.
+  ///
+  /// In en, this message translates to:
+  /// **'Come back to the app — the connection is picked up on its own'**
+  String get ymStep4;
+
+  /// No description provided for @ymGuideNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Without a Yandex Plus subscription some tracks won\'t play — those can be listened to from other platforms.'**
+  String get ymGuideNote;
+
   /// desktop: settings.ytm.status
   ///
   /// In en, this message translates to:
@@ -2360,11 +3122,53 @@ abstract class AppLocalizations {
   /// **'Search, pages and link import work without auth. Playback and downloads come straight from YouTube.'**
   String get ytmHelp;
 
+  /// No description provided for @ytmGuideTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What already works'**
+  String get ytmGuideTitle;
+
+  /// No description provided for @ytmGuideSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to connect'**
+  String get ytmGuideSubtitle;
+
+  /// No description provided for @ytmStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'Search, artist, album and playlist pages — **no sign-in**'**
+  String get ytmStep1;
+
+  /// No description provided for @ytmStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'Link import: paste an album or playlist link in the **Library**'**
+  String get ytmStep2;
+
+  /// No description provided for @ytmStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'Playback and downloads come straight from **YouTube**'**
+  String get ytmStep3;
+
   /// desktop: settings.storage.offline
   ///
   /// In en, this message translates to:
   /// **'Offline track cache'**
   String get stOfflineCache;
+
+  /// desktop: settings.storage.lyrics
+  ///
+  /// In en, this message translates to:
+  /// **'Lyrics'**
+  String get stLyrics;
+
+  /// desktop: settings.storage.customization
+  ///
+  /// In en, this message translates to:
+  /// **'Customization'**
+  String get stCustom;
 
   /// No description provided for @stCounting.
   ///
@@ -2372,29 +3176,35 @@ abstract class AppLocalizations {
   /// **'Counting…'**
   String get stCounting;
 
-  /// No description provided for @stCacheStats.
+  /// desktop: settings.storage.used
   ///
   /// In en, this message translates to:
-  /// **'{count} tracks · {size}'**
-  String stCacheStats(int count, String size);
+  /// **'Used'**
+  String get stUsed;
 
-  /// No description provided for @stHelp.
+  /// desktop: settings.storage.manage
   ///
   /// In en, this message translates to:
-  /// **'Downloaded tracks play without a network and use no data. They live inside the app — other players can’t see them, and they are removed together with Bloom.'**
-  String get stHelp;
+  /// **'Clear data'**
+  String get stManage;
 
-  /// No description provided for @stClear.
+  /// No description provided for @stFiles.
   ///
   /// In en, this message translates to:
-  /// **'Clear offline cache'**
-  String get stClear;
+  /// **'{count, plural, one{{count} file} other{{count} files}}'**
+  String stFiles(int count);
 
-  /// No description provided for @stClearTitle.
+  /// desktop: settings.storage.of
   ///
   /// In en, this message translates to:
-  /// **'Clear the offline cache?'**
-  String get stClearTitle;
+  /// **'{percent}% of {total}'**
+  String stUsedOf(String percent, String total);
+
+  /// No description provided for @stClearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all'**
+  String get stClearAll;
 
   /// No description provided for @stClearBody.
   ///
@@ -2402,11 +3212,47 @@ abstract class AppLocalizations {
   /// **'The downloaded copies will be deleted and those tracks will stop playing without a network. They stay in your library and playlists.'**
   String get stClearBody;
 
+  /// No description provided for @stClearLyricsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The saved lyrics will be deleted — they are fetched again on the next playback.'**
+  String get stClearLyricsBody;
+
+  /// No description provided for @stClearCustomBody.
+  ///
+  /// In en, this message translates to:
+  /// **'All uploaded images will be deleted. If one is currently set as a background or a cover, it will be reset.'**
+  String get stClearCustomBody;
+
+  /// No description provided for @stClearAllBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The caches — offline copies, lyrics and images — will be deleted. Your library and playlists are not affected.'**
+  String get stClearAllBody;
+
   /// No description provided for @stCleared.
   ///
   /// In en, this message translates to:
   /// **'Offline cache cleared, files deleted: {count}'**
   String stCleared(int count);
+
+  /// No description provided for @stLyricsCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Lyrics cache cleared'**
+  String get stLyricsCleared;
+
+  /// No description provided for @stCustomCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Customization library cleared'**
+  String get stCustomCleared;
+
+  /// No description provided for @stAllCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'App data cleared'**
+  String get stAllCleared;
 
   /// No description provided for @stBytes.
   ///
@@ -2431,6 +3277,444 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{value} GB'**
   String stGigabytes(String value);
+
+  /// desktop: settings.library.import.title, narrowed: the phone has no watched folders, only single files
+  ///
+  /// In en, this message translates to:
+  /// **'Your own tracks'**
+  String get ltImportTitle;
+
+  /// desktop: settings.library.import.desc
+  ///
+  /// In en, this message translates to:
+  /// **'What Bloom does with a file you add with + in All tracks. Tracks already added stay as they are.'**
+  String get ltImportDesc;
+
+  /// desktop: settings.library.import.inPlace
+  ///
+  /// In en, this message translates to:
+  /// **'In place'**
+  String get ltImportInPlace;
+
+  /// desktop: settings.library.import.inPlaceTip
+  ///
+  /// In en, this message translates to:
+  /// **'The file stays where it is and takes no extra space. Delete or move it and the track stops playing.'**
+  String get ltImportInPlaceTip;
+
+  /// desktop: settings.library.import.copy
+  ///
+  /// In en, this message translates to:
+  /// **'Into Bloom'**
+  String get ltImportCopy;
+
+  /// desktop: settings.library.import.copyTip
+  ///
+  /// In en, this message translates to:
+  /// **'Bloom copies the file into itself. The track plays even if the original is gone, but the space is used twice.'**
+  String get ltImportCopyTip;
+
+  /// No description provided for @ltAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Added {count} track} other{Added {count} tracks}}'**
+  String ltAdded(int count);
+
+  /// desktop: lib.import.nothingAdded
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to add: these tracks are already in the library, or the format is unsupported'**
+  String get ltNothingAdded;
+
+  /// phone only: the desktop opens a native dialog from Rust and cannot fail this way
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the file picker'**
+  String get ltImportFailed;
+
+  /// phone only: shown in the player when a content:// grant is gone or the copy was wiped
+  ///
+  /// In en, this message translates to:
+  /// **'File is not available'**
+  String get ltFileGone;
+
+  /// No description provided for @custLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Library'**
+  String get custLibrary;
+
+  /// No description provided for @custPresets.
+  ///
+  /// In en, this message translates to:
+  /// **'Presets'**
+  String get custPresets;
+
+  /// No description provided for @custAddUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Add by URL'**
+  String get custAddUrl;
+
+  /// No description provided for @custUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get custUpload;
+
+  /// No description provided for @custLibraryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Library is empty — add a photo or GIF'**
+  String get custLibraryEmpty;
+
+  /// No description provided for @custAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Added!'**
+  String get custAdded;
+
+  /// No description provided for @custBadUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid image URL'**
+  String get custBadUrl;
+
+  /// No description provided for @custFilesAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} file added} other{{count} files added}}'**
+  String custFilesAdded(int count);
+
+  /// No description provided for @custCtxBg.
+  ///
+  /// In en, this message translates to:
+  /// **'Background'**
+  String get custCtxBg;
+
+  /// No description provided for @custCtxCover.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover'**
+  String get custCtxCover;
+
+  /// No description provided for @custCtxSlider.
+  ///
+  /// In en, this message translates to:
+  /// **'Slider'**
+  String get custCtxSlider;
+
+  /// No description provided for @custBlur.
+  ///
+  /// In en, this message translates to:
+  /// **'Blur'**
+  String get custBlur;
+
+  /// No description provided for @custDim.
+  ///
+  /// In en, this message translates to:
+  /// **'Dim'**
+  String get custDim;
+
+  /// No description provided for @custImageGone.
+  ///
+  /// In en, this message translates to:
+  /// **'Image unavailable'**
+  String get custImageGone;
+
+  /// No description provided for @custOnlyForBg.
+  ///
+  /// In en, this message translates to:
+  /// **'Background only'**
+  String get custOnlyForBg;
+
+  /// No description provided for @custPresetCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create preset'**
+  String get custPresetCreate;
+
+  /// No description provided for @custImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get custImport;
+
+  /// No description provided for @custPresetsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Save the current settings as a preset'**
+  String get custPresetsEmpty;
+
+  /// No description provided for @custPresetNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Name the preset...'**
+  String get custPresetNameHint;
+
+  /// No description provided for @custPresetSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Preset “{name}” saved!'**
+  String custPresetSaved(String name);
+
+  /// No description provided for @custPresetNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is applied — set a background, cover or slider first'**
+  String get custPresetNothing;
+
+  /// No description provided for @custPresetsFull.
+  ///
+  /// In en, this message translates to:
+  /// **'No room for more presets — the limit is {limit}'**
+  String custPresetsFull(int limit);
+
+  /// No description provided for @custPresetUntitled.
+  ///
+  /// In en, this message translates to:
+  /// **'Untitled'**
+  String get custPresetUntitled;
+
+  /// No description provided for @custPresetSlots.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} image} other{{count} images}}'**
+  String custPresetSlots(int count);
+
+  /// No description provided for @custPresetApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get custPresetApply;
+
+  /// No description provided for @custPresetExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get custPresetExport;
+
+  /// No description provided for @custPresetApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Preset “{name}” applied'**
+  String custPresetApplied(String name);
+
+  /// No description provided for @custPresetExported.
+  ///
+  /// In en, this message translates to:
+  /// **'Preset saved to file'**
+  String get custPresetExported;
+
+  /// No description provided for @custImportBad.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read file — invalid format'**
+  String get custImportBad;
+
+  /// No description provided for @custImported.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} preset imported} other{{count} presets imported}}'**
+  String custImported(int count);
+
+  /// No description provided for @apCoverAsBg.
+  ///
+  /// In en, this message translates to:
+  /// **'Track cover as background'**
+  String get apCoverAsBg;
+
+  /// No description provided for @apCoverAsBgSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the current track cover as the app background'**
+  String get apCoverAsBgSub;
+
+  /// desktop: settings.interface.cat.transparency
+  ///
+  /// In en, this message translates to:
+  /// **'TRANSPARENCY'**
+  String get apTrGroup;
+
+  /// desktop: settings.interface.transparency.title
+  ///
+  /// In en, this message translates to:
+  /// **'Transparency'**
+  String get apTrTitle;
+
+  /// Subtitle of the master switch: the level the blocks are set to
+  ///
+  /// In en, this message translates to:
+  /// **'On ({percent}%)'**
+  String apTrOn(int percent);
+
+  /// desktop: settings.interface.transparency.off
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get apTrOff;
+
+  /// desktop: settings.interface.transparency.blockOpacity, inverted — here it is how much shows through
+  ///
+  /// In en, this message translates to:
+  /// **'Transparency level'**
+  String get apTrLevel;
+
+  /// desktop: settings.interface.transparency.glassStr
+  ///
+  /// In en, this message translates to:
+  /// **'Glass brightness'**
+  String get apTrBrightness;
+
+  /// desktop: settings.interface.transparency.glassBlur
+  ///
+  /// In en, this message translates to:
+  /// **'Glass blur'**
+  String get apTrBlur;
+
+  /// desktop: settings.interface.transparency.overlays.title
+  ///
+  /// In en, this message translates to:
+  /// **'Overlay transparency'**
+  String get apTrOverlays;
+
+  /// desktop: settings.interface.transparency.overlays.sub — no side panels or context menus on the phone
+  ///
+  /// In en, this message translates to:
+  /// **'Glass for sheets, menus and dialogs'**
+  String get apTrOverlaysSub;
+
+  /// desktop: onb.tagline
+  ///
+  /// In en, this message translates to:
+  /// **'your personal player'**
+  String get onbTagline;
+
+  /// desktop: onb.hello.sub
+  ///
+  /// In en, this message translates to:
+  /// **'A few quick steps and the player is yours'**
+  String get onbHelloSub;
+
+  /// desktop: onb.hello.cta
+  ///
+  /// In en, this message translates to:
+  /// **'Let\'s go'**
+  String get onbHelloCta;
+
+  /// desktop: onb.next
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get onbNext;
+
+  /// desktop: onb.back
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get onbBack;
+
+  /// desktop: onb.done
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get onbDone;
+
+  /// desktop: onb.profile.title
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us about yourself'**
+  String get onbProfileTitle;
+
+  /// desktop: onb.profile.sub
+  ///
+  /// In en, this message translates to:
+  /// **'Avatar, cover and name. You can change all of it later in your profile.'**
+  String get onbProfileSub;
+
+  /// desktop: onb.addCover
+  ///
+  /// In en, this message translates to:
+  /// **'Add profile cover'**
+  String get onbAddCover;
+
+  /// desktop: onb.theme.title
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a look'**
+  String get onbThemeTitle;
+
+  /// desktop: onb.theme.sub
+  ///
+  /// In en, this message translates to:
+  /// **'The theme applies instantly — see how it feels.'**
+  String get onbThemeSub;
+
+  /// desktop: onb.theme.hint
+  ///
+  /// In en, this message translates to:
+  /// **'More themes live in settings'**
+  String get onbThemeHint;
+
+  /// desktop: onb.library.title
+  ///
+  /// In en, this message translates to:
+  /// **'Connect your music'**
+  String get onbMusicTitle;
+
+  /// desktop: onb.library.sub, rewritten: there are no local folders on the phone
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to your platforms — their tracks show up in search right away.'**
+  String get onbMusicSub;
+
+  /// desktop: onb.music.platforms
+  ///
+  /// In en, this message translates to:
+  /// **'PLATFORMS'**
+  String get onbMusicPlatforms;
+
+  /// desktop: onb.library.skip
+  ///
+  /// In en, this message translates to:
+  /// **'None of this is required — it all lives in settings'**
+  String get onbMusicSkip;
+
+  /// desktop: onb.plat.connected
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get onbPlatConnected;
+
+  /// desktop: onb.plat.notConnected
+  ///
+  /// In en, this message translates to:
+  /// **'Not connected'**
+  String get onbPlatNotConnected;
+
+  /// desktop: onb.plat.autoCheck
+  ///
+  /// In en, this message translates to:
+  /// **'Check'**
+  String get onbPlatCheck;
+
+  /// desktop: onb.welcome
+  ///
+  /// In en, this message translates to:
+  /// **'Hi, {name}!'**
+  String onbWelcome(String name);
+
+  /// desktop: onb.welcomeSub
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to Bloom'**
+  String get onbWelcomeSub;
+
+  /// debug builds only: the desktop has showOnboarding() in the console
+  ///
+  /// In en, this message translates to:
+  /// **'Show onboarding again'**
+  String get onbReplay;
 }
 
 class _AppLocalizationsDelegate

@@ -15,7 +15,7 @@
 /// «ЯЗЫК» идёт над «ТЕМА».
 library;
 
-import 'dart:math' show Random;
+import 'dart:math' show Random, min;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,7 +29,10 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/color_picker.dart';
+import '../../../shared/ui/glass.dart';
+import '../../../shared/ui/language_card.dart';
 import '../../../shared/ui/subpage_header.dart';
+import '../transparency_store.dart';
 
 class AppearanceScreen extends ConsumerWidget {
   const AppearanceScreen({super.key});
@@ -45,14 +48,14 @@ class AppearanceScreen extends ConsumerWidget {
       title: context.l.setInterface,
       onBack: () => context.go('/settings'),
       children: [
-        Text(context.l.apLanguage, style: theme.labelSmall),
+        SettingsCaption(context.l.apLanguage),
         const SizedBox(height: 10),
         Row(
           children: [
             for (final locale in kLocales) ...[
               if (locale != kLocales.first) const SizedBox(width: 12),
               Expanded(
-                child: _LanguageCard(
+                child: LanguageCard(
                   locale: locale,
                   // Пока язык не выбран руками, активной считается та
                   // карточка, на которой приложение сейчас говорит — иначе
@@ -68,108 +71,145 @@ class AppearanceScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 26),
-        Text(context.l.apTheme, style: theme.labelSmall),
+        SettingsCaption(context.l.apTheme),
         const SizedBox(height: 10),
-        _SettingsCard(
-          onTap: () => _pickTheme(context, ref),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(context.l.apThemeRow, style: theme.titleMedium),
-                    const SizedBox(height: 3),
-                    Text(settings.preset.name, style: theme.bodySmall),
-                  ],
+        SettingsGroupCard(
+          rows: [
+            _SettingsCard(
+              onTap: () => _pickTheme(context, ref),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(context.l.apThemeRow, style: theme.titleMedium),
+                        const SizedBox(height: 3),
+                        Text(settings.preset.name, style: theme.bodySmall),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  _ThemeDots(preset: settings.preset),
+                ],
+              ),
+            ),
+            // Авто-акцент — тот же тоггл, что в десктопной секции «Интерфейс»:
+            // ручного выбора акцента нет ни там, ни здесь.
+            _SettingsCard(
+              child: _SettingsRow(
+                title: context.l.apAutoAccent,
+                subtitle: context.l.apAutoAccentSub,
+                trailing: BloomSwitch(
+                  value: settings.autoAccent,
+                  onChanged: controller.setAutoAccent,
                 ),
               ),
-              const SizedBox(width: 14),
-              _ThemeDots(preset: settings.preset),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        // Авто-акцент — тот же тоггл, что в десктопной секции «Интерфейс»:
-        // ручного выбора акцента нет ни там, ни здесь.
-        _SettingsCard(
-          child: Row(
-            children: [
-              Expanded(
+            ),
+            // Яркость — отдельной строкой под тогглом, ровно как на ПК: она
+            // нужна, только пока авто-акцент включён.
+            if (settings.autoAccent)
+              _SettingsCard(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(context.l.apAutoAccent, style: theme.titleMedium),
-                    const SizedBox(height: 3),
-                    Text(context.l.apAutoAccentSub, style: theme.bodySmall),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 14),
-              BloomSwitch(
-                value: settings.autoAccent,
-                onChanged: controller.setAutoAccent,
-              ),
-            ],
-          ),
-        ),
-        // Яркость — отдельной карточкой под тогглом, ровно как на ПК: она
-        // нужна, только пока авто-акцент включён.
-        if (settings.autoAccent) ...[
-          const SizedBox(height: 12),
-          _SettingsCard(
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Text(context.l.apAutoAccentLevel, style: theme.titleMedium),
-                    const Spacer(),
-                    Text(
-                      '${(settings.autoAccentL * 100).round()} %',
-                      style: theme.bodySmall,
+                    Row(
+                      children: [
+                        Text(
+                          context.l.apAutoAccentLevel,
+                          style: theme.titleMedium,
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${(settings.autoAccentL * 100).round()} %',
+                          style: theme.bodySmall,
+                        ),
+                      ],
+                    ),
+                    Slider(
+                      value: settings.autoAccentL,
+                      min: kAutoAccentLMin,
+                      max: kAutoAccentLMax,
+                      onChanged: controller.setAutoAccentL,
                     ),
                   ],
                 ),
-                Slider(
-                  value: settings.autoAccentL,
-                  min: kAutoAccentLMin,
-                  max: kAutoAccentLMax,
-                  onChanged: controller.setAutoAccentL,
+              ),
+            // Бейджи стоят тут же, в блоке темы, и сразу после авто-акцента —
+            // тот же порядок, что в десктопной секции «Интерфейс»: настройка
+            // про акцент, а не про скругления. Тексты — из `dict.ts`
+            // (`settings.interface.accentBadges`).
+            _SettingsCard(
+              child: _SettingsRow(
+                title: context.l.apBadgesTitle,
+                subtitle: context.l.apBadgesSubtitle,
+                trailing: BloomSwitch(
+                  value: settings.accentBadges,
+                  onChanged: controller.setAccentBadges,
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
-        const SizedBox(height: 12),
-        // Бейджи стоят тут же, в блоке темы, и сразу после авто-акцента — тот
-        // же порядок, что в десктопной секции «Интерфейс»: настройка про
-        // акцент, а не про скругления. Тексты — из `dict.ts`
-        // (`settings.interface.accentBadges`).
-        _SettingsCard(
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(context.l.apBadgesTitle, style: theme.titleMedium),
-                    const SizedBox(height: 3),
-                    Text(context.l.apBadgesSubtitle, style: theme.bodySmall),
-                  ],
+            // «Обложка трека как фон» — десктопная настройка вкладки «Фон»
+            // раздела «Кастомизация»; сюда её перенёс пользователь. Своя
+            // картинка фона (её ставят в «Кастомизации») эту настройку
+            // перебивает — как и на ПК.
+            _SettingsCard(
+              child: _SettingsRow(
+                title: context.l.apCoverAsBg,
+                subtitle: context.l.apCoverAsBgSub,
+                trailing: BloomSwitch(
+                  value: settings.coverAsBg,
+                  onChanged: controller.setCoverAsBg,
                 ),
               ),
-              const SizedBox(width: 14),
-              BloomSwitch(
-                value: settings.accentBadges,
-                onChanged: controller.setAccentBadges,
+            ),
+          ],
+        ),
+        const SizedBox(height: 26),
+        SettingsCaption(context.l.apNavBar),
+        const SizedBox(height: 10),
+        SettingsGroupCard(
+          rows: [
+            _SettingsCard(
+              onTap: () => _pickNavStyle(context, ref),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(context.l.apNavBarRow, style: theme.titleMedium),
+                        const SizedBox(height: 3),
+                        Text(
+                          _navStyleLabel(context.l, settings.navStyle),
+                          style: theme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  // Тот же макет, что в шторке, только мелкий: строка
+                  // показывает выбранное, как кружки темы над ней.
+                  SizedBox(
+                    width: 46,
+                    height: 46 * 64 / 100,
+                    child: CustomPaint(
+                      painter: _NavStyleGlyph(
+                        style: settings.navStyle,
+                        screen: t.bg,
+                        frame: t.ovlLine2,
+                        ink: t.accent,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
         const SizedBox(height: 26),
         Row(
           children: [
-            Text(context.l.apCorners, style: theme.labelSmall),
+            SettingsCaption(context.l.apCorners),
             const Spacer(),
             Text('${settings.radius.round()} px', style: theme.bodySmall),
           ],
@@ -183,111 +223,365 @@ class AppearanceScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         // Живой пример: по нему видно и радиус, и акцент разом.
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: t.pill,
-            borderRadius: BorderRadius.circular(t.radius),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: t.accent,
-                  borderRadius: BorderRadius.circular(t.radius * 0.72),
+        GlassBox(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: t.accent,
+                    borderRadius: BorderRadius.circular(t.radius * 0.72),
+                  ),
+                  child: Icon(
+                    SolarIconsBold.play,
+                    size: 20,
+                    color: t.accentText,
+                  ),
                 ),
-                child: Icon(SolarIconsBold.play, size: 20, color: t.accentText),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(context.l.apPreviewTitle, style: theme.titleSmall),
-                    const SizedBox(height: 2),
-                    Text(context.l.apPreviewSubtitle, style: theme.bodySmall),
-                  ],
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(context.l.apPreviewTitle, style: theme.titleSmall),
+                      const SizedBox(height: 2),
+                      Text(context.l.apPreviewSubtitle, style: theme.bodySmall),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
+        const SizedBox(height: 26),
+        ..._transparencyGroup(context, ref),
       ],
     );
   }
 }
 
-/// Карточка языка — порт десктопного `.s-lang-card`: флаг, название на самом
-/// языке и код в углу у активной.
-class _LanguageCard extends StatelessWidget {
-  const _LanguageCard({
-    required this.locale,
+/// Группа «ПРОЗРАЧНОСТЬ» — последняя на экране, как категория с тем же именем
+/// в конце десктопной секции «Интерфейс».
+///
+/// Ползунков на самой странице нет (на ПК они стоят прямо в карточке): строка
+/// показывает значение и открывает шторку с одним ползунком — так решил
+/// пользователь, показав макет. Всё, кроме тумблера режима, скрыто, пока
+/// прозрачность выключена: это подрежимы, и настраивать их в выключенном
+/// состоянии нечего (десктопный `#sTrSliders` с классом `vis`).
+List<Widget> _transparencyGroup(BuildContext context, WidgetRef ref) {
+  final tr = ref.watch(transparencyProvider);
+  final controller = ref.read(transparencyProvider.notifier);
+  final l = context.l;
+
+  return [
+    SettingsCaption(l.apTrGroup),
+    const SizedBox(height: 10),
+    SettingsGroupCard(
+      rows: [
+        _SettingsCard(
+          child: _SettingsRow(
+            title: l.apTrTitle,
+            subtitle: tr.on ? l.apTrOn(tr.transparencyPercent) : l.apTrOff,
+            trailing: BloomSwitch(value: tr.on, onChanged: controller.setOn),
+          ),
+        ),
+        if (tr.on) ...[
+          _TrValueRow(
+            icon: SolarIconsOutline.eye,
+            title: l.apTrLevel,
+            value: '${tr.transparencyPercent}%',
+            onTap: () => _pickTrValue(
+              context: context,
+              title: l.apTrLevel,
+              value: tr.transparencyPercent,
+              max: 100,
+              unit: '%',
+              onChanged: controller.setTransparencyPercent,
+            ),
+          ),
+          _TrValueRow(
+            icon: SolarIconsOutline.sun2,
+            title: l.apTrBrightness,
+            value: '${tr.glassStr}%',
+            onTap: () => _pickTrValue(
+              context: context,
+              title: l.apTrBrightness,
+              value: tr.glassStr,
+              max: 100,
+              unit: '%',
+              onChanged: controller.setGlassStr,
+            ),
+          ),
+          _TrValueRow(
+            icon: SolarIconsOutline.waterdrop,
+            title: l.apTrBlur,
+            value: '${tr.glassBlur}px',
+            onTap: () => _pickTrValue(
+              context: context,
+              title: l.apTrBlur,
+              value: tr.glassBlur,
+              max: kTrBlurMax,
+              unit: 'px',
+              onChanged: controller.setGlassBlur,
+            ),
+          ),
+          _SettingsCard(
+            child: _SettingsRow(
+              title: l.apTrOverlays,
+              subtitle: l.apTrOverlaysSub,
+              trailing: BloomSwitch(
+                value: tr.overlayGlass,
+                onChanged: controller.setOverlayGlass,
+              ),
+            ),
+          ),
+        ],
+      ],
+    ),
+  ];
+}
+
+/// Строка группы: название, под ним значение или пояснение, справа — тумблер
+/// либо кружок со значком.
+class _SettingsRow extends StatelessWidget {
+  const _SettingsRow({
+    required this.title,
+    required this.subtitle,
+    required this.trailing,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context).textTheme;
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: theme.titleMedium),
+              const SizedBox(height: 3),
+              // Ярче общего `bodySmall` — как выбранное в строках «Плеера».
+              Text(
+                subtitle,
+                style: theme.bodySmall?.copyWith(color: context.bloom.text2),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 14),
+        trailing,
+      ],
+    );
+  }
+}
+
+/// Строка с ползунком за ней: значение под названием, справа кружок со
+/// значком. Кружок не кнопка — нажимается вся строка, а он показывает, о чём
+/// она (глаз — прозрачность, солнце — яркость, капля — размытие).
+class _TrValueRow extends StatelessWidget {
+  const _TrValueRow({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return _SettingsCard(
+      onTap: onTap,
+      child: _SettingsRow(
+        title: title,
+        subtitle: value,
+        trailing: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.08),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 20, color: t.text),
+        ),
+      ),
+    );
+  }
+}
+
+/// Шторка одного ползунка: заголовок, значение и полоса. Значение применяется
+/// НА ХОДУ, не по закрытию, — иначе стекло не с чем сравнивать, пока крутишь.
+Future<void> _pickTrValue({
+  required BuildContext context,
+  required String title,
+  required int value,
+  required int max,
+  required String unit,
+  required ValueChanged<int> onChanged,
+}) async {
+  var current = value;
+  await showBloomSheetChild<void>(
+    context: context,
+    header: Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 6, 20, 4),
+        child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+      ),
+    ),
+    child: StatefulBuilder(
+      builder: (context, setState) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$current$unit',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            Slider(
+              value: current.toDouble(),
+              max: max.toDouble(),
+              divisions: max,
+              onChanged: (v) {
+                setState(() => current = v.round());
+                onChanged(current);
+              },
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+// ─── Вид таб-бара ───────────────────────────────────────────────────────────
+
+String _navStyleLabel(AppLocalizations l, NavBarStyle style) => switch (style) {
+  NavBarStyle.bar => l.apNavBarPlain,
+  NavBarStyle.rounded => l.apNavBarRounded,
+  NavBarStyle.floating => l.apNavBarFloating,
+  NavBarStyle.pill => l.apNavBarPill,
+};
+
+/// Шторка выбора вида таб-бара: четыре плитки сеткой 2×2.
+///
+/// Сетка живёт в шторке, а не на самой странице: у «Интерфейса» уже есть
+/// строка «Тема» с таким же поведением, и второй развёрнутый блок выбора
+/// раздул бы экран вдвое. Плитки в два столбца, а не в строку из четырёх (как
+/// варианты анимации в настройках плеера): там подписи в одно короткое слово,
+/// а «Скруглённый» на четверти ширины телефона стал бы многоточием.
+///
+/// Выбор применяется и закрывает шторку: сам бар она собой и закрывает, так
+/// что смотреть на результат из-под неё всё равно нечем.
+Future<void> _pickNavStyle(BuildContext context, WidgetRef ref) async {
+  final current = ref.read(settingsProvider).navStyle;
+  final width = MediaQuery.of(context).size.width;
+  // 12 полей шторки с двух сторон + 12 зазора между столбцами.
+  final cardWidth = (width - 12 * 2 - 12) / 2;
+
+  final picked = await showBloomSheetChild<NavBarStyle>(
+    context: context,
+    header: Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
+        child: Text(
+          context.l.apNavBarRow,
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+      ),
+    ),
+    // Закрывать шторку надо ЕЁ контекстом, а не контекстом страницы: шторка
+    // живёт в корневом навигаторе, а страница — во вложенном (ветка таба), и
+    // `pop` со страничным контекстом закрыл бы сами «Настройки».
+    child: Builder(
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final style in NavBarStyle.values)
+              _NavStyleCard(
+                style: style,
+                width: cardWidth,
+                active: style == current,
+                onTap: () => Navigator.of(sheetContext).pop(style),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+  if (picked != null) ref.read(settingsProvider.notifier).setNavStyle(picked);
+}
+
+class _NavStyleCard extends StatelessWidget {
+  const _NavStyleCard({
+    required this.style,
+    required this.width,
     required this.active,
     required this.onTap,
   });
 
-  final Locale locale;
+  final NavBarStyle style;
+  final double width;
   final bool active;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final name = switch (locale.languageCode) {
-      'ru' => context.l.apLanguageRu,
-      _ => context.l.apLanguageEn,
-    };
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
+        width: width,
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
         decoration: BoxDecoration(
           color: t.pill,
           borderRadius: BorderRadius.circular(t.radius * 0.75),
+          // Рамка есть всегда, просто у невыбранной прозрачная: иначе
+          // выбранная плитка распухала бы на полтора пикселя и ряд дёргался.
           border: Border.all(
             color: active ? t.accent : Colors.transparent,
             width: 1.5,
           ),
         ),
-        child: Stack(
+        child: Column(
           children: [
-            Column(
-              children: [
-                CustomPaint(
-                  size: const Size(46, 46 * 24 / 36),
-                  painter: _FlagPainter(locale.languageCode),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  name,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: active ? t.text : t.text2,
-                  ),
-                ),
-              ],
-            ),
-            if (active)
-              Positioned(
-                top: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: t.ovlLine,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    locale.languageCode.toUpperCase(),
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
+            AspectRatio(
+              aspectRatio: 100 / 64,
+              child: CustomPaint(
+                painter: _NavStyleGlyph(
+                  style: style,
+                  screen: t.bg,
+                  frame: t.ovlLine2,
+                  ink: active ? t.accent : t.text2,
                 ),
               ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              _navStyleLabel(context.l, style),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: active ? t.text : t.text2,
+              ),
+            ),
           ],
         ),
       ),
@@ -295,69 +589,133 @@ class _LanguageCard extends StatelessWidget {
   }
 }
 
-/// Флаги — те же две картинки, что в `FLAGS` десктопного `InterfaceSection`,
-/// с той же сеткой: холст 36×24, у американского 13 полос и кантон в семь из
-/// них. Рисуем кодом, а не SVG-файлом: две фигуры проще посчитать, чем тащить
-/// ассеты.
-class _FlagPainter extends CustomPainter {
-  const _FlagPainter(this.code);
+/// Макет экрана с баром внизу: рамка телефона, три полоски списка и сама
+/// панель в том виде, который выберут. Рисуем кодом, а не четырьмя SVG, — те
+/// же прямоугольники, что и в самом каркасе.
+class _NavStyleGlyph extends CustomPainter {
+  const _NavStyleGlyph({
+    required this.style,
+    required this.screen,
+    required this.frame,
+    required this.ink,
+  });
 
-  final String code;
+  final NavBarStyle style;
+
+  /// Заливка «экрана» — фон темы: по нему видно, как панель на нём лежит.
+  final Color screen;
+  final Color frame;
+
+  /// Цвет панели и иконок: акцент у выбранной плитки, приглушённый у прочих.
+  final Color ink;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final k = size.width / 36;
-    final paint = Paint();
-    final rect = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      Radius.circular(2 * k),
-    );
-    canvas.clipRRect(rect);
-    canvas.drawRect(Offset.zero & size, paint..color = const Color(0xFFFFFFFF));
+    // Рисуем в сетке 100×64 и масштабируем разом — как значки вариантов в
+    // настройках плеера.
+    canvas.save();
+    canvas.scale(size.width / 100, size.height / 64);
 
-    if (code == 'ru') {
-      canvas.drawRect(
-        Rect.fromLTWH(0, 8 * k, size.width, 8 * k),
-        paint..color = const Color(0xFF0039A6),
+    final body = RRect.fromLTRBR(0, 0, 100, 64, const Radius.circular(8));
+    final paint = Paint()..color = screen;
+    canvas.drawRRect(body, paint);
+
+    canvas.save();
+    // Всё внутри режется рамкой телефона: нижние углы панели скругляются сами,
+    // а панель «во всю ширину» упирается ровно в края.
+    canvas.clipRRect(body);
+
+    // Три полоски списка: разной длины, чтобы читались как строки, а не как
+    // полосы.
+    paint.color = ink.withValues(alpha: 0.22);
+    const widths = [64.0, 76.0, 52.0];
+    for (var i = 0; i < widths.length; i++) {
+      canvas.drawRRect(
+        RRect.fromLTRBR(
+          10,
+          10 + i * 11,
+          10 + widths[i],
+          15 + i * 11,
+          const Radius.circular(2.5),
+        ),
+        paint,
       );
-      canvas.drawRect(
-        Rect.fromLTWH(0, 16 * k, size.width, 8 * k),
-        paint..color = const Color(0xFFD52B1E),
-      );
-      return;
     }
 
-    final stripe = 24 / 13 * k;
-    paint.color = const Color(0xFFB22234);
-    for (var i = 0; i < 13; i += 2) {
-      canvas.drawRect(Rect.fromLTWH(0, i * stripe, size.width, stripe), paint);
+    final panel = switch (style) {
+      // Прижат к низу: верх ровный, низ скруглит рамка.
+      NavBarStyle.bar => RRect.fromLTRBR(0, 46, 100, 66, Radius.zero),
+      NavBarStyle.rounded => RRect.fromLTRBAndCorners(
+        0,
+        44,
+        100,
+        66,
+        topLeft: const Radius.circular(9),
+        topRight: const Radius.circular(9),
+      ),
+      // Выше прижатых по высоте панели — ровно как в самом баре
+      // (`kNavBarFloatHeight` против `kNavBarHeight`).
+      NavBarStyle.floating => RRect.fromLTRBR(
+        7,
+        41,
+        93,
+        59,
+        const Radius.circular(5),
+      ),
+      // Та же панель, что у плавающей, — разница только в углах: у капсулы
+      // они в половину высоты.
+      NavBarStyle.pill => RRect.fromLTRBR(
+        7,
+        41,
+        93,
+        59,
+        const Radius.circular(9),
+      ),
+    };
+    canvas.drawRRect(panel, paint..color = ink.withValues(alpha: 0.26));
+
+    // Тонкая линия сверху — единственное, чем обычный бар отбит от списка.
+    if (style == NavBarStyle.bar) {
+      canvas.drawLine(
+        const Offset(0, 46),
+        const Offset(100, 46),
+        Paint()
+          ..color = ink.withValues(alpha: 0.5)
+          ..strokeWidth = 1,
+      );
     }
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, 15.6 * k, stripe * 7),
-      paint..color = const Color(0xFF3C3B6E),
+
+    // Три иконки — точки по центру панели.
+    paint.color = ink;
+    final cy = (panel.top + min(panel.bottom, 64)) / 2;
+    final half = (panel.right - panel.left) / 2 - 6;
+    final step = half * 2 / 3;
+    final cx = (panel.left + panel.right) / 2;
+    for (var i = -1; i <= 1; i++) {
+      canvas.drawCircle(Offset(cx + i * step, cy), 2.6, paint);
+    }
+
+    canvas.restore();
+    canvas.drawRRect(
+      body.deflate(0.5),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = frame,
     );
-    paint.color = const Color(0xFFFFFFFF);
-    for (var r = 0; r < 4; r++) {
-      for (var c = 0; c < 5; c++) {
-        canvas.drawCircle(
-          Offset(
-            (1.6 + c * 3.1 + (r.isOdd ? 1.55 : 0)) * k,
-            (1.6 + r * 2.9) * k,
-          ),
-          0.6 * k,
-          paint,
-        );
-      }
-    }
+    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(_FlagPainter old) => old.code != code;
+  bool shouldRepaint(_NavStyleGlyph old) =>
+      old.style != style || old.ink != ink || old.screen != screen;
 }
 
-/// Карточка-строка настройки: та же тёмная плёнка, что у групп в «Настройках».
+/// Строка настройки внутри группы. Своей плёнки у неё нет: связанные строки
+/// стоят одной карточкой ([SettingsGroupCard]), как в корневых «Настройках».
+///
 /// [onTap] — строка ведёт куда-то (шторка выбора темы); без него это просто
-/// подложка под тоггл или ползунок.
+/// место под тоггл или ползунок.
 class _SettingsCard extends StatelessWidget {
   const _SettingsCard({required this.child, this.onTap});
 
@@ -366,17 +724,11 @@ class _SettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Material(
-      color: t.pill,
-      borderRadius: BorderRadius.circular(t.radius),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-          child: child,
-        ),
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+        child: child,
       ),
     );
   }

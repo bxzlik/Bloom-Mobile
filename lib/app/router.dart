@@ -9,15 +9,23 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/customization/ui/app_background.dart';
+import '../features/customization/ui/media_item_screen.dart';
+import '../features/customization/ui/media_library_screen.dart';
+import '../features/customization/ui/presets_screen.dart';
 import '../features/home/ui/home_screen.dart';
 import '../features/library/ui/library_screen.dart';
 import '../features/library/ui/tracklist_screen.dart';
+import '../features/onboarding/onboarding_store.dart';
+import '../features/onboarding/ui/onboarding_screen.dart';
 import '../features/profile/ui/profile_edit_screen.dart';
 import '../features/profile/ui/profile_screen.dart';
 import '../features/search/ui/search_screen.dart';
 import '../features/settings/ui/appearance_screen.dart';
+import '../features/settings/ui/player_screen.dart';
 import '../features/settings/ui/settings_screen.dart';
 import '../features/settings/ui/soundcloud_screen.dart';
 import '../features/settings/ui/storage_screen.dart';
@@ -25,10 +33,35 @@ import '../features/settings/ui/swipes_screen.dart';
 import '../features/settings/ui/yandex_screen.dart';
 import '../features/settings/ui/ytmusic_screen.dart';
 import '../shared/ui/cover_hero.dart';
+import '../shared/ui/glass.dart';
 import 'shell.dart';
 import 'theme/tokens.dart';
 
 final GlobalKey<NavigatorState> _rootKey = GlobalKey<NavigatorState>();
+
+/// Навигаторы вкладок — в порядке веток: главная, библиотека, настройки.
+///
+/// Нужны тем, кто открывает страницу НЕ из дерева вкладки: пилюля источника
+/// живёт в полноэкранном плеере, а он лежит в корневом навигаторе, и ближайший
+/// `Navigator.of(context)` оттуда — корневой. Положи страницу артиста в него —
+/// она накроет таб-бар и миниплеер, хотя из поиска та же страница открывается
+/// под ними.
+final List<GlobalKey<NavigatorState>> _branchKeys = [
+  GlobalKey<NavigatorState>(),
+  GlobalKey<NavigatorState>(),
+  GlobalKey<NavigatorState>(),
+];
+
+/// Навигатор ТОЙ вкладки, что открыта сейчас. `null` — каркас ещё не собран.
+NavigatorState? currentBranchNavigator() {
+  final path = bloomRouter.state.uri.path;
+  final key = path.startsWith('/library')
+      ? _branchKeys[1]
+      : path.startsWith('/settings')
+      ? _branchKeys[2]
+      : _branchKeys[0];
+  return key.currentState;
+}
 
 /// Фон страницы маршрута.
 ///
@@ -36,26 +69,49 @@ final GlobalKey<NavigatorState> _rootKey = GlobalKey<NavigatorState>();
 /// Пока страница одна, это незаметно, но ВО ВРЕМЯ перехода видны обе: верхняя
 /// без фона просвечивает, и сквозь плейлист читается список библиотеки.
 /// Поэтому каждая страница красится сама.
-class _Page extends StatelessWidget {
+///
+/// Исключение — включённая картинка фона: тогда заливки нет вовсе, иначе фон
+/// был бы намертво закрыт (см. `AppBackground`). Просвечивание при переходе в
+/// этом случае и не мешает: под обеими страницами лежит одна и та же картинка.
+class _Page extends ConsumerWidget {
   const _Page(this.child);
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context) =>
-      ColoredBox(color: context.bloom.bg, child: child);
+  Widget build(BuildContext context, WidgetRef ref) => ColoredBox(
+    color: ref.watch(backgroundOnProvider)
+        ? Colors.transparent
+        : context.bloom.bg,
+    // Своя группа стекла на страницу: её плашки не накладываются друг на
+    // друга, поэтому один снимок подложки годится им всем. Бары каркаса лежат
+    // ПОВЕРХ страницы и потому в группу не входят — у них своя (`shell.dart`).
+    child: GlassGroup(child: child),
+  );
 }
 
 final GoRouter bloomRouter = GoRouter(
   navigatorKey: _rootKey,
   initialLocation: '/home',
+  // Первый запуск уводит куда угодно на онбординг — то же, что оверлей поверх
+  // всего на десктопе. Флаг голый, а не провайдер: `redirect` контейнера
+  // Riverpod не видит, а ответ нужен ещё до сборки первого маршрута
+  // (`main()` читает стор до первого кадра).
+  redirect: (context, state) {
+    if (!onboardingPending) return null;
+    return state.matchedLocation == '/onboarding' ? null : '/onboarding';
+  },
   routes: [
+    // Своя страница, а не оверлей: иначе системное «назад» уходило бы мимо
+    // мастера в навигатор под ним, а `PopScope` без маршрута-предка молчит.
+    GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
     StatefulShellRoute(
       builder: (context, state, shell) => BloomShell(shell: shell),
       navigatorContainerBuilder: (context, shell, children) =>
           BranchCrossfade(index: shell.currentIndex, children: children),
       branches: [
         StatefulShellBranch(
+          navigatorKey: _branchKeys[0],
           routes: [
             GoRoute(
               path: '/home',
@@ -99,6 +155,7 @@ final GoRouter bloomRouter = GoRouter(
           ],
         ),
         StatefulShellBranch(
+          navigatorKey: _branchKeys[1],
           routes: [
             GoRoute(
               path: '/library',
@@ -133,6 +190,7 @@ final GoRouter bloomRouter = GoRouter(
           ],
         ),
         StatefulShellBranch(
+          navigatorKey: _branchKeys[2],
           routes: [
             GoRoute(
               path: '/settings',
@@ -161,6 +219,26 @@ final GoRouter bloomRouter = GoRouter(
                 GoRoute(
                   path: 'swipes',
                   builder: (_, _) => const _Page(SwipesScreen()),
+                ),
+                GoRoute(
+                  path: 'player',
+                  builder: (_, _) => const _Page(PlayerSettingsScreen()),
+                ),
+                GoRoute(
+                  path: 'media',
+                  builder: (_, _) => const _Page(MediaLibraryScreen()),
+                  routes: [
+                    GoRoute(
+                      path: ':id',
+                      builder: (_, state) => _Page(
+                        MediaItemScreen(id: state.pathParameters['id'] ?? ''),
+                      ),
+                    ),
+                  ],
+                ),
+                GoRoute(
+                  path: 'presets',
+                  builder: (_, _) => const _Page(PresetsScreen()),
                 ),
               ],
             ),

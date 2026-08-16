@@ -126,6 +126,56 @@ const double kAutoAccentLDefault = 0.375;
 
 double clampAutoAccentL(double v) => v.clamp(kAutoAccentLMin, kAutoAccentLMax);
 
+/// Вид таб-бара каркаса. Настройка чисто телефонная: на десктопе навигация
+/// живёт в сайдбаре, и порта у неё нет.
+///
+/// Отличаются только рамка и поля вокруг ряда иконок — сам ряд, его высота и
+/// оживление глифов у всех стилей общие.
+enum NavBarStyle {
+  /// Во всю ширину, прижат к низу, тонкая линия сверху — как было всегда.
+  bar,
+
+  /// То же место, но панель отбита сверху скруглением: под её углами видно
+  /// список.
+  rounded,
+
+  /// Карточка с полями по краям, приподнятая над низом, — пара к миниплееру.
+  floating,
+
+  /// Та же плавающая панель, но с углами в половину высоты — капсула.
+  pill,
+}
+
+/// Стиль из сырых настроек. Неизвестное имя (настройки от новой сборки) — это
+/// не повод падать: возвращаем обычный бар.
+NavBarStyle readNavStyle(Object? raw) {
+  for (final style in NavBarStyle.values) {
+    if (style.name == raw) return style;
+  }
+  return NavBarStyle.bar;
+}
+
+/// Что Bloom делает с файлом, добавленным плюсом во «Всех треках» — порт
+/// десктопного `local_import_mode` (там он про папки, у нас — про одиночные
+/// файлы, папок на телефоне мы не смотрим).
+enum LocalImportMode {
+  /// Файл остаётся там, где лежит; Bloom помнит выданное системой разрешение
+  /// на чтение. Дефолт, как и на ПК.
+  inPlace,
+
+  /// Файл копируется внутрь приложения — тогда трек переживает переезд и
+  /// удаление оригинала, но занимает место второй раз.
+  copy,
+}
+
+/// Режим из сырых настроек. Неизвестное имя — не повод падать: дефолт.
+LocalImportMode readLocalImportMode(Object? raw) {
+  for (final mode in LocalImportMode.values) {
+    if (mode.name == raw) return mode;
+  }
+  return LocalImportMode.inPlace;
+}
+
 /// Языки интерфейса — те же два, что в десктопном `LOCALES` (`i18nStore.ts`).
 ///
 /// Порядок показа: английский первым, как на ПК.
@@ -176,6 +226,17 @@ class SettingsState {
   /// фирменных цветах площадок (то же поведение и дефолт, что на десктопе).
   final bool accentBadges;
 
+  /// Вид таб-бара, см. [NavBarStyle].
+  final NavBarStyle navStyle;
+
+  /// Обложка играющего трека как фон приложения — десктопная
+  /// `settings.background.coverAsBg`. Своя картинка фона (её ставят в
+  /// «Кастомизации») эту настройку перебивает, как и на ПК.
+  final bool coverAsBg;
+
+  /// Что делать с добавленным своим файлом, см. [LocalImportMode].
+  final LocalImportMode localImport;
+
   /// Свои темы — в порядке создания, после встроенных.
   final List<ThemePreset> customThemes;
 
@@ -188,6 +249,9 @@ class SettingsState {
     this.radius = 14,
     this.scClientId,
     this.accentBadges = false,
+    this.navStyle = NavBarStyle.bar,
+    this.coverAsBg = false,
+    this.localImport = LocalImportMode.inPlace,
     this.customThemes = const [],
   });
 
@@ -214,6 +278,9 @@ class SettingsState {
     String? scClientId,
     bool clearClientId = false,
     bool? accentBadges,
+    NavBarStyle? navStyle,
+    bool? coverAsBg,
+    LocalImportMode? localImport,
     List<ThemePreset>? customThemes,
   }) => SettingsState(
     themeId: themeId ?? this.themeId,
@@ -224,6 +291,9 @@ class SettingsState {
     radius: radius ?? this.radius,
     scClientId: clearClientId ? null : (scClientId ?? this.scClientId),
     accentBadges: accentBadges ?? this.accentBadges,
+    navStyle: navStyle ?? this.navStyle,
+    coverAsBg: coverAsBg ?? this.coverAsBg,
+    localImport: localImport ?? this.localImport,
     customThemes: customThemes ?? this.customThemes,
   );
 }
@@ -249,6 +319,9 @@ class SettingsController extends Notifier<SettingsState> {
       radius: (raw['radius'] as num?)?.toDouble() ?? 14,
       scClientId: clientId is String && clientId.isNotEmpty ? clientId : null,
       accentBadges: raw['accentBadges'] as bool? ?? false,
+      navStyle: readNavStyle(raw['navStyle']),
+      coverAsBg: raw['coverAsBg'] as bool? ?? false,
+      localImport: readLocalImportMode(raw['localImport']),
       customThemes: [
         for (final item in (raw['customThemes'] as List?) ?? const [])
           ?ThemePreset.fromJson(item),
@@ -270,6 +343,9 @@ class SettingsController extends Notifier<SettingsState> {
       'radius': state.radius,
       if (state.scClientId != null) 'scClientId': state.scClientId,
       'accentBadges': state.accentBadges,
+      'navStyle': state.navStyle.name,
+      'coverAsBg': state.coverAsBg,
+      'localImport': state.localImport.name,
       'customThemes': [for (final t in state.customThemes) t.toJson()],
     });
   }
@@ -359,6 +435,23 @@ class SettingsController extends Notifier<SettingsState> {
 
   void setAccentBadges(bool value) {
     state = state.copyWith(accentBadges: value);
+    _save();
+  }
+
+  void setNavStyle(NavBarStyle style) {
+    state = state.copyWith(navStyle: style);
+    _save();
+  }
+
+  void setCoverAsBg(bool value) {
+    state = state.copyWith(coverAsBg: value);
+    _save();
+  }
+
+  /// Режим добавления своих файлов. На уже добавленные треки не влияет — как и
+  /// на ПК, где смена режима не трогает добавленные папки.
+  void setLocalImport(LocalImportMode mode) {
+    state = state.copyWith(localImport: mode);
     _save();
   }
 

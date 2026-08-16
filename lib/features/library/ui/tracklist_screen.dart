@@ -23,6 +23,7 @@ import '../../../core/store/library_store.dart';
 import '../../../features/offline/file_download.dart';
 import '../../../features/offline/offline_actions.dart';
 import '../../../features/offline/offline_store.dart';
+import '../../../features/player/play_source.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../features/settings/swipe_store.dart';
 import '../../../shared/ui/atoms.dart';
@@ -30,10 +31,12 @@ import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
+import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/sticky_hero.dart';
 import '../../../shared/ui/track_swipes.dart';
 import '../history_format.dart';
 import '../lib_order_store.dart';
+import '../local_tracks.dart';
 import '../refresh_playlist.dart';
 import 'list_edit.dart';
 import 'list_hero.dart';
@@ -198,7 +201,7 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
                     track: track,
                     queue: tracks,
                     index: item.index,
-                    sourceId: widget.listId,
+                    source: LibSource(widget.listId),
                     mark: item.mark,
                   ),
                 );
@@ -228,7 +231,7 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
                   track: tracks[i],
                   queue: tracks,
                   index: i,
-                  sourceId: widget.listId,
+                  source: LibSource(widget.listId),
                   dragIndex: i,
                 ),
               ),
@@ -248,7 +251,7 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
                   track: tracks[i],
                   queue: tracks,
                   index: i,
-                  sourceId: widget.listId,
+                  source: LibSource(widget.listId),
                 ),
               ),
             ),
@@ -452,11 +455,6 @@ class _Hero extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
-    // Обложка для шторок: у плейлиста своя, у встроенных разделов её роль
-    // играет первый трек — так же, как в фоне hero.
-    final cover =
-        playlist?.cover ?? (tracks.isEmpty ? null : tracks.first.cover);
-
     return StickyHero(
       height: height + 76,
       flying: flight != null,
@@ -486,13 +484,15 @@ class _Hero extends ConsumerWidget {
                 onTap: () => context.go('/library'),
               ),
               const SizedBox(width: 8),
-              _SortButton(
-                sort: sort,
-                onSort: onSort,
-                title: title,
-                cover: cover,
-              ),
+              _SortButton(sort: sort, onSort: onSort),
               const Spacer(),
+              // Плюс — только во «Всех треках», как `libUploadBtn` на ПК
+              // (`mode === 'all'`): в «Любимых» и «Истории» состав не свой, а
+              // в плейлист трек добавляют из шторки самого трека.
+              if (listId == 'all') ...[
+                const _AddLocalButton(),
+                const SizedBox(width: 8),
+              ],
               GlassIconButton(
                 icon: searchOpen
                     ? SolarIconsOutline.closeCircle
@@ -550,26 +550,79 @@ class _Hero extends ConsumerWidget {
   }
 }
 
+/// Плюс в шапке «Всех треков»: системный выбор аудиофайлов и добавление их в
+/// библиотеку своими треками (порт `libUploadBtn` → `importTracks`).
+///
+/// Пока идёт диалог и разбор выбранного, кнопка показывает кольцо: копирование
+/// большого файла и чтение тегов занимают заметное время, и без этого второй
+/// тап открыл бы второй диалог (нативная сторона такой запрос отбивает).
+class _AddLocalButton extends ConsumerStatefulWidget {
+  const _AddLocalButton();
+
+  @override
+  ConsumerState<_AddLocalButton> createState() => _AddLocalButtonState();
+}
+
+class _AddLocalButtonState extends ConsumerState<_AddLocalButton> {
+  bool _busy = false;
+
+  Future<void> _add() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    // Мессенджер и переводы берём до похода в диалог: он системный, экран за
+    // это время может уехать, и `context` после await уже не годится.
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l;
+    final result = await importLocalTracks(ref, l10n);
+    if (mounted) setState(() => _busy = false);
+    switch (result.status) {
+      case LocalImportStatus.cancelled:
+        break; // диалог просто закрыли — молчим, как на ПК
+      case LocalImportStatus.nothing:
+        messenger.toast(l10n.ltNothingAdded);
+      case LocalImportStatus.added:
+        messenger.toast(l10n.ltAdded(result.added), kind: ToastKind.success);
+      case LocalImportStatus.failed:
+        messenger.toast(l10n.ltImportFailed, kind: ToastKind.error);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_busy) {
+      return GlassIconButton(icon: Icons.add_rounded, onTap: _add);
+    }
+    return GlassSurface(
+      shape: BorderRadius.circular(kHeaderControl / 2),
+      child: const SizedBox(
+        width: kHeaderControl,
+        height: kHeaderControl,
+        child: Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SortButton extends StatelessWidget {
-  const _SortButton({
-    required this.sort,
-    required this.onSort,
-    required this.title,
-    required this.cover,
-  });
+  const _SortButton({required this.sort, required this.onSort});
 
   final TrackSort sort;
   final ValueChanged<TrackSort> onSort;
-
-  /// Название списка — уходит в подпись шапки шторки.
-  final String title;
-  final String? cover;
 
   @override
   Widget build(BuildContext context) {
     return GlassIconButton(
       icon: SolarIconsOutline.tuning_2,
-      onTap: () => showSortSheet(context, title, cover, sort, onSort),
+      onTap: () => showSortSheet(context, sort, onSort),
     );
   }
 }
@@ -579,20 +632,12 @@ class _SortButton extends StatelessWidget {
 /// нет.
 Future<void> showSortSheet(
   BuildContext context,
-  String title,
-  String? cover,
   TrackSort sort,
   ValueChanged<TrackSort> onSort,
 ) {
   final t = context.bloom;
   return showBloomSheet(
     context: context,
-    backdrop: cover,
-    header: SheetLineHeader(
-      cover: cover,
-      title: context.l.commonSort,
-      subtitle: title,
-    ),
     groups: [
       [
         for (final s in TrackSort.values)
@@ -628,7 +673,7 @@ class _InlineSearch extends StatelessWidget {
             children: [
               const Icon(
                 SolarIconsOutline.magnifier,
-                size: 20,
+                size: 21,
                 color: Colors.white,
               ),
               const SizedBox(width: 10),
@@ -637,16 +682,17 @@ class _InlineSearch extends StatelessWidget {
                   autofocus: true,
                   onChanged: onQuery,
                   cursorColor: t.accent,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleMedium?.copyWith(color: Colors.white),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontSize: kHeaderTitleSize,
+                    color: Colors.white,
+                  ),
                   decoration: InputDecoration(
                     isDense: true,
                     border: InputBorder.none,
                     hintText: context.l.tlSearchHint,
                     hintStyle: const TextStyle(
                       color: Colors.white54,
-                      fontSize: 15,
+                      fontSize: kHeaderTitleSize,
                     ),
                   ),
                 ),
@@ -683,15 +729,15 @@ class _Actions extends ConsumerWidget {
     return Row(
       children: [
         Expanded(
-          child: Material(
-            color: enabled ? t.accent : t.pill,
+          child: GlassBox(
+            color: enabled ? t.accent : null,
+            enabled: !enabled,
             borderRadius: BorderRadius.circular(999),
-            clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: enabled
                   ? () => ref
                         .read(playbackProvider.notifier)
-                        .playQueue(tracks, 0, sourceId: listId)
+                        .playQueue(tracks, 0, source: LibSource(listId))
                   : null,
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 13),
@@ -719,7 +765,7 @@ class _Actions extends ConsumerWidget {
           onTap: enabled
               ? () => ref
                     .read(playbackProvider.notifier)
-                    .playQueueShuffled(tracks, sourceId: listId)
+                    .playQueueShuffled(tracks, source: LibSource(listId))
               : null,
         ),
         const SizedBox(width: 10),
@@ -745,9 +791,9 @@ Future<void> showPlaylistMenu(
     if (tracks.isEmpty) return;
     final ctrl = ref.read(playbackProvider.notifier);
     if (shuffle) {
-      ctrl.playQueueShuffled(tracks, sourceId: playlist.id);
+      ctrl.playQueueShuffled(tracks, source: LibSource(playlist.id));
     } else {
-      ctrl.playQueue(tracks, 0, sourceId: playlist.id);
+      ctrl.playQueue(tracks, 0, source: LibSource(playlist.id));
     }
   }
 
@@ -834,7 +880,7 @@ Future<void> showPlaylistMenu(
         ],
         // Тот же «Обновить треки», что кнопкой в шапке: в шторку он попадает
         // и с плитки библиотеки, где шапки нет.
-        if (playlist.sourceUrl != null)
+        if (playlist.sources.isNotEmpty)
           SheetAction(
             icon: SolarIconsOutline.refresh,
             label: context.l.tlRefreshTracks,

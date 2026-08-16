@@ -99,7 +99,7 @@ void main() {
     expect(playlist.id, result.createdId);
     expect(playlist.trackIds, ['sc_1', 'sc_2']);
     // Источник запомнен — иначе плейлист нечем было бы обновлять.
-    expect(playlist.sourceUrl, 'https://sc/one');
+    expect(playlist.sources.map((s) => s.url), ['https://sc/one']);
   });
 
   test('цель «Все треки» не создаёт плейлист и не считает дубли', () async {
@@ -145,7 +145,7 @@ void main() {
     expect(env.container.read(libraryProvider).favs.length, 2);
   });
 
-  test('импорт в существующий плейлист не трогает его источник', () async {
+  test('импорт в существующий плейлист привязывает источник', () async {
     final env = _setup(
       _FakeSoundCloud(
         sets: {
@@ -166,9 +166,10 @@ void main() {
     expect(result.added, 1);
     final playlist = env.container.read(libraryProvider).playlists.single;
     expect(playlist.trackIds.toSet(), {'sc_1', 'sc_2'});
-    // Привязка источника сделала бы «обновить» разрушительным: обновление
-    // заменяет состав целиком и снесло бы добавленное руками.
-    expect(playlist.sourceUrl, isNull);
+    // Импортированная коллекция становится источником и у существующего
+    // плейлиста: обновление только подмешивает новые треки наверх, добавленное
+    // руками остаётся на месте.
+    expect(playlist.sources.map((s) => s.url), ['https://sc/one']);
   });
 
   test('ссылка на одиночный трек отклоняется', () async {

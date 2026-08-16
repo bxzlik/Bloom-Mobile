@@ -16,10 +16,12 @@ import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme/tokens.dart';
-import '../../../core/l10n/l10n.dart';
 import '../../../core/entities/entities.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../core/providers/music_provider.dart';
 import '../../../core/store/library_store.dart';
+import '../../../features/customization/ui/app_background.dart';
+import '../../../features/player/play_source.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
@@ -27,6 +29,7 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/detail_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
+import '../../../shared/ui/glass.dart';
 import '../../../shared/util/format.dart';
 
 class ArtistScreen extends ConsumerStatefulWidget {
@@ -158,16 +161,26 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
     return top.isNotEmpty ? top : _tracks;
   }
 
+  /// Источник для пилюли плеера — сама страница: с неё играют и «популярные»,
+  /// и лента репостов, и полный список треков. Артист мог ещё не загрузиться
+  /// (страницу открыли по одному id) — тогда источника нет.
+  PlaySource? get _source {
+    final artist = _data?.artist ?? widget.initial;
+    return artist == null ? null : ArtistSource(artist);
+  }
+
   void _play() {
     final queue = _playQueue;
     if (queue.isEmpty) return;
-    ref.read(playbackProvider.notifier).playQueue(queue, 0);
+    ref.read(playbackProvider.notifier).playQueue(queue, 0, source: _source);
   }
 
   void _shuffle() {
     final queue = _playQueue;
     if (queue.isEmpty) return;
-    ref.read(playbackProvider.notifier).playQueueShuffled(queue);
+    ref
+        .read(playbackProvider.notifier)
+        .playQueueShuffled(queue, source: _source);
   }
 
   @override
@@ -177,7 +190,10 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
     final queue = _playQueue;
 
     return Scaffold(
-      backgroundColor: t.bg,
+      // Под страницей может лежать картинка фона — тогда своей заливки нет.
+      backgroundColor: ref.watch(backgroundOnProvider)
+          ? Colors.transparent
+          : t.bg,
       body: CustomScrollView(
         slivers: [
           DetailHero(
@@ -266,7 +282,8 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         EntityCarousel(
           height: 194,
           itemCount: top.length,
-          builder: (i) => TrackCard(track: top[i], queue: top, index: i),
+          builder: (i) =>
+              TrackCard(track: top[i], queue: top, index: i, source: _source),
         ),
       ],
       if (albums.isNotEmpty) ...[
@@ -287,6 +304,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
               track: track,
               queue: repostTracks,
               index: repostTracks.indexOf(track),
+              source: _source,
             ),
             RepostSet(:final playlist) => SetRow(set: playlist),
           },
@@ -304,7 +322,12 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
       if (_tracks.isNotEmpty) ...[
         SectionTitle(context.l.commonTracks),
         for (var i = 0; i < _tracks.length; i++)
-          TrackRow(track: _tracks[i], queue: _tracks, index: i),
+          TrackRow(
+            track: _tracks[i],
+            queue: _tracks,
+            index: i,
+            source: _source,
+          ),
         if (_tracksCursor != null)
           _MoreButton(busy: _loadingMore == 'tracks', onTap: _moreTracks),
       ],
@@ -456,10 +479,8 @@ class _MoreButton extends StatelessWidget {
     final t = context.bloom;
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
-      child: Material(
-        color: t.pill,
+      child: GlassBox(
         borderRadius: BorderRadius.circular(999),
-        clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: busy ? null : onTap,
           child: Padding(

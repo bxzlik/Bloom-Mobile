@@ -15,6 +15,7 @@ import '../../core/l10n/l10n.dart';
 import '../../core/entities/entities.dart';
 import '../../core/store/library_store.dart';
 import '../../features/detail/detail_nav.dart';
+import '../../features/library/local_tracks.dart';
 import '../../features/offline/file_download.dart';
 import '../../features/offline/offline_actions.dart';
 import '../../features/offline/offline_store.dart';
@@ -119,8 +120,10 @@ void _deleteTrack(
   Track track,
 ) {
   // Офлайн-копию убираем вместе с треком: без строки в библиотеке файл остался
-  // бы мусором, на который никто не ссылается.
+  // бы мусором, на который никто не ссылается. Со своим треком то же самое:
+  // копия внутри приложения стирается, чужой файл остаётся на месте.
   unawaited(ref.read(offlineProvider.notifier).remove(track.id));
+  unawaited(forgetLocalTracks([track]));
   ref.read(libraryProvider.notifier).deleteTrack(track.id);
   messenger.toast(l10n.taTrackDeleted);
 }

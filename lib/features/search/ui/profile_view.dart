@@ -26,8 +26,10 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
+import '../../../shared/ui/glass.dart';
 import '../../../shared/util/format.dart';
 import '../../detail/detail_nav.dart';
+import '../../player/play_source.dart';
 
 /// По сколько лайков добавляет «Показать ещё». У аккаунта их бывает под две
 /// сотни — рисовать все сразу незачем.
@@ -93,6 +95,7 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
           tracks: likes,
           cover: artist.avatar,
           sourceUrl: artist.permalink,
+          sourceTitle: context.l.pvLikesOf(artist.name),
         );
     _toast(
       context.l.pvPlaylistCreated(context.l.tracksCount(likes.length)),
@@ -132,6 +135,7 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
           tracks: tracks,
           cover: content?.playlist.cover ?? set.cover,
           sourceUrl: content?.playlist.sourceUrl ?? set.sourceUrl,
+          sourceTitle: content?.playlist.title ?? set.title,
         );
         ok++;
       } catch (_) {
@@ -189,14 +193,19 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
             ],
           ),
           for (var i = 0; i < shown; i++)
-            TrackRow(track: likes[i], queue: likes, index: i),
+            TrackRow(
+              track: likes[i],
+              queue: likes,
+              index: i,
+              // Источник — сам аккаунт: пилюля плеера назовёт его и вернёт
+              // на страницу артиста.
+              source: ArtistSource(_profile.artist),
+            ),
           if (shown < likes.length)
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
-              child: Material(
-                color: t.pill,
+              child: GlassBox(
                 borderRadius: BorderRadius.circular(999),
-                clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   onTap: () => setState(() => _likesShown += _likesStep),
                   child: Padding(
@@ -416,7 +425,7 @@ class _Backdrop extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         if (image == null)
-          ColoredBox(color: t.ovlBg)
+          ColoredBox(color: t.coverEmpty)
         else
           ImageFiltered(
             imageFilter: ImageFilter.blur(sigmaX: 34, sigmaY: 34),
@@ -486,10 +495,10 @@ class _MiniButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final fg = accent ? t.accentText : t.text2;
-    return Material(
-      color: accent ? t.accent : t.pill,
+    return GlassBox(
+      color: accent ? t.accent : null,
+      enabled: !accent,
       borderRadius: BorderRadius.circular(999),
-      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: busy ? null : onTap,
         child: Padding(

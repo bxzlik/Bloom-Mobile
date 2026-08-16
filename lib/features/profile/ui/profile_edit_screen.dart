@@ -32,6 +32,7 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/color_picker.dart';
+import '../../../shared/ui/glass.dart';
 import '../profile_store.dart';
 import 'disc_avatar.dart';
 import 'image_cropper.dart';
@@ -540,7 +541,7 @@ class _ImageTab extends StatelessWidget {
     return Material(
       color: active
           ? Colors.white.withValues(alpha: 0.14)
-          : Colors.black.withValues(alpha: 0.55),
+          : sheetPanelColor(context),
       borderRadius: BorderRadius.circular(t.radius),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -563,7 +564,6 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -572,14 +572,12 @@ class _Section extends StatelessWidget {
             padding: const EdgeInsets.only(left: 4, bottom: 8),
             child: Text(title, style: Theme.of(context).textTheme.labelSmall),
           ),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: t.pill,
-            borderRadius: BorderRadius.circular(t.radius),
+        GlassBox(
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            child: child,
           ),
-          child: child,
         ),
       ],
     );
@@ -619,42 +617,42 @@ class _Field extends StatelessWidget {
         ),
         ValueListenableBuilder<TextEditingValue>(
           valueListenable: controller,
-          builder: (context, value, _) => Container(
-            decoration: BoxDecoration(
-              color: t.pill,
-              borderRadius: BorderRadius.circular(t.radius),
-            ),
-            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
-            child: Row(
-              crossAxisAlignment: multiline
-                  ? CrossAxisAlignment.start
-                  : CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    maxLines: lines,
-                    minLines: lines,
-                    cursorColor: t.accent,
-                    inputFormatters: [LengthLimitingTextInputFormatter(limit)],
-                    style: theme.titleMedium?.copyWith(
-                      fontStyle: italic ? FontStyle.italic : FontStyle.normal,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: hint,
-                      hintStyle: theme.titleMedium?.copyWith(color: t.muted),
-                      isDense: true,
-                      isCollapsed: true,
-                      border: InputBorder.none,
+          builder: (context, value, _) => GlassBox(
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+              child: Row(
+                crossAxisAlignment: multiline
+                    ? CrossAxisAlignment.start
+                    : CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: controller,
+                      maxLines: lines,
+                      minLines: lines,
+                      cursorColor: t.accent,
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(limit),
+                      ],
+                      style: theme.titleMedium?.copyWith(
+                        fontStyle: italic ? FontStyle.italic : FontStyle.normal,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: hint,
+                        hintStyle: theme.titleMedium?.copyWith(color: t.muted),
+                        isDense: true,
+                        isCollapsed: true,
+                        border: InputBorder.none,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  '${value.text.characters.length}/$limit',
-                  style: theme.bodySmall?.copyWith(color: t.muted),
-                ),
-              ],
+                  const SizedBox(width: 10),
+                  Text(
+                    '${value.text.characters.length}/$limit',
+                    style: theme.bodySmall?.copyWith(color: t.muted),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
