@@ -348,6 +348,7 @@ ScRawTrack mapRawTrack(Object? t) {
     artistVerified: user != null && _vbool(user, 'verified'),
     year: _year(_vstr(t, 'release_date') ?? _vstr(t, 'created_at')),
     playbackCount: _vu64(t, 'playback_count'),
+    policy: _vstr(t, 'policy'),
   );
 }
 
@@ -856,6 +857,45 @@ Future<ScRawTrack?> trackById(int id) async {
   } catch (_) {
     return null;
   }
+}
+
+// ============================ Волна: похожие треки ============================
+
+/// Треки станции трека (`stations/soundcloud:track-stations:<id>/tracks`) —
+/// главный источник кандидатов волны. Листается смещением: [offset] двигает
+/// движок волны, чтобы каждый новый сеанс не начинался с тех же двадцати.
+///
+/// Сбой пробрасывается, а не превращается в пустоту: пустой ответ значит
+/// «станция кончилась» и двигает курсор, и путать его с обрывом сети нельзя.
+/// Гасит ошибки слой выше (`wave_sources`), там же и повтор.
+Future<List<ScRawTrack>> stationTracks(Object scTrackId, {int offset = 0}) =>
+    _waveTracks(
+      'https://api-v2.soundcloud.com/stations/'
+      'soundcloud:track-stations:$scTrackId/tracks?limit=20&offset=$offset',
+    );
+
+/// Похожие на трек (`tracks/<id>/related`). Не пагинируется, зато для волны по
+/// одному треку это главный источник вкусовых рекомендаций.
+Future<List<ScRawTrack>> relatedTracks(Object scTrackId) => _waveTracks(
+  'https://api-v2.soundcloud.com/tracks/$scTrackId/related?limit=20',
+);
+
+/// Разбор обоих ответов: элемент коллекции — либо сам трек, либо обёртка
+/// `{track: {...}}` (так отдаёт станция).
+Future<List<ScRawTrack>> _waveTracks(String url) async {
+  final data = await apiFetch(url);
+  final items = data is List ? data : _varr(data, 'collection');
+  return [
+    for (final it in items)
+      if (_unwrapTrack(it) case final t?)
+        if (_hasId(t) && (_vstr(t, 'title') ?? '').isNotEmpty) mapRawTrack(t),
+  ];
+}
+
+Object? _unwrapTrack(Object? item) {
+  if (item is! Map) return null;
+  final inner = item['track'];
+  return inner is Map ? inner : item;
 }
 
 // ============================ Резолв ссылки ============================

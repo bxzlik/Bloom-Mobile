@@ -20,6 +20,7 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/entities/entities.dart';
 import '../../../features/settings/swipe_store.dart';
+import '../../../features/wave/wave_actions.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/entity_tiles.dart';
@@ -107,6 +108,15 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
                   count: queue.length,
                   shuffle: state.shuffle,
                   onClear: queue.length > 1 ? ctrl.clearExceptCurrent : null,
+                  // «Похожие на очередь» продолжают её подбором. Шторку
+                  // закрываем: очередь под ней сменится целиком, и стоять на
+                  // её старом списке уже незачем.
+                  onWave: queue.isEmpty
+                      ? null
+                      : () {
+                          Navigator.of(context).pop();
+                          startWaveFromQueue(context, ref, queue);
+                        },
                 ),
                 Flexible(
                   child: ReorderableListView.builder(
@@ -149,11 +159,13 @@ class _QueueHeader extends StatelessWidget {
     required this.count,
     required this.shuffle,
     required this.onClear,
+    required this.onWave,
   });
 
   final int count;
   final bool shuffle;
   final VoidCallback? onClear;
+  final VoidCallback? onWave;
 
   @override
   Widget build(BuildContext context) {
@@ -188,6 +200,12 @@ class _QueueHeader extends StatelessWidget {
               ],
             ),
           ),
+          CircleIconButton(
+            icon: SolarIconsOutline.playStream,
+            iconSize: 20,
+            onTap: onWave,
+          ),
+          const SizedBox(width: 8),
           CircleIconButton(
             icon: SolarIconsOutline.trashBinMinimalistic,
             iconSize: 20,

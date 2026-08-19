@@ -1531,6 +1531,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apNavBarRounded => 'Rounded top';
 
   @override
+  String get apNavBarDome => 'Dome';
+
+  @override
   String get apNavBarFloating => 'Floating';
 
   @override
@@ -2061,4 +2064,94 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onbReplay => 'Show onboarding again';
+
+  @override
+  String get waveTitle => 'My Wave';
+
+  @override
+  String get waveStart => 'Start My Wave';
+
+  @override
+  String get waveStop => 'Stop the wave';
+
+  @override
+  String get waveLabelTrack => 'Track wave';
+
+  @override
+  String get waveLabelQueue => 'Similar to queue';
+
+  @override
+  String get waveLabelArtist => 'Artist wave';
+
+  @override
+  String get waveFromTrack => 'Wave from this track';
+
+  @override
+  String get waveFromQueue => 'Similar to queue';
+
+  @override
+  String get waveFromArtist => 'Artist wave';
+
+  @override
+  String get waveTune => 'Customize';
+
+  @override
+  String get waveDislikes => 'Dislikes';
+
+  @override
+  String get waveDislikesTitle => 'Wave dislikes';
+
+  @override
+  String get waveNoDislikes => 'Nothing disliked yet';
+
+  @override
+  String get waveDislike => 'Dislike';
+
+  @override
+  String get waveUndislike => 'Remove dislike';
+
+  @override
+  String get waveToastDisliked =>
+      'Disliked — won’t suggest it in the wave again';
+
+  @override
+  String get waveToastUndisliked => 'Dislike removed';
+
+  @override
+  String get waveToastStopped => 'Wave stopped';
+
+  @override
+  String get waveToastNotEnough =>
+      'Not enough data for My Wave — listen to some music first';
+
+  @override
+  String get waveToastNoSeed => 'Couldn’t find a track for the wave';
+
+  @override
+  String get waveToastScOnly =>
+      'The wave only works for SoundCloud and Yandex tracks';
+
+  @override
+  String get waveToastQueueEmpty => 'Queue is empty';
+
+  @override
+  String get waveToastNoScInQueue =>
+      'No SoundCloud tracks in the queue to find similar ones';
+
+  @override
+  String get waveToastArtistNoSeeds =>
+      'No tracks of this artist to build a wave from';
+
+  @override
+  String get waveToastNoSimilar => 'SoundCloud returned no similar tracks';
+
+  @override
+  String get waveToastYmNoAuth =>
+      'Not signed in to Yandex Music (Settings → Platforms)';
+
+  @override
+  String get waveToastYmEmpty => 'The Yandex wave is empty';
+
+  @override
+  String get waveToastYmFailed => 'Couldn’t reach the Yandex wave';
 }

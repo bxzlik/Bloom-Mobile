@@ -14,11 +14,14 @@ import '../../app/theme/tokens.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/entities/entities.dart';
 import '../../core/store/library_store.dart';
-import '../../features/detail/detail_nav.dart';
+import '../../features/detail/artists_sheet.dart';
 import '../../features/library/local_tracks.dart';
 import '../../features/offline/file_download.dart';
 import '../../features/offline/offline_actions.dart';
 import '../../features/offline/offline_store.dart';
+import '../../features/wave/wave_actions.dart';
+import '../../features/wave/wave_store.dart';
+import '../util/artists.dart';
 import 'atoms.dart';
 import 'bloom_sheet.dart';
 import 'bloom_toast.dart';
@@ -31,11 +34,15 @@ Future<void> showTrackActions(
   final lib = ref.read(libraryProvider);
   final isFav = lib.isFav(track.id);
   final inLib = lib.isInLib(track.id);
-  final artistId = track.artistId;
+  // Артистов в строке трека может быть несколько, а точный id есть только у
+  // первого: тогда пункт ведёт не на страницу, а в шторку с выбором.
+  final artists = parseArtists(track.artist);
+  final canOpenArtist = track.artistId != null || artists.length > 1;
   final offline = ref.read(offlineProvider);
   final isOffline = offline.has(track.id);
   // Пункт показываем, только если площадка вообще отдаёт трек файлом.
   final canOffline = ref.read(offlineProvider.notifier).canDownload(track);
+  final isDisliked = ref.read(waveStoreProvider).isDisliked(track.id);
   // Мессенджер берём здесь: шторка закрывается до вызова обработчика, и её
   // context к моменту снекбара уже отвязан от дерева.
   final messenger = ScaffoldMessenger.of(context);
@@ -88,12 +95,29 @@ Future<void> showTrackActions(
         ],
       ],
       [
-        // Точный id артиста есть не у всякого трека — искать по имени незачем.
-        if (artistId != null)
+        // Волна по треку — только у площадок со своим подбором: у остальных
+        // пункт открывался бы ради отказа.
+        if (canStartWaveFrom(track))
+          SheetAction(
+            icon: SolarIconsOutline.playStream,
+            label: context.l.waveFromTrack,
+            onTap: () => startWaveFromTrack(context, ref, track),
+          ),
+        SheetAction(
+          icon: isDisliked ? SolarIconsBold.dislike : SolarIconsOutline.dislike,
+          label: isDisliked ? context.l.waveUndislike : context.l.waveDislike,
+          onTap: () => toggleWaveDislike(context, ref, track),
+        ),
+      ],
+      [
+        // Одиночного артиста без точного id открывать нечем — искать по имени
+        // там, где выбирать не из чего, значит уводить наугад.
+        if (canOpenArtist)
           SheetAction(
             icon: SolarIconsOutline.userRounded,
             label: context.l.taGoToArtist,
-            onTap: () => openArtist(context, artistId),
+            chevron: artists.length > 1,
+            onTap: () => openTrackArtist(context, ref, track),
           ),
       ],
       [

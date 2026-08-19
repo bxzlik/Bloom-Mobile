@@ -1,13 +1,10 @@
 /// Главная — витрина из секций, порядок как на десктопе (`app/pages/HomePage`):
-/// «Продолжить» → «Любимые»/«История» → «Новинки» → «Чарты» → «Недавно
-/// слушали» → «Плейлисты».
+/// «Моя волна» → «Продолжить» → «Любимые»/«История» → «Новинки» → «Чарты» →
+/// «Недавно слушали» → «Плейлисты».
 ///
 /// Секции сами решают, показываться ли им: пустая история и пустая витрина
 /// схлопываются в ничто, поэтому на свежей установке остаются только карточки
 /// разделов и плитка «Новый плейлист».
-///
-/// «Моя волна» на десктопе стоит рядом с «Продолжить»; её движок рекомендаций
-/// на мобилку ещё не переносился — это отдельный заход.
 library;
 
 import 'package:flutter/material.dart';
@@ -22,6 +19,7 @@ import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/glass.dart';
 import '../../profile/profile_store.dart';
 import '../../profile/ui/profile_avatar.dart';
+import '../../wave/ui/wave_card.dart';
 import '../discover_store.dart';
 import 'continue_card.dart';
 import 'home_sections.dart';
@@ -44,6 +42,7 @@ class HomeScreen extends StatelessWidget {
               // содержимым, и без запаса последняя лента уезжает под них.
               padding: EdgeInsets.only(bottom: bottomBarsInset(context) + 16),
               children: const [
+                WaveCard(),
                 ContinueCard(),
                 QuickCards(),
                 DiscoverSection(mode: DiscoverMode.newReleases),

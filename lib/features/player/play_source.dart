@@ -14,6 +14,7 @@
 library;
 
 import '../../core/entities/entities.dart';
+import '../wave/wave_types.dart';
 
 sealed class PlaySource {
   const PlaySource();
@@ -37,6 +38,17 @@ sealed class PlaySource {
       case 'artist':
         final artist = Artist.fromJson(json['artist']);
         return artist == null ? null : ArtistSource(artist);
+      case 'wave':
+        final label = json['label'];
+        if (label is! String) return null;
+        return WaveSource(
+          label: label,
+          mode:
+              WaveMode.values
+                  .where((m) => m.name == json['mode'])
+                  .firstOrNull ??
+              WaveMode.personal,
+        );
       case 'plain':
         final id = json['id'];
         final label = json['label'];
@@ -97,6 +109,30 @@ final class ArtistSource extends PlaySource {
   Map<String, dynamic> toJson() => {
     'kind': 'artist',
     'artist': artist.toJson(),
+  };
+}
+
+/// Волна: очередь набирает не список, а подбор — свой движок по SoundCloud
+/// либо станция Яндекса. Своей страницы у неё нет, поэтому [id] ни с какой
+/// плиткой не совпадает; [mode] нужен, чтобы после перезапуска подхватить
+/// сеанс тем же способом, каким он начинался.
+///
+/// Подпись приходит уже переведённой — переводить её потом некому: пилюлю
+/// рисуют по снимку, снятому суткам раньше.
+final class WaveSource extends PlaySource {
+  const WaveSource({required this.label, required this.mode});
+
+  final String label;
+  final WaveMode mode;
+
+  @override
+  String get id => 'wave:${mode.name}';
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'kind': 'wave',
+    'label': label,
+    'mode': mode.name,
   };
 }
 

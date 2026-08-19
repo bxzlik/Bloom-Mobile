@@ -472,11 +472,13 @@ Future<void> _pickTrValue({
 String _navStyleLabel(AppLocalizations l, NavBarStyle style) => switch (style) {
   NavBarStyle.bar => l.apNavBarPlain,
   NavBarStyle.rounded => l.apNavBarRounded,
+  NavBarStyle.dome => l.apNavBarDome,
   NavBarStyle.floating => l.apNavBarFloating,
   NavBarStyle.pill => l.apNavBarPill,
 };
 
-/// Шторка выбора вида таб-бара: четыре плитки сеткой 2×2.
+/// Шторка выбора вида таб-бара: плитки в два столбца, последняя в нечётном
+/// ряду остаётся одна.
 ///
 /// Сетка живёт в шторке, а не на самой странице: у «Интерфейса» уже есть
 /// строка «Тема» с таким же поведением, и второй развёрнутый блок выбора
@@ -652,6 +654,16 @@ class _NavStyleGlyph extends CustomPainter {
         66,
         topLeft: const Radius.circular(9),
         topRight: const Radius.circular(9),
+      ),
+      // Те же углы вдвое — ровно во столько же раз купол круче скруглённого и
+      // в самом баре.
+      NavBarStyle.dome => RRect.fromLTRBAndCorners(
+        0,
+        44,
+        100,
+        66,
+        topLeft: const Radius.circular(18),
+        topRight: const Radius.circular(18),
       ),
       // Выше прижатых по высоте панели — ровно как в самом баре
       // (`kNavBarFloatHeight` против `kNavBarHeight`).

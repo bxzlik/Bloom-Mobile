@@ -1541,6 +1541,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get apNavBarRounded => 'Скруглённый';
 
   @override
+  String get apNavBarDome => 'Купол';
+
+  @override
   String get apNavBarFloating => 'Плавающий';
 
   @override
@@ -2083,4 +2086,92 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get onbReplay => 'Показать онбординг снова';
+
+  @override
+  String get waveTitle => 'Моя волна';
+
+  @override
+  String get waveStart => 'Запустить «Мою волну»';
+
+  @override
+  String get waveStop => 'Остановить волну';
+
+  @override
+  String get waveLabelTrack => 'Волна по треку';
+
+  @override
+  String get waveLabelQueue => 'Похожие на очередь';
+
+  @override
+  String get waveLabelArtist => 'Волна по артисту';
+
+  @override
+  String get waveFromTrack => 'Волна по этому треку';
+
+  @override
+  String get waveFromQueue => 'Похожие на очередь';
+
+  @override
+  String get waveFromArtist => 'Волна по артисту';
+
+  @override
+  String get waveTune => 'Настроить';
+
+  @override
+  String get waveDislikes => 'Дизлайки';
+
+  @override
+  String get waveDislikesTitle => 'Дизлайки в волне';
+
+  @override
+  String get waveNoDislikes => 'Дизлайков пока нет';
+
+  @override
+  String get waveDislike => 'Дизлайк';
+
+  @override
+  String get waveUndislike => 'Снять дизлайк';
+
+  @override
+  String get waveToastDisliked => 'Дизлайк — больше не предложу в волне';
+
+  @override
+  String get waveToastUndisliked => 'Дизлайк снят';
+
+  @override
+  String get waveToastStopped => 'Волна остановлена';
+
+  @override
+  String get waveToastNotEnough =>
+      'Не хватает данных для «Моей волны» — послушай немного музыки';
+
+  @override
+  String get waveToastNoSeed => 'Не нашёл трек для волны';
+
+  @override
+  String get waveToastScOnly =>
+      'Волна работает для треков SoundCloud и Яндекса';
+
+  @override
+  String get waveToastQueueEmpty => 'Очередь пуста';
+
+  @override
+  String get waveToastNoScInQueue =>
+      'В очереди нет треков SoundCloud для подбора похожих';
+
+  @override
+  String get waveToastArtistNoSeeds => 'Нет треков этого артиста для волны';
+
+  @override
+  String get waveToastNoSimilar => 'SoundCloud не вернул похожих треков';
+
+  @override
+  String get waveToastYmNoAuth =>
+      'Не авторизован в Яндекс.Музыке (Настройки → Площадки)';
+
+  @override
+  String get waveToastYmEmpty => 'Волна Яндекса пуста';
+
+  @override
+  String get waveToastYmFailed => 'Не удалось получить волну Яндекса';
 }

@@ -35,6 +35,10 @@ class ScRawTrack {
   final String year;
   final int? playbackCount;
 
+  /// `policy` из выдачи api-v2 (`ALLOW` / `MONETIZE` / `BLOCK` / `SNIP`).
+  /// Нужен волне: подбор не должен предлагать то, что заведомо не заиграет.
+  final String? policy;
+
   const ScRawTrack({
     required this.id,
     required this.title,
@@ -56,6 +60,7 @@ class ScRawTrack {
     required this.artistVerified,
     required this.year,
     required this.playbackCount,
+    this.policy,
   });
 }
 

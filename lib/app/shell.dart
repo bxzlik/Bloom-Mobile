@@ -9,6 +9,8 @@ library;
 
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -246,6 +248,26 @@ const double _kNavFloatIcon = 27;
 /// миниплеера над ней.
 const double _kFloatGap = 8;
 
+/// Потолок нижнего выреза под баром на iOS.
+///
+/// Safe area под home indicator там всегда 34 pt, тогда как жестовая полоса
+/// Android просит 24 — с полным вырезом бар на айфоне висел бы заметно выше,
+/// чем на андроиде, при одинаковой раскладке. Сам индикатор — полоска 5 pt в
+/// 8 pt от края, её верх на 13 pt: 24 оставляют над ним ещё 11 pt, так что
+/// панель его не задевает и жест «домой» тапы не перехватывает.
+///
+/// Только iOS: на андроиде тот же вырез может быть панелью из трёх кнопок
+/// (48 dp), и обрезать его — сесть на сами кнопки.
+const double _kIosBottomInsetCap = 24;
+
+/// Нижний вырез, на который бар отступает от края экрана.
+double _bottomInset(BuildContext context) {
+  final inset = MediaQuery.paddingOf(context).bottom;
+  return defaultTargetPlatform == TargetPlatform.iOS
+      ? math.min(inset, _kIosBottomInsetCap)
+      : inset;
+}
+
 class _NavBar extends StatelessWidget {
   const _NavBar({
     required this.style,
@@ -305,35 +327,43 @@ class _NavBar extends StatelessWidget {
 
     switch (style) {
       // Прижатые к низу: заливка уходит под системный вырез, ряд иконок из
-      // него выводит `SafeArea`.
+      // него выводит нижний отступ ([_bottomInset]).
       case NavBarStyle.bar:
       case NavBarStyle.rounded:
-        final rounded = style == NavBarStyle.rounded;
+      case NavBarStyle.dome:
+        // Прижатые стили отличаются друг от друга только радиусом верхних
+        // углов. У «Купола» он вдвое больше темы и не мельче 28: на слабом
+        // радиусе темы он иначе повторял бы «Скруглённый», ради которого его и
+        // заводили отдельным видом.
+        final topRadius = switch (style) {
+          NavBarStyle.rounded => math.max(t.radius, 10.0),
+          NavBarStyle.dome => math.max(t.radius * 2, 28.0),
+          _ => 0.0,
+        };
+        final rounded = topRadius > 0;
         // Заливка одна на все четыре стиля — та же `pill`, что у шапки главной
         // и строк настроек: бары обязаны читаться как элементы интерфейса, а
         // не как продолжение фона. В стекле она полупрозрачна, и сквозь бар
         // видно уходящий под него список.
         return GlassBox(
-          borderRadius: rounded
-              // Радиус темы, но не мельче 10: на нуле «скруглённый» стиль
-              // ничем не отличался бы от обычного.
-              ? BorderRadius.vertical(
-                  top: Radius.circular(math.max(t.radius, 10)),
-                )
-              : BorderRadius.zero,
+          // Не мельче 10 у «Скруглённого»: на нуле темы он ничем не
+          // отличался бы от обычного.
+          borderRadius: BorderRadius.vertical(top: Radius.circular(topRadius)),
           // При скруглении рамка обязана быть одинаковой со всех сторон —
           // нижняя всё равно уходит за край экрана; у прямого бара линия
           // только сверху, поэтому ему нужна своя форма.
           borderSide: rounded ? BorderSide(color: t.ovlLine) : null,
           shape: rounded ? null : Border(top: BorderSide(color: t.ovlLine)),
-          child: SafeArea(
-            top: false,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: _bottomInset(context)),
             child: SizedBox(height: height, child: row),
           ),
         );
 
       // Плавающие: панель кончается до низа экрана, вырез системы отдан
-      // просвету под ней — иначе она села бы на жестовую полосу.
+      // просвету под ней — иначе она села бы на жестовую полосу. Не в
+      // придачу к [_kFloatGap], а вместо него: сумма отрывала бы панель от
+      // низа сильнее, чем от боков, и на айфоне это особенно заметно.
       case NavBarStyle.floating:
       case NavBarStyle.pill:
         return Padding(
@@ -341,7 +371,7 @@ class _NavBar extends StatelessWidget {
             _kFloatGap,
             0,
             _kFloatGap,
-            MediaQuery.paddingOf(context).bottom + _kFloatGap,
+            math.max(_bottomInset(context), _kFloatGap),
           ),
           child: GlassBox(
             borderSide: BorderSide(color: t.ovlLine),

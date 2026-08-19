@@ -160,6 +160,15 @@ class YmResolved {
       track = null;
 }
 
+/// Батч rotor-станции: сами треки и id пачки, который потом уходит обратно в
+/// фидбек — по нему станция сопоставляет событие с тем, что она предложила.
+class YmWaveBatch {
+  final List<YmRawTrack> tracks;
+  final String batchId;
+
+  const YmWaveBatch({this.tracks = const [], this.batchId = ''});
+}
+
 /// Код устройства OAuth device-flow (шаг 1).
 class YmDeviceCode {
   final String deviceCode;

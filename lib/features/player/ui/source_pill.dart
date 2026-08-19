@@ -50,14 +50,16 @@ void openPlaySource(BuildContext context, PlaySource source) {
       final nav = currentBranchNavigator();
       if (nav != null) openArtistIn(nav, artist.id, initial: artist);
     case PlainSource():
-      // Поиск, витрина, одиночный трек — открывать нечего.
+    case WaveSource():
+      // Поиск, витрина, одиночный трек, волна — открывать нечего.
       break;
   }
 }
 
-/// Есть ли у источника своя страница. У [PlainSource] её нет — такая пилюля
-/// рисуется без ряби и не ловит тап.
-bool playSourceOpens(PlaySource source) => source is! PlainSource;
+/// Есть ли у источника своя страница. У [PlainSource] и [WaveSource] её нет —
+/// такая пилюля рисуется без ряби и не ловит тап.
+bool playSourceOpens(PlaySource source) =>
+    source is! PlainSource && source is! WaveSource;
 
 class SourcePill extends ConsumerWidget {
   const SourcePill({super.key, required this.source, required this.shuffle});
@@ -142,6 +144,8 @@ class SourcePill extends ConsumerWidget {
         return artist.name;
       case PlainSource(:final label):
         return label;
+      case WaveSource(:final label):
+        return label;
     }
   }
 }
@@ -206,6 +210,10 @@ class _SourceIcon extends ConsumerWidget {
               ? const <String?>[]
               : lib.tracksOf(playlist).map((track) => track.cover),
         );
+      case WaveSource():
+        // Волна — не список, обложки у неё нет: значок берёт акцент темы, как
+        // и её карточка на главной.
+        return _tint(t, radius, t.ovlBg, t.accent, SolarIconsBold.playStream);
       case SetSource(:final set):
         return Cover(url: set.cover, size: _iconSize, radius: radius);
       case ArtistSource(:final artist):

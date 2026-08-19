@@ -58,7 +58,10 @@ class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
   };
 
   void _broadcast(PlaybackEvent event) {
-    final playing = player.playing;
+    // На время резолва плеер стоит на паузе намеренно (чтобы не доигрывал
+    // прошлый трек), но для шторки переход — это по-прежнему «играет»: иначе
+    // кнопка на каждой смене трека моргала бы в play и обратно.
+    final playing = _resolving || player.playing;
     playbackState.add(
       playbackState.value.copyWith(
         controls: [

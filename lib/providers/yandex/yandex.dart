@@ -582,6 +582,78 @@ Future<List<YmRawAlbum>> _newReleasesByIds() async {
   return _parseAll(av['result'], parseAlbum, ids.length);
 }
 
+// ============================ Моя волна (rotor) ============================
+
+/// Станция «Моей волны» по умолчанию. Rotor принимает и другие сиды в том же
+/// формате: `track:<id>` (волна по треку), `artist:<id>`, `genre:<tag>`.
+const String kWaveStation = 'user:onyourwave';
+
+/// Очередной батч rotor-станции. [station] — сид (`user:onyourwave`,
+/// `track:<id>`, …); [lastId] — id последнего сыгранного трека, чтобы станция
+/// продолжила цепочку, а не начала её заново. Пусто — старт станции.
+Future<YmWaveBatch> waveTracks(String station, {String lastId = ''}) async {
+  final s = station.isEmpty ? kWaveStation : station;
+  final v = await apiGet('/rotor/station/$s/tracks', {
+    'settings2': 'true',
+    if (lastId.isNotEmpty) 'queue': lastId,
+  });
+  final result = v['result'];
+  final seq = result is Map ? result['sequence'] : null;
+  final tracks = seq is! List
+      ? const <YmRawTrack>[]
+      : _parseAll(
+          [
+            for (final it in seq)
+              (it is Map && it['track'] is Map) ? it['track'] : it,
+          ],
+          parseTrack,
+          seq.length,
+        );
+  return YmWaveBatch(
+    tracks: tracks,
+    batchId: (result is Map ? result['batchId'] : null) as String? ?? '',
+  );
+}
+
+/// Фидбек станции (`radioStarted` / `trackStarted` / `trackFinished` / `skip`)
+/// — им «Моя волна» и учится в самом аккаунте.
+///
+/// Best-effort: ответ не разбираем и ошибки глотаем. Обучение станции — не та
+/// операция, ради которой стоит рвать воспроизведение.
+Future<void> waveFeedback({
+  required String station,
+  required String event,
+  String trackId = '',
+  String batchId = '',
+  double played = 0,
+}) async {
+  final token = _token;
+  if (token == null) return;
+  final s = station.isEmpty ? kWaveStation : station;
+  final body = <String, dynamic>{
+    'type': event,
+    'timestamp': DateTime.now().toUtc().toIso8601String(),
+    'from': 'android',
+    if (trackId.isNotEmpty) 'trackId': trackId,
+    if (event == 'trackFinished' || event == 'skip')
+      'totalPlayedSeconds': (played * 10).roundToDouble() / 10,
+  };
+  final uri = Uri.parse(
+    '$kApi/rotor/station/$s/feedback',
+  ).replace(queryParameters: batchId.isEmpty ? null : {'batch-id': batchId});
+  try {
+    await _http
+        .post(
+          uri,
+          headers: {..._authHeaders(token), 'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        )
+        .timeout(_timeout);
+  } catch (_) {
+    // Станция не обучится на этом событии — воспроизведению это не мешает.
+  }
+}
+
 // ============================ Аккаунт ============================
 
 /// Есть ли у аккаунта активный Яндекс Плюс. Только для бейджа в настройках:

@@ -2822,6 +2822,12 @@ abstract class AppLocalizations {
   /// **'Rounded top'**
   String get apNavBarRounded;
 
+  /// No description provided for @apNavBarDome.
+  ///
+  /// In en, this message translates to:
+  /// **'Dome'**
+  String get apNavBarDome;
+
   /// No description provided for @apNavBarFloating.
   ///
   /// In en, this message translates to:
@@ -3715,6 +3721,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show onboarding again'**
   String get onbReplay;
+
+  /// desktop: wave.title
+  ///
+  /// In en, this message translates to:
+  /// **'My Wave'**
+  String get waveTitle;
+
+  /// desktop: wave.start
+  ///
+  /// In en, this message translates to:
+  /// **'Start My Wave'**
+  String get waveStart;
+
+  /// desktop: wave.stop, phrased as a menu item
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the wave'**
+  String get waveStop;
+
+  /// desktop: wave.label.track
+  ///
+  /// In en, this message translates to:
+  /// **'Track wave'**
+  String get waveLabelTrack;
+
+  /// desktop: wave.label.queue
+  ///
+  /// In en, this message translates to:
+  /// **'Similar to queue'**
+  String get waveLabelQueue;
+
+  /// desktop: wave.label.artist
+  ///
+  /// In en, this message translates to:
+  /// **'Artist wave'**
+  String get waveLabelArtist;
+
+  /// track menu item; desktop: wave.startFrom takes the name, here the menu already stands on the track
+  ///
+  /// In en, this message translates to:
+  /// **'Wave from this track'**
+  String get waveFromTrack;
+
+  /// queue screen action; desktop: wave.label.queue
+  ///
+  /// In en, this message translates to:
+  /// **'Similar to queue'**
+  String get waveFromQueue;
+
+  /// artist page action; desktop: wave.label.artist
+  ///
+  /// In en, this message translates to:
+  /// **'Artist wave'**
+  String get waveFromArtist;
+
+  /// desktop: wave.tune
+  ///
+  /// In en, this message translates to:
+  /// **'Customize'**
+  String get waveTune;
+
+  /// desktop: wave.dislikes
+  ///
+  /// In en, this message translates to:
+  /// **'Dislikes'**
+  String get waveDislikes;
+
+  /// desktop: wave.dislikesTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Wave dislikes'**
+  String get waveDislikesTitle;
+
+  /// desktop: wave.noDislikes
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing disliked yet'**
+  String get waveNoDislikes;
+
+  /// desktop: wave.dislike
+  ///
+  /// In en, this message translates to:
+  /// **'Dislike'**
+  String get waveDislike;
+
+  /// desktop: wave.unlike
+  ///
+  /// In en, this message translates to:
+  /// **'Remove dislike'**
+  String get waveUndislike;
+
+  /// desktop: wave.toast.added
+  ///
+  /// In en, this message translates to:
+  /// **'Disliked — won’t suggest it in the wave again'**
+  String get waveToastDisliked;
+
+  /// desktop: wave.toast.removed
+  ///
+  /// In en, this message translates to:
+  /// **'Dislike removed'**
+  String get waveToastUndisliked;
+
+  /// desktop: wave.toast.stopped
+  ///
+  /// In en, this message translates to:
+  /// **'Wave stopped'**
+  String get waveToastStopped;
+
+  /// desktop: wave.toast.notEnough
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough data for My Wave — listen to some music first'**
+  String get waveToastNotEnough;
+
+  /// desktop: wave.toast.noSeed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t find a track for the wave'**
+  String get waveToastNoSeed;
+
+  /// desktop: wave.toast.scOnly, extended: the phone has the Yandex station too
+  ///
+  /// In en, this message translates to:
+  /// **'The wave only works for SoundCloud and Yandex tracks'**
+  String get waveToastScOnly;
+
+  /// desktop: wave.toast.queueEmpty
+  ///
+  /// In en, this message translates to:
+  /// **'Queue is empty'**
+  String get waveToastQueueEmpty;
+
+  /// desktop: wave.toast.noScInQueue
+  ///
+  /// In en, this message translates to:
+  /// **'No SoundCloud tracks in the queue to find similar ones'**
+  String get waveToastNoScInQueue;
+
+  /// desktop: wave.toast.artistNoSeeds
+  ///
+  /// In en, this message translates to:
+  /// **'No tracks of this artist to build a wave from'**
+  String get waveToastArtistNoSeeds;
+
+  /// desktop: wave.toast.noSimilar
+  ///
+  /// In en, this message translates to:
+  /// **'SoundCloud returned no similar tracks'**
+  String get waveToastNoSimilar;
+
+  /// desktop: wave.toast.ymNoAuth
+  ///
+  /// In en, this message translates to:
+  /// **'Not signed in to Yandex Music (Settings → Platforms)'**
+  String get waveToastYmNoAuth;
+
+  /// desktop: wave.toast.ymEmpty
+  ///
+  /// In en, this message translates to:
+  /// **'The Yandex wave is empty'**
+  String get waveToastYmEmpty;
+
+  /// desktop: wave.toast.ymError, without the raw API message
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t reach the Yandex wave'**
+  String get waveToastYmFailed;
 }
 
 class _AppLocalizationsDelegate

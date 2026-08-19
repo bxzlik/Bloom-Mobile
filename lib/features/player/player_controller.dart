@@ -24,6 +24,7 @@ import '../../core/store/library_store.dart';
 import '../../core/store/stats_store.dart';
 import '../library/local_tracks.dart';
 import '../offline/offline_store.dart';
+import '../wave/wave_controller.dart';
 import 'audio_handler.dart';
 import 'notification_permission.dart';
 import 'play_source.dart';
@@ -440,9 +441,45 @@ class PlaybackController extends Notifier<PlaybackState>
   Future<void> play(Track track) =>
       playQueue([track], 0, source: PlainSource.single(track));
 
+  /// Поставить очередь волны. Отдельно от [playQueue] ради перемешки: волна
+  /// САМА выбирает порядок, и перетасовать её значило бы выбросить работу
+  /// подбора. Флаг снимаем, как `host.shuffle = false` на десктопе.
+  Future<void> playWave(List<Track> tracks, WaveSource source) {
+    state = state.copyWith(shuffle: false);
+    return _start(tracks, 0, source: source, orig: null);
+  }
+
+  /// Дописать пачку в конец очереди — догрузка волны. От [addToQueue]
+  /// отличается тем, что треков много и уже стоящие в очереди пропускаются
+  /// молча: подбор мог предложить то, что там уже есть.
+  void appendToQueue(List<Track> tracks) {
+    if (tracks.isEmpty || state.queue.isEmpty) return;
+    final have = {for (final t in state.queue) t.id};
+    final add = [
+      for (final t in tracks)
+        if (have.add(t.id)) t,
+    ];
+    if (add.isEmpty) return;
+    final q = [...state.queue, ...add];
+    final orig = _origQueue;
+    if (orig != null) _origQueue = [...orig, ...add];
+    state = state.copyWith(queue: q);
+    _handler.setQueue(q);
+    _saveResume();
+  }
+
   /// Продолжить прошлую сессию — очередь из снимка, с той же позиции
   /// (карточка «Продолжить» на главной). Порт `restoreResumeQueue`.
-  Future<void> resumeSession(ResumeData data) => _start(
+  ///
+  /// Снимок мог быть волновым: очередь вернётся сама, а вот память подбора
+  /// живёт отдельно — без неё волна доиграла бы сохранённые треки и молча
+  /// встала, вместо того чтобы догрузиться.
+  Future<void> resumeSession(ResumeData data) {
+    ref.read(waveProvider.notifier).adoptRestored(data.source);
+    return _resume(data);
+  }
+
+  Future<void> _resume(ResumeData data) => _start(
     data.queue,
     data.index,
     source: data.source,
@@ -453,11 +490,21 @@ class PlaybackController extends Notifier<PlaybackState>
 
   Future<void> _load(int index, {Duration? startAt}) async {
     final track = state.queue[index];
+    // Уход с прошлого трека — единственный сигнал, по которому учится волна:
+    // сколько его слушали, столько он и «понравился». Считаем до смены
+    // состояния, пока позиция и длительность ещё от него.
+    _reportWaveTrackEnd(track);
     // Куда «поехал» показ — считаем ровно здесь, на реальном переключении:
     // слои анимации в плеере и миниплеере обязаны ехать в одну сторону, а к
     // моменту перерисовки прошлый номер в очереди уже потерян.
     commitSwapDir(state.queue, index);
     final gen = ++_generation;
+    // Прошлый трек умолкает СРАЗУ, а не когда доедет ссылка на новый. Источник
+    // у just_audio подменяется только в setUrl — то есть после похода в сеть за
+    // стримом, и всё это время в ушах играл бы старый трек, хотя в плеере уже
+    // написан новый. Не ждём: pause переставляет `playing` синхронно, а команду
+    // платформе шлёт сам, и задерживать ради неё загрузку незачем.
+    unawaited(_player.pause());
     state = state.copyWith(index: index, loading: true, clearError: true);
     // Текущим стал другой трек — зачёт для него начинается заново.
     _credited = false;
@@ -503,6 +550,10 @@ class PlaybackController extends Notifier<PlaybackState>
       if (gen != _generation) return;
       state = state.copyWith(loading: false);
       _handler.setResolving(false);
+      // Волне пора решать, догружать ли пачку и не ушёл ли человек из неё.
+      // Именно на успешном старте: трек, который не заиграл, для подбора не
+      // событие.
+      ref.read(waveProvider.notifier).onTrackStart(track);
       // Снимок «Продолжить» — сразу на новом треке: подписка на playingStream
       // при переходе внутри очереди молчит (плеер и так играл), и до тика
       // таймера карточка звала бы обратно на прошлый трек.
@@ -516,6 +567,19 @@ class PlaybackController extends Notifier<PlaybackState>
       state = state.copyWith(loading: false, error: e.toString());
       _handler.setResolving(false);
     }
+  }
+
+  /// Сообщить волне, сколько наиграл трек, с которого сейчас уходим.
+  ///
+  /// [next] — тот, на который переключаемся: повторный заход на тот же трек
+  /// (перезапуск после `stop()`, перемотка в начало) уходом не считается, иначе
+  /// волна засчитала бы его как пролистнутый.
+  void _reportWaveTrackEnd(Track next) {
+    final prev = state.track;
+    if (prev == null || prev.id == next.id) return;
+    final total = _player.duration;
+    if (total == null || total <= Duration.zero) return;
+    ref.read(waveProvider.notifier).onTrackEnd(prev, _player.position, total);
   }
 
   void _onCompleted() {
@@ -759,6 +823,10 @@ class PlaybackController extends Notifier<PlaybackState>
 
   @override
   Future<void> commandPlay() async {
+    // Идёт загрузка нового трека — играть нечего: источник в плеере ещё от
+    // прошлого, и play() вернул бы в уши именно его. Загрузка доиграет до
+    // старта сама.
+    if (state.loading) return;
     // После stop() (смахнули шторку) источник у just_audio уже отпущен —
     // «играть» должно перезапустить трек, а не молча ничего не сделать.
     if (_player.processingState == ProcessingState.idle &&
