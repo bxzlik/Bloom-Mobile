@@ -105,8 +105,11 @@ class FullPlayerRoute extends PageRoute<void> {
   String? get barrierLabel => null;
 
   @override
-  Widget buildPage(BuildContext context, Animation<double> _, Animation<double> _) =>
-      const FullPlayerPage();
+  Widget buildPage(
+    BuildContext context,
+    Animation<double> _,
+    Animation<double> _,
+  ) => const FullPlayerPage();
 
   @override
   Widget buildTransitions(
@@ -231,7 +234,11 @@ class FullPlayerDrag {
       _navigator.pop();
       done = atRest
           ? TickerFuture.complete()
-          : sheet.animateBack(0, duration: duration, curve: Curves.easeOutCubic);
+          : sheet.animateBack(
+              0,
+              duration: duration,
+              curve: Curves.easeOutCubic,
+            );
     }
     done.whenCompleteOrCancel(_release);
   }

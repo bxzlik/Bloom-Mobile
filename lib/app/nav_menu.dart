@@ -86,9 +86,7 @@ Future<void> showNavMenu({
       // Таб-бар делит панель на равные доли — по ним и находится центр иконки,
       // не спрашивая каждый таб о его прямоугольнике.
       centerX: panel.left + panel.width * (index + 0.5) / 3,
-      barrierLabel: MaterialLocalizations.of(
-        host,
-      ).modalBarrierDismissLabel,
+      barrierLabel: MaterialLocalizations.of(host).modalBarrierDismissLabel,
       // Как у шторок: попап строится в оверлее корневого навигатора, и всё, что
       // объявлено ниже него, иначе потерялось бы.
       themes: InheritedTheme.capture(from: host, to: navigator.context),
@@ -260,9 +258,7 @@ class _Scrim extends ConsumerWidget {
     final filter = glass?.filter;
     return ClipPath(
       clipper: _HoleClipper(hole: hole, radius: radius),
-      child: filter == null
-          ? dim
-          : BackdropFilter(filter: filter, child: dim),
+      child: filter == null ? dim : BackdropFilter(filter: filter, child: dim),
     );
   }
 }

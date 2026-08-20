@@ -34,11 +34,7 @@ const String _lastRunKey = 'lastRun';
 
 /// Страница заметки: заголовок, текст и, может быть, картинка.
 class UpdateNotePage {
-  const UpdateNotePage({
-    required this.title,
-    required this.body,
-    this.image,
-  });
+  const UpdateNotePage({required this.title, required this.body, this.image});
 
   final String title;
 
@@ -71,8 +67,7 @@ class UpdateNote {
 
   /// Есть ли что показывать. Пустую заметку не открываем автоматом — незачем
   /// дёргать человека пустой шторкой.
-  bool get hasContent =>
-      title.isNotEmpty || pages.any((page) => !page.isEmpty);
+  bool get hasContent => title.isNotEmpty || pages.any((page) => !page.isEmpty);
 }
 
 /// Строка списка «История обновлений».

@@ -102,7 +102,10 @@ class _NoteBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = context.l;
     final theme = Theme.of(context).textTheme;
-    final pages = [for (final page in note.pages) if (!page.isEmpty) page];
+    final pages = [
+      for (final page in note.pages)
+        if (!page.isEmpty) page,
+    ];
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 2, 20, 6),
