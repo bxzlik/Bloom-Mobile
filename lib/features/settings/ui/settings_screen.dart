@@ -12,8 +12,9 @@
 /// же Solar, что на десктопе; исключение «Система»: там монитор, здесь
 /// смартфон.
 ///
-/// Работают «Свайпы», «Интерфейс», «Хранилище», «SoundCloud» и «Яндекс.Музыка».
-/// Остальные честно говорят, что ещё не сделаны.
+/// Заглушек в «Основном» и «Оформлении» больше нет: работают «Система»,
+/// «Аудио», «Хранилище», «Свайпы», «Плеер», «Интерфейс», кастомизация, все три
+/// площадки и «Last.fm».
 library;
 
 import 'package:flutter/foundation.dart' show kDebugMode;
@@ -50,10 +51,12 @@ class SettingsScreen extends StatelessWidget {
               SettingsRow(
                 icon: SolarIconsOutline.smartphone,
                 title: context.l.setSystem,
+                onTap: () => context.go('/settings/system'),
               ),
               SettingsRow(
                 icon: SolarIconsOutline.tuning,
                 title: context.l.setAudio,
+                onTap: () => context.go('/settings/audio'),
               ),
               SettingsRow(
                 icon: SolarIconsOutline.database,
@@ -121,6 +124,7 @@ class SettingsScreen extends StatelessWidget {
               SettingsRow(
                 title: 'Last.fm',
                 leading: const ServiceLogo(Service.lastfm, size: 20),
+                onTap: () => context.go('/settings/lastfm'),
               ),
             ],
           ),

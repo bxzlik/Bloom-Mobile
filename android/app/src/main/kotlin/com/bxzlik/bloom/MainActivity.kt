@@ -83,6 +83,13 @@ class MainActivity : AudioServiceActivity() {
                     known = call.argument<List<String>>("known") ?: emptyList(),
                     result = result,
                 )
+                // Карточка «Итогов» — в системную шторку «Поделиться».
+                "shareFile" -> files.shareFile(
+                    path = call.argument<String>("path").orEmpty(),
+                    mime = call.argument<String>("mime") ?: "image/png",
+                    text = call.argument<String>("text"),
+                    result = result,
+                )
                 "releaseAudio" -> files.releaseAudio(
                     uri = call.argument<String>("uri").orEmpty(),
                     result = result,
@@ -91,6 +98,9 @@ class MainActivity : AudioServiceActivity() {
                 // по тому тому, где лежат данные приложения: на аппаратах с
                 // адаптируемой картой это может быть не системный раздел.
                 "diskSpace" -> diskSpace(result)
+                // Версия сборки — строка «О приложении». Пакет
+                // `package_info_plus` ради двух строк не тянем.
+                "appInfo" -> appInfo(result)
                 else -> result.notImplemented()
             }
         }
@@ -104,6 +114,27 @@ class MainActivity : AudioServiceActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (files.onActivityResult(requestCode, resultCode, data)) return
         super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    /**
+     * Имя версии и номер сборки из манифеста — `versionName` и `versionCode`
+     * (на них же стоит `--build-name`/`--build-number` из workflow сборки).
+     */
+    private fun appInfo(result: MethodChannel.Result) {
+        try {
+            val info = packageManager.getPackageInfo(packageName, 0)
+            val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                info.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                info.versionCode.toLong()
+            }
+            result.success(mapOf("version" to (info.versionName ?: ""), "build" to code.toString()))
+        } catch (e: Exception) {
+            // Своего пакета не нашли — такого не бывает, но экран просто
+            // покажет прочерк вместо версии.
+            result.success(null)
+        }
     }
 
     /** Сколько всего места на томе с данными приложения и сколько свободно. */

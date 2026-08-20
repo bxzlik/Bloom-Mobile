@@ -240,7 +240,9 @@ class _QueueRow extends ConsumerWidget {
         // стоит на текущей позиции.
         active: current,
         onTap: () => ref.read(playbackProvider.notifier).jumpTo(index),
-        onMenu: () => showTrackActions(context, ref, track),
+        // Номер строки, а не поиск по id: один трек может стоять в очереди
+        // дважды, и «Убрать из очереди» обязано убрать именно эту строку.
+        onMenu: () => showTrackActions(context, ref, track, queueIndex: index),
         dragIndex: index,
       ),
     );

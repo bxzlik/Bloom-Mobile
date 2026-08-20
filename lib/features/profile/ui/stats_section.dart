@@ -26,6 +26,7 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../player/player_controller.dart';
+import '../../wrapped/play_log.dart';
 import '../achievements.dart';
 import '../artist_avatars.dart';
 import '../stats.dart';
@@ -105,6 +106,9 @@ class _StatsSectionState extends ConsumerState<StatsSection> {
     ref.read(libraryProvider.notifier).clearHistory();
     ref.read(statsProvider.notifier).clear();
     ref.read(unlockedAchievementsProvider.notifier).clear();
+    // Журнал «Итогов» — часть той же статистики (на ПК `clearPlayLog` зовётся
+    // отсюда же): оставить его значило бы показать итоги по «очищенному».
+    ref.read(playLogProvider.notifier).clear();
     showToast(context, context.l.statsCleared);
   }
 

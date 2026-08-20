@@ -56,6 +56,20 @@ class JsonStore {
     return v is Map ? v.cast<String, dynamic>() : {};
   }
 
+  /// Что вообще лежит в файле — нужен полному сбросу: он стирает всё, кроме
+  /// одного ключа, и перечислять хранилища по именам там было бы нечем.
+  Iterable<String> get keys => _data.keys.toList();
+
+  /// Стереть перечисленные ключи разом — сброс настроек и полный сброс
+  /// (`features/settings/reset.dart`).
+  void removeAll(Iterable<String> keys) {
+    var changed = false;
+    for (final key in keys) {
+      changed = _data.remove(key) != null || changed;
+    }
+    if (changed) _schedule();
+  }
+
   void write(String key, Object? value) {
     if (value == null) {
       _data.remove(key);

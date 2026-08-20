@@ -32,6 +32,7 @@ import '../../../shared/ui/color_picker.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/language_card.dart';
 import '../../../shared/ui/subpage_header.dart';
+import '../../wrapped/wrapped_store.dart';
 import '../transparency_store.dart';
 
 class AppearanceScreen extends ConsumerWidget {
@@ -207,6 +208,8 @@ class AppearanceScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 26),
+        ..._wrappedGroup(context, ref),
+        const SizedBox(height: 26),
         Row(
           children: [
             SettingsCaption(context.l.apCorners),
@@ -261,6 +264,48 @@ class AppearanceScreen extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// Группа «ИТОГИ» — порт десктопной категории `settings.wrapped.*` (на ПК она
+/// живёт в секции «Вкладки», где настраивается сам пункт сайдбара).
+///
+/// «Показывать всегда» — единственный способ увидеть итоги вне окна показа:
+/// без него неделю пришлось бы ждать до понедельника, а год — до 21 декабря.
+List<Widget> _wrappedGroup(BuildContext context, WidgetRef ref) {
+  final prefs = ref.watch(wrappedPrefsProvider);
+  final controller = ref.read(wrappedPrefsProvider.notifier);
+  final l = context.l;
+
+  return [
+    SettingsCaption(l.wrSetCaption),
+    const SizedBox(height: 10),
+    SettingsGroupCard(
+      rows: [
+        _SettingsCard(
+          child: _SettingsRow(
+            title: l.wrSetShow,
+            subtitle: l.wrSetShowSub,
+            trailing: BloomSwitch(
+              value: prefs.show,
+              onChanged: controller.setShow,
+            ),
+          ),
+        ),
+        // Расписание настраивается, только пока вход вообще показывается.
+        if (prefs.show)
+          _SettingsCard(
+            child: _SettingsRow(
+              title: l.wrSetAlways,
+              subtitle: l.wrSetAlwaysSub,
+              trailing: BloomSwitch(
+                value: prefs.always,
+                onChanged: controller.setAlways,
+              ),
+            ),
+          ),
+      ],
+    ),
+  ];
 }
 
 /// Группа «ПРОЗРАЧНОСТЬ» — последняя на экране, как категория с тем же именем

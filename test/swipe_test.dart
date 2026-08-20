@@ -141,6 +141,62 @@ void main() {
     });
   });
 
+  group('«Играть следующими» пачкой', () {
+    test('пачка встаёт за играющим в своём порядке', () {
+      final queue = [_track('a'), _track('b')];
+      final (next, index) = queueWithNextAll(queue, 0, [
+        _track('x'),
+        _track('y'),
+      ]);
+
+      expect(next.map((t) => t.id).toList(), ['a', 'x', 'y', 'b']);
+      expect(next[index].id, 'a');
+    });
+
+    test('повторы внутри пачки и в очереди не задваиваются', () {
+      final queue = [_track('a'), _track('b'), _track('c')];
+      final (next, index) = queueWithNextAll(queue, 0, [
+        _track('c'),
+        _track('c'),
+        _track('x'),
+      ]);
+
+      expect(next.map((t) => t.id).toList(), ['a', 'c', 'x', 'b']);
+      expect(next[index].id, 'a');
+    });
+
+    test('играющий из пачки выпадает, остальные встают за ним', () {
+      final queue = [_track('a'), _track('b'), _track('c')];
+      final (next, index) = queueWithNextAll(queue, 1, [
+        _track('b'),
+        _track('c'),
+      ]);
+
+      // «b» играет и остаётся на месте, «c» переезжает к нему вплотную.
+      expect(next.map((t) => t.id).toList(), ['a', 'b', 'c']);
+      expect(next[index].id, 'b');
+    });
+
+    test('пачка из одного играющего ничего не меняет', () {
+      final queue = [_track('a'), _track('b')];
+      final (next, index) = queueWithNextAll(queue, 1, [_track('b')]);
+
+      expect(identical(next, queue), isTrue);
+      expect(index, 1);
+    });
+
+    test('пачка сверху уносит номер играющего вверх', () {
+      final queue = [_track('a'), _track('b'), _track('c'), _track('d')];
+      final (next, index) = queueWithNextAll(queue, 3, [
+        _track('a'),
+        _track('b'),
+      ]);
+
+      expect(next.map((t) => t.id).toList(), ['c', 'd', 'a', 'b']);
+      expect(next[index].id, 'd');
+    });
+  });
+
   group('строка', () {
     testWidgets('короткий свайп ничего не делает и возвращает строку', (
       tester,

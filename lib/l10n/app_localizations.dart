@@ -134,23 +134,11 @@ abstract class AppLocalizations {
   /// **'Apply'**
   String get commonApply;
 
-  /// No description provided for @commonRename.
-  ///
-  /// In en, this message translates to:
-  /// **'Rename'**
-  String get commonRename;
-
   /// desktop: common.undo — default toast action label
   ///
   /// In en, this message translates to:
   /// **'Undo'**
   String get commonUndo;
-
-  /// No description provided for @commonDiscard.
-  ///
-  /// In en, this message translates to:
-  /// **'Discard'**
-  String get commonDiscard;
 
   /// No description provided for @commonUpload.
   ///
@@ -662,12 +650,6 @@ abstract class AppLocalizations {
   /// **'Playlist auto-refresh'**
   String get libAutoRefreshTooltip;
 
-  /// No description provided for @libDragHint.
-  ///
-  /// In en, this message translates to:
-  /// **'In “Default” order a tile can be held and dragged'**
-  String get libDragHint;
-
   /// No description provided for @libSortManual.
   ///
   /// In en, this message translates to:
@@ -806,23 +788,35 @@ abstract class AppLocalizations {
   /// **'Refresh tracks'**
   String get tlRefreshTracks;
 
-  /// No description provided for @tlSetCover.
+  /// desktop: lib.plmenu.toQueue — append the whole list to the queue
   ///
   /// In en, this message translates to:
-  /// **'Set a cover'**
-  String get tlSetCover;
+  /// **'Add to queue'**
+  String get tlToQueue;
 
-  /// No description provided for @tlChangeCover.
+  /// desktop: lib.plmenu.playNext
   ///
   /// In en, this message translates to:
-  /// **'Change cover'**
-  String get tlChangeCover;
+  /// **'Play next'**
+  String get tlPlayNext;
 
-  /// No description provided for @tlRemoveCover.
+  /// desktop: toast.addedToQueue
   ///
   /// In en, this message translates to:
-  /// **'Remove cover'**
-  String get tlRemoveCover;
+  /// **'Added to queue: {count}'**
+  String tlQueuedTracks(int count);
+
+  /// desktop: toast.queuedNext
+  ///
+  /// In en, this message translates to:
+  /// **'Playing next: {count}'**
+  String tlQueuedNext(int count);
+
+  /// desktop: lib.plmenu.exportPlaylist
+  ///
+  /// In en, this message translates to:
+  /// **'Export playlist'**
+  String get tlExportPlaylist;
 
   /// No description provided for @tlDeletePlaylist.
   ///
@@ -836,6 +830,18 @@ abstract class AppLocalizations {
   /// **'Playlist “{name}” deleted'**
   String tlPlaylistDeleted(String name);
 
+  /// desktop: lib.plmenu.deletePlaylistWithTracks
+  ///
+  /// In en, this message translates to:
+  /// **'Delete playlist and tracks'**
+  String get tlDeletePlaylistWithTracks;
+
+  /// No description provided for @tlPlaylistAndTracksDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist “{name}” and its tracks deleted'**
+  String tlPlaylistAndTracksDeleted(String name);
+
   /// No description provided for @leAlreadyFavorite.
   ///
   /// In en, this message translates to:
@@ -848,29 +854,17 @@ abstract class AppLocalizations {
   /// **'Liked: {tracks}'**
   String leAddedToFavorites(String tracks);
 
-  /// No description provided for @leDeleteTitle.
+  /// No description provided for @leDeleteArm.
   ///
   /// In en, this message translates to:
-  /// **'Delete {tracks}?'**
-  String leDeleteTitle(String tracks);
+  /// **'Tap again — {tracks} will be gone everywhere'**
+  String leDeleteArm(String tracks);
 
-  /// No description provided for @leDeleteBody.
+  /// No description provided for @leDiscardArm.
   ///
   /// In en, this message translates to:
-  /// **'They will disappear from your library, likes, playlists and history.'**
-  String get leDeleteBody;
-
-  /// No description provided for @leDiscardTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Discard changes?'**
-  String get leDiscardTitle;
-
-  /// No description provided for @leDiscardBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Everything you changed in this list will be lost.'**
-  String get leDiscardBody;
+  /// **'Tap again to discard your changes'**
+  String get leDiscardArm;
 
   /// No description provided for @cpImported.
   ///
@@ -1363,6 +1357,360 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Download as a file'**
   String get fdDownloadFile;
+
+  /// desktop: lib.plmenu.convert
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer to source…'**
+  String get tlConvert;
+
+  /// desktop: lib.convert.title
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer to source'**
+  String get cvTitle;
+
+  /// No description provided for @cvScanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking up tracks on {source}…'**
+  String cvScanning(String source);
+
+  /// desktop: lib.convert.hint.scanning
+  ///
+  /// In en, this message translates to:
+  /// **'You can leave — the transfer will be cancelled'**
+  String get cvScanHint;
+
+  /// No description provided for @cvSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved {moved} · kept {kept} · skipped {skipped}'**
+  String cvSummary(int moved, int kept, int skipped);
+
+  /// desktop: lib.convert.takeBest
+  ///
+  /// In en, this message translates to:
+  /// **'Take the best'**
+  String get cvTakeBest;
+
+  /// No description provided for @cvCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Create a playlist of {count} track} other{Create a playlist of {count} tracks}}'**
+  String cvCreate(int count);
+
+  /// No description provided for @cvTagMoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Transferred'**
+  String get cvTagMoved;
+
+  /// No description provided for @cvTagOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Original'**
+  String get cvTagOriginal;
+
+  /// No description provided for @cvTagOnTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Already here'**
+  String get cvTagOnTarget;
+
+  /// No description provided for @cvTagSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get cvTagSkipped;
+
+  /// No description provided for @cvNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Not found on {source}'**
+  String cvNotFound(String source);
+
+  /// No description provided for @cvSearchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The source didn’t answer'**
+  String get cvSearchFailed;
+
+  /// No description provided for @cvKeepOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the original'**
+  String get cvKeepOriginal;
+
+  /// No description provided for @cvSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip this track'**
+  String get cvSkip;
+
+  /// No description provided for @cvCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” created — {tracks}'**
+  String cvCreated(String name, String tracks);
+
+  /// desktop: lib.ctx.switchSrc
+  ///
+  /// In en, this message translates to:
+  /// **'Switch source'**
+  String get spSwitch;
+
+  /// No description provided for @spSearching.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking on {source}…'**
+  String spSearching(String source);
+
+  /// desktop: toast.srcNow
+  ///
+  /// In en, this message translates to:
+  /// **'Now playing from {source}'**
+  String spNow(String source);
+
+  /// desktop: toast.trackNotOnSrc
+  ///
+  /// In en, this message translates to:
+  /// **'This track isn’t on {source}'**
+  String spNotFound(String source);
+
+  /// desktop: toast.srcSwitchFail
+  ///
+  /// In en, this message translates to:
+  /// **'The source didn’t answer — try again'**
+  String get spFailed;
+
+  /// desktop: toast.srcUnavailable
+  ///
+  /// In en, this message translates to:
+  /// **'This source is unavailable'**
+  String get spUnavailable;
+
+  /// desktop: lib.plmenu.mergeWith
+  ///
+  /// In en, this message translates to:
+  /// **'Merge with…'**
+  String get tlMergeWith;
+
+  /// No description provided for @mgTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Merging playlists'**
+  String get mgTitle;
+
+  /// No description provided for @mgNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Name of the new playlist'**
+  String get mgNameHint;
+
+  /// No description provided for @mgPickHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick what to merge in'**
+  String get mgPickHint;
+
+  /// No description provided for @mgResult.
+  ///
+  /// In en, this message translates to:
+  /// **'You’ll get {tracks}'**
+  String mgResult(String tracks);
+
+  /// No description provided for @mgDupsDropped.
+  ///
+  /// In en, this message translates to:
+  /// **'−{count} repeats'**
+  String mgDupsDropped(int count);
+
+  /// No description provided for @mgDedup.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove duplicates'**
+  String get mgDedup;
+
+  /// No description provided for @mgDeleteSources.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the originals'**
+  String get mgDeleteSources;
+
+  /// No description provided for @mgNothingToMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no other playlist to merge with'**
+  String get mgNothingToMerge;
+
+  /// No description provided for @mgMerged.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” collected — {tracks}'**
+  String mgMerged(String name, String tracks);
+
+  /// desktop: lib.plmenu.findDups
+  ///
+  /// In en, this message translates to:
+  /// **'Find duplicates'**
+  String get tlFindDups;
+
+  /// desktop: lib.dups.title
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate tracks'**
+  String get dupsTitle;
+
+  /// No description provided for @dupsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'{groups, plural, one{{groups} group} other{{groups} groups}} · {extra, plural, one{{extra} extra copy} other{{extra} extra copies}}'**
+  String dupsFound(int groups, int extra);
+
+  /// No description provided for @dupsChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} track checked} other{{count} tracks checked}}'**
+  String dupsChecked(int count);
+
+  /// No description provided for @dupsCopies.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} copy} other{{count} copies}}'**
+  String dupsCopies(int count);
+
+  /// No description provided for @dupsPlays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} play} other{{count} plays}}'**
+  String dupsPlays(int count);
+
+  /// No description provided for @dupsKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'keep'**
+  String get dupsKeep;
+
+  /// No description provided for @dupsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No duplicates found'**
+  String get dupsNone;
+
+  /// desktop: lib.dups.delAll
+  ///
+  /// In en, this message translates to:
+  /// **'Remove all'**
+  String get dupsDelAll;
+
+  /// desktop: lib.dups.delGroup
+  ///
+  /// In en, this message translates to:
+  /// **'Remove copies'**
+  String get dupsDelGroup;
+
+  /// No description provided for @dupsRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} copy removed} other{{count} copies removed}}'**
+  String dupsRemoved(int count);
+
+  /// desktop: lib.ctx.trackInfo
+  ///
+  /// In en, this message translates to:
+  /// **'Track info'**
+  String get tiTitle;
+
+  /// No description provided for @tiAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Album'**
+  String get tiAlbum;
+
+  /// No description provided for @tiYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Year'**
+  String get tiYear;
+
+  /// No description provided for @tiDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get tiDuration;
+
+  /// No description provided for @tiPublisher.
+  ///
+  /// In en, this message translates to:
+  /// **'Publisher'**
+  String get tiPublisher;
+
+  /// No description provided for @tiGenres.
+  ///
+  /// In en, this message translates to:
+  /// **'Genres'**
+  String get tiGenres;
+
+  /// No description provided for @tiDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get tiDescription;
+
+  /// No description provided for @tiFile.
+  ///
+  /// In en, this message translates to:
+  /// **'File'**
+  String get tiFile;
+
+  /// desktop: TrackInfoModal ti-credited — artist as credited by the source
+  ///
+  /// In en, this message translates to:
+  /// **'Credited'**
+  String get tiCredited;
+
+  /// No description provided for @tiExplicit.
+  ///
+  /// In en, this message translates to:
+  /// **'Explicit lyrics'**
+  String get tiExplicit;
+
+  /// No description provided for @tiNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'The source didn’t share anything else about this track'**
+  String get tiNothing;
+
+  /// desktop: lib.ctx.toQueue
+  ///
+  /// In en, this message translates to:
+  /// **'To queue'**
+  String get taToQueue;
+
+  /// desktop: lib.ctx.playNext
+  ///
+  /// In en, this message translates to:
+  /// **'Play next'**
+  String get taPlayNext;
+
+  /// desktop: player.aria.removeFromQueue
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from queue'**
+  String get taRemoveFromQueue;
+
+  /// desktop: lib.ctx.removeFromPl
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from playlist'**
+  String get taRemoveFromPlaylist;
+
+  /// desktop: lib.ctx.download — flyout with the two kinds of download
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get taDownload;
 
   /// No description provided for @taRemoveFromFavorites.
   ///
@@ -3889,6 +4237,852 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn’t reach the Yandex wave'**
   String get waveToastYmFailed;
+
+  /// desktop: settings.lastfm.connectedAs, without the ✓ — the page shows it in green
+  ///
+  /// In en, this message translates to:
+  /// **'Connected as {user}'**
+  String lfmConnectedAs(String user);
+
+  /// desktop: settings.lastfm.notConnected
+  ///
+  /// In en, this message translates to:
+  /// **'Not connected'**
+  String get lfmNotConnected;
+
+  /// desktop: settings.lastfm.login
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Last.fm'**
+  String get lfmLogin;
+
+  /// desktop: settings.lastfm.done
+  ///
+  /// In en, this message translates to:
+  /// **'Done — I confirmed'**
+  String get lfmDone;
+
+  /// desktop: settings.lastfm.logout
+  ///
+  /// In en, this message translates to:
+  /// **'Log out'**
+  String get lfmLogout;
+
+  /// phone only: button that opens the key form (on desktop it lives under the “?” popup)
+  ///
+  /// In en, this message translates to:
+  /// **'API keys'**
+  String get lfmKeys;
+
+  /// desktop: settings.lastfm.saveKeys
+  ///
+  /// In en, this message translates to:
+  /// **'Save keys'**
+  String get lfmSaveKeys;
+
+  /// desktop: settings.lastfm.scrobble
+  ///
+  /// In en, this message translates to:
+  /// **'Scrobbling'**
+  String get lfmScrobble;
+
+  /// desktop: settings.lastfm.scrobble.sub
+  ///
+  /// In en, this message translates to:
+  /// **'Count listened tracks on Last.fm'**
+  String get lfmScrobbleSub;
+
+  /// desktop: settings.lastfm.nowPlaying.sub
+  ///
+  /// In en, this message translates to:
+  /// **'Update the “Now Playing” status'**
+  String get lfmNowPlayingSub;
+
+  /// phone only: the guide sheet, built from the desktop “?” popup
+  ///
+  /// In en, this message translates to:
+  /// **'How to connect Last.fm'**
+  String get lfmGuideTitle;
+
+  /// No description provided for @lfmGuideSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your own app key and a browser sign-in'**
+  String get lfmGuideSubtitle;
+
+  /// No description provided for @lfmStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'Open **last.fm/api/account/create** and register an app — any name will do.'**
+  String get lfmStep1;
+
+  /// No description provided for @lfmStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy **API Key** and **Shared Secret** from there and paste them into the fields below.'**
+  String get lfmStep2;
+
+  /// No description provided for @lfmStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap **“Sign in with Last.fm”** — the browser opens, and the password is only entered there.'**
+  String get lfmStep3;
+
+  /// No description provided for @lfmStep4.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow access and come back to Bloom: the app checks the sign-in by itself.'**
+  String get lfmStep4;
+
+  /// No description provided for @lfmGuideNote.
+  ///
+  /// In en, this message translates to:
+  /// **'The key has to be your own — Bloom has no shared Last.fm key. Your password is never entered into the app.'**
+  String get lfmGuideNote;
+
+  /// desktop: lastfm.oauth.gettingToken
+  ///
+  /// In en, this message translates to:
+  /// **'Getting token…'**
+  String get lfmGettingToken;
+
+  /// desktop: lastfm.oauth.confirmAccess
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm access on Last.fm, then press “Done”'**
+  String get lfmConfirmAccess;
+
+  /// desktop: lastfm.oauth.checking
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get lfmChecking;
+
+  /// desktop: lastfm.oauth.notConfirmed
+  ///
+  /// In en, this message translates to:
+  /// **'Not confirmed — try again'**
+  String get lfmNotConfirmed;
+
+  /// desktop: lastfm.oauth.loginFirst
+  ///
+  /// In en, this message translates to:
+  /// **'Press “Sign in with Last.fm” first'**
+  String get lfmLoginFirst;
+
+  /// desktop: lastfm.toast.saveApiKeyFirst + lastfm.toast.enterBothKeys, merged into one reason
+  ///
+  /// In en, this message translates to:
+  /// **'Save the API Key and Secret first'**
+  String get lfmNeedKeys;
+
+  /// desktop: lastfm.oauth.networkError
+  ///
+  /// In en, this message translates to:
+  /// **'Network error'**
+  String get lfmNetworkError;
+
+  /// desktop: lastfm.oauth.error
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {msg}'**
+  String lfmError(String msg);
+
+  /// desktop: lastfm.toast.connectedAs
+  ///
+  /// In en, this message translates to:
+  /// **'Last.fm: connected as {name}'**
+  String lfmToastConnected(String name);
+
+  /// desktop: lastfm.toast.disconnected
+  ///
+  /// In en, this message translates to:
+  /// **'Last.fm: disconnected'**
+  String get lfmToastDisconnected;
+
+  /// desktop: lastfm.toast.keysSaved
+  ///
+  /// In en, this message translates to:
+  /// **'Last.fm: keys saved'**
+  String get lfmToastKeysSaved;
+
+  /// desktop: notif.title — the notification centre sheet behind the bell
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notifCenterTitle;
+
+  /// desktop: notif.empty
+  ///
+  /// In en, this message translates to:
+  /// **'No notifications yet'**
+  String get notifCenterEmpty;
+
+  /// desktop: notif.trackDl.title
+  ///
+  /// In en, this message translates to:
+  /// **'Track downloaded'**
+  String get notifTrackDownloaded;
+
+  /// desktop: notif.dlError.title
+  ///
+  /// In en, this message translates to:
+  /// **'Download error'**
+  String get notifDownloadError;
+
+  /// desktop: notif.offline.title
+  ///
+  /// In en, this message translates to:
+  /// **'Track available offline'**
+  String get notifOfflineReady;
+
+  /// desktop: notif.offlineError.title
+  ///
+  /// In en, this message translates to:
+  /// **'Offline download failed'**
+  String get notifOfflineError;
+
+  /// desktop: notif.trackUnavailable.title
+  ///
+  /// In en, this message translates to:
+  /// **'Track unavailable'**
+  String get notifTrackUnavailable;
+
+  /// desktop: wrapped.title
+  ///
+  /// In en, this message translates to:
+  /// **'Wrapped'**
+  String get wrTitle;
+
+  /// No description provided for @wrWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Week in review'**
+  String get wrWeek;
+
+  /// No description provided for @wrMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Month in review'**
+  String get wrMonth;
+
+  /// No description provided for @wrYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Year in review'**
+  String get wrYear;
+
+  /// No description provided for @wrPrev.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get wrPrev;
+
+  /// No description provided for @wrNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get wrNext;
+
+  /// No description provided for @wrIntroWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Your week in Bloom'**
+  String get wrIntroWeek;
+
+  /// No description provided for @wrIntroMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Your month in Bloom'**
+  String get wrIntroMonth;
+
+  /// No description provided for @wrIntroYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Your year in Bloom'**
+  String get wrIntroYear;
+
+  /// No description provided for @wrIntroSub.
+  ///
+  /// In en, this message translates to:
+  /// **'LetвЂ™s see how it went'**
+  String get wrIntroSub;
+
+  /// No description provided for @wrTimeKicker.
+  ///
+  /// In en, this message translates to:
+  /// **'You listened for'**
+  String get wrTimeKicker;
+
+  /// No description provided for @wrTimeSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Plays in this period: {count}'**
+  String wrTimeSub(int count);
+
+  /// No description provided for @wrTimeLessThanMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Less than a minute'**
+  String get wrTimeLessThanMin;
+
+  /// No description provided for @wrCountsKicker.
+  ///
+  /// In en, this message translates to:
+  /// **'In numbers'**
+  String get wrCountsKicker;
+
+  /// No description provided for @wrCountsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'HereвЂ™s the whole picture'**
+  String get wrCountsTitle;
+
+  /// No description provided for @wrCountsNewTracks.
+  ///
+  /// In en, this message translates to:
+  /// **'Heard for the first time: {count}'**
+  String wrCountsNewTracks(int count);
+
+  /// No description provided for @wrTracksKicker.
+  ///
+  /// In en, this message translates to:
+  /// **'On repeat'**
+  String get wrTracksKicker;
+
+  /// No description provided for @wrTracksTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your top tracks'**
+  String get wrTracksTitle;
+
+  /// No description provided for @wrTracksTitleOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Your track of the period'**
+  String get wrTracksTitleOne;
+
+  /// No description provided for @wrArtistsKicker.
+  ///
+  /// In en, this message translates to:
+  /// **'Voices of the period'**
+  String get wrArtistsKicker;
+
+  /// No description provided for @wrArtistsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your top artists'**
+  String get wrArtistsTitle;
+
+  /// No description provided for @wrArtistsTitleOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Your artist of the period'**
+  String get wrArtistsTitleOne;
+
+  /// No description provided for @wrSourcesKicker.
+  ///
+  /// In en, this message translates to:
+  /// **'Where it came from'**
+  String get wrSourcesKicker;
+
+  /// No description provided for @wrSourcesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Where you listened'**
+  String get wrSourcesTitle;
+
+  /// No description provided for @wrDiscoverKicker.
+  ///
+  /// In en, this message translates to:
+  /// **'New names'**
+  String get wrDiscoverKicker;
+
+  /// No description provided for @wrDiscoverTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{You discovered {count} artist} other{You discovered {count} artists}}'**
+  String wrDiscoverTitle(int count);
+
+  /// No description provided for @wrHabitsKicker.
+  ///
+  /// In en, this message translates to:
+  /// **'Your habits'**
+  String get wrHabitsKicker;
+
+  /// No description provided for @wrHabitsNight.
+  ///
+  /// In en, this message translates to:
+  /// **'YouвЂ™re a night listener'**
+  String get wrHabitsNight;
+
+  /// No description provided for @wrHabitsDay.
+  ///
+  /// In en, this message translates to:
+  /// **'YouвЂ™re a daytime listener'**
+  String get wrHabitsDay;
+
+  /// No description provided for @wrHabitsPeak.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorite hour'**
+  String get wrHabitsPeak;
+
+  /// No description provided for @wrHabitsRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Day record'**
+  String get wrHabitsRecord;
+
+  /// No description provided for @wrHabitsStreak.
+  ///
+  /// In en, this message translates to:
+  /// **'Days in a row'**
+  String get wrHabitsStreak;
+
+  /// No description provided for @wrHabitsActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Days with music'**
+  String get wrHabitsActive;
+
+  /// tracks is an already-formatted wrTracksN string
+  ///
+  /// In en, this message translates to:
+  /// **'{tracks} В· {date}'**
+  String wrHabitsRecordValue(Object tracks, Object date);
+
+  /// No description provided for @wrShareKicker.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep it'**
+  String get wrShareKicker;
+
+  /// No description provided for @wrShareSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get wrShareSave;
+
+  /// No description provided for @wrShareFail.
+  ///
+  /// In en, this message translates to:
+  /// **'CouldnвЂ™t share the card'**
+  String get wrShareFail;
+
+  /// No description provided for @wrCardTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time with music'**
+  String get wrCardTime;
+
+  /// No description provided for @wrCardTopTracks.
+  ///
+  /// In en, this message translates to:
+  /// **'Top tracks'**
+  String get wrCardTopTracks;
+
+  /// No description provided for @wrCardTopArtists.
+  ///
+  /// In en, this message translates to:
+  /// **'Top artists'**
+  String get wrCardTopArtists;
+
+  /// No description provided for @wrJokeTiny.
+  ///
+  /// In en, this message translates to:
+  /// **'Kind of empty. Did you even press play?'**
+  String get wrJokeTiny;
+
+  /// No description provided for @wrJokeSmall.
+  ///
+  /// In en, this message translates to:
+  /// **'Modest. But we counted every single track.'**
+  String get wrJokeSmall;
+
+  /// No description provided for @wrJokeOneTrack.
+  ///
+  /// In en, this message translates to:
+  /// **'One track, one artist вЂ” respect the consistency.'**
+  String get wrJokeOneTrack;
+
+  /// No description provided for @wrPlaysN.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} play} other{{count} plays}}'**
+  String wrPlaysN(int count);
+
+  /// the noun alone, for tiles where the number is rendered separately
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{play} other{plays}}'**
+  String wrPlaysWord(int count);
+
+  /// No description provided for @wrTracksN.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} track} other{{count} tracks}}'**
+  String wrTracksN(int count);
+
+  /// No description provided for @wrTracksWord.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{track} other{tracks}}'**
+  String wrTracksWord(int count);
+
+  /// No description provided for @wrArtistsN.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} artist} other{{count} artists}}'**
+  String wrArtistsN(int count);
+
+  /// No description provided for @wrArtistsWord.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{artist} other{artists}}'**
+  String wrArtistsWord(int count);
+
+  /// No description provided for @wrDaysN.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} day} other{{count} days}}'**
+  String wrDaysN(int count);
+
+  /// No description provided for @wrHoursN.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} hour} other{{count} hours}}'**
+  String wrHoursN(int count);
+
+  /// No description provided for @wrMinutesN.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} minute} other{{count} minutes}}'**
+  String wrMinutesN(int count);
+
+  /// favorite hour, both sides already formatted as HH:00
+  ///
+  /// In en, this message translates to:
+  /// **'{from} вЂ” {to}'**
+  String wrHourRange(Object from, Object to);
+
+  /// No description provided for @wrSetCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'WRAPPED'**
+  String get wrSetCaption;
+
+  /// No description provided for @wrSetShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Wrapped'**
+  String get wrSetShow;
+
+  /// No description provided for @wrSetShowSub.
+  ///
+  /// In en, this message translates to:
+  /// **'A story circle on the home screen when thereвЂ™s something to sum up'**
+  String get wrSetShowSub;
+
+  /// No description provided for @wrSetAlways.
+  ///
+  /// In en, this message translates to:
+  /// **'Always show'**
+  String get wrSetAlways;
+
+  /// No description provided for @wrSetAlwaysSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip the schedule вЂ” open wrapped on any day'**
+  String get wrSetAlwaysSub;
+
+  /// desktop: settings.system.startup
+  ///
+  /// In en, this message translates to:
+  /// **'Startup'**
+  String get sysStartup;
+
+  /// No description provided for @audRestoreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore the queue'**
+  String get audRestoreTitle;
+
+  /// No description provided for @audRestoreSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring the track, queue and position back on launch — paused'**
+  String get audRestoreSub;
+
+  /// desktop: settings.system.autoplay.title
+  ///
+  /// In en, this message translates to:
+  /// **'Autoplay'**
+  String get audAutoplayTitle;
+
+  /// desktop: settings.system.autoplay.sub
+  ///
+  /// In en, this message translates to:
+  /// **'Restore the last session on launch and keep playing right away'**
+  String get audAutoplaySub;
+
+  /// desktop: settings.about.version
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get aboutVersion;
+
+  /// No description provided for @aboutBuild.
+  ///
+  /// In en, this message translates to:
+  /// **'build {n}'**
+  String aboutBuild(String n);
+
+  /// No description provided for @aboutIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Updates are checked by hand'**
+  String get aboutIdle;
+
+  /// No description provided for @aboutCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates'**
+  String get aboutCheck;
+
+  /// desktop: settings.about.checking
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for updates…'**
+  String get aboutChecking;
+
+  /// desktop: settings.about.uptodate
+  ///
+  /// In en, this message translates to:
+  /// **'You have the latest version'**
+  String get aboutUptodate;
+
+  /// desktop: settings.about.available
+  ///
+  /// In en, this message translates to:
+  /// **'Version {v} is available'**
+  String aboutAvailable(String v);
+
+  /// desktop: settings.about.error
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t check for updates'**
+  String get aboutError;
+
+  /// No description provided for @aboutOpenRelease.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the release page'**
+  String get aboutOpenRelease;
+
+  /// desktop: settings.system.importExport
+  ///
+  /// In en, this message translates to:
+  /// **'Import/Export'**
+  String get sysImportExport;
+
+  /// desktop: settings.system.exportAll.title
+  ///
+  /// In en, this message translates to:
+  /// **'Export all'**
+  String get sysExportTitle;
+
+  /// No description provided for @sysExportSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Save every playlist to a .bloomplaylist file'**
+  String get sysExportSub;
+
+  /// desktop: settings.system.export.filename
+  ///
+  /// In en, this message translates to:
+  /// **'bloom-playlists.bloomplaylist'**
+  String get sysExportFilename;
+
+  /// No description provided for @sysExported.
+  ///
+  /// In en, this message translates to:
+  /// **'File saved'**
+  String get sysExported;
+
+  /// No description provided for @sysNoPlaylists.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no playlists yet'**
+  String get sysNoPlaylists;
+
+  /// desktop: settings.system.import.title
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get sysImportTitle;
+
+  /// No description provided for @sysImportSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Load playlists from a .bloomplaylist file'**
+  String get sysImportSub;
+
+  /// desktop: settings.system.toast.importInvalid
+  ///
+  /// In en, this message translates to:
+  /// **'Error: invalid file'**
+  String get sysImportInvalid;
+
+  /// No description provided for @sysImportNoPlaylists.
+  ///
+  /// In en, this message translates to:
+  /// **'No playlists found'**
+  String get sysImportNoPlaylists;
+
+  /// desktop: settings.system.toast.importedFull
+  ///
+  /// In en, this message translates to:
+  /// **'Imported: {pl} pl., {tr} tr.'**
+  String sysImportedFull(int pl, int tr);
+
+  /// desktop: settings.system.toast.importedPlaylists
+  ///
+  /// In en, this message translates to:
+  /// **'Playlists imported: {pl}'**
+  String sysImportedPlaylists(int pl);
+
+  /// desktop: settings.system.logs
+  ///
+  /// In en, this message translates to:
+  /// **'Logs'**
+  String get sysLogs;
+
+  /// desktop: settings.system.log.title
+  ///
+  /// In en, this message translates to:
+  /// **'Activity log'**
+  String get sysLogTitle;
+
+  /// No description provided for @sysLogEmptySub.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing yet'**
+  String get sysLogEmptySub;
+
+  /// No description provided for @sysLogEntries.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} entry} other{{count} entries}}'**
+  String sysLogEntries(int count);
+
+  /// desktop: logs.copy
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get logsCopy;
+
+  /// No description provided for @logsSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get logsSave;
+
+  /// desktop: settings.system.log.clear
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get logsClear;
+
+  /// desktop: logs.copied
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get logsCopied;
+
+  /// desktop: settings.system.toast.logsSaved
+  ///
+  /// In en, this message translates to:
+  /// **'Logs saved'**
+  String get logsSaved;
+
+  /// desktop: settings.system.toast.logsCleared
+  ///
+  /// In en, this message translates to:
+  /// **'Logs cleared'**
+  String get logsCleared;
+
+  /// desktop: logs.empty
+  ///
+  /// In en, this message translates to:
+  /// **'The log is empty'**
+  String get logsEmpty;
+
+  /// desktop: settings.system.dangerZone
+  ///
+  /// In en, this message translates to:
+  /// **'Danger zone'**
+  String get sysDangerZone;
+
+  /// desktop: settings.system.resetSettings.title
+  ///
+  /// In en, this message translates to:
+  /// **'Reset settings'**
+  String get sysResetTitle;
+
+  /// desktop: settings.system.resetSettings.sub
+  ///
+  /// In en, this message translates to:
+  /// **'Return the look and the options to their defaults'**
+  String get sysResetSub;
+
+  /// No description provided for @sysResetBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The look, the player, gestures, transparency and customization presets go back to their defaults. Your library, history, profile and platform logins stay.'**
+  String get sysResetBody;
+
+  /// desktop: settings.system.resetSettings.btn
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get sysResetBtn;
+
+  /// No description provided for @sysResetDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings reset'**
+  String get sysResetDone;
+
+  /// desktop: settings.system.hardReset.title
+  ///
+  /// In en, this message translates to:
+  /// **'Reset everything'**
+  String get sysHardResetTitle;
+
+  /// desktop: settings.system.hardReset.sub
+  ///
+  /// In en, this message translates to:
+  /// **'Delete tracks, playlists, history and settings'**
+  String get sysHardResetSub;
+
+  /// No description provided for @sysHardResetBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The library, playlists, history, profile, downloads and every setting will be erased for good. There will be nothing to bring them back with.'**
+  String get sysHardResetBody;
+
+  /// desktop: settings.system.hardReset.btn
+  ///
+  /// In en, this message translates to:
+  /// **'Reset everything'**
+  String get sysHardResetBtn;
+
+  /// No description provided for @sysHardResetDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything is erased'**
+  String get sysHardResetDone;
 }
 
 class _AppLocalizationsDelegate

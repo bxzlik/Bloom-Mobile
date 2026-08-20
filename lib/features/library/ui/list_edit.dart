@@ -76,6 +76,14 @@ class _ListEditorState extends ConsumerState<ListEditor> {
   /// Идёт правка названия — нижняя панель на это время становится полем ввода.
   bool _renaming = false;
 
+  /// ✕ по черновику спрашивает вторым нажатием — как очистка статистики в
+  /// профиле: модалок в приложении нет.
+  bool _armedCancel = false;
+
+  /// ✓ спрашивает так же, но только во «Всех треках» и только если из списка
+  /// что-то убрали: там это удаление насквозь.
+  bool _armedPurge = false;
+
   UserPlaylist? get _playlist => widget.playlist;
 
   List<String> get _ids => [for (final t in _tracks) t.id];
@@ -164,7 +172,7 @@ class _ListEditorState extends ConsumerState<ListEditor> {
 
   // ── Выход ─────────────────────────────────────────────────────────────────
 
-  Future<void> _commit() async {
+  void _commit() {
     final lib = ref.read(libraryProvider.notifier);
     final left = _ids.toSet();
     final gone = [
@@ -174,9 +182,20 @@ class _ListEditorState extends ConsumerState<ListEditor> {
 
     switch (widget.listId) {
       case 'all':
-        // Тут удаление НАСКВОЗЬ, поэтому спрашиваем — как `confirm()` в
-        // десктопном `deleteUploadedTrack`.
-        if (gone.isNotEmpty && !await _confirmPurge(gone.length)) return;
+        // Тут удаление НАСКВОЗЬ (десктопный `deleteUploadedTrack` на это место
+        // ставит `confirm()`), поэтому ✓ спрашивает вторым нажатием.
+        if (gone.isNotEmpty && !_armedPurge) {
+          setState(() => _armedPurge = true);
+          showToast(
+            context,
+            context.l.leDeleteArm(context.l.tracksCount(gone.length)),
+            kind: ToastKind.warn,
+          );
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted) setState(() => _armedPurge = false);
+          });
+          return;
+        }
         // Офлайн-копии удалённых треков — мусор, на который никто не сошлётся.
         final offline = ref.read(offlineProvider.notifier);
         for (final id in gone) {
@@ -209,62 +228,22 @@ class _ListEditorState extends ConsumerState<ListEditor> {
     widget.onClose();
   }
 
-  Future<void> _cancel() async {
-    if (_dirty && !await _confirmDrop()) return;
+  void _cancel() {
+    // Пустой черновик выбрасывать нечего — такой ✕ выходит сразу.
+    if (_dirty && !_armedCancel) {
+      setState(() => _armedCancel = true);
+      showToast(context, context.l.leDiscardArm, kind: ToastKind.warn);
+      // Само остывает, как взведённый крестик у своей темы: иначе он так и
+      // ждёт случайного второго тапа.
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) setState(() => _armedCancel = false);
+      });
+      return;
+    }
     // Выбранная, но не записанная обложка — файл, на который теперь никто не
     // ссылается.
     if (_cover != _playlist?.cover) unawaited(deleteCover(_cover));
     widget.onClose();
-  }
-
-  Future<bool> _confirmPurge(int count) => _ask(
-    title: context.l.leDeleteTitle(context.l.tracksCount(count)),
-    body: context.l.leDeleteBody,
-    yes: context.l.commonDelete,
-    danger: true,
-  );
-
-  Future<bool> _confirmDrop() => _ask(
-    title: context.l.leDiscardTitle,
-    body: context.l.leDiscardBody,
-    yes: context.l.commonDiscard,
-    danger: true,
-  );
-
-  Future<bool> _ask({
-    required String title,
-    required String body,
-    required String yes,
-    bool danger = false,
-  }) async {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: t.blockColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(t.radius),
-          side: BorderSide(color: t.ovlLine),
-        ),
-        title: Text(title, style: theme.titleLarge),
-        content: Text(body, style: theme.bodyMedium?.copyWith(color: t.text2)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(context.l.commonBack, style: TextStyle(color: t.text2)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(
-              yes,
-              style: TextStyle(color: danger ? t.sysFavIco : t.accent),
-            ),
-          ),
-        ],
-      ),
-    );
-    return ok == true;
   }
 
   // ── Раскладка ─────────────────────────────────────────────────────────────
@@ -295,6 +274,8 @@ class _ListEditorState extends ConsumerState<ListEditor> {
                 // Своя обложка и своё имя есть только у плейлиста.
                 editable: _playlist != null,
                 height: width * 0.62,
+                cancelArmed: _armedCancel,
+                doneArmed: _armedPurge,
                 onCancel: _cancel,
                 onDone: _commit,
                 onCover: _pickCover,
@@ -387,6 +368,8 @@ class _EditHero extends StatelessWidget {
     required this.tracks,
     required this.editable,
     required this.height,
+    required this.cancelArmed,
+    required this.doneArmed,
     required this.onCancel,
     required this.onDone,
     required this.onCover,
@@ -402,6 +385,13 @@ class _EditHero extends StatelessWidget {
   final bool editable;
 
   final double height;
+
+  /// ✕ взведён — следующий тап выбросит черновик.
+  final bool cancelArmed;
+
+  /// ✓ взведён — следующий тап удалит убранные треки насквозь.
+  final bool doneArmed;
+
   final VoidCallback onCancel;
   final VoidCallback onDone;
   final VoidCallback onCover;
@@ -439,11 +429,21 @@ class _EditHero extends StatelessWidget {
       // ✕ и ✓ остаются наверху: закончить правку длинного списка иначе можно
       // только пролистав его обратно.
       barHeight: kHeaderControl,
+      // Взведённая кнопка — красная, как корзина в панели правки: без модалки
+      // это единственное, что показывает, чем кончится второй тап.
       bar: Row(
         children: [
-          GlassIconButton(icon: Icons.close_rounded, onTap: onCancel),
+          _BarButton(
+            icon: Icons.close_rounded,
+            armed: cancelArmed,
+            onTap: onCancel,
+          ),
           const Spacer(),
-          GlassIconButton(icon: Icons.check_rounded, onTap: onDone),
+          _BarButton(
+            icon: Icons.check_rounded,
+            armed: doneArmed,
+            onTap: onDone,
+          ),
         ],
       ),
       body: Column(
@@ -483,6 +483,30 @@ class _EditHero extends StatelessWidget {
           Text(context.l.tracksCount(tracks.length), style: theme.bodyMedium),
         ],
       ),
+    );
+  }
+}
+
+/// Кнопка шапки правки. Взведённая — красная: следующий тап уже что-то теряет.
+class _BarButton extends StatelessWidget {
+  const _BarButton({
+    required this.icon,
+    required this.armed,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool armed;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return GlassIconButton(
+      icon: icon,
+      color: armed ? t.sysFavIco : null,
+      background: armed ? t.sysFavIco.withValues(alpha: 0.16) : null,
+      onTap: onTap,
     );
   }
 }

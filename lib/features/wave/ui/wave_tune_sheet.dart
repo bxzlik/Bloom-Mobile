@@ -1,5 +1,8 @@
-/// «Настроить» у карточки волны — порт попапа `.wave-menu` из `WaveCard.tsx`:
-/// выбор площадки и вход в дизлайки.
+/// Настройка волны (долгое нажатие по карточке) — порт попапа `.wave-menu` из
+/// `WaveCard.tsx`: выбор площадки и вход в дизлайки.
+///
+/// Заголовка строкой нет: шторку открывают жестом с самой волны, и подписывать
+/// её нечем — плитки и «Дизлайки» говорят за себя.
 ///
 /// Отличие от ПК: переключатель площадки показывается ВСЕГДА, а не только
 /// после входа в Яндекс. Спрятанный целиком, он выглядит так, будто выбора
@@ -52,21 +55,10 @@ class _TuneSheet extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const SheetHandle(),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 6, 20, 10),
-                child: Row(
-                  children: [
-                    Text(
-                      context.l.waveTune,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ],
-                ),
-              ),
               // Плитки лежат прямо на шторке, без подложки и подписи: их и так
               // двое, и что это выбор площадки, видно по самим логотипам.
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
                 child: Row(
                   children: [
                     Expanded(

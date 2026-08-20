@@ -167,11 +167,20 @@ class _FullPlayerPageState extends ConsumerState<FullPlayerPage> {
                   fromFlick: true,
                 ),
           builder: (context, shift) => SafeArea(
+            // Низ — не `SafeArea`, а [bottomSafeInset]: на iOS полный вырез
+            // под home indicator (34) поднял бы ряд инструментов заметно выше,
+            // чем на андроиде.
+            bottom: false,
             child: track == null
                 ? const SizedBox.shrink()
                 : Padding(
                     // Сверху воздух: шапка не должна липнуть к статус-бару.
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      14,
+                      16,
+                      bottomSafeInset(context),
+                    ),
                     child: Column(
                       children: [
                         _Header(track: track, state: state),

@@ -21,6 +21,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../providers/yandex/ym_auth.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/glass.dart';
+import '../../../shared/ui/platform_logo.dart';
 import 'platform_page.dart';
 
 class YandexSettingsScreen extends ConsumerStatefulWidget {
@@ -57,7 +58,7 @@ class _YandexSettingsScreenState extends ConsumerState<YandexSettingsScreen> {
 
   void _guide() => showPlatformGuide(
     context,
-    source: MusicSource.yandex,
+    mark: const BrandMark.platform(MusicSource.yandex),
     title: context.l.ymGuideTitle,
     steps: [
       context.l.ymStep1,
@@ -91,7 +92,7 @@ class _YandexSettingsScreenState extends ConsumerState<YandexSettingsScreen> {
           );
 
     return PlatformPage(
-      source: MusicSource.yandex,
+      mark: const BrandMark.platform(MusicSource.yandex),
       onBack: () => context.go('/settings'),
       status: s.checking
           ? l.ymChecking
@@ -106,7 +107,7 @@ class _YandexSettingsScreenState extends ConsumerState<YandexSettingsScreen> {
             _PlusBadge(hasPlus: s.hasPlus)
           else ...[
             PlatformCard(
-              source: MusicSource.yandex,
+              mark: const BrandMark.platform(MusicSource.yandex),
               title: l.ymGuideTitle,
               subtitle: l.ymGuideSubtitle,
               onTap: _guide,

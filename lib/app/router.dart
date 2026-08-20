@@ -25,10 +25,14 @@ import '../features/profile/ui/profile_edit_screen.dart';
 import '../features/profile/ui/profile_screen.dart';
 import '../features/search/ui/search_screen.dart';
 import '../features/settings/ui/appearance_screen.dart';
+import '../features/settings/ui/audio_screen.dart';
+import '../features/settings/ui/lastfm_screen.dart';
+import '../features/settings/ui/logs_screen.dart';
 import '../features/settings/ui/player_screen.dart';
 import '../features/settings/ui/settings_screen.dart';
 import '../features/settings/ui/soundcloud_screen.dart';
 import '../features/settings/ui/storage_screen.dart';
+import '../features/settings/ui/system_screen.dart';
 import '../features/settings/ui/swipes_screen.dart';
 import '../features/settings/ui/yandex_screen.dart';
 import '../features/settings/ui/ytmusic_screen.dart';
@@ -211,6 +215,24 @@ final GoRouter bloomRouter = GoRouter(
                 GoRoute(
                   path: 'ytmusic',
                   builder: (_, _) => const _Page(YtmusicSettingsScreen()),
+                ),
+                GoRoute(
+                  path: 'lastfm',
+                  builder: (_, _) => const _Page(LastfmSettingsScreen()),
+                ),
+                GoRoute(
+                  path: 'system',
+                  builder: (_, _) => const _Page(SystemSettingsScreen()),
+                  routes: [
+                    GoRoute(
+                      path: 'logs',
+                      builder: (_, _) => const _Page(LogsScreen()),
+                    ),
+                  ],
+                ),
+                GoRoute(
+                  path: 'audio',
+                  builder: (_, _) => const _Page(AudioSettingsScreen()),
                 ),
                 GoRoute(
                   path: 'storage',

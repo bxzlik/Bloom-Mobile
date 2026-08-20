@@ -9,8 +9,6 @@ library;
 
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -248,26 +246,6 @@ const double _kNavFloatIcon = 27;
 /// миниплеера над ней.
 const double _kFloatGap = 8;
 
-/// Потолок нижнего выреза под баром на iOS.
-///
-/// Safe area под home indicator там всегда 34 pt, тогда как жестовая полоса
-/// Android просит 24 — с полным вырезом бар на айфоне висел бы заметно выше,
-/// чем на андроиде, при одинаковой раскладке. Сам индикатор — полоска 5 pt в
-/// 8 pt от края, её верх на 13 pt: 24 оставляют над ним ещё 11 pt, так что
-/// панель его не задевает и жест «домой» тапы не перехватывает.
-///
-/// Только iOS: на андроиде тот же вырез может быть панелью из трёх кнопок
-/// (48 dp), и обрезать его — сесть на сами кнопки.
-const double _kIosBottomInsetCap = 24;
-
-/// Нижний вырез, на который бар отступает от края экрана.
-double _bottomInset(BuildContext context) {
-  final inset = MediaQuery.paddingOf(context).bottom;
-  return defaultTargetPlatform == TargetPlatform.iOS
-      ? math.min(inset, _kIosBottomInsetCap)
-      : inset;
-}
-
 class _NavBar extends StatelessWidget {
   const _NavBar({
     required this.style,
@@ -327,7 +305,7 @@ class _NavBar extends StatelessWidget {
 
     switch (style) {
       // Прижатые к низу: заливка уходит под системный вырез, ряд иконок из
-      // него выводит нижний отступ ([_bottomInset]).
+      // него выводит нижний отступ ([bottomSafeInset]).
       case NavBarStyle.bar:
       case NavBarStyle.rounded:
       case NavBarStyle.dome:
@@ -355,7 +333,7 @@ class _NavBar extends StatelessWidget {
           borderSide: rounded ? BorderSide(color: t.ovlLine) : null,
           shape: rounded ? null : Border(top: BorderSide(color: t.ovlLine)),
           child: Padding(
-            padding: EdgeInsets.only(bottom: _bottomInset(context)),
+            padding: EdgeInsets.only(bottom: bottomSafeInset(context)),
             child: SizedBox(height: height, child: row),
           ),
         );
@@ -371,7 +349,7 @@ class _NavBar extends StatelessWidget {
             _kFloatGap,
             0,
             _kFloatGap,
-            math.max(_bottomInset(context), _kFloatGap),
+            math.max(bottomSafeInset(context), _kFloatGap),
           ),
           child: GlassBox(
             borderSide: BorderSide(color: t.ovlLine),

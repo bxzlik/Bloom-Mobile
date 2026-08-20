@@ -21,6 +21,7 @@ import '../../../core/store/settings_store.dart';
 import '../../../providers/soundcloud/models.dart';
 import '../../../providers/soundcloud/soundcloud.dart' as sc;
 import '../../../shared/ui/glass.dart';
+import '../../../shared/ui/platform_logo.dart';
 import 'platform_page.dart';
 
 class SoundCloudSettingsScreen extends ConsumerStatefulWidget {
@@ -81,7 +82,7 @@ class _SoundCloudSettingsScreenState
 
   void _guide() => showPlatformGuide(
     context,
-    source: MusicSource.soundcloud,
+    mark: const BrandMark.platform(MusicSource.soundcloud),
     title: context.l.scGuideTitle,
     steps: [
       context.l.scStep1,
@@ -99,7 +100,7 @@ class _SoundCloudSettingsScreenState
     final saved = ref.watch(settingsProvider).scClientId;
 
     return PlatformPage(
-      source: MusicSource.soundcloud,
+      mark: const BrandMark.platform(MusicSource.soundcloud),
       onBack: () => context.go('/settings'),
       status: saved == null ? l.scStatusAuto : l.scStatusManual,
       body: _open ? _buildForm(saved) : null,
@@ -128,7 +129,7 @@ class _SoundCloudSettingsScreenState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PlatformCard(
-          source: MusicSource.soundcloud,
+          mark: const BrandMark.platform(MusicSource.soundcloud),
           title: l.scGuideTitle,
           subtitle: l.scGuideSubtitle,
           onTap: _guide,

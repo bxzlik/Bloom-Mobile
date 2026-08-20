@@ -241,6 +241,17 @@ class SettingsState {
   /// Что делать с добавленным своим файлом, см. [LocalImportMode].
   final LocalImportMode localImport;
 
+  /// Возвращать при запуске трек, очередь и позицию прошлой сессии — но НЕ
+  /// начинать играть. Настройка мобильная: на ПК её пока нет (пользователь
+  /// собирался завести такую же и там), а десктопный `autoplay` — это сразу
+  /// «восстановить и играть», см. [autoplay].
+  final bool restoreQueue;
+
+  /// Восстановить сессию и сразу продолжить воспроизведение — десктопная
+  /// `settings.system.autoplay`. Включает [restoreQueue]: играть, ничего не
+  /// восстановив, всё равно нечего.
+  final bool autoplay;
+
   /// Свои темы — в порядке создания, после встроенных.
   final List<ThemePreset> customThemes;
 
@@ -256,6 +267,8 @@ class SettingsState {
     this.navStyle = NavBarStyle.bar,
     this.coverAsBg = false,
     this.localImport = LocalImportMode.inPlace,
+    this.restoreQueue = false,
+    this.autoplay = false,
     this.customThemes = const [],
   });
 
@@ -285,6 +298,8 @@ class SettingsState {
     NavBarStyle? navStyle,
     bool? coverAsBg,
     LocalImportMode? localImport,
+    bool? restoreQueue,
+    bool? autoplay,
     List<ThemePreset>? customThemes,
   }) => SettingsState(
     themeId: themeId ?? this.themeId,
@@ -298,6 +313,8 @@ class SettingsState {
     navStyle: navStyle ?? this.navStyle,
     coverAsBg: coverAsBg ?? this.coverAsBg,
     localImport: localImport ?? this.localImport,
+    restoreQueue: restoreQueue ?? this.restoreQueue,
+    autoplay: autoplay ?? this.autoplay,
     customThemes: customThemes ?? this.customThemes,
   );
 }
@@ -326,6 +343,8 @@ class SettingsController extends Notifier<SettingsState> {
       navStyle: readNavStyle(raw['navStyle']),
       coverAsBg: raw['coverAsBg'] as bool? ?? false,
       localImport: readLocalImportMode(raw['localImport']),
+      restoreQueue: raw['restoreQueue'] as bool? ?? false,
+      autoplay: raw['autoplay'] as bool? ?? false,
       customThemes: [
         for (final item in (raw['customThemes'] as List?) ?? const [])
           ?ThemePreset.fromJson(item),
@@ -350,6 +369,8 @@ class SettingsController extends Notifier<SettingsState> {
       'navStyle': state.navStyle.name,
       'coverAsBg': state.coverAsBg,
       'localImport': state.localImport.name,
+      'restoreQueue': state.restoreQueue,
+      'autoplay': state.autoplay,
       'customThemes': [for (final t in state.customThemes) t.toJson()],
     });
   }
@@ -456,6 +477,26 @@ class SettingsController extends Notifier<SettingsState> {
   /// на ПК, где смена режима не трогает добавленные папки.
   void setLocalImport(LocalImportMode mode) {
     state = state.copyWith(localImport: mode);
+    _save();
+  }
+
+  /// Восстанавливать сессию при запуске. Выключение снимает и
+  /// [SettingsState.autoplay]: играть, ничего не восстановив, нечего, и
+  /// состояние «автовоспроизведение без восстановления» просто не имеет
+  /// смысла.
+  void setRestoreQueue(bool value) {
+    state = value
+        ? state.copyWith(restoreQueue: true)
+        : state.copyWith(restoreQueue: false, autoplay: false);
+    _save();
+  }
+
+  /// Автовоспроизведение. Включение включает и восстановление — по той же
+  /// причине, по которой выключение восстановления гасит его самого.
+  void setAutoplay(bool value) {
+    state = value
+        ? state.copyWith(autoplay: true, restoreQueue: true)
+        : state.copyWith(autoplay: false);
     _save();
   }
 

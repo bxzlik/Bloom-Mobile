@@ -5,6 +5,7 @@ import android.content.Intent
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.OpenableColumns
+import androidx.core.content.FileProvider
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
@@ -49,6 +50,41 @@ class FilesChannel(private val activity: Activity) {
             putExtra(Intent.EXTRA_TITLE, filename)
         }
         start(intent, REQ_SAVE)
+    }
+
+    /**
+     * Отдать готовый файл системной шторке «Поделиться».
+     *
+     * Ответ отдаём СРАЗУ, не дожидаясь выбора приложения: `ACTION_SEND` не
+     * возвращает результата (какой чат выбрали — не наше дело), а отмена шторки
+     * ничем не отличается от отправки. Для Dart успех здесь значит «шторка
+     * показана».
+     */
+    fun shareFile(path: String, mime: String, text: String?, result: MethodChannel.Result) {
+        val file = File(path)
+        if (!file.isFile) {
+            result.error("missing", "файла нет: $path", null)
+            return
+        }
+        try {
+            val uri = FileProvider.getUriForFile(
+                activity,
+                "${activity.packageName}.share",
+                file,
+            )
+            val send = Intent(Intent.ACTION_SEND).apply {
+                type = mime
+                putExtra(Intent.EXTRA_STREAM, uri)
+                if (!text.isNullOrEmpty()) putExtra(Intent.EXTRA_TEXT, text)
+                // Без этого приложение-получатель не сможет открыть uri: оно
+                // читает файл нашего провайдера от своего имени.
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            activity.startActivity(Intent.createChooser(send, null))
+            result.success(true)
+        } catch (e: Exception) {
+            result.error("share", e.message ?: "не удалось поделиться", null)
+        }
     }
 
     /** Дать выбрать файл и вернуть его текст. */

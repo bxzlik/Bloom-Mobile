@@ -92,6 +92,14 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
           known: args["known"] as? [String] ?? [],
           result: result
         )
+      case "shareFile":
+        // Карточка «Итогов» — в системную шторку. Провайдера, как на Android,
+        // здесь не нужно: файл наш и лежит в песочнице приложения.
+        self.shareFile(
+          path: args["path"] as? String ?? "",
+          text: args["text"] as? String,
+          result: result
+        )
       case "releaseAudio":
         // Возвращать нечего: на iOS файл всегда наша копия, разрешений на
         // чужие файлы мы не держим. Копию удаляет сам Dart.
@@ -99,6 +107,13 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
       case "diskSpace":
         // Память телефона — знаменатель кольца в «Хранилище».
         self.diskSpace(result: result)
+      case "appInfo":
+        // Версия сборки — строка «О приложении».
+        let info = Bundle.main.infoDictionary
+        result([
+          "version": info?["CFBundleShortVersionString"] as? String ?? "",
+          "build": info?["CFBundleVersion"] as? String ?? "",
+        ])
       default:
         result(FlutterMethodNotImplemented)
       }
@@ -119,6 +134,36 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
       return
     }
     result(["total": total, "free": free])
+  }
+
+  /// Показать `UIActivityViewController` для готового файла.
+  ///
+  /// Ответ отдаём сразу после показа, как и на Android: что человек выберет в
+  /// шторке — не наше дело, а отмена ничем не отличается от отправки.
+  ///
+  /// `popoverPresentationController` заполняем обязательно: на iPad шторка
+  /// показывается поповером и без якоря приложение падает.
+  private func shareFile(path: String, text: String?, result: @escaping FlutterResult) {
+    let url = URL(fileURLWithPath: path)
+    guard FileManager.default.fileExists(atPath: path), let top = topController() else {
+      result(FlutterError(code: "share", message: "нечего отправлять", details: nil))
+      return
+    }
+    var items: [Any] = [url]
+    if let text = text, !text.isEmpty { items.append(text) }
+    let sheet = UIActivityViewController(activityItems: items, applicationActivities: nil)
+    if let popover = sheet.popoverPresentationController {
+      popover.sourceView = top.view
+      popover.sourceRect = CGRect(
+        x: top.view.bounds.midX,
+        y: top.view.bounds.midY,
+        width: 0,
+        height: 0
+      )
+      popover.permittedArrowDirections = []
+    }
+    top.present(sheet, animated: true)
+    result(true)
   }
 
   private func topController() -> UIViewController? {

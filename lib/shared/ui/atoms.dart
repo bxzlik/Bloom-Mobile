@@ -5,9 +5,11 @@
 /// `iconFg`, как в десктопном Bloom.
 library;
 
-import 'dart:math' show cos, pi;
+import 'dart:math' show cos, min, pi;
 import 'dart:ui' show ImageFilter;
 
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -36,6 +38,29 @@ const double kHeaderTitleSize = 16;
 
 /// Высота чипа-фильтра (библиотека, поиск) и круглых кнопок в том же ряду.
 const double kChipHeight = 44;
+
+/// Потолок нижнего системного выреза на iOS.
+///
+/// Safe area под home indicator там всегда 34 pt, тогда как жестовая полоса
+/// Android просит 24 — с полным вырезом низ раскладки на айфоне висел бы
+/// заметно выше, чем на андроиде, при одинаковых отступах. Сам индикатор —
+/// полоска 5 pt в 8 pt от края, её верх на 13 pt: 24 оставляют над ним ещё
+/// 11 pt, так что элементы его не задевают и жест «домой» тапы не
+/// перехватывает.
+const double _kIosBottomInsetCap = 24;
+
+/// Нижний системный вырез, на который раскладка отступает от края экрана, —
+/// вместо `SafeArea` и сырого `MediaQuery.paddingOf(context).bottom`.
+///
+/// Отличается от них только на iOS, где вырез зажат [_kIosBottomInsetCap]:
+/// на андроиде тот же вырез может быть панелью из трёх кнопок (48 dp), и
+/// обрезать его — сесть на сами кнопки.
+double bottomSafeInset(BuildContext context) {
+  final inset = MediaQuery.paddingOf(context).bottom;
+  return defaultTargetPlatform == TargetPlatform.iOS
+      ? min(inset, _kIosBottomInsetCap)
+      : inset;
+}
 
 /// Запас снизу под плавающие бары каркаса — миниплеер и таб-бар.
 ///

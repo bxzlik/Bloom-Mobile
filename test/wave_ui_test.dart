@@ -181,21 +181,25 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
     }
 
-    testWidgets('кольцо, заголовок и «Настроить» — на месте', (tester) async {
+    testWidgets('кольцо и заголовок — на месте', (tester) async {
       // Библиотека пуста: сидов нет, значит и в сеть карточка не пойдёт.
       await _pump(tester, _container(), const WaveCard());
       await settle(tester);
 
       expect(find.byType(WaveRing), findsOneWidget);
       expect(find.text('Моя волна'), findsOneWidget);
-      expect(find.text('Настроить'), findsOneWidget);
+      // Отдельной кнопки «Настроить» на карточке нет — шторка открывается
+      // долгим нажатием (см. тесты ниже).
+      expect(find.text('Настроить'), findsNothing);
     });
 
-    testWidgets('«Настроить» открывает шторку с дизлайками', (tester) async {
+    testWidgets('долгое нажатие по заголовку открывает настройку', (
+      tester,
+    ) async {
       await _pump(tester, _container(), const WaveCard());
       await settle(tester);
 
-      await tester.tap(find.text('Настроить'));
+      await tester.longPress(find.text('Моя волна'));
       await settle(tester);
 
       expect(find.text('Дизлайки'), findsOneWidget);
@@ -203,6 +207,22 @@ void main() {
       // будто выбора нет вовсе. Без входа в Яндекс его плитка просто гаснет.
       expect(find.text('SoundCloud'), findsOneWidget);
       expect(find.text('Яндекс.Музыка'), findsOneWidget);
+    });
+
+    testWidgets('долгое нажатие по кнопке — та же настройка, а тап её не '
+        'открывает', (tester) async {
+      await _pump(tester, _container(), const WaveCard());
+      await settle(tester);
+
+      // Короткое нажатие — это запуск волны, а не настройка: сидов в пустой
+      // библиотеке нет, поэтому оно ничего и не откроет.
+      await tester.tap(find.byIcon(SolarIconsBold.play));
+      await settle(tester);
+      expect(find.text('Дизлайки'), findsNothing);
+
+      await tester.longPress(find.byIcon(SolarIconsBold.play));
+      await settle(tester);
+      expect(find.text('Дизлайки'), findsOneWidget);
     });
   });
 

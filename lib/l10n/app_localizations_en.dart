@@ -27,13 +27,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonApply => 'Apply';
 
   @override
-  String get commonRename => 'Rename';
-
-  @override
   String get commonUndo => 'Undo';
-
-  @override
-  String get commonDiscard => 'Discard';
 
   @override
   String get commonUpload => 'Upload';
@@ -327,9 +321,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get libAutoRefreshTooltip => 'Playlist auto-refresh';
 
   @override
-  String get libDragHint => 'In “Default” order a tile can be held and dragged';
-
-  @override
   String get libSortManual => 'Default';
 
   @override
@@ -411,13 +402,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tlRefreshTracks => 'Refresh tracks';
 
   @override
-  String get tlSetCover => 'Set a cover';
+  String get tlToQueue => 'Add to queue';
 
   @override
-  String get tlChangeCover => 'Change cover';
+  String get tlPlayNext => 'Play next';
 
   @override
-  String get tlRemoveCover => 'Remove cover';
+  String tlQueuedTracks(int count) {
+    return 'Added to queue: $count';
+  }
+
+  @override
+  String tlQueuedNext(int count) {
+    return 'Playing next: $count';
+  }
+
+  @override
+  String get tlExportPlaylist => 'Export playlist';
 
   @override
   String get tlDeletePlaylist => 'Delete playlist';
@@ -425,6 +426,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String tlPlaylistDeleted(String name) {
     return 'Playlist “$name” deleted';
+  }
+
+  @override
+  String get tlDeletePlaylistWithTracks => 'Delete playlist and tracks';
+
+  @override
+  String tlPlaylistAndTracksDeleted(String name) {
+    return 'Playlist “$name” and its tracks deleted';
   }
 
   @override
@@ -436,20 +445,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String leDeleteTitle(String tracks) {
-    return 'Delete $tracks?';
+  String leDeleteArm(String tracks) {
+    return 'Tap again — $tracks will be gone everywhere';
   }
 
   @override
-  String get leDeleteBody =>
-      'They will disappear from your library, likes, playlists and history.';
-
-  @override
-  String get leDiscardTitle => 'Discard changes?';
-
-  @override
-  String get leDiscardBody =>
-      'Everything you changed in this list will be lost.';
+  String get leDiscardArm => 'Tap again to discard your changes';
 
   @override
   String cpImported(String title, int count) {
@@ -750,6 +751,258 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fdDownloadFile => 'Download as a file';
+
+  @override
+  String get tlConvert => 'Transfer to source…';
+
+  @override
+  String get cvTitle => 'Transfer to source';
+
+  @override
+  String cvScanning(String source) {
+    return 'Looking up tracks on $source…';
+  }
+
+  @override
+  String get cvScanHint => 'You can leave — the transfer will be cancelled';
+
+  @override
+  String cvSummary(int moved, int kept, int skipped) {
+    return 'Moved $moved · kept $kept · skipped $skipped';
+  }
+
+  @override
+  String get cvTakeBest => 'Take the best';
+
+  @override
+  String cvCreate(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Create a playlist of $count tracks',
+      one: 'Create a playlist of $count track',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cvTagMoved => 'Transferred';
+
+  @override
+  String get cvTagOriginal => 'Original';
+
+  @override
+  String get cvTagOnTarget => 'Already here';
+
+  @override
+  String get cvTagSkipped => 'Skipped';
+
+  @override
+  String cvNotFound(String source) {
+    return 'Not found on $source';
+  }
+
+  @override
+  String get cvSearchFailed => 'The source didn’t answer';
+
+  @override
+  String get cvKeepOriginal => 'Keep the original';
+
+  @override
+  String get cvSkip => 'Skip this track';
+
+  @override
+  String cvCreated(String name, String tracks) {
+    return '“$name” created — $tracks';
+  }
+
+  @override
+  String get spSwitch => 'Switch source';
+
+  @override
+  String spSearching(String source) {
+    return 'Looking on $source…';
+  }
+
+  @override
+  String spNow(String source) {
+    return 'Now playing from $source';
+  }
+
+  @override
+  String spNotFound(String source) {
+    return 'This track isn’t on $source';
+  }
+
+  @override
+  String get spFailed => 'The source didn’t answer — try again';
+
+  @override
+  String get spUnavailable => 'This source is unavailable';
+
+  @override
+  String get tlMergeWith => 'Merge with…';
+
+  @override
+  String get mgTitle => 'Merging playlists';
+
+  @override
+  String get mgNameHint => 'Name of the new playlist';
+
+  @override
+  String get mgPickHint => 'Pick what to merge in';
+
+  @override
+  String mgResult(String tracks) {
+    return 'You’ll get $tracks';
+  }
+
+  @override
+  String mgDupsDropped(int count) {
+    return '−$count repeats';
+  }
+
+  @override
+  String get mgDedup => 'Remove duplicates';
+
+  @override
+  String get mgDeleteSources => 'Delete the originals';
+
+  @override
+  String get mgNothingToMerge => 'There is no other playlist to merge with';
+
+  @override
+  String mgMerged(String name, String tracks) {
+    return '“$name” collected — $tracks';
+  }
+
+  @override
+  String get tlFindDups => 'Find duplicates';
+
+  @override
+  String get dupsTitle => 'Duplicate tracks';
+
+  @override
+  String dupsFound(int groups, int extra) {
+    String _temp0 = intl.Intl.pluralLogic(
+      groups,
+      locale: localeName,
+      other: '$groups groups',
+      one: '$groups group',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      extra,
+      locale: localeName,
+      other: '$extra extra copies',
+      one: '$extra extra copy',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String dupsChecked(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tracks checked',
+      one: '$count track checked',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dupsCopies(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count copies',
+      one: '$count copy',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dupsPlays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count plays',
+      one: '$count play',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dupsKeep => 'keep';
+
+  @override
+  String get dupsNone => 'No duplicates found';
+
+  @override
+  String get dupsDelAll => 'Remove all';
+
+  @override
+  String get dupsDelGroup => 'Remove copies';
+
+  @override
+  String dupsRemoved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count copies removed',
+      one: '$count copy removed',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get tiTitle => 'Track info';
+
+  @override
+  String get tiAlbum => 'Album';
+
+  @override
+  String get tiYear => 'Year';
+
+  @override
+  String get tiDuration => 'Duration';
+
+  @override
+  String get tiPublisher => 'Publisher';
+
+  @override
+  String get tiGenres => 'Genres';
+
+  @override
+  String get tiDescription => 'Description';
+
+  @override
+  String get tiFile => 'File';
+
+  @override
+  String get tiCredited => 'Credited';
+
+  @override
+  String get tiExplicit => 'Explicit lyrics';
+
+  @override
+  String get tiNothing =>
+      'The source didn’t share anything else about this track';
+
+  @override
+  String get taToQueue => 'To queue';
+
+  @override
+  String get taPlayNext => 'Play next';
+
+  @override
+  String get taRemoveFromQueue => 'Remove from queue';
+
+  @override
+  String get taRemoveFromPlaylist => 'Remove from playlist';
+
+  @override
+  String get taDownload => 'Download';
 
   @override
   String get taRemoveFromFavorites => 'Remove from likes';
@@ -2154,4 +2407,549 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get waveToastYmFailed => 'Couldn’t reach the Yandex wave';
+
+  @override
+  String lfmConnectedAs(String user) {
+    return 'Connected as $user';
+  }
+
+  @override
+  String get lfmNotConnected => 'Not connected';
+
+  @override
+  String get lfmLogin => 'Sign in with Last.fm';
+
+  @override
+  String get lfmDone => 'Done — I confirmed';
+
+  @override
+  String get lfmLogout => 'Log out';
+
+  @override
+  String get lfmKeys => 'API keys';
+
+  @override
+  String get lfmSaveKeys => 'Save keys';
+
+  @override
+  String get lfmScrobble => 'Scrobbling';
+
+  @override
+  String get lfmScrobbleSub => 'Count listened tracks on Last.fm';
+
+  @override
+  String get lfmNowPlayingSub => 'Update the “Now Playing” status';
+
+  @override
+  String get lfmGuideTitle => 'How to connect Last.fm';
+
+  @override
+  String get lfmGuideSubtitle => 'Your own app key and a browser sign-in';
+
+  @override
+  String get lfmStep1 =>
+      'Open **last.fm/api/account/create** and register an app — any name will do.';
+
+  @override
+  String get lfmStep2 =>
+      'Copy **API Key** and **Shared Secret** from there and paste them into the fields below.';
+
+  @override
+  String get lfmStep3 =>
+      'Tap **“Sign in with Last.fm”** — the browser opens, and the password is only entered there.';
+
+  @override
+  String get lfmStep4 =>
+      'Allow access and come back to Bloom: the app checks the sign-in by itself.';
+
+  @override
+  String get lfmGuideNote =>
+      'The key has to be your own — Bloom has no shared Last.fm key. Your password is never entered into the app.';
+
+  @override
+  String get lfmGettingToken => 'Getting token…';
+
+  @override
+  String get lfmConfirmAccess => 'Confirm access on Last.fm, then press “Done”';
+
+  @override
+  String get lfmChecking => 'Checking…';
+
+  @override
+  String get lfmNotConfirmed => 'Not confirmed — try again';
+
+  @override
+  String get lfmLoginFirst => 'Press “Sign in with Last.fm” first';
+
+  @override
+  String get lfmNeedKeys => 'Save the API Key and Secret first';
+
+  @override
+  String get lfmNetworkError => 'Network error';
+
+  @override
+  String lfmError(String msg) {
+    return 'Error: $msg';
+  }
+
+  @override
+  String lfmToastConnected(String name) {
+    return 'Last.fm: connected as $name';
+  }
+
+  @override
+  String get lfmToastDisconnected => 'Last.fm: disconnected';
+
+  @override
+  String get lfmToastKeysSaved => 'Last.fm: keys saved';
+
+  @override
+  String get notifCenterTitle => 'Notifications';
+
+  @override
+  String get notifCenterEmpty => 'No notifications yet';
+
+  @override
+  String get notifTrackDownloaded => 'Track downloaded';
+
+  @override
+  String get notifDownloadError => 'Download error';
+
+  @override
+  String get notifOfflineReady => 'Track available offline';
+
+  @override
+  String get notifOfflineError => 'Offline download failed';
+
+  @override
+  String get notifTrackUnavailable => 'Track unavailable';
+
+  @override
+  String get wrTitle => 'Wrapped';
+
+  @override
+  String get wrWeek => 'Week in review';
+
+  @override
+  String get wrMonth => 'Month in review';
+
+  @override
+  String get wrYear => 'Year in review';
+
+  @override
+  String get wrPrev => 'Back';
+
+  @override
+  String get wrNext => 'Next';
+
+  @override
+  String get wrIntroWeek => 'Your week in Bloom';
+
+  @override
+  String get wrIntroMonth => 'Your month in Bloom';
+
+  @override
+  String get wrIntroYear => 'Your year in Bloom';
+
+  @override
+  String get wrIntroSub => 'LetвЂ™s see how it went';
+
+  @override
+  String get wrTimeKicker => 'You listened for';
+
+  @override
+  String wrTimeSub(int count) {
+    return 'Plays in this period: $count';
+  }
+
+  @override
+  String get wrTimeLessThanMin => 'Less than a minute';
+
+  @override
+  String get wrCountsKicker => 'In numbers';
+
+  @override
+  String get wrCountsTitle => 'HereвЂ™s the whole picture';
+
+  @override
+  String wrCountsNewTracks(int count) {
+    return 'Heard for the first time: $count';
+  }
+
+  @override
+  String get wrTracksKicker => 'On repeat';
+
+  @override
+  String get wrTracksTitle => 'Your top tracks';
+
+  @override
+  String get wrTracksTitleOne => 'Your track of the period';
+
+  @override
+  String get wrArtistsKicker => 'Voices of the period';
+
+  @override
+  String get wrArtistsTitle => 'Your top artists';
+
+  @override
+  String get wrArtistsTitleOne => 'Your artist of the period';
+
+  @override
+  String get wrSourcesKicker => 'Where it came from';
+
+  @override
+  String get wrSourcesTitle => 'Where you listened';
+
+  @override
+  String get wrDiscoverKicker => 'New names';
+
+  @override
+  String wrDiscoverTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'You discovered $count artists',
+      one: 'You discovered $count artist',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get wrHabitsKicker => 'Your habits';
+
+  @override
+  String get wrHabitsNight => 'YouвЂ™re a night listener';
+
+  @override
+  String get wrHabitsDay => 'YouвЂ™re a daytime listener';
+
+  @override
+  String get wrHabitsPeak => 'Favorite hour';
+
+  @override
+  String get wrHabitsRecord => 'Day record';
+
+  @override
+  String get wrHabitsStreak => 'Days in a row';
+
+  @override
+  String get wrHabitsActive => 'Days with music';
+
+  @override
+  String wrHabitsRecordValue(Object tracks, Object date) {
+    return '$tracks В· $date';
+  }
+
+  @override
+  String get wrShareKicker => 'Keep it';
+
+  @override
+  String get wrShareSave => 'Share';
+
+  @override
+  String get wrShareFail => 'CouldnвЂ™t share the card';
+
+  @override
+  String get wrCardTime => 'Time with music';
+
+  @override
+  String get wrCardTopTracks => 'Top tracks';
+
+  @override
+  String get wrCardTopArtists => 'Top artists';
+
+  @override
+  String get wrJokeTiny => 'Kind of empty. Did you even press play?';
+
+  @override
+  String get wrJokeSmall => 'Modest. But we counted every single track.';
+
+  @override
+  String get wrJokeOneTrack =>
+      'One track, one artist вЂ” respect the consistency.';
+
+  @override
+  String wrPlaysN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count plays',
+      one: '$count play',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrPlaysWord(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'plays',
+      one: 'play',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrTracksN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tracks',
+      one: '$count track',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrTracksWord(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'tracks',
+      one: 'track',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrArtistsN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count artists',
+      one: '$count artist',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrArtistsWord(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'artists',
+      one: 'artist',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrDaysN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '$count day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrHoursN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hours',
+      one: '$count hour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrMinutesN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count minutes',
+      one: '$count minute',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrHourRange(Object from, Object to) {
+    return '$from вЂ” $to';
+  }
+
+  @override
+  String get wrSetCaption => 'WRAPPED';
+
+  @override
+  String get wrSetShow => 'Show Wrapped';
+
+  @override
+  String get wrSetShowSub =>
+      'A story circle on the home screen when thereвЂ™s something to sum up';
+
+  @override
+  String get wrSetAlways => 'Always show';
+
+  @override
+  String get wrSetAlwaysSub => 'Skip the schedule вЂ” open wrapped on any day';
+
+  @override
+  String get sysStartup => 'Startup';
+
+  @override
+  String get audRestoreTitle => 'Restore the queue';
+
+  @override
+  String get audRestoreSub =>
+      'Bring the track, queue and position back on launch — paused';
+
+  @override
+  String get audAutoplayTitle => 'Autoplay';
+
+  @override
+  String get audAutoplaySub =>
+      'Restore the last session on launch and keep playing right away';
+
+  @override
+  String get aboutVersion => 'Version';
+
+  @override
+  String aboutBuild(String n) {
+    return 'build $n';
+  }
+
+  @override
+  String get aboutIdle => 'Updates are checked by hand';
+
+  @override
+  String get aboutCheck => 'Check for updates';
+
+  @override
+  String get aboutChecking => 'Checking for updates…';
+
+  @override
+  String get aboutUptodate => 'You have the latest version';
+
+  @override
+  String aboutAvailable(String v) {
+    return 'Version $v is available';
+  }
+
+  @override
+  String get aboutError => 'Couldn’t check for updates';
+
+  @override
+  String get aboutOpenRelease => 'Open the release page';
+
+  @override
+  String get sysImportExport => 'Import/Export';
+
+  @override
+  String get sysExportTitle => 'Export all';
+
+  @override
+  String get sysExportSub => 'Save every playlist to a .bloomplaylist file';
+
+  @override
+  String get sysExportFilename => 'bloom-playlists.bloomplaylist';
+
+  @override
+  String get sysExported => 'File saved';
+
+  @override
+  String get sysNoPlaylists => 'There are no playlists yet';
+
+  @override
+  String get sysImportTitle => 'Import';
+
+  @override
+  String get sysImportSub => 'Load playlists from a .bloomplaylist file';
+
+  @override
+  String get sysImportInvalid => 'Error: invalid file';
+
+  @override
+  String get sysImportNoPlaylists => 'No playlists found';
+
+  @override
+  String sysImportedFull(int pl, int tr) {
+    return 'Imported: $pl pl., $tr tr.';
+  }
+
+  @override
+  String sysImportedPlaylists(int pl) {
+    return 'Playlists imported: $pl';
+  }
+
+  @override
+  String get sysLogs => 'Logs';
+
+  @override
+  String get sysLogTitle => 'Activity log';
+
+  @override
+  String get sysLogEmptySub => 'Nothing yet';
+
+  @override
+  String sysLogEntries(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count entries',
+      one: '$count entry',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get logsCopy => 'Copy';
+
+  @override
+  String get logsSave => 'Save';
+
+  @override
+  String get logsClear => 'Clear';
+
+  @override
+  String get logsCopied => 'Copied';
+
+  @override
+  String get logsSaved => 'Logs saved';
+
+  @override
+  String get logsCleared => 'Logs cleared';
+
+  @override
+  String get logsEmpty => 'The log is empty';
+
+  @override
+  String get sysDangerZone => 'Danger zone';
+
+  @override
+  String get sysResetTitle => 'Reset settings';
+
+  @override
+  String get sysResetSub => 'Return the look and the options to their defaults';
+
+  @override
+  String get sysResetBody =>
+      'The look, the player, gestures, transparency and customization presets go back to their defaults. Your library, history, profile and platform logins stay.';
+
+  @override
+  String get sysResetBtn => 'Reset';
+
+  @override
+  String get sysResetDone => 'Settings reset';
+
+  @override
+  String get sysHardResetTitle => 'Reset everything';
+
+  @override
+  String get sysHardResetSub =>
+      'Delete tracks, playlists, history and settings';
+
+  @override
+  String get sysHardResetBody =>
+      'The library, playlists, history, profile, downloads and every setting will be erased for good. There will be nothing to bring them back with.';
+
+  @override
+  String get sysHardResetBtn => 'Reset everything';
+
+  @override
+  String get sysHardResetDone => 'Everything is erased';
 }

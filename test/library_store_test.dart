@@ -119,6 +119,50 @@ void main() {
     ]);
   });
 
+  test('смена площадки переставляет все ссылки на новый id', () {
+    final c = _container(JsonStore.memory());
+    final lib = c.read(libraryProvider.notifier);
+    final old = _track('sc_1', name: 'Ночь');
+    lib.toggleFav(old);
+    lib.pushHistory(old);
+    final pl = lib.createPlaylist('Мой', tracks: [_track('sc_9'), old]);
+    final addedAt = c.read(libraryProvider).inLib['sc_1'];
+
+    lib.replaceTrack(
+      'sc_1',
+      Track(
+        id: 'ytm_1',
+        name: 'Ночь',
+        artist: 'Artist',
+        duration: const Duration(seconds: 100),
+        source: MusicSource.ytmusic,
+      ),
+    );
+
+    final after = c.read(libraryProvider);
+    expect(after.tracks.containsKey('sc_1'), isFalse);
+    expect(after.isInLib('ytm_1'), isTrue);
+    expect(after.isFav('ytm_1'), isTrue);
+    expect(after.historyTracks.single.id, 'ytm_1');
+    // Место в плейлисте не меняется: сменилась площадка, а не порядок.
+    expect(after.playlists.singleWhere((p) => p.id == pl.id).trackIds, [
+      'sc_9',
+      'ytm_1',
+    ]);
+    // И время добавления тоже: иначе трек прыгнул бы в начало «Всех треков».
+    expect(after.inLib['ytm_1'], addedAt);
+  });
+
+  test('замена на тот же id ничего не трогает', () {
+    final c = _container(JsonStore.memory());
+    final lib = c.read(libraryProvider.notifier);
+    lib.toggleFav(_track('sc_1', name: 'Ночь'));
+
+    lib.replaceTrack('sc_1', _track('sc_1', name: 'Переписанное'));
+
+    expect(c.read(libraryProvider).tracks['sc_1']?.name, 'Ночь');
+  });
+
   test('старое хранилище без набора библиотеки: в ней остаётся всё', () {
     // Файл, записанный до разделения хранилища и «Всех треков».
     final store = JsonStore.memory({

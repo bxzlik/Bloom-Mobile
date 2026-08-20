@@ -10,6 +10,8 @@
 /// плоский тинт раздела с его цветной иконкой.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -20,11 +22,13 @@ import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
+import '../../../core/store/text_files.dart';
 import '../../../features/offline/file_download.dart';
 import '../../../features/offline/offline_actions.dart';
 import '../../../features/offline/offline_store.dart';
 import '../../../features/player/play_source.dart';
 import '../../../features/player/player_controller.dart';
+import '../../../features/settings/data_transfer.dart';
 import '../../../features/settings/swipe_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
@@ -34,11 +38,15 @@ import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/sticky_hero.dart';
 import '../../../shared/ui/track_swipes.dart';
+import '../dups.dart';
 import '../history_format.dart';
 import '../lib_order_store.dart';
 import '../local_tracks.dart';
 import '../refresh_playlist.dart';
+import 'convert_screen.dart';
+import 'dups_view.dart';
 import 'list_edit.dart';
+import 'merge_sheet.dart';
 import 'list_hero.dart';
 
 /// Сортировка трек-листа — те же режимы, что на десктопе.
@@ -83,6 +91,18 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
   bool _editing = false;
 
   @override
+  void dispose() {
+    // Уходя со списка, гасим режим дублей: он про ЭТОТ плейлист, и остаться
+    // включённым для следующего открытия не должен (на десктопе то же делает
+    // эффект в `LibTracklist`). Стор переживает виджет, поэтому читаем его
+    // напрямую, без обращения к дереву.
+    if (ref.read(dupsProvider) == widget.listId) {
+      ref.read(dupsProvider.notifier).exit();
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final t = context.bloom;
     final lib = ref.watch(libraryProvider);
@@ -119,6 +139,8 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
       );
     }
 
+    // Режим дублей включён для этого списка — вместо строк идут группы повторов.
+    final dups = ref.watch(dupsProvider) == widget.listId;
     final tracks = _apply(source);
     // Ключи нужны не только перетаскиванию: строку можно смахнуть, а список
     // тут не анимированный — без ключа состояние жеста досталось бы соседу,
@@ -161,7 +183,14 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
         ),
         // Ход пакетной загрузки больше не строка под шапкой: он в тосте
         // (`BatchToastBody`) и виден с любого экрана, а не только отсюда.
-        if (tracks.isEmpty)
+        //
+        // «Найти дубли» подменяет собой ТОЛЬКО список: шапка с обложкой и
+        // кнопками остаётся на месте, как в десктопном `DupsInline`. Пул для
+        // поиска — весь состав списка, а не видимая часть: искать повторы в
+        // отфильтрованном поиском списке значит их не найти.
+        if (dups)
+          DupsSliver(listId: widget.listId, tracks: source)
+        else if (tracks.isEmpty)
           SliverFillRemaining(
             hasScrollBody: false,
             child: Padding(
@@ -836,6 +865,36 @@ Future<void> showPlaylistMenu(
           label: context.l.commonShuffle,
           onTap: tracks.isEmpty ? null : () => play(shuffle: true),
         ),
+        // Очередью список дополняют целиком — те же два пункта, что у трека,
+        // только про весь плейлист (десктопные `lib.plmenu.toQueue`/`playNext`).
+        SheetAction(
+          icon: SolarIconsOutline.playlistMinimalistic,
+          label: context.l.tlToQueue,
+          onTap: tracks.isEmpty
+              ? null
+              : () {
+                  final added = ref
+                      .read(playbackProvider.notifier)
+                      .queueTracks(tracks, source: LibSource(playlist.id));
+                  messenger.toast(
+                    added > 0
+                        ? l10n.tlQueuedTracks(added)
+                        : l10n.swAlreadyInQueue,
+                  );
+                },
+        ),
+        SheetAction(
+          icon: SolarIconsOutline.skipNext,
+          label: context.l.tlPlayNext,
+          onTap: tracks.isEmpty
+              ? null
+              : () {
+                  final moved = ref
+                      .read(playbackProvider.notifier)
+                      .queueTracksNext(tracks, source: LibSource(playlist.id));
+                  if (moved > 0) messenger.toast(l10n.tlQueuedNext(moved));
+                },
+        ),
       ],
       [
         // Пакет ЭТОГО плейлиста качается прямо сейчас — единственное, что
@@ -892,28 +951,40 @@ Future<void> showPlaylistMenu(
           onTap: () => ref.read(libOrderProvider.notifier).togglePin(orderKey),
         ),
         SheetAction(
-          icon: SolarIconsOutline.penNewSquare,
-          label: context.l.commonRename,
-          onTap: () => _rename(context, ref, playlist),
+          icon: SolarIconsOutline.import,
+          label: context.l.tlMergeWith,
+          chevron: true,
+          onTap: () => showMergeSheet(context, ref, playlist),
         ),
-        SheetAction(
-          icon: SolarIconsOutline.gallery,
-          label: playlist.cover == null
-              ? context.l.tlSetCover
-              : context.l.tlChangeCover,
-          onTap: () => _changeCover(ref, playlist),
-        ),
-        if (playlist.cover != null)
+        // Перенос — копия плейлиста с треками другой площадки. Пустой плейлист
+        // переносить нечего.
+        if (tracks.isNotEmpty)
           SheetAction(
-            icon: SolarIconsOutline.galleryRemove,
-            label: context.l.tlRemoveCover,
+            icon: SolarIconsOutline.arrowRight,
+            label: context.l.tlConvert,
+            chevron: true,
+            onTap: () => showConvertSheet(context, ref, playlist, tracks),
+          ),
+        // Поиск повторов включается прямо в списке — поэтому сперва открываем
+        // сам плейлист, иначе режим включился бы там, где его не видно.
+        if (tracks.isNotEmpty)
+          SheetAction(
+            icon: SolarIconsOutline.copy,
+            label: context.l.tlFindDups,
             onTap: () {
-              deleteCover(playlist.cover);
-              ref
-                  .read(libraryProvider.notifier)
-                  .setPlaylistCover(playlist.id, null);
+              context.go('/library/list/${playlist.id}');
+              ref.read(dupsProvider.notifier).enter(playlist.id);
             },
           ),
+        // Файл переноса на один плейлист — тем же форматом, что «Настройки →
+        // Система → Экспорт»: обратно его читает тот же импорт.
+        SheetAction(
+          icon: SolarIconsOutline.export,
+          label: context.l.tlExportPlaylist,
+          onTap: () => _exportPlaylist(messenger, l10n, ref, playlist),
+        ),
+        // Имя и обложка правятся только в режиме правки: там они видны сразу
+        // на шапке, и отменить их можно тем же ✕, что и остальные изменения.
       ],
       [
         SheetAction(
@@ -943,88 +1014,76 @@ Future<void> showPlaylistMenu(
             );
           },
         ),
+        // «И треки» — отдельным пунктом, а не переспросом у первого: разница
+        // между «убрать список» и «стереть музыку» слишком велика, чтобы
+        // прятать её за одинаковыми словами.
+        if (tracks.isNotEmpty)
+          SheetAction(
+            icon: SolarIconsOutline.trashBinTrash,
+            label: context.l.tlDeletePlaylistWithTracks,
+            danger: true,
+            onTap: () {
+              context.go('/library');
+              _deletePlaylistWithTracks(messenger, l10n, ref, playlist, tracks);
+            },
+          ),
       ],
     ],
   );
 }
 
-/// Выбрать новую обложку. Старую свою картинку удаляем только после удачного
-/// выбора: отменил галерею — всё осталось как было.
-Future<void> _changeCover(WidgetRef ref, UserPlaylist playlist) async {
-  // Стор берём ДО галереи: экран может успеть уйти, пока выбирают картинку, и
-  // `ref.read` после await уже не сработает.
-  final lib = ref.read(libraryProvider.notifier);
-  final picked = await pickCover();
-  if (picked == null) return;
-  await deleteCover(playlist.cover);
-  lib.setPlaylistCover(playlist.id, picked);
-}
-
-Future<void> _rename(
-  BuildContext context,
+/// Выгрузить один плейлист файлом `.bloomplaylist` (десктопный
+/// `exportPlaylistFile`). Отмена системного диалога — тихая, как и везде.
+Future<void> _exportPlaylist(
+  ScaffoldMessengerState messenger,
+  AppLocalizations l10n,
   WidgetRef ref,
   UserPlaylist playlist,
 ) async {
-  final name = await showDialog<String>(
-    context: context,
-    builder: (_) => _RenameDialog(initial: playlist.name),
+  final ok = await saveTextFile(
+    playlistFileName(playlist.name),
+    buildExportBundle(playlist, ref.read(libraryProvider)),
   );
-  if (name == null) return;
-  ref.read(libraryProvider.notifier).renamePlaylist(playlist.id, name);
+  if (ok) messenger.toast(l10n.sysExported, kind: ToastKind.success);
 }
 
-/// Диалог переименования. Отдельный виджет ради контроллера: освобождать его
-/// сразу после `await showDialog` нельзя — диалог ещё закрывается, и поле
-/// падает на `_dependents.isEmpty`.
-class _RenameDialog extends StatefulWidget {
-  const _RenameDialog({required this.initial});
+/// Удалить плейлист ВМЕСТЕ с его треками — насквозь, как `removePlWithTracks` на
+/// ПК: треки уходят из библиотеки, лайков, истории и остальных плейлистов.
+///
+/// Переспроса нет, но есть «Отменить»: возвращается снимок всей библиотеки —
+/// по частям такое удаление не собрать (см. [LibraryController.snapshot]).
+/// Файлы (офлайн-копии, свои треки, обложка плейлиста) стираем только когда
+/// отменять уже поздно.
+void _deletePlaylistWithTracks(
+  ScaffoldMessengerState messenger,
+  AppLocalizations l10n,
+  WidgetRef ref,
+  UserPlaylist playlist,
+  List<Track> tracks,
+) {
+  final lib = ref.read(libraryProvider.notifier);
+  final offline = ref.read(offlineProvider.notifier);
+  final before = lib.snapshot();
+  final own = localTracksOf(ref.read(libraryProvider), [
+    for (final track in tracks) track.id,
+  ]);
 
-  final String initial;
-
-  @override
-  State<_RenameDialog> createState() => _RenameDialogState();
-}
-
-class _RenameDialogState extends State<_RenameDialog> {
-  late final _controller = TextEditingController(text: widget.initial);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  for (final track in tracks) {
+    lib.deleteTrack(track.id);
   }
+  lib.deletePlaylist(playlist.id);
 
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return AlertDialog(
-      backgroundColor: t.blockColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(t.radius),
-        side: BorderSide(color: t.ovlLine),
-      ),
-      title: Text(
-        context.l.commonRename,
-        style: Theme.of(context).textTheme.titleLarge,
-      ),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        cursorColor: t.accent,
-        style: Theme.of(context).textTheme.titleSmall,
-        textInputAction: TextInputAction.done,
-        onSubmitted: (v) => Navigator.of(context).pop(v),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(context.l.commonCancel, style: TextStyle(color: t.text2)),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(_controller.text),
-          child: Text(context.l.commonSave, style: TextStyle(color: t.accent)),
-        ),
-      ],
-    );
-  }
+  messenger.toast(
+    l10n.tlPlaylistAndTracksDeleted(playlist.name),
+    action: ToastAction(
+      fn: () => lib.restoreSnapshot(before),
+      onExpire: () {
+        for (final track in tracks) {
+          unawaited(offline.remove(track.id));
+        }
+        unawaited(forgetLocalTracks(own));
+        unawaited(deleteCover(playlist.cover));
+      },
+    ),
+  );
 }

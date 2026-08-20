@@ -412,6 +412,62 @@ class LibraryController extends Notifier<LibraryState> {
     _savePlaylists();
   }
 
+  /// Заменить трек версией с другой площадки — порт `replaceLibTrack`.
+  ///
+  /// У новой версии другой id, поэтому ремапим ВСЕ ссылки: «Все треки» (вместе
+  /// со временем добавления — иначе трек прыгнет в начало списка), лайки (с их
+  /// временем), состав плейлистов (на том же месте) и историю. Историю на
+  /// десктопе не трогают — там висячий id просто пропускается при отрисовке; у
+  /// нас это означало бы, что запись из «Истории» молча пропала, поэтому
+  /// переносим и её.
+  ///
+  /// Сам трек кладём в хранилище всегда: он может быть не в библиотеке (пришёл
+  /// из поиска), а ссылка на него уже есть — например, из плейлиста.
+  void replaceTrack(String oldId, Track next) {
+    if (oldId == next.id) return;
+    final tracks = Map<String, Track>.from(state.tracks)
+      ..remove(oldId)
+      ..[next.id] = next;
+
+    Map<String, int> remapTimes(Map<String, int> src) {
+      if (!src.containsKey(oldId)) return src;
+      return {
+        for (final e in src.entries)
+          if (e.key == oldId) next.id: e.value else e.key: e.value,
+      };
+    }
+
+    state = state.copyWith(
+      tracks: tracks,
+      inLib: remapTimes(state.inLib),
+      favs: remapTimes(state.favs),
+      history: [
+        for (final h in state.history)
+          if (h.trackId == oldId)
+            HistoryEntry(next.id, h.at, count: h.count)
+          else
+            h,
+      ],
+      playlists: [
+        for (final pl in state.playlists)
+          if (pl.trackIds.contains(oldId))
+            pl.copyWith(
+              trackIds: [
+                for (final id in pl.trackIds)
+                  if (id == oldId) next.id else id,
+              ],
+            )
+          else
+            pl,
+      ],
+    );
+    _saveTracks();
+    _saveLib();
+    _saveFavs();
+    _saveHistory();
+    _savePlaylists();
+  }
+
   /// Снимок библиотеки целиком — для «Отменить» после удаления смахиванием.
   ///
   /// Именно всё состояние, а не список id: удаление трека из «Всех треков»
@@ -556,7 +612,7 @@ class LibraryController extends Notifier<LibraryState> {
   }) {
     final now = DateTime.now().millisecondsSinceEpoch;
     final pl = UserPlaylist(
-      id: 'pl_$now',
+      id: _freeId(now),
       // Имя плейлиста — данные, а не интерфейс: как назвали при создании,
       // так и останется. Поэтому дефолт берётся на языке, который стоял в
       // этот момент, и потом уже не переводится.
@@ -578,6 +634,22 @@ class LibraryController extends Notifier<LibraryState> {
     state = state.copyWith(playlists: [...state.playlists, pl]);
     _savePlaylists();
     return pl;
+  }
+
+  /// Свободный id плейлиста: `pl_<время>`, а если такой уже занят — следующее
+  /// число.
+  ///
+  /// Голого времени мало: несколько плейлистов подряд заводятся в одну
+  /// миллисекунду (импорт файла переноса — как раз цикл), и все получили бы
+  /// ОДИН id. Дальше «удалить» стирало бы их пачкой, а открытие вело бы в
+  /// первый попавшийся.
+  String _freeId(int at) {
+    final taken = {for (final p in state.playlists) p.id};
+    var n = at;
+    while (taken.contains('pl_$n')) {
+      n++;
+    }
+    return 'pl_$n';
   }
 
   void renamePlaylist(String id, String name) => _updatePlaylist(

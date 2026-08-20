@@ -89,7 +89,17 @@ class TrackRow extends ConsumerWidget {
       onTap: () => ref
           .read(playbackProvider.notifier)
           .playQueue(queue, index, source: source),
-      onMenu: () => showTrackActions(context, ref, track),
+      // Раздел библиотеки шторка узнаёт из источника списка: другого признака,
+      // «откуда эта строка», у неё нет, а от него зависит «Убрать из плейлиста».
+      onMenu: () => showTrackActions(
+        context,
+        ref,
+        track,
+        listId: switch (source) {
+          LibSource(:final listId) => listId,
+          _ => null,
+        },
+      ),
       dragIndex: dragIndex,
       mark: mark,
     );

@@ -10,6 +10,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/painting.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/store/cover_store.dart';
 import '../../core/store/settings_store.dart';
@@ -99,6 +100,22 @@ Color accentFromHsl(CoverHsl hsl, double level) {
   final l = hsl.l.clamp(lvl - _lBand, lvl + _lBand);
   return HSLColor.fromAHSL(1, hsl.h % 360, s, l).toColor();
 }
+
+/// Акцент самой обложки — для мест, которые красятся «цветом трека» всегда, а
+/// не только при включённом авто-акценте: заливка полосы «Продолжить».
+///
+/// Ключ — ссылка на обложку; `null` — обложки нет или картинка не читается,
+/// тогда место красится акцентом приложения. Яркость берём ту же, что у
+/// авто-акцента: иначе два цвета от одной обложки жили бы в разных коридорах
+/// светлоты и рядом смотрелись бы как разные цвета.
+final coverAccentProvider = FutureProvider.autoDispose.family<Color?, String?>((
+  ref,
+  cover,
+) async {
+  final level = ref.watch(settingsProvider.select((s) => s.autoAccentL));
+  final hsl = await extractCoverHsl(cover);
+  return hsl == null ? null : accentFromHsl(hsl, level);
+});
 
 /// Доминантный HSL → фон миниплеера в режиме «Цвет обложки» (десктопный
 /// `extractMpBgColor`).

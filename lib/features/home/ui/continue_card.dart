@@ -19,6 +19,7 @@ import '../../../shared/ui/track_actions.dart';
 import '../../player/player_controller.dart';
 import '../../player/resume_store.dart';
 import '../../player/ui/full_player.dart';
+import '../../settings/cover_accent.dart';
 
 class ContinueCard extends ConsumerWidget {
   const ContinueCard({super.key});
@@ -151,6 +152,10 @@ class _CardShell extends ConsumerWidget {
     final isFav = ref.watch(
       libraryProvider.select((lib) => lib.isFav(track.id)),
     );
+    // Полоса красится цветом трека, а не акцентом приложения — акцент может
+    // быть каким угодно, а карточка должна читаться как продолжение обложки.
+    // Пока цвет считается (или обложку не прочитать) — акцент темы.
+    final fill = ref.watch(coverAccentProvider(track.cover)).value ?? t.accent;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
@@ -176,6 +181,7 @@ class _CardShell extends ConsumerWidget {
                     title: track.name,
                     artist: track.artist,
                     progress: progress,
+                    fill: fill,
                     onSeek: onSeek,
                     onSeekEnd: onSeekEnd,
                   ),
@@ -210,6 +216,7 @@ class _SeekPill extends StatelessWidget {
     required this.title,
     required this.artist,
     required this.progress,
+    required this.fill,
     this.onSeek,
     this.onSeekEnd,
   });
@@ -217,6 +224,9 @@ class _SeekPill extends StatelessWidget {
   final String title;
   final String artist;
   final double progress;
+
+  /// Цвет заливки — доминант обложки трека, см. [coverAccentProvider].
+  final Color fill;
   final ValueChanged<double>? onSeek;
   final Future<void> Function(double)? onSeekEnd;
 
@@ -238,8 +248,8 @@ class _SeekPill extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: Stack(
             children: [
-              // Заливка прогресса — приглушённый акцент: поверх неё лежит
-              // текст, и полный акцент забивал бы его.
+              // Заливка прогресса — приглушённый цвет трека: поверх неё лежит
+              // текст, и полный цвет забивал бы его.
               //
               // `Positioned.fill` обязателен: в `Stack` доля получает свободные
               // ограничения, схлопывается по высоте в ноль и вдобавок встаёт по
@@ -248,7 +258,7 @@ class _SeekPill extends StatelessWidget {
                 child: FractionallySizedBox(
                   alignment: Alignment.centerLeft,
                   widthFactor: progress.clamp(0.0, 1.0),
-                  child: ColoredBox(color: t.accent.withValues(alpha: 0.28)),
+                  child: ColoredBox(color: fill.withValues(alpha: 0.28)),
                 ),
               ),
               // Тоже `Positioned.fill`: иначе блок текста получает свободные
@@ -274,8 +284,8 @@ class _SeekPill extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
                         // Не `muted`: он считается от плашки темы, а подпись
-                        // лежит на заливке прогресса акцентом — там серый от
-                        // темы сливается с фоном. Цвет текста темы с
+                        // лежит на заливке прогресса цветом трека — там серый
+                        // от темы сливается с фоном. Цвет текста темы с
                         // прозрачностью читается и на дорожке, и на заливке.
                         style: theme.bodySmall?.copyWith(
                           fontSize: 11,

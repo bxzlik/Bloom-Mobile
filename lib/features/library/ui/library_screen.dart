@@ -491,11 +491,6 @@ Future<void> _showSortSheet(BuildContext context, WidgetRef ref) {
   final active = ref.read(libOrderProvider).sort;
   return showBloomSheet(
     context: context,
-    header: SheetLineHeader(
-      cover: null,
-      title: context.l.commonSort,
-      subtitle: context.l.commonLibrary,
-    ),
     groups: [
       [
         for (final sort in LibSort.values)
@@ -507,14 +502,6 @@ Future<void> _showSortSheet(BuildContext context, WidgetRef ref) {
                 ? Icon(SolarIconsBold.checkCircle, size: 18, color: t.accent)
                 : null,
           ),
-      ],
-      // Подсказка про перетаскивание: без неё ручной порядок не найти — он
-      // прячется в долгом тапе.
-      [
-        SheetAction(
-          icon: SolarIconsOutline.infoCircle,
-          label: context.l.libDragHint,
-        ),
       ],
     ],
   );

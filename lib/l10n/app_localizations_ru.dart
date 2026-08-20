@@ -27,13 +27,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonApply => 'Применить';
 
   @override
-  String get commonRename => 'Переименовать';
-
-  @override
   String get commonUndo => 'Отменить';
-
-  @override
-  String get commonDiscard => 'Отменить';
 
   @override
   String get commonUpload => 'Загрузить';
@@ -333,9 +327,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get libAutoRefreshTooltip => 'Авто-обновление плейлистов';
 
   @override
-  String get libDragHint => 'В «По умолчанию» плитку можно зажать и перетащить';
-
-  @override
   String get libSortManual => 'По умолчанию';
 
   @override
@@ -419,13 +410,23 @@ class AppLocalizationsRu extends AppLocalizations {
   String get tlRefreshTracks => 'Обновить треки';
 
   @override
-  String get tlSetCover => 'Поставить обложку';
+  String get tlToQueue => 'В очередь';
 
   @override
-  String get tlChangeCover => 'Сменить обложку';
+  String get tlPlayNext => 'Играть следующими';
 
   @override
-  String get tlRemoveCover => 'Убрать обложку';
+  String tlQueuedTracks(int count) {
+    return 'В очередь добавлено: $count';
+  }
+
+  @override
+  String tlQueuedNext(int count) {
+    return 'Играют следующими: $count';
+  }
+
+  @override
+  String get tlExportPlaylist => 'Экспорт плейлиста';
 
   @override
   String get tlDeletePlaylist => 'Удалить плейлист';
@@ -433,6 +434,14 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String tlPlaylistDeleted(String name) {
     return 'Плейлист «$name» удалён';
+  }
+
+  @override
+  String get tlDeletePlaylistWithTracks => 'Удалить плейлист и треки';
+
+  @override
+  String tlPlaylistAndTracksDeleted(String name) {
+    return 'Плейлист «$name» удалён вместе с треками';
   }
 
   @override
@@ -444,19 +453,12 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String leDeleteTitle(String tracks) {
-    return 'Удалить $tracks?';
+  String leDeleteArm(String tracks) {
+    return 'Ещё раз — $tracks пропадут отовсюду';
   }
 
   @override
-  String get leDeleteBody =>
-      'Они пропадут из библиотеки, любимых, плейлистов и истории.';
-
-  @override
-  String get leDiscardTitle => 'Отменить правку?';
-
-  @override
-  String get leDiscardBody => 'Всё, что вы наменяли в списке, не сохранится.';
+  String get leDiscardArm => 'Ещё раз — правка не сохранится';
 
   @override
   String cpImported(String title, int count) {
@@ -759,6 +761,271 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get fdDownloadFile => 'Скачать файлом';
+
+  @override
+  String get tlConvert => 'Перенести на площадку…';
+
+  @override
+  String get cvTitle => 'Перенос на площадку';
+
+  @override
+  String cvScanning(String source) {
+    return 'Ищем треки на $source…';
+  }
+
+  @override
+  String get cvScanHint => 'Можно уйти — перенос отменится';
+
+  @override
+  String cvSummary(int moved, int kept, int skipped) {
+    return 'Перенесено $moved · оставлено $kept · пропущено $skipped';
+  }
+
+  @override
+  String get cvTakeBest => 'Взять лучшие';
+
+  @override
+  String cvCreate(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Создать плейлист из $count треков',
+      many: 'Создать плейлист из $count треков',
+      few: 'Создать плейлист из $count треков',
+      one: 'Создать плейлист из $count трека',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cvTagMoved => 'Перенесён';
+
+  @override
+  String get cvTagOriginal => 'Оригинал';
+
+  @override
+  String get cvTagOnTarget => 'Уже здесь';
+
+  @override
+  String get cvTagSkipped => 'Пропущен';
+
+  @override
+  String cvNotFound(String source) {
+    return 'Не найден на $source';
+  }
+
+  @override
+  String get cvSearchFailed => 'Площадка не ответила';
+
+  @override
+  String get cvKeepOriginal => 'Оставить оригинал';
+
+  @override
+  String get cvSkip => 'Пропустить трек';
+
+  @override
+  String cvCreated(String name, String tracks) {
+    return '«$name» создан — $tracks';
+  }
+
+  @override
+  String get spSwitch => 'Сменить площадку';
+
+  @override
+  String spSearching(String source) {
+    return 'Ищем на $source…';
+  }
+
+  @override
+  String spNow(String source) {
+    return 'Теперь играет с $source';
+  }
+
+  @override
+  String spNotFound(String source) {
+    return 'На $source этого трека нет';
+  }
+
+  @override
+  String get spFailed => 'Площадка не ответила — попробуйте ещё раз';
+
+  @override
+  String get spUnavailable => 'Эта площадка недоступна';
+
+  @override
+  String get tlMergeWith => 'Объединить с…';
+
+  @override
+  String get mgTitle => 'Объединение плейлистов';
+
+  @override
+  String get mgNameHint => 'Название нового плейлиста';
+
+  @override
+  String get mgPickHint => 'Выберите, что подмешать';
+
+  @override
+  String mgResult(String tracks) {
+    return 'Получится $tracks';
+  }
+
+  @override
+  String mgDupsDropped(int count) {
+    return '−$count повторов';
+  }
+
+  @override
+  String get mgDedup => 'Убрать дубликаты';
+
+  @override
+  String get mgDeleteSources => 'Удалить исходные';
+
+  @override
+  String get mgNothingToMerge => 'Объединять не с чем: других плейлистов нет';
+
+  @override
+  String mgMerged(String name, String tracks) {
+    return '«$name» собран — $tracks';
+  }
+
+  @override
+  String get tlFindDups => 'Найти дубли';
+
+  @override
+  String get dupsTitle => 'Дубликаты треков';
+
+  @override
+  String dupsFound(int groups, int extra) {
+    String _temp0 = intl.Intl.pluralLogic(
+      groups,
+      locale: localeName,
+      other: '$groups групп',
+      many: '$groups групп',
+      few: '$groups группы',
+      one: '$groups группа',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      extra,
+      locale: localeName,
+      other: '$extra лишних копий',
+      many: '$extra лишних копий',
+      few: '$extra лишние копии',
+      one: '$extra лишняя копия',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String dupsChecked(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Проверено $count треков',
+      many: 'Проверено $count треков',
+      few: 'Проверено $count трека',
+      one: 'Проверен $count трек',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dupsCopies(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count копий',
+      many: '$count копий',
+      few: '$count копии',
+      one: '$count копия',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dupsPlays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count прослушиваний',
+      many: '$count прослушиваний',
+      few: '$count прослушивания',
+      one: '$count прослушивание',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dupsKeep => 'оставить';
+
+  @override
+  String get dupsNone => 'Дубликатов не найдено';
+
+  @override
+  String get dupsDelAll => 'Убрать все';
+
+  @override
+  String get dupsDelGroup => 'Убрать копии';
+
+  @override
+  String dupsRemoved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Убрано $count копий',
+      many: 'Убрано $count копий',
+      few: 'Убрано $count копии',
+      one: 'Убрана $count копия',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get tiTitle => 'Инфо о треке';
+
+  @override
+  String get tiAlbum => 'Альбом';
+
+  @override
+  String get tiYear => 'Год';
+
+  @override
+  String get tiDuration => 'Длительность';
+
+  @override
+  String get tiPublisher => 'Паблишер';
+
+  @override
+  String get tiGenres => 'Жанры';
+
+  @override
+  String get tiDescription => 'Описание';
+
+  @override
+  String get tiFile => 'Файл';
+
+  @override
+  String get tiCredited => 'В титрах';
+
+  @override
+  String get tiExplicit => 'Ненормативная лексика';
+
+  @override
+  String get tiNothing => 'Больше площадка об этом треке ничего не рассказала';
+
+  @override
+  String get taToQueue => 'В очередь';
+
+  @override
+  String get taPlayNext => 'Играть следующим';
+
+  @override
+  String get taRemoveFromQueue => 'Убрать из очереди';
+
+  @override
+  String get taRemoveFromPlaylist => 'Убрать из плейлиста';
+
+  @override
+  String get taDownload => 'Скачать';
 
   @override
   String get taRemoveFromFavorites => 'Убрать из любимых';
@@ -2174,4 +2441,572 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get waveToastYmFailed => 'Не удалось получить волну Яндекса';
+
+  @override
+  String lfmConnectedAs(String user) {
+    return 'Подключено как $user';
+  }
+
+  @override
+  String get lfmNotConnected => 'Не подключено';
+
+  @override
+  String get lfmLogin => 'Войти через Last.fm';
+
+  @override
+  String get lfmDone => 'Готово — я подтвердил';
+
+  @override
+  String get lfmLogout => 'Выйти';
+
+  @override
+  String get lfmKeys => 'Ключи API';
+
+  @override
+  String get lfmSaveKeys => 'Сохранить ключи';
+
+  @override
+  String get lfmScrobble => 'Скробблинг';
+
+  @override
+  String get lfmScrobbleSub => 'Засчитывать прослушанные треки на Last.fm';
+
+  @override
+  String get lfmNowPlayingSub => 'Обновлять статус «Сейчас играет»';
+
+  @override
+  String get lfmGuideTitle => 'Как подключить Last.fm';
+
+  @override
+  String get lfmGuideSubtitle => 'Свой ключ приложения и вход через браузер';
+
+  @override
+  String get lfmStep1 =>
+      'Открой **last.fm/api/account/create** и заведи приложение — имя любое.';
+
+  @override
+  String get lfmStep2 =>
+      'Скопируй оттуда **API Key** и **Shared Secret** и вставь их в поля ниже.';
+
+  @override
+  String get lfmStep3 =>
+      'Нажми **«Войти через Last.fm»** — откроется браузер, пароль вводится только там.';
+
+  @override
+  String get lfmStep4 =>
+      'Разреши доступ и вернись в Bloom: приложение проверит вход само.';
+
+  @override
+  String get lfmGuideNote =>
+      'Ключ нужен свой — общего ключа Last.fm у Bloom нет. Пароль в приложение не вводится.';
+
+  @override
+  String get lfmGettingToken => 'Получаю токен…';
+
+  @override
+  String get lfmConfirmAccess =>
+      'Подтверди доступ на Last.fm, затем нажми «Готово»';
+
+  @override
+  String get lfmChecking => 'Проверяю…';
+
+  @override
+  String get lfmNotConfirmed => 'Не подтверждено — попробуй ещё раз';
+
+  @override
+  String get lfmLoginFirst => 'Сначала нажми «Войти через Last.fm»';
+
+  @override
+  String get lfmNeedKeys => 'Сначала сохрани API Key и Secret';
+
+  @override
+  String get lfmNetworkError => 'Сетевая ошибка';
+
+  @override
+  String lfmError(String msg) {
+    return 'Ошибка: $msg';
+  }
+
+  @override
+  String lfmToastConnected(String name) {
+    return 'Last.fm: подключено как $name';
+  }
+
+  @override
+  String get lfmToastDisconnected => 'Last.fm: отключено';
+
+  @override
+  String get lfmToastKeysSaved => 'Last.fm: ключи сохранены';
+
+  @override
+  String get notifCenterTitle => 'Уведомления';
+
+  @override
+  String get notifCenterEmpty => 'Уведомлений пока нет';
+
+  @override
+  String get notifTrackDownloaded => 'Трек скачан';
+
+  @override
+  String get notifDownloadError => 'Ошибка скачивания';
+
+  @override
+  String get notifOfflineReady => 'Трек доступен офлайн';
+
+  @override
+  String get notifOfflineError => 'Не удалось скачать офлайн';
+
+  @override
+  String get notifTrackUnavailable => 'Недоступный трек';
+
+  @override
+  String get wrTitle => 'Итоги';
+
+  @override
+  String get wrWeek => 'Итоги недели';
+
+  @override
+  String get wrMonth => 'Итоги месяца';
+
+  @override
+  String get wrYear => 'Итоги года';
+
+  @override
+  String get wrPrev => 'Назад';
+
+  @override
+  String get wrNext => 'Дальше';
+
+  @override
+  String get wrIntroWeek => 'Твоя неделя в Bloom';
+
+  @override
+  String get wrIntroMonth => 'Твой месяц в Bloom';
+
+  @override
+  String get wrIntroYear => 'Твой год в Bloom';
+
+  @override
+  String get wrIntroSub => 'Посмотрим, что это было';
+
+  @override
+  String get wrTimeKicker => 'Ты слушал музыку';
+
+  @override
+  String wrTimeSub(int count) {
+    return 'Прослушиваний за период: $count';
+  }
+
+  @override
+  String get wrTimeLessThanMin => 'Меньше минуты';
+
+  @override
+  String get wrCountsKicker => 'Если в цифрах';
+
+  @override
+  String get wrCountsTitle => 'Вот сколько всего было';
+
+  @override
+  String wrCountsNewTracks(int count) {
+    return 'Впервые услышано: $count';
+  }
+
+  @override
+  String get wrTracksKicker => 'На повторе';
+
+  @override
+  String get wrTracksTitle => 'Твои топ-треки';
+
+  @override
+  String get wrTracksTitleOne => 'Твой трек периода';
+
+  @override
+  String get wrArtistsKicker => 'Голоса периода';
+
+  @override
+  String get wrArtistsTitle => 'Твои топ-артисты';
+
+  @override
+  String get wrArtistsTitleOne => 'Твой артист периода';
+
+  @override
+  String get wrSourcesKicker => 'Откуда музыка';
+
+  @override
+  String get wrSourcesTitle => 'Где ты слушал';
+
+  @override
+  String get wrDiscoverKicker => 'Новые имена';
+
+  @override
+  String wrDiscoverTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Ты открыл $count артистов',
+      many: 'Ты открыл $count артистов',
+      few: 'Ты открыл $count артистов',
+      one: 'Ты открыл $count артиста',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get wrHabitsKicker => 'Твои привычки';
+
+  @override
+  String get wrHabitsNight => 'Ты ночной слушатель';
+
+  @override
+  String get wrHabitsDay => 'Ты дневной слушатель';
+
+  @override
+  String get wrHabitsPeak => 'Любимый час';
+
+  @override
+  String get wrHabitsRecord => 'Рекорд дня';
+
+  @override
+  String get wrHabitsStreak => 'Дней подряд';
+
+  @override
+  String get wrHabitsActive => 'Дней с музыкой';
+
+  @override
+  String wrHabitsRecordValue(Object tracks, Object date) {
+    return '$tracks · $date';
+  }
+
+  @override
+  String get wrShareKicker => 'Забирай на память';
+
+  @override
+  String get wrShareSave => 'Поделиться';
+
+  @override
+  String get wrShareFail => 'Не удалось отправить карточку';
+
+  @override
+  String get wrCardTime => 'Времени с музыкой';
+
+  @override
+  String get wrCardTopTracks => 'Топ-треки';
+
+  @override
+  String get wrCardTopArtists => 'Топ-артисты';
+
+  @override
+  String get wrJokeTiny => 'Как-то пусто. Ты вообще включал музыку?';
+
+  @override
+  String get wrJokeSmall => 'Скромно. Но мы посчитали каждый трек.';
+
+  @override
+  String get wrJokeOneTrack => 'Один трек, один артист — уважаем постоянство.';
+
+  @override
+  String wrPlaysN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count прослушиваний',
+      many: '$count прослушиваний',
+      few: '$count прослушивания',
+      one: '$count прослушивание',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrPlaysWord(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'прослушиваний',
+      many: 'прослушиваний',
+      few: 'прослушивания',
+      one: 'прослушивание',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrTracksN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count треков',
+      many: '$count треков',
+      few: '$count трека',
+      one: '$count трек',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrTracksWord(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'треков',
+      many: 'треков',
+      few: 'трека',
+      one: 'трек',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrArtistsN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count артистов',
+      many: '$count артистов',
+      few: '$count артиста',
+      one: '$count артист',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrArtistsWord(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'артистов',
+      many: 'артистов',
+      few: 'артиста',
+      one: 'артист',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrDaysN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count дней',
+      many: '$count дней',
+      few: '$count дня',
+      one: '$count день',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrHoursN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count часов',
+      many: '$count часов',
+      few: '$count часа',
+      one: '$count час',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrMinutesN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count минут',
+      many: '$count минут',
+      few: '$count минуты',
+      one: '$count минута',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrHourRange(Object from, Object to) {
+    return '$from — $to';
+  }
+
+  @override
+  String get wrSetCaption => 'ИТОГИ';
+
+  @override
+  String get wrSetShow => 'Показывать «Итоги»';
+
+  @override
+  String get wrSetShowSub =>
+      'Кружок-сторис на главной, когда есть что подводить';
+
+  @override
+  String get wrSetAlways => 'Показывать всегда';
+
+  @override
+  String get wrSetAlwaysSub =>
+      'Не ждать расписания — открывать итоги в любой день';
+
+  @override
+  String get sysStartup => 'Запуск';
+
+  @override
+  String get audRestoreTitle => 'Восстановление очереди';
+
+  @override
+  String get audRestoreSub =>
+      'Возвращать при запуске трек, очередь и позицию — на паузе';
+
+  @override
+  String get audAutoplayTitle => 'Автовоспроизведение';
+
+  @override
+  String get audAutoplaySub =>
+      'Восстановить прошлую сессию при запуске и сразу продолжить';
+
+  @override
+  String get aboutVersion => 'Версия';
+
+  @override
+  String aboutBuild(String n) {
+    return 'сборка $n';
+  }
+
+  @override
+  String get aboutIdle => 'Обновления проверяются вручную';
+
+  @override
+  String get aboutCheck => 'Проверить обновления';
+
+  @override
+  String get aboutChecking => 'Проверка обновлений…';
+
+  @override
+  String get aboutUptodate => 'Установлена последняя версия';
+
+  @override
+  String aboutAvailable(String v) {
+    return 'Доступна версия $v';
+  }
+
+  @override
+  String get aboutError => 'Не удалось проверить обновления';
+
+  @override
+  String get aboutOpenRelease => 'Открыть страницу релиза';
+
+  @override
+  String get sysImportExport => 'Импорт/Экспорт';
+
+  @override
+  String get sysExportTitle => 'Экспортировать все';
+
+  @override
+  String get sysExportSub => 'Сохранить все плейлисты в файл .bloomplaylist';
+
+  @override
+  String get sysExportFilename => 'bloom-плейлисты.bloomplaylist';
+
+  @override
+  String get sysExported => 'Файл сохранён';
+
+  @override
+  String get sysNoPlaylists => 'Плейлистов пока нет';
+
+  @override
+  String get sysImportTitle => 'Импортировать';
+
+  @override
+  String get sysImportSub => 'Загрузить плейлисты из файла .bloomplaylist';
+
+  @override
+  String get sysImportInvalid => 'Ошибка: невалидный файл';
+
+  @override
+  String get sysImportNoPlaylists => 'Плейлисты не найдены';
+
+  @override
+  String sysImportedFull(int pl, int tr) {
+    return 'Импортировано: $pl пл., $tr тр.';
+  }
+
+  @override
+  String sysImportedPlaylists(int pl) {
+    return 'Импортировано плейлистов: $pl';
+  }
+
+  @override
+  String get sysLogs => 'Логи';
+
+  @override
+  String get sysLogTitle => 'Журнал работы';
+
+  @override
+  String get sysLogEmptySub => 'Пока пусто';
+
+  @override
+  String sysLogEntries(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count записи',
+      many: '$count записей',
+      few: '$count записи',
+      one: '$count запись',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get logsCopy => 'Копировать';
+
+  @override
+  String get logsSave => 'Сохранить';
+
+  @override
+  String get logsClear => 'Очистить';
+
+  @override
+  String get logsCopied => 'Скопировано';
+
+  @override
+  String get logsSaved => 'Логи сохранены';
+
+  @override
+  String get logsCleared => 'Логи очищены';
+
+  @override
+  String get logsEmpty => 'Журнал пуст';
+
+  @override
+  String get sysDangerZone => 'Опасная зона';
+
+  @override
+  String get sysResetTitle => 'Сбросить настройки';
+
+  @override
+  String get sysResetSub =>
+      'Вернуть оформление и параметры к значениям по умолчанию';
+
+  @override
+  String get sysResetBody =>
+      'Оформление, плеер, жесты, прозрачность и пресеты кастомизации вернутся к умолчаниям. Библиотека, история, профиль и входы в площадки останутся.';
+
+  @override
+  String get sysResetBtn => 'Сбросить';
+
+  @override
+  String get sysResetDone => 'Настройки сброшены';
+
+  @override
+  String get sysHardResetTitle => 'Сбросить всё';
+
+  @override
+  String get sysHardResetSub => 'Удалить треки, плейлисты, историю и настройки';
+
+  @override
+  String get sysHardResetBody =>
+      'Библиотека, плейлисты, история, профиль, скачанное и все настройки будут стёрты безвозвратно. Вернуть их будет нечем.';
+
+  @override
+  String get sysHardResetBtn => 'Сбросить всё';
+
+  @override
+  String get sysHardResetDone => 'Всё стёрто';
 }

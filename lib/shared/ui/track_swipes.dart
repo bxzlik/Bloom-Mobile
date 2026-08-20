@@ -155,7 +155,7 @@ void runSwipeAction(
         return;
       }
       if (listId != null) {
-        _removeFromList(messenger, l, ref, listId, track);
+        removeTrackFromList(messenger, l, ref, listId, track);
         return;
       }
       // Плеер и миниплеер: списка за ними нет, убирать можно только из очереди.
@@ -170,7 +170,10 @@ void runSwipeAction(
 /// Из «Всех треков» трек уходит НАСКВОЗЬ (см. [LibraryController.deleteTrack]),
 /// поэтому отмена возвращает снимок всей библиотеки: по частям такое удаление
 /// не собрать. Офлайн-копию удаляем только когда отменять уже поздно.
-void _removeFromList(
+///
+/// Общая со шторкой действий: её «Убрать из плейлиста» — то же самое, что
+/// смахивание строки, и вести себя (включая «Отменить») обязано так же.
+void removeTrackFromList(
   ScaffoldMessengerState messenger,
   AppLocalizations l,
   WidgetRef ref,

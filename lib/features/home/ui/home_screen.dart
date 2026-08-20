@@ -17,9 +17,11 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/glass.dart';
+import '../../notifications/ui/notif_bell.dart';
 import '../../profile/profile_store.dart';
 import '../../profile/ui/profile_avatar.dart';
 import '../../wave/ui/wave_card.dart';
+import '../../wrapped/ui/wrapped_circle.dart';
 import '../discover_store.dart';
 import 'continue_card.dart';
 import 'home_sections.dart';
@@ -93,7 +95,11 @@ class _TopBar extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          CircleIconButton(icon: SolarIconsOutline.bell, onTap: () {}),
+          // «Итоги» — первыми в ряду кнопок и сами решают, показываться ли:
+          // вне окна показа (пн / 1-е / 21–31 декабря) кнопки нет вовсе, и ряд
+          // просто смыкается.
+          const WrappedCircle(),
+          const NotifBell(),
           const SizedBox(width: 8),
           CircleIconButton(
             icon: SolarIconsOutline.magnifier,

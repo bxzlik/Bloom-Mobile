@@ -146,23 +146,42 @@ class SourceBadge extends ConsumerWidget {
   }
 }
 
-/// Сервис-интеграция (настройки: Last.fm, Genius, Discord).
-enum Service { lastfm, genius, discord }
+/// Сервис-интеграция (настройки: Last.fm, Discord).
+enum Service { lastfm, discord }
 
 const Map<Service, String> _serviceAssets = {
   Service.lastfm: 'assets/platform/last-fm.svg',
-  Service.genius: 'assets/platform/genius.svg',
   Service.discord: 'assets/platform/Discord.svg',
 };
 
-/// Эти три знака одноцветные, и в файлах залиты ЧЁРНЫМ — на тёмной теме их
+/// Оба знака одноцветные, и в файлах залиты ЧЁРНЫМ — на тёмной теме их
 /// просто не видно. Поэтому, в отличие от логотипов площадок, красим их сами:
 /// в фирменный цвет сервиса, силуэт при этом не меняется.
 const Map<Service, Color> serviceColor = {
   Service.lastfm: Color(0xFFD51007),
-  Service.genius: Color(0xFFFFFF64),
   Service.discord: Color(0xFF5865F2),
 };
+
+/// Знак интеграции — площадки ИЛИ сервиса, одним типом.
+///
+/// Нужен там, где вид не зависит от того, что именно за интеграцией стоит:
+/// страницы настроек одинаковы у SoundCloud и у Last.fm, а [MusicSource] и
+/// [Service] — разные перечисления и общего предка у них нет.
+class BrandMark {
+  const BrandMark.platform(MusicSource this.source) : service = null;
+  const BrandMark.service(Service this.service) : source = null;
+
+  final MusicSource? source;
+  final Service? service;
+
+  /// Фирменный цвет. У локальных файлов площадки нет — там `null`.
+  Color? get color =>
+      source != null ? platformColor[source] : serviceColor[service];
+
+  Widget logo({double size = 16, Color? color}) => source != null
+      ? PlatformLogo(source!, size: size, color: color)
+      : ServiceLogo(service!, size: size, color: color);
+}
 
 class ServiceLogo extends StatelessWidget {
   const ServiceLogo(this.service, {super.key, this.size = 16, this.color});

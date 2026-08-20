@@ -5,8 +5,9 @@
 /// мало. Поэтому и переключателя вида в настройках нет — кольцо здесь
 /// единственное.
 ///
-/// Слоёв два: кольцо обложек ([WaveRing]) и герой по центру — кнопка запуска,
-/// заголовок и «Настроить».
+/// Слоёв два: кольцо обложек ([WaveRing]) и герой по центру — кнопка запуска и
+/// заголовок. Отдельного «Настроить» нет: шторка настройки открывается долгим
+/// нажатием на кнопку или на заголовок.
 library;
 
 import 'dart:math';
@@ -29,7 +30,6 @@ import 'wave_tune_sheet.dart';
 /// смасштабированная кнопка вышла бы меньше пальца.
 const double _kMinPlay = 64;
 const double _kMinTitle = 19;
-const double _kMinTune = 30;
 
 class WaveCard extends ConsumerStatefulWidget {
   const WaveCard({super.key});
@@ -106,7 +106,8 @@ class _WaveCardState extends ConsumerState<WaveCard> {
   }
 }
 
-/// Центр кольца: кнопка запуска, заголовок и «Настроить».
+/// Центр кольца: кнопка запуска и заголовок. Настройка волны — долгим нажатием
+/// на любой из них.
 class _Hero extends ConsumerWidget {
   const _Hero({required this.scale, required this.starting});
 
@@ -126,19 +127,27 @@ class _Hero extends ConsumerWidget {
           diameter: max(_kMinPlay, 84 * k),
           starting: starting,
           onTap: () => startPersonalWave(context, ref),
+          onLongPress: () => showWaveTuneSheet(context),
         ),
         SizedBox(height: gap),
-        Text(
-          context.l.waveTitle,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontSize: max(_kMinTitle, 23 * k),
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.4,
-            color: t.text,
+        GestureDetector(
+          // Заголовок — не кнопка, поэтому короткое нажатие по нему ничего не
+          // делает: у него только «зажать».
+          behavior: HitTestBehavior.opaque,
+          onLongPress: () {
+            Feedback.forLongPress(context);
+            showWaveTuneSheet(context);
+          },
+          child: Text(
+            context.l.waveTitle,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontSize: max(_kMinTitle, 23 * k),
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
+              color: t.text,
+            ),
           ),
         ),
-        SizedBox(height: gap),
-        _TuneChip(height: max(_kMinTune, 30 * k)),
       ],
     );
   }
@@ -151,11 +160,15 @@ class _PlayButton extends StatelessWidget {
     required this.diameter,
     required this.starting,
     required this.onTap,
+    required this.onLongPress,
   });
 
   final double diameter;
   final bool starting;
   final VoidCallback onTap;
+
+  /// Живёт и во время запуска: настроить волну можно, пока она собирается.
+  final VoidCallback onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -166,6 +179,12 @@ class _PlayButton extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: starting ? null : onTap,
+        onLongPress: onLongPress,
+        // Отклик на нажатие — контрастной парой акцента, а не чёрным: на
+        // светлом акценте она затемняет кружок, на тёмном подсветит. Держится,
+        // пока палец на кнопке, — по нему и видно, что идёт долгое нажатие.
+        highlightColor: t.accentText.withValues(alpha: 0.16),
+        splashColor: t.accentText.withValues(alpha: 0.12),
         child: SizedBox(
           width: diameter,
           height: diameter,
@@ -182,46 +201,6 @@ class _PlayButton extends StatelessWidget {
                   size: diameter * 0.36,
                   color: t.accentText,
                 ),
-        ),
-      ),
-    );
-  }
-}
-
-/// «Настроить» — площадка волны и дизлайки.
-class _TuneChip extends ConsumerWidget {
-  const _TuneChip({required this.height});
-
-  final double height;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
-    return Material(
-      color: t.pill,
-      borderRadius: BorderRadius.circular(height / 2),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => showWaveTuneSheet(context),
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: height * 0.46),
-          child: SizedBox(
-            height: height,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(SolarIconsOutline.tuning, size: 14, color: t.text2),
-                const SizedBox(width: 6),
-                Text(
-                  context.l.waveTune,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: t.text2,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );

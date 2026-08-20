@@ -1,5 +1,6 @@
-/// Каркас страницы площадки в настройках: крупный знак площадки посреди
-/// экрана, содержимое под ним и действия, прибитые к низу.
+/// Каркас страницы интеграции в настройках: крупный знак посреди экрана,
+/// содержимое под ним и действия, прибитые к низу. Одинаков у площадок и у
+/// сервисов вроде Last.fm — отсюда [BrandMark] вместо `MusicSource`.
 ///
 /// Раскладка взята с референса: шапки подстраницы тут нет вовсе — логотип и
 /// служит заголовком, а «Назад» стоит последней кнопкой внизу. Вид — свой:
@@ -18,7 +19,6 @@ import 'package:flutter/material.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
-import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
@@ -36,7 +36,7 @@ const Curve _kExpandCurve = Cubic(0.4, 0, 0.2, 1);
 class PlatformPage extends StatelessWidget {
   const PlatformPage({
     super.key,
-    required this.source,
+    required this.mark,
     required this.onBack,
     this.status,
     this.statusColor,
@@ -44,7 +44,8 @@ class PlatformPage extends StatelessWidget {
     this.actions = const [],
   });
 
-  final MusicSource source;
+  /// Чей это раздел: площадка или сервис-интеграция (Last.fm).
+  final BrandMark mark;
   final VoidCallback onBack;
 
   /// Строка под знаком: подключено / не подключено / чем настроено.
@@ -88,8 +89,7 @@ class PlatformPage extends StatelessWidget {
                         tween: Tween(end: open ? _logoCompact : _logoFull),
                         duration: _kExpand,
                         curve: _kExpandCurve,
-                        builder: (_, size, _) =>
-                            PlatformLogo(source, size: size),
+                        builder: (_, size, _) => mark.logo(size: size),
                       ),
                       if (status case final text?) ...[
                         const SizedBox(height: 18),
@@ -219,14 +219,14 @@ class PlatformButton extends StatelessWidget {
 class PlatformCard extends StatelessWidget {
   const PlatformCard({
     super.key,
-    required this.source,
+    required this.mark,
     required this.title,
     required this.subtitle,
     required this.onTap,
     this.icon = SolarIconsOutline.questionCircle,
   });
 
-  final MusicSource source;
+  final BrandMark mark;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
@@ -248,7 +248,7 @@ class PlatformCard extends StatelessWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.only(top: 2),
-                child: PlatformLogo(source, size: 20),
+                child: mark.logo(size: 20),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -306,14 +306,14 @@ class OrLabel extends StatelessWidget {
 /// имена параметров — то, что пользователь ищет глазами.
 Future<void> showPlatformGuide(
   BuildContext context, {
-  required MusicSource source,
+  required BrandMark mark,
   required String title,
   List<String> steps = const [],
   String? note,
 }) {
   return showBloomSheetChild<void>(
     context: context,
-    header: _GuideHeader(source: source, title: title),
+    header: _GuideHeader(mark: mark, title: title),
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -322,7 +322,7 @@ Future<void> showPlatformGuide(
             children: [
               for (var i = 0; i < steps.length; i++) ...[
                 if (i > 0) sheetDivider(),
-                _GuideStep(index: i + 1, source: source, text: steps[i]),
+                _GuideStep(index: i + 1, mark: mark, text: steps[i]),
               ],
             ],
           ),
@@ -345,9 +345,9 @@ Future<void> showPlatformGuide(
 }
 
 class _GuideHeader extends StatelessWidget {
-  const _GuideHeader({required this.source, required this.title});
+  const _GuideHeader({required this.mark, required this.title});
 
-  final MusicSource source;
+  final BrandMark mark;
   final String title;
 
   @override
@@ -365,12 +365,10 @@ class _GuideHeader extends StatelessWidget {
             height: 38,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: (platformColor[source] ?? t.accent).withValues(
-                alpha: 0.14,
-              ),
+              color: (mark.color ?? t.accent).withValues(alpha: 0.14),
               shape: BoxShape.circle,
             ),
-            child: PlatformLogo(source, size: 19),
+            child: mark.logo(size: 19),
           ),
           const SizedBox(width: 14),
           Expanded(child: Text(title, style: theme.titleLarge)),
@@ -383,19 +381,19 @@ class _GuideHeader extends StatelessWidget {
 class _GuideStep extends StatelessWidget {
   const _GuideStep({
     required this.index,
-    required this.source,
+    required this.mark,
     required this.text,
   });
 
   final int index;
-  final MusicSource source;
+  final BrandMark mark;
   final String text;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
-    final brand = platformColor[source] ?? t.accent;
+    final brand = mark.color ?? t.accent;
     final base = theme.bodyMedium?.copyWith(color: t.text2, height: 1.5);
 
     return Padding(

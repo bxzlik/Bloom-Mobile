@@ -67,6 +67,22 @@
             </intent-filter>
         </receiver>
 
+        <!-- «Поделиться» карточкой «Итогов». Отдать наружу file:// с Android 7
+             нельзя (FileUriExposedException), поэтому картинка уходит через
+             провайдера; он видит ровно один подкаталог кеша, см.
+             res/xml/bloom_share_paths.xml. Своя authority с суффиксом:
+             image_picker ставит собственного провайдера, и совпадение
+             authority уронило бы установку приложения. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.share"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/bloom_share_paths"/>
+        </provider>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
