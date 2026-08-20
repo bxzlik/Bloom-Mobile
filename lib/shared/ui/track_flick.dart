@@ -47,6 +47,7 @@ class TrackFlick extends StatefulWidget {
 class _TrackFlickState extends State<TrackFlick>
     with SingleTickerProviderStateMixin {
   final ValueNotifier<double> _shift = ValueNotifier<double>(0);
+
   /// Заводится в [initState], а не ленивым полем: обложку, которую ни разу не
   /// перелистнули, первым и единственным трогал бы `dispose()`, а `vsync`
   /// оттуда лезет за `TickerMode` в уже мёртвый контекст и роняет само
