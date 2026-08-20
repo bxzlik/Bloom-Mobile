@@ -140,11 +140,11 @@ class _CardShell extends ConsumerWidget {
   final ValueChanged<double>? onSeek;
   final Future<void> Function(double)? onSeekEnd;
 
-  /// Высота ряда «кнопка — полоса — ♡».
+  /// Высота ряда «обложка — кнопка — полоса — ♡». Обложка стоит В строке, а не
+  /// над ней: отдельная крупная обложка по центру вставала ровно под нижней
+  /// плиткой кольца «Моей волны» и на качании почти касалась её — читалось как
+  /// девятая плитка, выпавшая из кольца.
   static const double _height = 44;
-
-  /// Обложка стоит НАД рядом и по центру — так он показал на скриншоте.
-  static const double _cover = 88;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -158,44 +158,41 @@ class _CardShell extends ConsumerWidget {
     final fill = ref.watch(coverAccentProvider(track.cover)).value ?? t.accent;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      // Сверху воздуха больше, чем снизу: над карточкой — кольцо волны, чьи
+      // плитки качаются и на пару точек выходят за свой бокс.
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: GestureDetector(
         onTap: onTap,
         onLongPress: () => showTrackActions(context, ref, track),
         behavior: HitTestBehavior.opaque,
-        child: Column(
+        child: Row(
           children: [
-            Cover(url: track.cover, size: _cover),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                CircleIconButton(
-                  icon: playing ? SolarIconsBold.pause : SolarIconsBold.play,
-                  iconSize: 16,
-                  size: _height,
-                  onTap: onPlay,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _SeekPill(
-                    title: track.name,
-                    artist: track.artist,
-                    progress: progress,
-                    fill: fill,
-                    onSeek: onSeek,
-                    onSeekEnd: onSeekEnd,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                CircleIconButton(
-                  icon: isFav ? SolarIconsBold.heart : SolarIconsOutline.heart,
-                  iconSize: 18,
-                  size: _height,
-                  color: isFav ? t.sysFavIco : null,
-                  onTap: () =>
-                      ref.read(libraryProvider.notifier).toggleFav(track),
-                ),
-              ],
+            Cover(url: track.cover, size: _height),
+            const SizedBox(width: 8),
+            CircleIconButton(
+              icon: playing ? SolarIconsBold.pause : SolarIconsBold.play,
+              iconSize: 16,
+              size: _height,
+              onTap: onPlay,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _SeekPill(
+                title: track.name,
+                artist: track.artist,
+                progress: progress,
+                fill: fill,
+                onSeek: onSeek,
+                onSeekEnd: onSeekEnd,
+              ),
+            ),
+            const SizedBox(width: 8),
+            CircleIconButton(
+              icon: isFav ? SolarIconsBold.heart : SolarIconsOutline.heart,
+              iconSize: 18,
+              size: _height,
+              color: isFav ? t.sysFavIco : null,
+              onTap: () => ref.read(libraryProvider.notifier).toggleFav(track),
             ),
           ],
         ),

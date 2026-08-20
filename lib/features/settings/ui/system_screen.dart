@@ -23,6 +23,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/log/bloom_log.dart';
 import '../../../core/store/library_store.dart';
 import '../../../core/store/text_files.dart';
+import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
@@ -31,8 +32,9 @@ import '../../../shared/ui/subpage_header.dart';
 import '../about_store.dart';
 import '../data_transfer.dart';
 import '../reset.dart';
-import 'platform_page.dart' show PlatformButton;
+import '../update_notes_store.dart';
 import 'settings_rows.dart';
+import 'update_notes_sheet.dart';
 
 class SystemSettingsScreen extends ConsumerWidget {
   const SystemSettingsScreen({super.key});
@@ -47,6 +49,26 @@ class SystemSettingsScreen extends ConsumerWidget {
       onBack: () => context.go('/settings'),
       children: [
         const _AboutCard(),
+        const SizedBox(height: 22),
+        SettingsCaption(l.updSection.toUpperCase()),
+        const SizedBox(height: 10),
+        SettingsGroupCard(
+          dividerInset: 52,
+          rows: [
+            SettingsLinkRow(
+              icon: SolarIconsOutline.gift,
+              title: l.updWhatsNew,
+              subtitle: l.updWhatsNewSub,
+              onTap: () => _openWhatsNew(context, ref),
+            ),
+            SettingsLinkRow(
+              icon: SolarIconsOutline.history,
+              title: l.updHistory,
+              subtitle: l.updHistorySub,
+              onTap: () => showUpdateHistory(context),
+            ),
+          ],
+        ),
         const SizedBox(height: 22),
         SettingsCaption(l.sysImportExport.toUpperCase()),
         const SizedBox(height: 10),
@@ -151,13 +173,12 @@ class _AboutCardState extends ConsumerState<_AboutCard> {
     final theme = Theme.of(context).textTheme;
     final about = ref.watch(aboutProvider);
 
-    return GlassBox(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Column(
+      children: [
+        GlassBox(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
+            child: Row(
               children: [
                 BloomMark(size: 42, color: t.text),
                 const SizedBox(width: 14),
@@ -172,8 +193,7 @@ class _AboutCardState extends ConsumerState<_AboutCard> {
                             // Версии нет — платформа не ответила (так бывает в
                             // тестах и на десктопе); прочерк честнее нуля.
                             ? '${l.aboutVersion} —'
-                            : '${l.aboutVersion} v${about.version}'
-                                  '${about.build.isEmpty ? '' : ' · ${l.aboutBuild(about.build)}'}',
+                            : '${l.aboutVersion} v${about.version}',
                         style: theme.bodySmall?.copyWith(color: t.text2),
                       ),
                     ],
@@ -181,48 +201,90 @@ class _AboutCardState extends ConsumerState<_AboutCard> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              _statusText(l, about),
-              style: theme.bodySmall?.copyWith(
-                color: about.phase == UpdatePhase.available ? t.text : t.text2,
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (about.phase == UpdatePhase.available)
-              PlatformButton(
-                label: l.aboutOpenRelease,
-                height: 46,
-                onTap: () => _openRelease(about.releaseUrl),
-              )
-            else
-              PlatformButton(
-                label: l.aboutCheck,
-                height: 46,
-                muted: true,
-                busy: about.phase == UpdatePhase.checking,
-                onTap: () => ref.read(aboutProvider.notifier).check(),
-              ),
-          ],
+          ),
         ),
-      ),
+        const SizedBox(height: 10),
+        if (about.phase == UpdatePhase.available)
+          AccentWideButton(
+            label: l.aboutOpenRelease,
+            icon: SolarIconsOutline.download,
+            onTap: () => _openRelease(about.releaseUrl),
+          )
+        else
+          AccentWideButton(
+            label: l.aboutCheck,
+            icon: SolarIconsOutline.refresh,
+            busy: about.phase == UpdatePhase.checking,
+            onTap: _check,
+          ),
+      ],
     );
   }
 
-  String _statusText(AppLocalizations l, AboutState about) =>
-      switch (about.phase) {
-        UpdatePhase.idle => l.aboutIdle,
-        UpdatePhase.checking => l.aboutChecking,
-        UpdatePhase.uptodate => l.aboutUptodate,
-        UpdatePhase.available => l.aboutAvailable(about.latest),
-        UpdatePhase.error => l.aboutError,
-      };
+  /// Проверить и сказать результат тостом.
+  ///
+  /// Строки состояния под карточкой больше нет — она занимала место ради
+  /// фразы, которую читают один раз. Ход проверки виден по крутилке в кнопке,
+  /// а исход — разовое событие, и тосту тут самое место. Исход `available`
+  /// вдобавок виден по самой кнопке: она превращается в «Открыть страницу
+  /// релиза» и остаётся такой.
+  Future<void> _check() async {
+    final l = context.l;
+    final messenger = ScaffoldMessenger.of(context);
+    await ref.read(aboutProvider.notifier).check();
+    if (!mounted) return;
+    final about = ref.read(aboutProvider);
+    switch (about.phase) {
+      case UpdatePhase.uptodate:
+        messenger.toast(l.aboutUptodate, kind: ToastKind.success);
+      case UpdatePhase.available:
+        messenger.toast(l.aboutAvailable(about.latest));
+      case UpdatePhase.error:
+        messenger.toast(l.aboutError, kind: ToastKind.warn);
+      case UpdatePhase.idle:
+      case UpdatePhase.checking:
+        // Второй тап, пока идёт первая проверка: тоста не будет — его покажет
+        // тот вызов, что реально ходит в сеть.
+        break;
+    }
+  }
 
   Future<void> _openRelease(String url) async {
     final uri = Uri.tryParse(url);
     if (uri == null) return;
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
+}
+
+/// «Что нового» для установленной версии — руками, из «Системы».
+///
+/// Версию берём у `aboutProvider`: карточка выше спрашивает её при открытии
+/// экрана, так что к моменту тапа она уже есть. Заметки нет (офлайн, или в
+/// манифесте про эту версию не написали) — говорим тостом, а не пустой
+/// шторкой.
+Future<void> _openWhatsNew(BuildContext context, WidgetRef ref) async {
+  final l = context.l;
+  final messenger = ScaffoldMessenger.of(context);
+  final locale = Localizations.localeOf(context).languageCode;
+  final version = ref.read(aboutProvider).version;
+  if (version.isEmpty) {
+    messenger.toast(l.updNotesError, kind: ToastKind.warn);
+    return;
+  }
+  UpdateNote? note;
+  try {
+    note = await ref.read(updateNotesProvider).note(version, locale);
+  } catch (e) {
+    logWarn('notes', 'манифест не открылся: $e');
+    messenger.toast(l.updNotesError, kind: ToastKind.warn);
+    return;
+  }
+  if (!context.mounted) return;
+  if (note == null || !note.hasContent) {
+    messenger.toast(l.updNotesEmpty);
+    return;
+  }
+  await showUpdateNote(context, note);
 }
 
 /// Выгрузить все плейлисты файлом. Отмена диалога — тишина, как на десктопе.

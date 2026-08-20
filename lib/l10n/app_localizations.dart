@@ -182,6 +182,12 @@ abstract class AppLocalizations {
   /// **'Play'**
   String get commonPlay;
 
+  /// phone only: resumes the paused track from the home tab menu
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get commonContinue;
+
   /// desktop: player.aria.shuffle
   ///
   /// In en, this message translates to:
@@ -4832,29 +4838,11 @@ abstract class AppLocalizations {
   /// **'Version'**
   String get aboutVersion;
 
-  /// No description provided for @aboutBuild.
-  ///
-  /// In en, this message translates to:
-  /// **'build {n}'**
-  String aboutBuild(String n);
-
-  /// No description provided for @aboutIdle.
-  ///
-  /// In en, this message translates to:
-  /// **'Updates are checked by hand'**
-  String get aboutIdle;
-
   /// No description provided for @aboutCheck.
   ///
   /// In en, this message translates to:
   /// **'Check for updates'**
   String get aboutCheck;
-
-  /// desktop: settings.about.checking
-  ///
-  /// In en, this message translates to:
-  /// **'Checking for updates…'**
-  String get aboutChecking;
 
   /// desktop: settings.about.uptodate
   ///
@@ -4879,6 +4867,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open the release page'**
   String get aboutOpenRelease;
+
+  /// No description provided for @updSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Updates'**
+  String get updSection;
+
+  /// desktop: update.whatsNew
+  ///
+  /// In en, this message translates to:
+  /// **'What’s new'**
+  String get updWhatsNew;
+
+  /// No description provided for @updWhatsNewSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes for the installed version'**
+  String get updWhatsNewSub;
+
+  /// desktop: update.history
+  ///
+  /// In en, this message translates to:
+  /// **'Update history'**
+  String get updHistory;
+
+  /// No description provided for @updHistorySub.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes for previous versions'**
+  String get updHistorySub;
+
+  /// desktop: update.historyEmpty
+  ///
+  /// In en, this message translates to:
+  /// **'There are no release notes yet'**
+  String get updHistoryEmpty;
+
+  /// desktop: update.notesEmpty
+  ///
+  /// In en, this message translates to:
+  /// **'No notes for this version'**
+  String get updNotesEmpty;
+
+  /// No description provided for @updNotesError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t load the release notes'**
+  String get updNotesError;
 
   /// desktop: settings.system.importExport
   ///

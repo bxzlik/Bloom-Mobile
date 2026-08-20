@@ -19,10 +19,14 @@ import '../features/customization/ui/app_background.dart';
 import '../core/store/settings_store.dart';
 import '../features/player/ui/mini_player.dart';
 import '../features/profile/achievements.dart';
+import '../features/settings/about_store.dart';
+import '../features/settings/update_notes_store.dart';
+import '../features/settings/ui/update_notes_sheet.dart';
 import '../shared/ui/atoms.dart';
 import '../shared/ui/bloom_toast.dart';
 import '../shared/ui/cover_hero.dart';
 import '../shared/ui/glass.dart';
+import 'nav_menu.dart';
 import 'theme/tokens.dart';
 
 class BloomShell extends ConsumerStatefulWidget {
@@ -35,14 +39,38 @@ class BloomShell extends ConsumerStatefulWidget {
 }
 
 class _BloomShellState extends ConsumerState<BloomShell> {
+  /// Панель таб-бара целиком. По её прямоугольнику меню таба находит, над чем
+  /// встать и где вырезать дырку в затемнении (см. [showNavMenu]).
+  final _panelKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     // Первый прогон — молчаливый: он же засеивает уже выполненные достижения.
     // Из `initState` провайдер трогать нельзя, ждём кадр.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _sync();
+      if (!mounted) return;
+      _sync();
+      _whatsNew();
     });
+  }
+
+  /// «Что нового» — один раз после обновления приложения.
+  ///
+  /// Здесь, а не на экране «Система»: сравнить версию с прошлым запуском надо
+  /// при старте, и до настроек человек может не дойти вовсе. Мастер первого
+  /// запуска этой шторке не помешает: он живёт отдельным маршрутом, каркас при
+  /// нём не построен, а свежая установка «Что нового» и не показывает (см.
+  /// `UpdateNotes.whatsNew`).
+  Future<void> _whatsNew() async {
+    await ref.read(aboutProvider.notifier).loadVersion();
+    if (!mounted) return;
+    final version = ref.read(aboutProvider).version;
+    if (version.isEmpty) return;
+    final locale = Localizations.localeOf(context).languageCode;
+    final note = await ref.read(updateNotesProvider).whatsNew(version, locale);
+    if (!mounted || note == null) return;
+    await showUpdateNote(context, note);
   }
 
   /// Достижения ловятся здесь, а не на вкладке профиля: иначе они «получались»
@@ -63,6 +91,20 @@ class _BloomShellState extends ConsumerState<BloomShell> {
         kind: ToastKind.success,
       );
     }
+  }
+
+  /// Долгое нажатие по табу [index]: меню встаёт над панелью бара, [radius] —
+  /// её скругление, по нему вырезается дырка в затемнении.
+  void _openMenu(int index, BorderRadius radius) {
+    final box = _panelKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    showNavMenu(
+      host: context,
+      ref: ref,
+      index: index,
+      panel: box.localToGlobal(Offset.zero) & box.size,
+      panelRadius: radius,
+    );
   }
 
   @override
@@ -92,8 +134,10 @@ class _BloomShellState extends ConsumerState<BloomShell> {
             _NavBar(
               style: ref.watch(settingsProvider).navStyle,
               index: shell.currentIndex,
+              panelKey: _panelKey,
               onTap: (i) =>
                   shell.goBranch(i, initialLocation: i == shell.currentIndex),
+              onLongPress: _openMenu,
             ),
           ],
         ),
@@ -242,20 +286,25 @@ const double kNavBarFloatHeight = 68;
 const double _kNavIcon = 24;
 const double _kNavFloatIcon = 27;
 
-/// Просвет между плавающей панелью и краями экрана — те же 8, что у карточки
-/// миниплеера над ней.
-const double _kFloatGap = 8;
-
 class _NavBar extends StatelessWidget {
   const _NavBar({
     required this.style,
     required this.index,
+    required this.panelKey,
     required this.onTap,
+    required this.onLongPress,
   });
 
   final NavBarStyle style;
   final int index;
+
+  /// Ключ панели: по ней меню таба считает свою раскладку (см. [showNavMenu]).
+  final Key panelKey;
   final ValueChanged<int> onTap;
+
+  /// Долгое нажатие по табу. Вторым аргументом уходит скругление панели — оно
+  /// зависит от стиля бара и известно только здесь.
+  final void Function(int index, BorderRadius radius) onLongPress;
 
   /// Неактивный таб — outline, активный — bold (правило Solar).
   ///
@@ -286,6 +335,27 @@ class _NavBar extends StatelessWidget {
     final t = context.bloom;
     final floating = style == NavBarStyle.floating || style == NavBarStyle.pill;
     final height = floating ? kNavBarFloatHeight : kNavBarHeight;
+
+    // Прижатые стили отличаются друг от друга только радиусом верхних углов.
+    // У «Купола» он вдвое больше темы и не мельче 28: на слабом радиусе темы он
+    // иначе повторял бы «Скруглённый», ради которого его и заводили отдельным
+    // видом.
+    final topRadius = switch (style) {
+      NavBarStyle.rounded => math.max(t.radius, 10.0),
+      NavBarStyle.dome => math.max(t.radius * 2, 28.0),
+      _ => 0.0,
+    };
+    // Форма панели целиком — она же форма дырки, которую меню таба вырезает в
+    // своём затемнении.
+    final radius = switch (style) {
+      NavBarStyle.bar || NavBarStyle.rounded || NavBarStyle.dome =>
+        BorderRadius.vertical(top: Radius.circular(topRadius)),
+      // Капсула круглая по определению, а не по теме: её углы — всегда половина
+      // высоты, что бы ни стояло в «Скруглениях».
+      NavBarStyle.pill => BorderRadius.circular(height / 2),
+      NavBarStyle.floating => BorderRadius.circular(t.radius),
+    };
+
     // Ряд у всех стилей один: три таба делят ширину поровну. Капсула от
     // плавающей панели отличается только радиусом — иконки в ней стоят там
     // же, а не жмутся к середине.
@@ -298,6 +368,11 @@ class _NavBar extends StatelessWidget {
               active: i == index,
               iconSize: floating ? _kNavFloatIcon : _kNavIcon,
               onTap: () => onTap(i),
+              // У таба без меню долгого нажатия нет вовсе — иначе палец получал
+              // бы отклик там, где ничего не откроется.
+              onLongPress: navMenuHasContent(i)
+                  ? () => onLongPress(i, radius)
+                  : null,
             ),
           ),
       ],
@@ -309,24 +384,16 @@ class _NavBar extends StatelessWidget {
       case NavBarStyle.bar:
       case NavBarStyle.rounded:
       case NavBarStyle.dome:
-        // Прижатые стили отличаются друг от друга только радиусом верхних
-        // углов. У «Купола» он вдвое больше темы и не мельче 28: на слабом
-        // радиусе темы он иначе повторял бы «Скруглённый», ради которого его и
-        // заводили отдельным видом.
-        final topRadius = switch (style) {
-          NavBarStyle.rounded => math.max(t.radius, 10.0),
-          NavBarStyle.dome => math.max(t.radius * 2, 28.0),
-          _ => 0.0,
-        };
         final rounded = topRadius > 0;
         // Заливка одна на все четыре стиля — та же `pill`, что у шапки главной
         // и строк настроек: бары обязаны читаться как элементы интерфейса, а
         // не как продолжение фона. В стекле она полупрозрачна, и сквозь бар
         // видно уходящий под него список.
         return GlassBox(
+          key: panelKey,
           // Не мельче 10 у «Скруглённого»: на нуле темы он ничем не
           // отличался бы от обычного.
-          borderRadius: BorderRadius.vertical(top: Radius.circular(topRadius)),
+          borderRadius: radius,
           // При скруглении рамка обязана быть одинаковой со всех сторон —
           // нижняя всё равно уходит за край экрана; у прямого бара линия
           // только сверху, поэтому ему нужна своя форма.
@@ -339,25 +406,21 @@ class _NavBar extends StatelessWidget {
         );
 
       // Плавающие: панель кончается до низа экрана, вырез системы отдан
-      // просвету под ней — иначе она села бы на жестовую полосу. Не в
-      // придачу к [_kFloatGap], а вместо него: сумма отрывала бы панель от
-      // низа сильнее, чем от боков, и на айфоне это особенно заметно.
+      // просвету под ней ([bottomEdgeInset]) — иначе она села бы на жестовую
+      // полосу.
       case NavBarStyle.floating:
       case NavBarStyle.pill:
         return Padding(
           padding: EdgeInsets.fromLTRB(
-            _kFloatGap,
+            kFloatGap,
             0,
-            _kFloatGap,
-            math.max(bottomSafeInset(context), _kFloatGap),
+            kFloatGap,
+            bottomEdgeInset(context),
           ),
           child: GlassBox(
+            key: panelKey,
             borderSide: BorderSide(color: t.ovlLine),
-            borderRadius: BorderRadius.circular(
-              // Капсула круглая по определению, а не по теме: её углы —
-              // всегда половина высоты, что бы ни стояло в «Скруглениях».
-              style == NavBarStyle.pill ? height / 2 : t.radius,
-            ),
+            borderRadius: radius,
             child: SizedBox(height: height, child: row),
           ),
         );
@@ -410,12 +473,16 @@ class _NavItem extends StatefulWidget {
     required this.active,
     required this.iconSize,
     required this.onTap,
+    required this.onLongPress,
   });
 
   final _NavSpec spec;
   final bool active;
   final double iconSize;
   final VoidCallback onTap;
+
+  /// Меню таба. `null` — у этого таба меню нет.
+  final VoidCallback? onLongPress;
 
   @override
   State<_NavItem> createState() => _NavItemState();
@@ -475,6 +542,15 @@ class _NavItemState extends State<_NavItem> with TickerProviderStateMixin {
       // material-ripple на голом фоне читается как посторонний круг.
       child: GestureDetector(
         onTap: _tap,
+        // Вкладка при этом НЕ переключается: `onLongPress` и `onTap` у одного
+        // распознавателя взаимоисключающие. Отклик пальцу даёт сама система —
+        // короткая вибрация ровно в момент срабатывания жеста.
+        onLongPress: widget.onLongPress == null
+            ? null
+            : () {
+                Feedback.forLongPress(context);
+                widget.onLongPress!();
+              },
         behavior: HitTestBehavior.opaque,
         child: Center(
           child: AnimatedBuilder(

@@ -14,19 +14,48 @@ import 'package:bloom/core/store/settings_store.dart';
 import 'package:bloom/features/settings/about_store.dart';
 import 'package:bloom/features/settings/data_transfer.dart';
 import 'package:bloom/features/settings/reset.dart';
+import 'package:bloom/features/settings/update_notes_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-ProviderContainer _container(JsonStore store, {ReleaseFetch? fetch}) {
+ProviderContainer _container(
+  JsonStore store, {
+  ReleaseFetch? fetch,
+  NotesFetch? notes,
+}) {
   final c = ProviderContainer(
     overrides: [
       jsonStoreProvider.overrideWithValue(store),
       if (fetch != null) releaseFetchProvider.overrideWithValue(fetch),
+      if (notes != null) notesFetchProvider.overrideWithValue(notes),
     ],
   );
   addTearDown(c.dispose);
   return c;
 }
+
+/// Манифест заметок из двух версий — в том же виде, в каком он лежит в
+/// `update-notes/update-notes.json`.
+const String _manifest = '''
+{
+  "1.0.0": {
+    "title": { "ru": "Первый релиз", "en": "First release" },
+    "date": "2026-08-20",
+    "pages": [
+      {
+        "title": { "ru": "Начало", "en": "Start" },
+        "body": { "ru": "- раз\\n- два", "en": "- one\\n- two" },
+        "image": "start.png"
+      }
+    ]
+  },
+  "1.0.1": {
+    "title": "Починки",
+    "date": "2026-09-01",
+    "pages": [{ "body": { "ru": "- поправили" } }]
+  }
+}
+''';
 
 Track _track(String id, {String name = 'Song'}) => Track(
   id: id,
@@ -271,6 +300,85 @@ void main() {
       );
       await c.read(aboutProvider.notifier).check();
       expect(c.read(aboutProvider).phase, UpdatePhase.error);
+    });
+  });
+
+  group('заметки к версиям', () {
+    test('заметка разбирается под язык, картинка достраивается', () async {
+      final c = _container(JsonStore.memory(), notes: (_) async => _manifest);
+      final ru = await c.read(updateNotesProvider).note('1.0.0', 'ru');
+      expect(ru!.title, 'Первый релиз');
+      expect(ru.date, '2026-08-20');
+      expect(ru.pages.single.title, 'Начало');
+      expect(ru.pages.single.body, '- раз\n- два');
+      expect(
+        ru.pages.single.image,
+        'https://raw.githubusercontent.com/$kUpdateRepo/main/update-notes/assets/start.png',
+      );
+
+      final en = await c.read(updateNotesProvider).note('1.0.0', 'en');
+      expect(en!.pages.single.body, '- one\n- two');
+      // Заголовок строкой, а не парой — один на оба языка.
+      final plain = await c.read(updateNotesProvider).note('1.0.1', 'en');
+      expect(plain!.title, 'Починки');
+      // Нужного языка нет — падаем на русский, а не на пустоту.
+      expect(plain.pages.single.body, '- поправили');
+    });
+
+    test('версии из манифеста идут новыми сверху', () async {
+      final c = _container(JsonStore.memory(), notes: (_) async => _manifest);
+      final history = await c.read(updateNotesProvider).history('ru');
+      expect([for (final h in history) h.version], ['1.0.1', '1.0.0']);
+      expect(history.first.title, 'Починки');
+    });
+
+    test('чужой версии в манифесте нет — заметки тоже', () async {
+      final c = _container(JsonStore.memory(), notes: (_) async => _manifest);
+      expect(await c.read(updateNotesProvider).note('9.9.9', 'ru'), isNull);
+    });
+
+    test('«Что нового» молчит на первом запуске и после — тоже', () async {
+      final store = JsonStore.memory();
+      final c = _container(store, notes: (_) async => _manifest);
+      final notes = c.read(updateNotesProvider);
+      // Первый запуск: прошлой версии не записано — шторки нет, но отметка о
+      // запуске появляется.
+      expect(await notes.whatsNew('1.0.0', 'ru'), isNull);
+      expect(notes.lastRun, '1.0.0');
+      // Второй запуск той же версии — тоже тишина.
+      expect(await notes.whatsNew('1.0.0', 'ru'), isNull);
+    });
+
+    test('после смены версии «Что нового» показывается один раз', () async {
+      final store = JsonStore.memory();
+      final c = _container(store, notes: (_) async => _manifest);
+      final notes = c.read(updateNotesProvider);
+      await notes.whatsNew('1.0.0', 'ru');
+      final shown = await notes.whatsNew('1.0.1', 'ru');
+      expect(shown, isNotNull);
+      expect(shown!.version, '1.0.1');
+      expect(await notes.whatsNew('1.0.1', 'ru'), isNull);
+    });
+
+    test('сеть отвалилась — берём кэш прошлой загрузки', () async {
+      final store = JsonStore.memory();
+      final first = _container(store, notes: (_) async => _manifest);
+      await first.read(updateNotesProvider).history('ru');
+
+      final offline = _container(
+        store,
+        notes: (_) async => throw Exception('нет сети'),
+      );
+      final history = await offline.read(updateNotesProvider).history('ru');
+      expect([for (final h in history) h.version], ['1.0.1', '1.0.0']);
+    });
+
+    test('кэша нет и сети нет — ошибка, а не пустой список', () async {
+      final c = _container(
+        JsonStore.memory(),
+        notes: (_) async => throw Exception('нет сети'),
+      );
+      expect(c.read(updateNotesProvider).history('ru'), throwsException);
     });
   });
 

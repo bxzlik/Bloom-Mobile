@@ -51,6 +51,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonPlay => 'Play';
 
   @override
+  String get commonContinue => 'Continue';
+
+  @override
   String get commonShuffle => 'Shuffle';
 
   @override
@@ -2809,18 +2812,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutVersion => 'Version';
 
   @override
-  String aboutBuild(String n) {
-    return 'build $n';
-  }
-
-  @override
-  String get aboutIdle => 'Updates are checked by hand';
-
-  @override
   String get aboutCheck => 'Check for updates';
-
-  @override
-  String get aboutChecking => 'Checking for updates…';
 
   @override
   String get aboutUptodate => 'You have the latest version';
@@ -2835,6 +2827,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutOpenRelease => 'Open the release page';
+
+  @override
+  String get updSection => 'Updates';
+
+  @override
+  String get updWhatsNew => 'What’s new';
+
+  @override
+  String get updWhatsNewSub => 'Notes for the installed version';
+
+  @override
+  String get updHistory => 'Update history';
+
+  @override
+  String get updHistorySub => 'Notes for previous versions';
+
+  @override
+  String get updHistoryEmpty => 'There are no release notes yet';
+
+  @override
+  String get updNotesEmpty => 'No notes for this version';
+
+  @override
+  String get updNotesError => 'Couldn’t load the release notes';
 
   @override
   String get sysImportExport => 'Import/Export';

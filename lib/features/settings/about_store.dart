@@ -33,17 +33,17 @@ enum UpdatePhase { idle, checking, uptodate, available, error }
 class AboutState {
   const AboutState({
     this.version = '',
-    this.build = '',
     this.phase = UpdatePhase.idle,
     this.latest = '',
     this.releaseUrl = '',
   });
 
   /// Версия установленной сборки (`1.0.0`); пусто — платформа не ответила.
+  ///
+  /// Номер сборки (`versionCode`) рядом не показываем: он растёт от каждой
+  /// сборки CI и человеку ничего не говорит, а сравнивать с релизом мы всё
+  /// равно будем по версии.
   final String version;
-
-  /// Номер сборки (`versionCode` / `CFBundleVersion`).
-  final String build;
 
   final UpdatePhase phase;
 
@@ -53,13 +53,11 @@ class AboutState {
 
   AboutState copyWith({
     String? version,
-    String? build,
     UpdatePhase? phase,
     String? latest,
     String? releaseUrl,
   }) => AboutState(
     version: version ?? this.version,
-    build: build ?? this.build,
     phase: phase ?? this.phase,
     latest: latest ?? this.latest,
     releaseUrl: releaseUrl ?? this.releaseUrl,
@@ -97,7 +95,7 @@ class AboutController extends Notifier<AboutState> {
     if (state.version.isNotEmpty) return;
     final info = await appVersion();
     if (info == null) return;
-    state = state.copyWith(version: info.version, build: info.build);
+    state = state.copyWith(version: info.version);
   }
 
   /// Сходить за последним релизом. Второй вызов, пока идёт первый, игнорируем.

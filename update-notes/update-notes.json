@@ -1,0 +1,15 @@
+{
+  "1.0.0": {
+    "title": { "ru": "Что нового в 1.0.0", "en": "What's new in 1.0.0" },
+    "date": "2026-08-20",
+    "pages": [
+      {
+        "title": { "ru": "Bloom на телефоне", "en": "Bloom on your phone" },
+        "body": {
+          "ru": "- Первый релиз мобильного Bloom: библиотека, поиск, плеер, «Волна» и офлайн-режим\n- Площадки те же, что на компьютере: YouTube Music, Яндекс.Музыка и SoundCloud\n- Оформление, жесты и плеер настраиваются в «Настройках»",
+          "en": "- The first release of Bloom for mobile: library, search, player, Wave and offline mode\n- The same platforms as on desktop: YouTube Music, Yandex Music and SoundCloud\n- Looks, gestures and the player are configured in Settings"
+        }
+      }
+    ]
+  }
+}

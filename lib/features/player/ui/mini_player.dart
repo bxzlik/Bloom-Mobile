@@ -23,6 +23,7 @@ import '../../../core/store/library_store.dart';
 import '../../../features/customization/custom_store.dart';
 import '../../../features/settings/swipe_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/marquee_text.dart';
 import '../../../shared/ui/track_flick.dart';
@@ -125,11 +126,7 @@ class MiniPlayer extends ConsumerWidget {
                 track: track,
                 fromFlick: true,
               ),
-        builder: (context, shift) => GestureDetector(
-          onTap: () => openFullPlayer(context),
-          onVerticalDragEnd: (d) {
-            if ((d.primaryVelocity ?? 0) < -240) openFullPlayer(context);
-          },
+        builder: (context, shift) => _DragToOpen(
           // Уезжает вся карточка: содержимое в ней прибито к краям, и одно
           // название, ползущее из-под кнопок, читалось бы как сбой раскладки.
           child: FlickSlide(
@@ -230,6 +227,51 @@ class MiniPlayer extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Карточка, с которой плеер вытягивают вверх.
+///
+/// Тап разворачивает плеер сразу, а вертикальная тяга ведёт панель за пальцем:
+/// маршрут встаёт на нуле и едет ровно на столько, на сколько ушёл палец.
+/// Отпустили выше половины (или бросили вверх) — панель доезжает, ниже —
+/// возвращается вниз и карточка остаётся на месте. Само движение живёт в
+/// [FullPlayerDrag], здесь только память о начатом жесте: она обязана пережить
+/// перерисовку карточки (а её перерисовывает каждый тик прогресса).
+class _DragToOpen extends StatefulWidget {
+  const _DragToOpen({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_DragToOpen> createState() => _DragToOpenState();
+}
+
+class _DragToOpenState extends State<_DragToOpen> {
+  /// Идущий разворот; `null` — панель никто не тянет.
+  FullPlayerDrag? _drag;
+
+  @override
+  void dispose() {
+    // Трек мог кончиться прямо посреди тяги — карточки не стало вместе с ним.
+    _drag?.abandon();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: () => openFullPlayer(context),
+    onVerticalDragStart: (_) => _drag = FullPlayerDrag.open(context),
+    onVerticalDragUpdate: (d) => _drag?.update(d.delta.dy),
+    onVerticalDragEnd: (d) {
+      _drag?.end(d.velocity.pixelsPerSecond.dy);
+      _drag = null;
+    },
+    onVerticalDragCancel: () {
+      _drag?.cancel();
+      _drag = null;
+    },
+    child: widget.child,
+  );
 }
 
 /// Кнопка в строке карточки. Какие из них стоят — настройка «Кнопки
@@ -353,11 +395,17 @@ class _MiniCover extends StatelessWidget {
           height: _coverSize,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(radius),
-            child: TrackSwap(
-              id: trackId,
-              kind: anim,
-              tuning: TrackSwapTuning.mini,
-              child: Cover(url: cover, size: _coverSize, radius: 0),
+            // Начало перелёта обложки в плеер — метка внутри рамки, см. её
+            // близнеца в `full_player.dart`.
+            child: CoverHero(
+              tag: kPlayerCoverTag,
+              shape: BorderRadius.circular(radius),
+              child: TrackSwap(
+                id: trackId,
+                kind: anim,
+                tuning: TrackSwapTuning.mini,
+                child: Cover(url: cover, size: _coverSize, radius: 0),
+              ),
             ),
           ),
         ),

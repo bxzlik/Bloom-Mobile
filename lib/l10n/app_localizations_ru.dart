@@ -51,6 +51,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonPlay => 'Воспроизвести';
 
   @override
+  String get commonContinue => 'Продолжить';
+
+  @override
   String get commonShuffle => 'Перемешать';
 
   @override
@@ -2864,18 +2867,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get aboutVersion => 'Версия';
 
   @override
-  String aboutBuild(String n) {
-    return 'сборка $n';
-  }
-
-  @override
-  String get aboutIdle => 'Обновления проверяются вручную';
-
-  @override
   String get aboutCheck => 'Проверить обновления';
-
-  @override
-  String get aboutChecking => 'Проверка обновлений…';
 
   @override
   String get aboutUptodate => 'Установлена последняя версия';
@@ -2890,6 +2882,30 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get aboutOpenRelease => 'Открыть страницу релиза';
+
+  @override
+  String get updSection => 'Обновления';
+
+  @override
+  String get updWhatsNew => 'Что нового';
+
+  @override
+  String get updWhatsNewSub => 'Заметки к установленной версии';
+
+  @override
+  String get updHistory => 'История обновлений';
+
+  @override
+  String get updHistorySub => 'Заметки к прошлым версиям';
+
+  @override
+  String get updHistoryEmpty => 'Заметок к версиям пока нет';
+
+  @override
+  String get updNotesEmpty => 'К этой версии заметок нет';
+
+  @override
+  String get updNotesError => 'Не удалось загрузить заметки';
 
   @override
   String get sysImportExport => 'Импорт/Экспорт';

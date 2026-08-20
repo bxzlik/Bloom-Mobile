@@ -19,6 +19,7 @@ import '../../../features/customization/ui/image_thumb.dart';
 import '../../../features/settings/swipe_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_toast.dart';
+import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/marquee_text.dart';
 import '../../../shared/ui/track_actions.dart';
 import '../../../shared/ui/track_flick.dart';
@@ -55,23 +56,207 @@ String trackCopyText(Track track) {
   return artist.isEmpty ? track.name : '${track.name} — $artist';
 }
 
+/// Сколько панель едет сама, когда её не ведут пальцем.
+const Duration _kSheetIn = Duration(milliseconds: 320);
+const Duration _kSheetOut = Duration(milliseconds: 260);
+
+/// Скорость броска (пикселей в секунду), после которой отпускание решает исход
+/// само, сколько бы пути палец ни прошёл.
+const double _kSheetFling = 500;
+
+/// Метка перелёта обложки между карточкой миниплеера и плеером. Одна на всё
+/// приложение: и карточка, и плеер в один момент времени бывают только по
+/// одному.
+const Object kPlayerCoverTag = 'player.cover';
+
 /// Открыть плеер: выезд снизу.
 void openFullPlayer(BuildContext context) {
-  Navigator.of(context, rootNavigator: true).push(
-    PageRouteBuilder<void>(
-      opaque: true,
-      transitionDuration: const Duration(milliseconds: 320),
-      reverseTransitionDuration: const Duration(milliseconds: 260),
-      pageBuilder: (_, _, _) => const FullPlayerPage(),
-      transitionsBuilder: (_, animation, _, child) => SlideTransition(
-        position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
-            .animate(
-              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-            ),
-        child: child,
+  Navigator.of(context, rootNavigator: true).push(FullPlayerRoute());
+}
+
+/// Маршрут плеера — тот же выезд снизу, но его умеют вести пальцем
+/// (см. [FullPlayerDrag]).
+class FullPlayerRoute extends PageRoute<void> {
+  /// Панель сейчас под пальцем — см. [buildTransitions].
+  bool _dragging = false;
+
+  /// Доля выезда: 0 — панель за нижним краем экрана, 1 — во весь экран.
+  ///
+  /// `TransitionRoute` держит контроллер под `@protected`, а жесту он нужен
+  /// снаружи: тянуть панель — это и значит задавать долю напрямую.
+  AnimationController get sheet => controller!;
+
+  @override
+  Duration get transitionDuration => _kSheetIn;
+
+  @override
+  Duration get reverseTransitionDuration => _kSheetOut;
+
+  @override
+  bool get opaque => true;
+
+  @override
+  bool get maintainState => true;
+
+  @override
+  Color? get barrierColor => null;
+
+  @override
+  String? get barrierLabel => null;
+
+  @override
+  Widget buildPage(BuildContext context, Animation<double> _, Animation<double> _) =>
+      const FullPlayerPage();
+
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> _,
+    Widget child,
+  ) {
+    // Под пальцем — никаких кривых: панель обязана стоять ровно там, где палец,
+    // а `easeOut` на живом жесте читается как «отстаёт, потом догоняет».
+    // Кривую на доводке задаёт сам [FullPlayerDrag] (`animateTo(curve:)`), а
+    // флаг гаснет, только когда доля уже 0 или 1 — там обе кривые дают одно и
+    // то же, и подмена не даёт скачка.
+    return SlideTransition(
+      position: animation.drive(
+        Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).chain(
+          CurveTween(curve: _dragging ? Curves.linear : Curves.easeOutCubic),
+        ),
       ),
-    ),
+      child: child,
+    );
+  }
+}
+
+/// Плеер под пальцем: одним и тем же жестом его разворачивают с карточки
+/// миниплеера и сворачивают обратно.
+///
+/// Пока панель ведут, маршрут уже в стопке — он просто стоит на своей доле
+/// выезда. Отпустили — [end] решает по пройденному пути и скорости, куда
+/// доводить, и либо доигрывает выезд, либо снимает маршрут.
+class FullPlayerDrag {
+  FullPlayerDrag._(this._navigator, this._route, this._height);
+
+  final NavigatorState _navigator;
+  final FullPlayerRoute _route;
+
+  /// Высота экрана: на неё панель едет целиком, из неё считается доля.
+  final double _height;
+
+  bool _settled = false;
+  bool _released = false;
+
+  /// Начать разворот с карточки миниплеера.
+  static FullPlayerDrag? open(BuildContext context) {
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final height = MediaQuery.sizeOf(context).height;
+    if (height <= 0) return null;
+    final route = FullPlayerRoute();
+    // Порядок здесь важен, и все три шага обязаны уложиться в один кадр.
+    //
+    // `push` ставит маршрут и синхронно пускает выезд вперёд
+    // (`TransitionRoute.didPush`), а заодно с ним заводится перелёт обложки.
+    // Объяви мы жест раньше — перелёта бы не было: `HeroController` не
+    // начинает его, когда навигатором уже кто-то водит.
+    navigator.push(route);
+    // Теперь объявляем жест: с ним перелёт не оборвётся, если панель успеет
+    // вернуться ровно в ноль, пока палец ещё на экране.
+    navigator.didStartUserGesture();
+    route._dragging = true;
+    // И только затем гасим автоматический выезд — сеттер `value` сам
+    // останавливает анимацию. Кадра между пушем и этой строкой не бывает:
+    // навигатор ставит маршрут синхронно.
+    route.sheet.value = 0;
+    return FullPlayerDrag._(navigator, route, height);
+  }
+
+  /// Начать свёртывание из открытого плеера.
+  static FullPlayerDrag? close(BuildContext context) {
+    final route = ModalRoute.of(context);
+    // Не свой маршрут (плеер открыт как угодно ещё) или сверху лежит шторка —
+    // тянуть нечего.
+    if (route is! FullPlayerRoute || !route.isCurrent) return null;
+    final navigator = route.navigator;
+    final height = MediaQuery.sizeOf(context).height;
+    if (navigator == null || height <= 0) return null;
+    // Здесь порядок обратный: перелёт обложки НАЗАД заводит как раз объявление
+    // жеста. Снять маршрут в этот момент нельзя — жест ещё могут отменить.
+    navigator.didStartUserGesture();
+    route._dragging = true;
+    return FullPlayerDrag._(navigator, route, height);
+  }
+
+  /// Палец сдвинулся на [dy] пикселей (вниз — положительные).
+  void update(double dy) {
+    if (_settled) return;
+    _route.sheet.value = (_route.sheet.value - dy / _height).clamp(0.0, 1.0);
+  }
+
+  /// Палец отпустили; [velocity] — вертикальная скорость в пикселях в секунду.
+  void end(double velocity) => _settle(
+    velocity.abs() > _kSheetFling ? velocity < 0 : _route.sheet.value >= 0.5,
   );
+
+  /// Жест перебили (второй палец, системный перехват) — доводим по тому, где
+  /// панель осталась.
+  void cancel() => _settle(_route.sheet.value >= 0.5);
+
+  void _settle(bool open) {
+    if (_settled) return;
+    _settled = true;
+    final sheet = _route.sheet;
+    // Доводка идёт со скоростью полного выезда: остаток пути короче — значит и
+    // времени на него меньше, иначе последние проценты ползут те же 320 мс.
+    final rest = open ? 1 - sheet.value : sheet.value;
+    final duration = Duration(
+      milliseconds: (rest * _kSheetIn.inMilliseconds).round().clamp(
+        90,
+        _kSheetIn.inMilliseconds,
+      ),
+    );
+    final TickerFuture done;
+    if (open) {
+      done = sheet.animateTo(1, duration: duration, curve: Curves.easeOutCubic);
+    } else {
+      // Панель уезжает вниз не сама по себе: маршрут снимает навигатор, и его
+      // же `didPop` отматывает выезд назад. Доигрываем ту же анимацию своей
+      // кривой и своим временем — `reverse` шёл бы линейно и все 260 мс.
+      //
+      // Доля ноль — панель уже за краем, отматывать нечего: маршрут закроется
+      // тем же кадром, и трогать его контроллер после этого нельзя.
+      final atRest = sheet.value == 0;
+      _navigator.pop();
+      done = atRest
+          ? TickerFuture.complete()
+          : sheet.animateBack(0, duration: duration, curve: Curves.easeOutCubic);
+    }
+    done.whenCompleteOrCancel(_release);
+  }
+
+  /// Виджет, с которого вели жест, ушёл из дерева прямо посреди тяги: трек
+  /// кончился и карточка пропала, плеер закрыли за нас опустевшей очередью.
+  /// Панель в обоих случаях доводит себя сама, а вот жест обязан кончиться
+  /// здесь — пока навигатор считает, что им водят, он глушит перелёты и держит
+  /// страницы нечувствительными к тапам.
+  void abandon() {
+    if (_settled) return;
+    _settled = true;
+    // Не этим кадром: виджеты уходят из дерева посреди сборки, а о конце жеста
+    // навигатор рассказывает наблюдателям, и `HeroController` на такой новости
+    // лезет в оверлей.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _release());
+  }
+
+  /// Конец жеста: панель доехала, маршрут дальше живёт сам.
+  void _release() {
+    if (_released) return;
+    _released = true;
+    _route._dragging = false;
+    _navigator.didStopUserGesture();
+  }
 }
 
 class FullPlayerPage extends ConsumerStatefulWidget {
@@ -82,6 +267,16 @@ class FullPlayerPage extends ConsumerStatefulWidget {
 }
 
 class _FullPlayerPageState extends ConsumerState<FullPlayerPage> {
+  /// Идущее свёртывание пальцем; `null` — панель никто не тянет.
+  FullPlayerDrag? _drag;
+
+  @override
+  void dispose() {
+    // Плеер могли закрыть за нас (очередь опустела) прямо посреди тяги.
+    _drag?.abandon();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -139,9 +334,18 @@ class _FullPlayerPageState extends ConsumerState<FullPlayerPage> {
     return Scaffold(
       backgroundColor: t.bg,
       body: GestureDetector(
-        // Свайп вниз по всему экрану — закрыть, как в референсе.
+        // Тяга вниз по всему экрану — свернуть. Панель едет за пальцем и
+        // возвращается на место, если его отпустили на полпути: тот же жест,
+        // которым её вытянули с карточки миниплеера.
+        onVerticalDragStart: (_) => _drag = FullPlayerDrag.close(context),
+        onVerticalDragUpdate: (d) => _drag?.update(d.delta.dy),
         onVerticalDragEnd: (d) {
-          if ((d.primaryVelocity ?? 0) > 260) Navigator.of(context).maybePop();
+          _drag?.end(d.velocity.pixelsPerSecond.dy);
+          _drag = null;
+        },
+        onVerticalDragCancel: () {
+          _drag?.cancel();
+          _drag = null;
         },
         // Горизонтальный жест ловится со всего экрана, а едут от него обложка
         // и подписи: тянуть плеер целиком незачем — шапка и транспорт к треку
@@ -167,9 +371,11 @@ class _FullPlayerPageState extends ConsumerState<FullPlayerPage> {
                   fromFlick: true,
                 ),
           builder: (context, shift) => SafeArea(
-            // Низ — не `SafeArea`, а [bottomSafeInset]: на iOS полный вырез
-            // под home indicator (34) поднял бы ряд инструментов заметно выше,
-            // чем на андроиде.
+            // Низ — не `SafeArea`, а [bottomEdgeInset]: ряд инструментов
+            // обязан кончаться там же, где кромка таб-бара под списком,
+            // иначе открытие плеера выглядит как прыжок раскладки. Заодно
+            // на iOS полный вырез под home indicator (34) поднял бы весь низ
+            // заметно выше, чем на андроиде.
             bottom: false,
             child: track == null
                 ? const SizedBox.shrink()
@@ -179,7 +385,7 @@ class _FullPlayerPageState extends ConsumerState<FullPlayerPage> {
                       16,
                       14,
                       16,
-                      bottomSafeInset(context),
+                      bottomEdgeInset(context),
                     ),
                     child: Column(
                       children: [
@@ -239,10 +445,6 @@ class _FullPlayerPageState extends ConsumerState<FullPlayerPage> {
                         const _Transport(),
                         const SizedBox(height: 12),
                         _Tools(queueCount: state.queue.length),
-                        // Воздух до края экрана: вся связка прогресс —
-                        // транспорт — инструменты стоит выше кромки, обложка
-                        // подожмётся сама (она во `Flexible`).
-                        const SizedBox(height: 22),
                       ],
                     ),
                   ),
@@ -342,29 +544,38 @@ class _Cover extends ConsumerWidget {
               height: side,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(radius),
-                child: VinylSpin(
-                  // Вращается вся стопка слоёв смены трека, а не одна текущая
-                  // картинка: иначе приезжающая обложка встала бы ровно, а
-                  // уезжающая продолжала крутиться — два разных движения в
-                  // одном кадре.
-                  //
-                  // Начальное состояние берём у плеера (`playing`), дальше за
-                  // ним следит поток: он отдаёт значение не сразу, а первый
-                  // кадр диск уже обязан либо крутиться, либо стоять.
-                  enabled: vinyl,
-                  spinning: player.playing,
-                  playing: player.playingStream,
-                  child: TrackSwap(
-                    id: track.id,
-                    kind: anim.cover,
-                    child: Cover(
-                      // Своя обложка из «Кастомизации» важнее обложки трека —
-                      // десктопный `coverOverride`.
-                      url:
-                          ref.watch(customSrcProvider(CustomCtx.cover)) ??
-                          track.cover,
-                      size: side,
-                      radius: 0,
+                // Конец перелёта с карточки миниплеера. Метка стоит ВНУТРИ
+                // рамки, а не снаружи: летящая копия обрезается сама, по
+                // скруглению обоих концов, и своей рамки в ней быть не должно —
+                // иначе на старте, в 44 пикселя карточки, она показывала бы
+                // радиус большой обложки.
+                child: CoverHero(
+                  tag: kPlayerCoverTag,
+                  shape: BorderRadius.circular(radius),
+                  child: VinylSpin(
+                    // Вращается вся стопка слоёв смены трека, а не одна текущая
+                    // картинка: иначе приезжающая обложка встала бы ровно, а
+                    // уезжающая продолжала крутиться — два разных движения в
+                    // одном кадре.
+                    //
+                    // Начальное состояние берём у плеера (`playing`), дальше за
+                    // ним следит поток: он отдаёт значение не сразу, а первый
+                    // кадр диск уже обязан либо крутиться, либо стоять.
+                    enabled: vinyl,
+                    spinning: player.playing,
+                    playing: player.playingStream,
+                    child: TrackSwap(
+                      id: track.id,
+                      kind: anim.cover,
+                      child: Cover(
+                        // Своя обложка из «Кастомизации» важнее обложки трека —
+                        // десктопный `coverOverride`.
+                        url:
+                            ref.watch(customSrcProvider(CustomCtx.cover)) ??
+                            track.cover,
+                        size: side,
+                        radius: 0,
+                      ),
                     ),
                   ),
                 ),

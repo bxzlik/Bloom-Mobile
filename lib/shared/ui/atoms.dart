@@ -5,7 +5,7 @@
 /// `iconFg`, как в десктопном Bloom.
 library;
 
-import 'dart:math' show cos, min, pi;
+import 'dart:math' show cos, max, min, pi;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/foundation.dart'
@@ -62,6 +62,19 @@ double bottomSafeInset(BuildContext context) {
       : inset;
 }
 
+/// Просвет между плавающей панелью и краями экрана: карточкой миниплеера,
+/// плавающим таб-баром, рядом инструментов в плеере.
+const double kFloatGap = 8;
+
+/// Нижний отступ панели, которая кончается до края экрана.
+///
+/// Системный вырез идёт ВМЕСТО просвета, а не в придачу к нему: сумма
+/// отрывала бы панель от низа сильнее, чем от боков. Одна функция на плеер и
+/// на таб-бар намеренно — их нижние кромки обязаны стоять на одной линии,
+/// иначе переход из списка в плеер выглядит как прыжок раскладки (поймал он).
+double bottomEdgeInset(BuildContext context) =>
+    max(bottomSafeInset(context), kFloatGap);
+
 /// Запас снизу под плавающие бары каркаса — миниплеер и таб-бар.
 ///
 /// Каркас держит их поверх содержимого (`Scaffold.extendBody`), поэтому список
@@ -112,6 +125,80 @@ class SvgIcon extends StatelessWidget {
       colorFilter: ColorFilter.mode(
         color ?? context.bloom.iconFg,
         BlendMode.srcIn,
+      ),
+    );
+  }
+}
+
+/// Главное действие блока: значок и подпись по центру, во всю ширину, сплошной
+/// заливкой акцентом.
+///
+/// От [WideButton] (`custom_widgets.dart`) отличается именно заливкой: та
+/// стеклянная и служит второстепенным действиям, эта — тому, ради чего на блок
+/// смотрят («Проверить обновления», «Готово» в заметках). Скругление берётся из
+/// темы, чтобы совпадать с карточкой рядом.
+class AccentWideButton extends StatelessWidget {
+  const AccentWideButton({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.busy = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  /// Действие идёт: вместо значка крутилка, тап не проходит.
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+
+    return Material(
+      color: t.accent,
+      borderRadius: BorderRadius.circular(t.radius),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: busy ? null : onTap,
+        highlightColor: t.accentText.withValues(alpha: 0.10),
+        splashColor: t.accentText.withValues(alpha: 0.08),
+        child: SizedBox(
+          height: 54,
+          width: double.infinity,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Крутилка ровно того же размера, что значок: ряд не дёргается,
+              // когда действие начинается и кончается.
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: busy
+                    ? CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        color: t.accentText,
+                      )
+                    : Icon(icon, size: 20, color: t.accentText),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.titleSmall?.copyWith(
+                    color: t.accentText,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
