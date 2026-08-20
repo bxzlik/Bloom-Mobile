@@ -3,8 +3,13 @@
 /// Вид взят с десктопного `#miniPlayer` в режиме `mp-floating`: сплошная
 /// заливка `pill` (сама карточка непрозрачна), рамка `ovl-line`, радиус
 /// темы, отступы по 8. Карточка и правда плавает: каркас пускает содержимое
-/// под неё, и в поля по краям видно список. Тап и свайп вверх разворачивают
-/// плеер.
+/// под неё, и в поля по краям видно список.
+///
+/// Целиком карточку здесь никто не собирает: её заливку и место держит панель
+/// плеера (`PlayerSheet`) — карточка из неё вырастает, и рисовать её дважды
+/// нельзя. Отсюда панель берёт содержимое строки ([MiniCardRow]), размеры
+/// ([kMiniCardHeight], [miniCardRadius]) и тон заливки ([miniCardTint]), а бар
+/// каркаса — пустое место под неё ([MiniCardSlot]).
 ///
 /// Фон, индикаторы прогресса, форма обложки и скругление углов настраиваются —
 /// [MiniStyle], порт десктопных `mp*`-префов.
@@ -21,23 +26,18 @@ import '../../../core/entities/entities.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../features/customization/custom_store.dart';
-import '../../../features/settings/swipe_store.dart';
 import '../../../shared/ui/atoms.dart';
-import '../../../shared/ui/cover_hero.dart';
-import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/marquee_text.dart';
-import '../../../shared/ui/track_flick.dart';
-import '../../../shared/ui/track_swipes.dart';
 import '../mini_style_store.dart';
 import '../player_controller.dart';
 import '../track_anim_store.dart';
-import 'full_player.dart';
 import 'track_swap.dart';
 
 /// Высота карточки. Раньше её занимали и чужие экраны — отмеряли себе запас
 /// снизу, чтобы список не уезжал под плеер. Теперь запас берётся из
-/// `bottomBarsInset`, и число нужно только самой карточке.
-const double _cardHeight = 64;
+/// `bottomBarsInset`, и число нужно самой карточке да панели плеера, которая
+/// из неё растёт.
+const double kMiniCardHeight = 64;
 
 /// Сторона обложки в карточке.
 const double _coverSize = 44;
@@ -72,15 +72,57 @@ double _progressFrac(WidgetRef ref) {
 Color _artistColor(BloomTokens t) => t.text.withValues(alpha: 0.75);
 
 /// Скругление углов карточки в пикселях.
-double _cardRadius(MiniRadius radius, double themeRadius) => switch (radius) {
-  MiniRadius.none => 0,
-  MiniRadius.soft => themeRadius * 0.5,
-  MiniRadius.rounded => themeRadius,
-  MiniRadius.pill => _cardHeight / 2,
-};
+double miniCardRadius(MiniRadius radius, double themeRadius) =>
+    switch (radius) {
+      MiniRadius.none => 0,
+      MiniRadius.soft => themeRadius * 0.5,
+      MiniRadius.rounded => themeRadius,
+      MiniRadius.pill => kMiniCardHeight / 2,
+    };
 
-class MiniPlayer extends ConsumerWidget {
-  const MiniPlayer({super.key});
+/// Тон заливки карточки: осветлённый доминант обложки в режиме «Цвет обложки».
+/// `null` — заливка темы (в том числе пока цвет ещё считается и если обложку не
+/// прочитать).
+Color? miniCardTint(WidgetRef ref, MiniStyle style) {
+  if (style.bg != MiniBg.coverColor) return null;
+  return ref.watch(miniCoverColorProvider(miniCardCover(ref))).value;
+}
+
+/// Обложка, которую карточка показывает на самом деле: своя из «Кастомизации»
+/// важнее обложки трека — десктопный `coverOverride`. Она же идёт в фон
+/// карточки и в цвет заливки: считать надо с той картинки, которую видно.
+String? miniCardCover(WidgetRef ref) =>
+    ref.watch(customSrcProvider(CustomCtx.cover)) ??
+    ref.watch(playbackProvider.select((s) => s.track?.cover));
+
+/// Место карточки в нижних барах каркаса.
+///
+/// Саму карточку рисует не бар, а панель плеера (`PlayerSheet`): панель из неё
+/// вырастает и обязана лежать ПОВЕРХ таб-бара, а из бара наружу не вылезешь.
+/// Бар держит под карточку пустое место той же высоты — иначе таб-бар
+/// подпрыгнул бы вверх, списки потеряли бы нижний запас (`bottomBarsInset`
+/// считается по высоте баров), а всплывающие тосты выезжали бы из-под панели.
+class MiniCardSlot extends ConsumerWidget {
+  const MiniCardSlot({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final playing = ref.watch(playbackProvider.select((s) => s.track != null));
+    // Просвет под карточкой (её нижние 8) входит в место: панель отбита от
+    // таб-бара ровно на него.
+    return SizedBox(height: playing ? kMiniCardHeight + kFloatGap : 0);
+  }
+}
+
+/// Содержимое карточки: фон-обложка, заливка прогресса, строка с обложкой,
+/// подписями и кнопками, полоска прогресса по нижней кромке.
+///
+/// Ровно [kMiniCardHeight] в высоту и без своей заливки: заливку держит панель,
+/// которая эту строку и растит. По мере разворота строка гаснет — поэтому
+/// смысла считать её содержимое, когда её не видно, нет (панель её тогда просто
+/// не строит).
+class MiniCardRow extends ConsumerWidget {
+  const MiniCardRow({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -90,188 +132,81 @@ class MiniPlayer extends ConsumerWidget {
     if (track == null) return const SizedBox.shrink();
 
     final theme = Theme.of(context).textTheme;
-
-    final swipes = ref.watch(swipeProvider).of(SwipeZone.mini);
     final anim = ref.watch(trackAnimProvider).of(TrackAnimSurface.mini);
     final style = ref.watch(miniStyleProvider);
-
-    // Своя обложка из «Кастомизации» важнее обложки трека — десктопный
-    // `coverOverride`. Она же идёт в фон карточки и в цвет фона: считать надо с
-    // той картинки, которую видно.
-    final cover = ref.watch(customSrcProvider(CustomCtx.cover)) ?? track.cover;
-    // Пока цвет считается (или если обложку не прочитать) — заливка темы.
-    final tint = style.bg == MiniBg.coverColor
-        ? ref.watch(miniCoverColorProvider(cover)).value
-        : null;
+    final cover = miniCardCover(ref);
+    final tint = miniCardTint(ref, style);
     final visible = MiniButton.values.where(style.hasButton).toList();
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-      child: TrackFlick(
-        onLeft: swipes.left == SwipeAction.none
-            ? null
-            : () => runSwipeAction(
-                context,
-                ref,
-                swipes.left,
-                track: track,
-                fromFlick: true,
-              ),
-        onRight: swipes.right == SwipeAction.none
-            ? null
-            : () => runSwipeAction(
-                context,
-                ref,
-                swipes.right,
-                track: track,
-                fromFlick: true,
-              ),
-        builder: (context, shift) => _DragToOpen(
-          // Уезжает вся карточка: содержимое в ней прибито к краям, и одно
-          // название, ползущее из-под кнопок, читалось бы как сбой раскладки.
-          child: FlickSlide(
-            shift: shift,
-            child: GlassBox(
-              color: tint,
-              // Стекло — только у фона «Тема», как на ПК (`body.glass-mode
-              // .mp-bg-theme #miniPlayer`). У «Цвета обложки» заливка и так
-              // тёмная (L 0.09–0.18), и полупрозрачной поверх тёмного фона она
-              // сходится с ним в чёрный — настройка фона перестаёт читаться.
-              // Фон-картинка непрозрачна сама по себе, и размывать под ней
-              // подложку незачем.
-              enabled: style.bg == MiniBg.theme,
-              borderSide: BorderSide(color: t.ovlLine),
-              borderRadius: BorderRadius.circular(
-                _cardRadius(style.radius, t.radius),
-              ),
-              child: SizedBox(
-                height: _cardHeight,
-                child: Stack(
-                  children: [
-                    // Фон-обложка и заливка прогресса лежат ПОД содержимым —
-                    // порядком в стопке, а не z-index, как на ПК.
-                    if (style.bg == MiniBg.cover)
-                      Positioned.fill(child: _CoverBackdrop(cover: cover)),
-                    if (style.progress.fill)
-                      Positioned.fill(child: _FillProgress(tint: tint)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Row(
-                        children: [
-                          _MiniCover(
-                            trackId: track.id,
-                            cover: cover,
-                            anim: anim.cover,
-                            shape: style.shape,
-                            ring: style.progress.ring,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TrackSwap(
-                              id: track.id,
-                              kind: anim.text,
-                              tuning: TrackSwapTuning.mini,
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Название бежит, если не влезло, — как
-                                  // `#mpTitle` на ПК; артист под ним остаётся с
-                                  // эллипсисом.
-                                  MarqueeText(
-                                    track.name,
-                                    style: theme.titleSmall,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    state.error ?? track.artist,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: theme.bodySmall?.copyWith(
-                                      color: state.error != null
-                                          ? t.sysFavIco
-                                          : _artistColor(t),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          // Порядок кнопок задан самим перечислением, набор —
-                          // настройкой; убранная не оставляет после себя
-                          // зазора, иначе подпись упиралась бы в пустоту.
-                          for (var i = 0; i < visible.length; i++) ...[
-                            SizedBox(width: i == 0 ? 8 : 4),
-                            _MiniButton(
-                              button: visible[i],
-                              track: track,
-                              loading: state.loading,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    if (style.progress.line)
-                      const Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: _Hairline(),
-                      ),
-                  ],
+    return SizedBox(
+      height: kMiniCardHeight,
+      child: Stack(
+        children: [
+          // Фон-обложка и заливка прогресса лежат ПОД содержимым — порядком в
+          // стопке, а не z-index, как на ПК.
+          if (style.bg == MiniBg.cover)
+            Positioned.fill(child: _CoverBackdrop(cover: cover)),
+          if (style.progress.fill)
+            Positioned.fill(child: _FillProgress(tint: tint)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              children: [
+                _MiniCover(
+                  trackId: track.id,
+                  cover: cover,
+                  anim: anim.cover,
+                  shape: style.shape,
+                  ring: style.progress.ring,
                 ),
-              ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TrackSwap(
+                    id: track.id,
+                    kind: anim.text,
+                    tuning: TrackSwapTuning.mini,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Название бежит, если не влезло, — как `#mpTitle` на
+                        // ПК; артист под ним остаётся с эллипсисом.
+                        MarqueeText(track.name, style: theme.titleSmall),
+                        const SizedBox(height: 2),
+                        Text(
+                          state.error ?? track.artist,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.bodySmall?.copyWith(
+                            color: state.error != null
+                                ? t.sysFavIco
+                                : _artistColor(t),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Порядок кнопок задан самим перечислением, набор —
+                // настройкой; убранная не оставляет после себя зазора, иначе
+                // подпись упиралась бы в пустоту.
+                for (var i = 0; i < visible.length; i++) ...[
+                  SizedBox(width: i == 0 ? 8 : 4),
+                  _MiniButton(
+                    button: visible[i],
+                    track: track,
+                    loading: state.loading,
+                  ),
+                ],
+              ],
             ),
           ),
-        ),
+          if (style.progress.line)
+            const Positioned(left: 0, right: 0, bottom: 0, child: _Hairline()),
+        ],
       ),
     );
   }
-}
-
-/// Карточка, с которой плеер вытягивают вверх.
-///
-/// Тап разворачивает плеер сразу, а вертикальная тяга ведёт панель за пальцем:
-/// маршрут встаёт на нуле и едет ровно на столько, на сколько ушёл палец.
-/// Отпустили выше половины (или бросили вверх) — панель доезжает, ниже —
-/// возвращается вниз и карточка остаётся на месте. Само движение живёт в
-/// [FullPlayerDrag], здесь только память о начатом жесте: она обязана пережить
-/// перерисовку карточки (а её перерисовывает каждый тик прогресса).
-class _DragToOpen extends StatefulWidget {
-  const _DragToOpen({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_DragToOpen> createState() => _DragToOpenState();
-}
-
-class _DragToOpenState extends State<_DragToOpen> {
-  /// Идущий разворот; `null` — панель никто не тянет.
-  FullPlayerDrag? _drag;
-
-  @override
-  void dispose() {
-    // Трек мог кончиться прямо посреди тяги — карточки не стало вместе с ним.
-    _drag?.abandon();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: () => openFullPlayer(context),
-    onVerticalDragStart: (_) => _drag = FullPlayerDrag.open(context),
-    onVerticalDragUpdate: (d) => _drag?.update(d.delta.dy),
-    onVerticalDragEnd: (d) {
-      _drag?.end(d.velocity.pixelsPerSecond.dy);
-      _drag = null;
-    },
-    onVerticalDragCancel: () {
-      _drag?.cancel();
-      _drag = null;
-    },
-    child: widget.child,
-  );
 }
 
 /// Кнопка в строке карточки. Какие из них стоят — настройка «Кнопки
@@ -395,17 +330,11 @@ class _MiniCover extends StatelessWidget {
           height: _coverSize,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(radius),
-            // Начало перелёта обложки в плеер — метка внутри рамки, см. её
-            // близнеца в `full_player.dart`.
-            child: CoverHero(
-              tag: kPlayerCoverTag,
-              shape: BorderRadius.circular(radius),
-              child: TrackSwap(
-                id: trackId,
-                kind: anim,
-                tuning: TrackSwapTuning.mini,
-                child: Cover(url: cover, size: _coverSize, radius: 0),
-              ),
+            child: TrackSwap(
+              id: trackId,
+              kind: anim,
+              tuning: TrackSwapTuning.mini,
+              child: Cover(url: cover, size: _coverSize, radius: 0),
             ),
           ),
         ),

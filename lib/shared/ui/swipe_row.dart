@@ -71,10 +71,11 @@ class SwipeRow extends StatefulWidget {
 
 class _SwipeRowState extends State<SwipeRow>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _anim = AnimationController(
-    vsync: this,
-    duration: _snapBack,
-  )..addListener(_onTick);
+  /// Заводится в [initState], а не ленивым полем: строку, которую ни разу не
+  /// свайпнули, первым и единственным трогал бы `dispose()`, а `vsync` оттуда
+  /// лезет за `TickerMode` в уже мёртвый контекст и роняет само освобождение
+  /// (та же ловушка, что была в `lyrics_view.dart`).
+  late final AnimationController _anim;
 
   Animation<double>? _slide;
 
@@ -83,6 +84,13 @@ class _SwipeRowState extends State<SwipeRow>
 
   /// Порог пройден: значок подрос, отпускание сработает.
   bool _armed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _anim = AnimationController(vsync: this, duration: _snapBack)
+      ..addListener(_onTick);
+  }
 
   @override
   void dispose() {

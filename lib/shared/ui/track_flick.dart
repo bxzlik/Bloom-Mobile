@@ -47,12 +47,20 @@ class TrackFlick extends StatefulWidget {
 class _TrackFlickState extends State<TrackFlick>
     with SingleTickerProviderStateMixin {
   final ValueNotifier<double> _shift = ValueNotifier<double>(0);
-  late final AnimationController _anim = AnimationController(
-    vsync: this,
-    duration: _snap,
-  )..addListener(() => _shift.value = _slide?.value ?? 0);
+  /// Заводится в [initState], а не ленивым полем: обложку, которую ни разу не
+  /// перелистнули, первым и единственным трогал бы `dispose()`, а `vsync`
+  /// оттуда лезет за `TickerMode` в уже мёртвый контекст и роняет само
+  /// освобождение (та же ловушка, что была в `lyrics_view.dart`).
+  late final AnimationController _anim;
 
   Animation<double>? _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _anim = AnimationController(vsync: this, duration: _snap)
+      ..addListener(() => _shift.value = _slide?.value ?? 0);
+  }
 
   @override
   void dispose() {

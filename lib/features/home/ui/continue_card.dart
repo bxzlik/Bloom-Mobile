@@ -18,7 +18,7 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/track_actions.dart';
 import '../../player/player_controller.dart';
 import '../../player/resume_store.dart';
-import '../../player/ui/full_player.dart';
+import '../../player/ui/player_sheet.dart';
 import '../../settings/cover_accent.dart';
 
 class ContinueCard extends ConsumerWidget {
@@ -71,7 +71,7 @@ class _LiveState extends ConsumerState<_Live> {
       track: track,
       progress: value,
       playing: playing,
-      onTap: () => openFullPlayer(context),
+      onTap: expandPlayerSheet,
       onPlay: () => ref.read(playbackProvider.notifier).toggle(),
       onSeek: ms <= 0 ? null : (v) => setState(() => _drag = v),
       onSeekEnd: ms <= 0

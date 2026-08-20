@@ -24,6 +24,7 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/marquee_text.dart';
 import '../../detail/detail_nav.dart';
 import '../play_source.dart';
+import 'player_sheet.dart';
 
 /// Размеры пилюли. Вынесены сюда, а не размазаны по разметке: шапка плеера
 /// собирается из них и из [kHeaderControl] — высота у пилюли та же, что у
@@ -38,7 +39,10 @@ const double _gap = 10;
 /// библиотеки те же страницы открываются под таб-баром и миниплеером, и
 /// открытая отсюда обязана выглядеть так же (см. [currentBranchNavigator]).
 void openPlaySource(BuildContext context, PlaySource source) {
+  // Шторки над плеером снимает навигатор, а сам плеер — не маршрут: он слой
+  // каркаса и складывается своим вызовом (см. `PlayerSheet`).
   Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst);
+  collapsePlayerSheet();
   switch (source) {
     case LibSource(:final listId):
       // Раздел библиотеки живёт маршрутом — заодно переключит вкладку.

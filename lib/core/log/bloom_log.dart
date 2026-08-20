@@ -23,6 +23,8 @@ library;
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import '../store/app_dirs.dart';
 
 /// Сколько записей держим. 500 строк — это единицы сотен килобайт и заведомо
@@ -94,6 +96,15 @@ class BloomLog {
   bool get isEmpty => _entries.isEmpty;
   int get length => _entries.length;
 
+  /// Сколько записей сейчас — для подписи «Настройки → Система → Журнал
+  /// работы».
+  ///
+  /// Просто числом это не работает: страница журнала лежит ПОВЕРХ «Системы»
+  /// (вложенный маршрут), та остаётся в стопке живой и после возврата сама не
+  /// перестраивается — подпись так и держала бы число, снятое при открытии
+  /// экрана, хотя журнал уже очищен.
+  final ValueNotifier<int> count = ValueNotifier(0);
+
   /// Поднять журнал: прочитать файл прошлых запусков. Зовётся из `main()` до
   /// первого кадра, как и остальные хранилища.
   Future<void> open() async {
@@ -113,12 +124,14 @@ class BloomLog {
       // Нет места, нет прав, битый файл — журнал живёт в памяти. Падать из-за
       // диагностики нельзя: она сама ничего не решает.
     }
+    _bump();
   }
 
   void add(LogLevel level, String tag, String message) {
     _entries.add(LogEntry(DateTime.now(), level, tag, _flatten(message)));
     _trim();
     _schedule();
+    _bump();
   }
 
   void info(String tag, String message) => add(LogLevel.info, tag, message);
@@ -133,6 +146,7 @@ class BloomLog {
 
   Future<void> clear() async {
     _entries.clear();
+    _bump();
     _debounce?.cancel();
     _debounce = null;
     try {
@@ -165,6 +179,17 @@ class BloomLog {
     if (_file == null) return;
     _debounce?.cancel();
     _debounce = Timer(_flushDelay, flush);
+  }
+
+  /// Сообщить подписчикам новое число записей.
+  ///
+  /// Через микрозадачу, а не сразу: запись в журнал прилетает и из
+  /// обработчика необработанных ошибок, а тот срабатывает в том числе посреди
+  /// построения кадра — правка [count] оттуда роняла бы слушателя жалобой на
+  /// `setState` во время build. Микрозадача выполняется уже после кадра.
+  void _bump() {
+    if (count.value == _entries.length) return;
+    scheduleMicrotask(() => count.value = _entries.length);
   }
 
   void _trim() {

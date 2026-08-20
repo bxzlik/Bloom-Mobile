@@ -119,7 +119,7 @@ class _LyricsState extends ConsumerState<LyricsView>
   /// Текущее время трека в секундах — общий источник для всех строк.
   final ValueNotifier<double> _clock = ValueNotifier<double>(0);
 
-  late final Ticker _ticker = createTicker((_) => _tick());
+  late final Ticker _ticker;
 
   /// Позиция последнего тика плеера и секундомер с того момента: между тиками
   /// время считаем сами.
@@ -135,6 +135,22 @@ class _LyricsState extends ConsumerState<LyricsView>
   bool _playing = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Часы заводим ЗДЕСЬ, а не ленивым `late final` при первом обращении.
+    //
+    // К полю притрагивался только `_sync`, а его зовут тики плеера — на паузе
+    // или если панель закрыли раньше первого тика, к часам не обращались вовсе,
+    // и первым (он же единственным) до них добирался `dispose()`. А
+    // `createTicker` оттуда лезет за `TickerMode` в уже мёртвый контекст,
+    // роняет `dispose()` на полпути — и `ConsumerStatefulElement.unmount()`,
+    // который отцепляет подписки ПОСЛЕ `dispose()`, до них не доходит. Экрана
+    // уже нет, а слушатели живы: каждый тик плеера дальше бил и по `ref`, и по
+    // выброшенным часам, и так до перезапуска приложения.
+    _ticker = createTicker((_) => _tick());
+  }
+
+  @override
   void dispose() {
     _ticker.dispose();
     _clock.dispose();
@@ -143,6 +159,7 @@ class _LyricsState extends ConsumerState<LyricsView>
   }
 
   void _sync(Duration position, bool playing) {
+    if (!mounted) return;
     _basePos = position.inMilliseconds / 1000;
     _since.reset();
     _playing = playing;
@@ -157,6 +174,9 @@ class _LyricsState extends ConsumerState<LyricsView>
   }
 
   void _tick() {
+    // Riverpod отцепляет подписки уже после `dispose()`, так что тик может
+    // прийти в эту щель — а там и часы выброшены, и `ref` спрашивать нельзя.
+    if (!mounted) return;
     _clock.value = _basePos + _since.elapsedMilliseconds / 1000;
     final lines = ref.read(lyricsProvider).lines;
     if (lines.isEmpty) return;
@@ -172,6 +192,8 @@ class _LyricsState extends ConsumerState<LyricsView>
   void _scrollToActive() {
     if (!widget.active) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Кадр спустя панели может уже не быть — тогда и докручивать нечего.
+      if (!mounted) return;
       final ctx = _keys[_curLine]?.currentContext;
       if (ctx == null || !_scroll.hasClients) return;
       Scrollable.ensureVisible(

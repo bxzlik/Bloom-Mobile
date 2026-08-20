@@ -18,6 +18,7 @@ import '../core/l10n/l10n.dart';
 import '../features/customization/ui/app_background.dart';
 import '../core/store/settings_store.dart';
 import '../features/player/ui/mini_player.dart';
+import '../features/player/ui/player_sheet.dart';
 import '../features/profile/achievements.dart';
 import '../features/settings/about_store.dart';
 import '../features/settings/update_notes_store.dart';
@@ -112,7 +113,7 @@ class _BloomShellState extends ConsumerState<BloomShell> {
     final t = context.bloom;
     ref.listen(achievementsProvider, (_, _) => _sync());
     final shell = widget.shell;
-    return Scaffold(
+    final scaffold = Scaffold(
       // Картинка фона лежит под каркасом — тогда своей заливки у него нет.
       backgroundColor: ref.watch(backgroundOnProvider)
           ? Colors.transparent
@@ -130,7 +131,9 @@ class _BloomShellState extends ConsumerState<BloomShell> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const MiniPlayer(),
+            // Место под карточку миниплеера: саму карточку рисует панель
+            // плеера — она из карточки вырастает и лежит поверх баров.
+            const MiniCardSlot(),
             _NavBar(
               style: ref.watch(settingsProvider).navStyle,
               index: shell.currentIndex,
@@ -143,8 +146,40 @@ class _BloomShellState extends ConsumerState<BloomShell> {
         ),
       ),
     );
+
+    return ValueListenableBuilder<bool>(
+      valueListenable: playerSheetOpen,
+      builder: (context, open, child) => PopScope(
+        // Развёрнутый плеер съедает системную «назад». Своего маршрута у него
+        // нет, и без этого «назад» ушла бы мимо: свернула бы страницу под
+        // панелью или закрыла приложение, оставив плеер во весь экран.
+        canPop: !open,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) collapsePlayerSheet();
+        },
+        child: child!,
+      ),
+      // Панель лежит ПОВЕРХ каркаса вместе с барами: она и есть карточка
+      // миниплеера, только выросшая, и накрывать таб-бар обязана сама.
+      child: Stack(
+        fit: StackFit.expand,
+        children: [scaffold, const PlayerSheet()],
+      ),
+    );
   }
 }
+
+/// Высота панели таб-бара вместе с её нижним вырезом — столько занимает низ
+/// экрана под карточкой миниплеера.
+///
+/// По ней панель плеера считает своё место в покое, поэтому число обязано
+/// совпадать с тем, что бар раскладывает у себя (см. [_NavBar.build]): высота
+/// ряда иконок плюс отступ, которым он выводит себя из системного выреза.
+double navBarInset(BuildContext context, NavBarStyle style) => switch (style) {
+  NavBarStyle.floating ||
+  NavBarStyle.pill => kNavBarFloatHeight + bottomEdgeInset(context),
+  _ => kNavBarHeight + bottomSafeInset(context),
+};
 
 // ─── Переключение вкладок ───────────────────────────────────────────────────
 

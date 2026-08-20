@@ -92,18 +92,24 @@ class SystemSettingsScreen extends ConsumerWidget {
         const SizedBox(height: 22),
         SettingsCaption(l.sysLogs.toUpperCase()),
         const SizedBox(height: 10),
-        SettingsGroupCard(
-          dividerInset: 52,
-          rows: [
-            SettingsLinkRow(
-              icon: SolarIconsOutline.documentText,
-              title: l.sysLogTitle,
-              subtitle: BloomLog.instance.isEmpty
-                  ? l.sysLogEmptySub
-                  : l.sysLogEntries(BloomLog.instance.length),
-              onTap: () => context.go('/settings/system/logs'),
-            ),
-          ],
+        // Подписка, а не разовое чтение: страница журнала лежит поверх этой,
+        // и после очистки «Система» сама не перестраивается — подпись осталась
+        // бы со старым числом (см. `BloomLog.count`).
+        ValueListenableBuilder<int>(
+          valueListenable: BloomLog.instance.count,
+          builder: (context, count, _) => SettingsGroupCard(
+            dividerInset: 52,
+            rows: [
+              SettingsLinkRow(
+                icon: SolarIconsOutline.documentText,
+                title: l.sysLogTitle,
+                subtitle: count == 0
+                    ? l.sysLogEmptySub
+                    : l.sysLogEntries(count),
+                onTap: () => context.go('/settings/system/logs'),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 22),
         // Заголовок опасной зоны красный и со значком — как `h3` с `Ico danger`

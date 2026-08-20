@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import '../../app/router.dart';
 import '../../core/entities/entities.dart';
 import '../../shared/ui/cover_hero.dart';
+import '../player/ui/player_sheet.dart';
 import 'ui/artist_screen.dart';
 import 'ui/set_screen.dart';
 
@@ -34,15 +35,21 @@ import 'ui/set_screen.dart';
 /// Подменяем навигатор, только когда поверх каркаса ЕСТЬ что закрывать и
 /// вкладка уже собрана. Иначе корневой навигатор — просто единственный (первый
 /// запуск на онбординге, экран из-под теста), и страница идёт в него.
+///
+/// «Есть что закрывать» — это не только маршруты: плеер лежит слоем поверх
+/// каркаса и в стопку навигатора не входит вовсе (см. `PlayerSheet`). Спроси мы
+/// об этом один `canPop`, тап по артисту из развёрнутого плеера клал бы
+/// страницу в КОРНЕВОЙ навигатор — под всё ещё открытую панель.
 NavigatorState _target(BuildContext context) {
   final navigator = Navigator.of(context);
-  if (navigator != Navigator.of(context, rootNavigator: true) ||
-      !navigator.canPop()) {
-    return navigator;
-  }
+  final root = Navigator.of(context, rootNavigator: true);
+  if (navigator != root) return navigator;
+  final player = playerSheetOpen.value;
+  if (!player && !navigator.canPop()) return navigator;
   final branch = currentBranchNavigator();
   if (branch == null) return navigator;
   navigator.popUntil((r) => r.isFirst);
+  collapsePlayerSheet();
   return branch;
 }
 
