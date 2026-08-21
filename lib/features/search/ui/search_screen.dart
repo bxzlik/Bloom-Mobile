@@ -22,13 +22,16 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/l10n/source_label.dart';
 import '../../../core/providers/music_provider.dart';
 import '../../../core/providers/registry.dart';
+import '../../../features/detail/detail_nav.dart';
 import '../../../features/player/play_source.dart';
+import '../../../features/player/player_controller.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/skeleton.dart';
+import '../recent_store.dart';
 import 'profile_view.dart';
 
 /// Просвет под чипами-фильтрами: без него ряд чипов слипался с первой строкой
@@ -118,6 +121,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Future<void> _search() async {
     final query = _controller.text.trim();
     if (query.isEmpty) return;
+    // Запоминаем на старте, как на десктопе: запрос попадает в недавние даже
+    // если выдача пустая — повторить его с опечаткой куда полезнее, чем
+    // набирать заново.
+    ref.read(recentSearchesProvider.notifier).push(query);
     final gen = ++_generation;
     setState(() {
       _lastQuery = query;
@@ -164,6 +171,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         _loading = false;
       });
     }
+  }
+
+  /// Тап по недавнему запросу: подставить его в поле и сразу искать.
+  ///
+  /// Клавиатуру убираем — она заняла бы полэкрана над свежей выдачей, а
+  /// править подставленный запрос обычно и не нужно.
+  void _applyRecent(String query) {
+    _controller.value = TextEditingValue(
+      text: query,
+      selection: TextSelection.collapsed(offset: query.length),
+    );
+    _focus.unfocus();
+    _search();
   }
 
   @override
@@ -240,6 +260,18 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     }
     if (_profile case final profile?) return ProfileView(profile: profile);
     if (_results.isEmpty) {
+      // До первого запроса вместо заглушки — недавние. После неудачного поиска
+      // их не показываем: ответ «ничего не нашлось» относится к тому, что ввели,
+      // и подменять его историей значит прятать результат.
+      final recents = ref.watch(recentSearchesProvider);
+      final items = ref.watch(recentItemsProvider);
+      if (!_searched && (recents.isNotEmpty || items.isNotEmpty)) {
+        return _RecentPanel(
+          queries: recents,
+          items: items,
+          onPick: _applyRecent,
+        );
+      }
       final text = _searched
           ? context.l.searchNothingFound
           : context.l.searchFindSomething;
@@ -312,6 +344,306 @@ class _SearchField extends StatelessWidget {
                         color: t.muted,
                       ),
                     ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Недавнее на пустом экране поиска: сперва открытые карточки лентой, под ними
+/// запросы строками — порт десктопного выпадающего списка истории, разложенного
+/// на два блока (мешать их по свежести, как `mergedRecents` на ПК, здесь нечем:
+/// времени мы не храним).
+///
+/// Запросы именно строками, а не чипами-пилюлями: запрос бывает длинным («бой с
+/// тенью 3 саундтрек»), и в пилюлю такой влезает только многоточием — а узнают
+/// прошлый запрос как раз по хвосту.
+class _RecentPanel extends ConsumerWidget {
+  const _RecentPanel({
+    required this.queries,
+    required this.items,
+    required this.onPick,
+  });
+
+  final List<String> queries;
+  final List<RecentItem> items;
+  final ValueChanged<String> onPick;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ListView(
+      // Снизу — бары каркаса: они плавают над содержимым.
+      padding: EdgeInsets.fromLTRB(8, 4, 8, 12 + bottomBarsInset(context)),
+      children: [
+        if (items.isNotEmpty) ...[
+          _RecentHeader(
+            title: context.l.searchRecentOpened,
+            onClear: () => ref.read(recentItemsProvider.notifier).clear(),
+          ),
+          // Высота — как у ленты плейлистов в выдаче: карточки те же и рядом с
+          // ней стоять им одинаково.
+          EntityCarousel(
+            height: 194,
+            itemCount: items.length,
+            builder: (i) => _RecentCard(item: items[i]),
+          ),
+        ],
+        if (queries.isNotEmpty) ...[
+          _RecentHeader(
+            title: context.l.searchRecent,
+            onClear: () => ref.read(recentSearchesProvider.notifier).clear(),
+          ),
+          for (final query in queries)
+            _RecentRow(
+              query: query,
+              onTap: () => onPick(query),
+              onRemove: () =>
+                  ref.read(recentSearchesProvider.notifier).remove(query),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Заголовок блока недавнего с «Очистить» справа.
+class _RecentHeader extends StatelessWidget {
+  const _RecentHeader({required this.title, required this.onClear});
+
+  final String title;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 14, 4, 6),
+      child: Row(
+        children: [
+          Expanded(child: Text(title, style: theme.titleLarge)),
+          // «Очистить» — второстепенное действие, поэтому текстом без
+          // подложки; зону нажатия добирают отступы вокруг надписи.
+          InkWell(
+            onTap: onClear,
+            borderRadius: BorderRadius.circular(999),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              child: Text(
+                context.l.commonClear,
+                style: theme.titleMedium?.copyWith(color: t.accent),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Карточка недавно открытого: обложка (у артиста — кружок), название и тип.
+///
+/// Своя, а не [SetCard]/[ArtistCard]/[TrackCard]: в одной ленте стоят разные
+/// сущности, и им нужен общий силуэт и общий жест удаления. Подпись — тип, а не
+/// автор: обложка с названием и так узнаются, а вот «это альбом или трек» по
+/// ним не понять.
+class _RecentCard extends ConsumerWidget {
+  const _RecentCard({required this.item});
+
+  final RecentItem item;
+
+  static const double _size = 132;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context).textTheme;
+    final l = context.l;
+    final (cover, title, subtitle, source, circle) = switch (item) {
+      RecentTrack(:final track) => (
+        track.cover,
+        track.name,
+        l.commonTrack,
+        track.source,
+        false,
+      ),
+      RecentArtist(:final artist) => (
+        artist.avatar,
+        artist.name,
+        l.commonArtist,
+        artist.source,
+        true,
+      ),
+      RecentSet(:final set) => (
+        set.cover,
+        set.title,
+        set.isAlbum ? l.commonAlbum : l.commonPlaylist,
+        set.source,
+        false,
+      ),
+    };
+
+    return GestureDetector(
+      onTap: () => _openRecent(context, ref, item),
+      // Убрать одну карточку — долгим тапом: крестик поверх обложки в ленте
+      // читался бы как часть картинки, а места под отдельную кнопку тут нет.
+      onLongPress: () => _removeRecent(context, ref, item),
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: _size,
+        child: Column(
+          crossAxisAlignment: circle
+              ? CrossAxisAlignment.center
+              : CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                Cover(url: cover, size: _size, circle: circle),
+                Positioned(
+                  right: 6,
+                  bottom: 6,
+                  child: SourceBadge(source, size: kCardBadge),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              maxLines: 1,
+              textAlign: circle ? TextAlign.center : TextAlign.start,
+              overflow: TextOverflow.ellipsis,
+              style: theme.titleSmall,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              maxLines: 1,
+              textAlign: circle ? TextAlign.center : TextAlign.start,
+              overflow: TextOverflow.ellipsis,
+              style: theme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Открыть недавнее: страница артиста или сета, трек — просто играет (страницы
+/// у него нет). Запись при этом поднимается наверх, как `openRecentItem` на ПК.
+///
+/// Повторного запроса к площадке не нужно: в списке лежит та же сущность, что
+/// пришла в выдаче, — с обложкой, владельцем и `sourceData` для стрима.
+void _openRecent(BuildContext context, WidgetRef ref, RecentItem item) {
+  ref.read(recentItemsProvider.notifier).push(item);
+  switch (item) {
+    case RecentTrack(:final track):
+      ref
+          .read(playbackProvider.notifier)
+          .playQueue([track], 0, source: PlainSource.single(track));
+    case RecentArtist(:final artist):
+      openArtist(context, artist.id, initial: artist);
+    case RecentSet(:final set):
+      openSet(context, set);
+  }
+}
+
+/// Шторка одного действия — «Убрать из недавних» для карточки под долгим тапом.
+Future<void> _removeRecent(
+  BuildContext context,
+  WidgetRef ref,
+  RecentItem item,
+) {
+  final (cover, title, subtitle, circle) = switch (item) {
+    RecentTrack(:final track) => (track.cover, track.name, track.artist, false),
+    RecentArtist(:final artist) => (
+      artist.avatar,
+      artist.name,
+      context.l.commonArtist,
+      true,
+    ),
+    RecentSet(:final set) => (
+      set.cover,
+      set.title,
+      set.ownerName ??
+          (set.isAlbum ? context.l.commonAlbum : context.l.commonPlaylist),
+      false,
+    ),
+  };
+
+  return showBloomSheet(
+    context: context,
+    backdrop: cover,
+    header: SheetLineHeader(
+      cover: cover,
+      title: title,
+      subtitle: subtitle,
+      circle: circle,
+    ),
+    groups: [
+      [
+        SheetAction(
+          icon: SolarIconsOutline.closeCircle,
+          label: context.l.searchRemoveRecent,
+          danger: true,
+          onTap: () => ref.read(recentItemsProvider.notifier).remove(item),
+        ),
+      ],
+    ],
+  );
+}
+
+/// Строка недавнего запроса: часы, текст, крестик. Отступы — от [TrackRow],
+/// чтобы блок стоял на той же сетке, что выдача под ним.
+class _RecentRow extends StatelessWidget {
+  const _RecentRow({
+    required this.query,
+    required this.onTap,
+    required this.onRemove,
+  });
+
+  final String query;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(t.radius * 0.85),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          children: [
+            Icon(SolarIconsOutline.clockCircle, size: 20, color: t.muted),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  query,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // У крестика своя зона нажатия с запасом: тап по строке уходит в
+            // сеть, и промах мимо мелкого значка стоил бы лишнего запроса.
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onRemove,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Icon(
+                  SolarIconsOutline.closeCircle,
+                  size: 18,
+                  color: t.muted,
+                ),
+              ),
             ),
           ],
         ),
@@ -539,18 +871,26 @@ class _Chip extends StatelessWidget {
 /// Сколько строк трек-листа показывать в «Всё» — как на референсе.
 const int _tracksPreview = 4;
 
+/// Записать открытую из выдачи карточку в «недавно открытые».
+///
+/// Зовётся из плиток выдачи — они же общие с главной и библиотекой, поэтому
+/// запись идёт не внутри плитки, а через её `onOpen`: недавние копит ровно
+/// поиск, как `openActions.ts` на десктопе.
+void _remember(WidgetRef ref, RecentItem item) =>
+    ref.read(recentItemsProvider.notifier).push(item);
+
 /// Отступы сеток выдачи: поля экрана и просвет между ячейками.
 const double _gridPad = 16;
 const double _gridGap = 16;
 
 /// Сетка плейлистов/альбомов — две колонки, подпись в две строки под обложкой.
-class _SetGrid extends StatelessWidget {
+class _SetGrid extends ConsumerWidget {
   const _SetGrid({required this.sets});
 
   final List<Playlist> sets;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final width = MediaQuery.of(context).size.width;
     final cell = (width - _gridPad * 2 - _gridGap) / 2;
 
@@ -572,19 +912,23 @@ class _SetGrid extends StatelessWidget {
         mainAxisExtent: cell + 48,
       ),
       itemCount: sets.length,
-      itemBuilder: (context, i) => SetCard(set: sets[i], size: null),
+      itemBuilder: (context, i) => SetCard(
+        set: sets[i],
+        size: null,
+        onOpen: () => _remember(ref, RecentSet(sets[i])),
+      ),
     );
   }
 }
 
 /// Сетка артистов — три колонки кружков с подписью по центру.
-class _ArtistGrid extends StatelessWidget {
+class _ArtistGrid extends ConsumerWidget {
   const _ArtistGrid({required this.artists});
 
   final List<Artist> artists;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final width = MediaQuery.of(context).size.width;
     final cell = (width - _gridPad * 2 - _gridGap * 2) / 3;
 
@@ -603,13 +947,17 @@ class _ArtistGrid extends StatelessWidget {
         mainAxisExtent: cell + 48,
       ),
       itemCount: artists.length,
-      itemBuilder: (context, i) =>
-          ArtistCard(artist: artists[i], size: null, centerLabel: true),
+      itemBuilder: (context, i) => ArtistCard(
+        artist: artists[i],
+        size: null,
+        centerLabel: true,
+        onOpen: () => _remember(ref, RecentArtist(artists[i])),
+      ),
     );
   }
 }
 
-class _ResultsView extends StatelessWidget {
+class _ResultsView extends ConsumerWidget {
   const _ResultsView({
     required this.results,
     required this.filter,
@@ -626,7 +974,7 @@ class _ResultsView extends StatelessWidget {
       filter == SearchFilter.all || filter == section;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
 
     // Под своим чипом раздел разворачивается: сеты — в две колонки, артисты —
@@ -673,6 +1021,7 @@ class _ResultsView extends StatelessWidget {
               query,
               context.l.playerSourceSearch(query),
             ),
+            onOpen: () => _remember(ref, RecentTrack(tracks[i])),
           ),
       ],
       if (_shows(SearchFilter.artists) && results.artists.isNotEmpty) ...[
@@ -680,8 +1029,11 @@ class _ResultsView extends StatelessWidget {
         EntityCarousel(
           height: 168,
           itemCount: results.artists.length,
-          builder: (i) =>
-              ArtistCard(artist: results.artists[i], centerLabel: true),
+          builder: (i) => ArtistCard(
+            artist: results.artists[i],
+            centerLabel: true,
+            onOpen: () => _remember(ref, RecentArtist(results.artists[i])),
+          ),
         ),
       ],
       if (_shows(SearchFilter.playlists) && results.playlists.isNotEmpty) ...[
@@ -689,7 +1041,10 @@ class _ResultsView extends StatelessWidget {
         EntityCarousel(
           height: 194,
           itemCount: results.playlists.length,
-          builder: (i) => SetCard(set: results.playlists[i]),
+          builder: (i) => SetCard(
+            set: results.playlists[i],
+            onOpen: () => _remember(ref, RecentSet(results.playlists[i])),
+          ),
         ),
       ],
       if (_shows(SearchFilter.albums) && results.albums.isNotEmpty) ...[
@@ -697,7 +1052,10 @@ class _ResultsView extends StatelessWidget {
         EntityCarousel(
           height: 194,
           itemCount: results.albums.length,
-          builder: (i) => SetCard(set: results.albums[i]),
+          builder: (i) => SetCard(
+            set: results.albums[i],
+            onOpen: () => _remember(ref, RecentSet(results.albums[i])),
+          ),
         ),
       ],
     ];

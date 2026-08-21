@@ -75,6 +75,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonShowMore => 'Show more';
 
   @override
+  String get commonTrack => 'Track';
+
+  @override
   String get commonAlbum => 'Album';
 
   @override
@@ -1047,6 +1050,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchSourceAll => 'All sources';
 
   @override
+  String get searchRecent => 'Recent searches';
+
+  @override
+  String get searchRecentOpened => 'Recently opened';
+
+  @override
+  String get searchRemoveRecent => 'Remove from recent';
+
+  @override
   String get searchNothingFound => 'Nothing found';
 
   @override
@@ -1139,9 +1151,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileStatusHint => '\"My status...\"';
-
-  @override
-  String get profileDisc => 'DISC';
 
   @override
   String get profileColorSolid => 'Color';
@@ -1760,6 +1769,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get apCorners => 'CORNERS';
+
+  @override
+  String get apCornersRow => 'Corner radius';
+
+  @override
+  String get apBgGroup => 'BACKGROUND';
 
   @override
   String get apPreviewTitle => 'A block looks like this';

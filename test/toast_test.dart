@@ -6,29 +6,43 @@ library;
 
 import 'package:bloom/app/theme/bloom_theme.dart';
 import 'package:bloom/app/theme/tokens.dart';
+import 'package:bloom/core/store/json_store.dart';
+import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/shared/ui/bloom_toast.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bloom/core/l10n/l10n.dart';
 
 /// Экран-подложка: тост показывается через мессенджер, поэтому нужен Scaffold.
+///
+/// Контейнер обязателен: карточка тоста — стеклянная поверхность и читает
+/// настройки прозрачности (`GlassBox`), а те живут в хранилище.
 Future<ScaffoldMessengerState> _pumpHost(WidgetTester tester) async {
+  final container = ProviderContainer(
+    overrides: [jsonStoreProvider.overrideWithValue(JsonStore.memory())],
+  );
+  addTearDown(container.dispose);
+
   late ScaffoldMessengerState messenger;
   await tester.pumpWidget(
-    MaterialApp(
-      // Язык прибит гвоздями: иначе проверки текста зависели бы от локали
-      // машины, на которой гоняют тесты.
-      locale: const Locale('ru'),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      theme: buildBloomTheme(BloomThemes.dark),
-      home: Scaffold(
-        body: Builder(
-          builder: (context) {
-            messenger = ScaffoldMessenger.of(context);
-            return const SizedBox.expand();
-          },
+    UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        // Язык прибит гвоздями: иначе проверки текста зависели бы от локали
+        // машины, на которой гоняют тесты.
+        locale: const Locale('ru'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        theme: buildBloomTheme(BloomThemes.dark),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) {
+              messenger = ScaffoldMessenger.of(context);
+              return const SizedBox.expand();
+            },
+          ),
         ),
       ),
     ),

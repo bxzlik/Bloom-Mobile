@@ -38,8 +38,6 @@ class UserProfile {
     this.name = '',
     this.bio = '',
     this.status = '',
-    this.discIdx = 0,
-    this.discColor,
     this.bannerColor = const Color(0xFF1A1A1A),
     this.bannerColor2 = const Color(0xFF0D0D0D),
     this.bannerMode = BannerColorMode.solid,
@@ -52,18 +50,12 @@ class UserProfile {
   final String bio;
   final String status;
 
-  /// Индекс пресета винил-диска (дефолтный аватар), 0..5.
-  final int discIdx;
-
-  /// Свой цвет диска (перебивает пресет); `null` — пресет.
-  final Color? discColor;
-
   final Color bannerColor;
   final Color bannerColor2;
   final BannerColorMode bannerMode;
   final int bannerAngle;
 
-  /// `local:<имя файла>` своей картинки; `null` — винил-диск.
+  /// `local:<имя файла>` своей картинки; `null` — заглушка с человечком.
   final String? avatar;
 
   /// `local:<имя файла>` своей обложки; `null` — цвет/градиент.
@@ -96,9 +88,6 @@ class UserProfile {
     String? name,
     String? bio,
     String? status,
-    int? discIdx,
-    Color? discColor,
-    bool clearDiscColor = false,
     Color? bannerColor,
     Color? bannerColor2,
     BannerColorMode? bannerMode,
@@ -111,8 +100,6 @@ class UserProfile {
     name: name ?? this.name,
     bio: bio ?? this.bio,
     status: status ?? this.status,
-    discIdx: discIdx ?? this.discIdx,
-    discColor: clearDiscColor ? null : (discColor ?? this.discColor),
     bannerColor: bannerColor ?? this.bannerColor,
     bannerColor2: bannerColor2 ?? this.bannerColor2,
     bannerMode: bannerMode ?? this.bannerMode,
@@ -125,8 +112,6 @@ class UserProfile {
     'name': name,
     'bio': bio,
     'status': status,
-    'discIdx': discIdx,
-    if (discColor != null) 'discColor': discColor!.toARGB32(),
     'bannerColor': bannerColor.toARGB32(),
     'bannerColor2': bannerColor2.toARGB32(),
     'bannerMode': bannerMode.name,
@@ -144,8 +129,6 @@ class UserProfile {
       name: name is String ? name : '',
       bio: json['bio'] as String? ?? '',
       status: json['status'] as String? ?? '',
-      discIdx: (json['discIdx'] as num?)?.toInt() ?? 0,
-      discColor: color(json['discColor']),
       bannerColor: color(json['bannerColor']) ?? const Color(0xFF1A1A1A),
       bannerColor2: color(json['bannerColor2']) ?? const Color(0xFF0D0D0D),
       bannerMode: json['bannerMode'] == 'gradient'

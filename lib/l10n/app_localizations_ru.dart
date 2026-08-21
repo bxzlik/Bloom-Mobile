@@ -75,6 +75,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonShowMore => 'Показать ещё';
 
   @override
+  String get commonTrack => 'Трек';
+
+  @override
   String get commonAlbum => 'Альбом';
 
   @override
@@ -1070,6 +1073,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get searchSourceAll => 'Все источники';
 
   @override
+  String get searchRecent => 'Недавние запросы';
+
+  @override
+  String get searchRecentOpened => 'Недавно открытые';
+
+  @override
+  String get searchRemoveRecent => 'Убрать из недавних';
+
+  @override
   String get searchNothingFound => 'Ничего не нашлось';
 
   @override
@@ -1163,9 +1175,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get profileStatusHint => '\"Мой статус...\"';
-
-  @override
-  String get profileDisc => 'ПЛАСТИНКА';
 
   @override
   String get profileColorSolid => 'Цвет';
@@ -1784,6 +1793,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get apCorners => 'СКРУГЛЕНИЯ';
+
+  @override
+  String get apCornersRow => 'Скругления';
+
+  @override
+  String get apBgGroup => 'ФОН';
 
   @override
   String get apPreviewTitle => 'Так выглядит блок';

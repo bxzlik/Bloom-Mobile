@@ -1,5 +1,8 @@
-/// Карточка выбора языка — порт десктопного `.s-lang-card`: флаг, название на
-/// самом языке и код в углу у активной.
+/// Карточка выбора языка — порт десктопного `.s-lang-card`: флаг и название на
+/// самом языке, столбиком по центру.
+///
+/// Кода языка в углу у активной карточки нет: выбранную и так видно по рамке
+/// акцентом, а бейдж «RU» сидел в углу и перекашивал карточку.
 ///
 /// Живёт в общих, потому что мест два: «Настройки → Интерфейс» и первый шаг
 /// онбординга.
@@ -41,42 +44,20 @@ class LanguageCard extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
-          child: Stack(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Column(
-                children: [
-                  CustomPaint(
-                    size: const Size(46, 46 * 24 / 36),
-                    painter: _FlagPainter(locale.languageCode),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    name,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: active ? t.text : t.text2,
-                    ),
-                  ),
-                ],
+              CustomPaint(
+                size: const Size(46, 46 * 24 / 36),
+                painter: _FlagPainter(locale.languageCode),
               ),
-              if (active)
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: t.ovlLine,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      locale.languageCode.toUpperCase(),
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                  ),
+              const SizedBox(height: 10),
+              Text(
+                name,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: active ? t.text : t.text2,
                 ),
+              ),
             ],
           ),
         ),

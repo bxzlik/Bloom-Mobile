@@ -32,6 +32,11 @@ import 'stats_section.dart';
 /// Сторона аватара на странице — десктопные 120 из `.acc-ava`.
 const double kProfileAvatarSize = 120;
 
+/// Высота полосы обложки без системной строки. Знает не только страница:
+/// предпросмотр в редакторе строит шапку по тем же меркам, и по ним же
+/// кроппер режет выбранную картинку.
+const double kProfileBannerStrip = 168;
+
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key, this.flight});
 
@@ -191,14 +196,11 @@ class _Banner extends StatelessWidget {
   final UserProfile profile;
   final CoverFlight? flight;
 
-  /// Высота самой полосы, без учёта системной строки.
-  static const double _strip = 168;
-
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
     final top = MediaQuery.paddingOf(context).top;
-    final height = _strip + top;
+    final height = kProfileBannerStrip + top;
     final image = coverImage(profile.banner);
 
     return SizedBox(

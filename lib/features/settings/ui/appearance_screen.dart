@@ -149,22 +149,10 @@ class AppearanceScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            // «Обложка трека как фон» — десктопная настройка вкладки «Фон»
-            // раздела «Кастомизация»; сюда её перенёс пользователь. Своя
-            // картинка фона (её ставят в «Кастомизации») эту настройку
-            // перебивает — как и на ПК.
-            _SettingsCard(
-              child: _SettingsRow(
-                title: context.l.apCoverAsBg,
-                subtitle: context.l.apCoverAsBgSub,
-                trailing: BloomSwitch(
-                  value: settings.coverAsBg,
-                  onChanged: controller.setCoverAsBg,
-                ),
-              ),
-            ),
           ],
         ),
+        const SizedBox(height: 26),
+        ..._transparencyGroup(context, ref),
         const SizedBox(height: 26),
         SettingsCaption(context.l.apNavBar),
         const SizedBox(height: 10),
@@ -208,62 +196,141 @@ class AppearanceScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 26),
-        ..._wrappedGroup(context, ref),
-        const SizedBox(height: 26),
-        Row(
-          children: [
-            SettingsCaption(context.l.apCorners),
-            const Spacer(),
-            Text('${settings.radius.round()} px', style: theme.bodySmall),
+        SettingsCaption(context.l.apCorners),
+        const SizedBox(height: 10),
+        SettingsGroupCard(
+          rows: [
+            _SettingsCard(
+              onTap: () => _pickRadius(context, ref),
+              child: _SettingsRow(
+                title: context.l.apCornersRow,
+                subtitle: '${settings.radius.round()} px',
+                // Не значок, а сам радиус: квадрат со скруглением, которое
+                // сейчас выбрано, — по строке видно значение, не открывая её.
+                trailing: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: t.accent.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(settings.radius * 0.72),
+                    border: Border.all(
+                      color: t.accent.withValues(alpha: 0.55),
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
-        Slider(
-          value: settings.radius,
-          min: 0,
-          max: 28,
-          divisions: 28,
-          onChanged: controller.setRadius,
-        ),
-        const SizedBox(height: 8),
-        // Живой пример: по нему видно и радиус, и акцент разом.
-        GlassBox(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: t.accent,
-                    borderRadius: BorderRadius.circular(t.radius * 0.72),
-                  ),
-                  child: Icon(
-                    SolarIconsBold.play,
-                    size: 20,
-                    color: t.accentText,
-                  ),
+        const SizedBox(height: 26),
+        SettingsCaption(context.l.apBgGroup),
+        const SizedBox(height: 10),
+        SettingsGroupCard(
+          rows: [
+            // «Обложка трека как фон» — десктопная настройка вкладки «Фон»
+            // раздела «Кастомизация»; сюда её перенёс пользователь. Своя
+            // картинка фона (её ставят в «Кастомизации») эту настройку
+            // перебивает — как и на ПК.
+            _SettingsCard(
+              child: _SettingsRow(
+                title: context.l.apCoverAsBg,
+                subtitle: context.l.apCoverAsBgSub,
+                trailing: BloomSwitch(
+                  value: settings.coverAsBg,
+                  onChanged: controller.setCoverAsBg,
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(context.l.apPreviewTitle, style: theme.titleSmall),
-                      const SizedBox(height: 2),
-                      Text(context.l.apPreviewSubtitle, style: theme.bodySmall),
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
         const SizedBox(height: 26),
-        ..._transparencyGroup(context, ref),
+        ..._wrappedGroup(context, ref),
       ],
     );
   }
+}
+
+/// Шторка скруглений: ползунок и под ним живой пример. Радиус применяется на
+/// ходу — им же скруглена и сама шторка, так что крутить его вслепую нельзя.
+Future<void> _pickRadius(BuildContext context, WidgetRef ref) async {
+  await showBloomSheetChild<void>(
+    context: context,
+    header: Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 6, 20, 4),
+        child: Text(
+          context.l.apCornersRow,
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+      ),
+    ),
+    child: Consumer(
+      builder: (context, ref, _) {
+        final t = context.bloom;
+        final theme = Theme.of(context).textTheme;
+        final radius = ref.watch(settingsProvider).radius;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${radius.round()} px', style: theme.headlineSmall),
+              Slider(
+                value: radius,
+                min: 0,
+                max: 28,
+                divisions: 28,
+                onChanged: ref.read(settingsProvider.notifier).setRadius,
+              ),
+              const SizedBox(height: 8),
+              // Живой пример: по нему видно и радиус, и акцент разом.
+              GlassBox(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: t.accent,
+                          borderRadius: BorderRadius.circular(t.radius * 0.72),
+                        ),
+                        child: Icon(
+                          SolarIconsBold.play,
+                          size: 20,
+                          color: t.accentText,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              context.l.apPreviewTitle,
+                              style: theme.titleSmall,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              context.l.apPreviewSubtitle,
+                              style: theme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
 }
 
 /// Группа «ИТОГИ» — порт десктопной категории `settings.wrapped.*` (на ПК она

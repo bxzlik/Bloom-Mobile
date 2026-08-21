@@ -62,11 +62,17 @@ class TrackRow extends ConsumerWidget {
     this.source,
     this.dragIndex,
     this.mark,
+    this.onOpen,
   });
 
   final Track track;
   final List<Track> queue;
   final int index;
+
+  /// Позвать перед запуском — «записать в недавно открытые» на экране поиска.
+  /// В остальных списках не задан: недавние копит только поиск, как на ПК
+  /// (`openActions.ts`).
+  final VoidCallback? onOpen;
 
   /// Откуда взята [queue] — см. [PlaybackState.source]. Строка внутри
   /// плейлиста заводит его целиком: плитка этого плейлиста должна показать
@@ -86,9 +92,12 @@ class TrackRow extends ConsumerWidget {
     return TrackRowShell(
       track: track,
       active: ref.watch(playbackProvider).track?.id == track.id,
-      onTap: () => ref
-          .read(playbackProvider.notifier)
-          .playQueue(queue, index, source: source),
+      onTap: () {
+        onOpen?.call();
+        ref
+            .read(playbackProvider.notifier)
+            .playQueue(queue, index, source: source);
+      },
       // Раздел библиотеки шторка узнаёт из источника списка: другого признака,
       // «откуда эта строка», у неё нет, а от него зависит «Убрать из плейлиста».
       onMenu: () => showTrackActions(
@@ -613,10 +622,14 @@ class ArtistCard extends StatefulWidget {
     required this.artist,
     this.size = 104,
     this.centerLabel = false,
+    this.onOpen,
   });
 
   final Artist artist;
   final double? size;
+
+  /// См. [TrackRow.onOpen].
+  final VoidCallback? onOpen;
 
   /// Подписи по центру — так стоят артисты в сетке и подписки в библиотеке.
   final bool centerLabel;
@@ -673,8 +686,10 @@ class _ArtistCardState extends State<ArtistCard> {
     );
 
     return GestureDetector(
-      onTap: () =>
-          openArtist(context, artist.id, initial: artist, flight: flight),
+      onTap: () {
+        widget.onOpen?.call();
+        openArtist(context, artist.id, initial: artist, flight: flight);
+      },
       behavior: HitTestBehavior.opaque,
       child: size == null ? content : SizedBox(width: size, child: content),
     );
@@ -686,10 +701,13 @@ class _ArtistCardState extends State<ArtistCard> {
 /// [size] `null` — на всю ширину ячейки сетки, число — фиксированная ширина
 /// карусели.
 class SetCard extends StatefulWidget {
-  const SetCard({super.key, required this.set, this.size = 132});
+  const SetCard({super.key, required this.set, this.size = 132, this.onOpen});
 
   final Playlist set;
   final double? size;
+
+  /// См. [TrackRow.onOpen].
+  final VoidCallback? onOpen;
 
   @override
   State<SetCard> createState() => _SetCardState();
@@ -752,7 +770,10 @@ class _SetCardState extends State<SetCard> {
     );
 
     return GestureDetector(
-      onTap: () => openSet(context, set, flight: flight),
+      onTap: () {
+        widget.onOpen?.call();
+        openSet(context, set, flight: flight);
+      },
       behavior: HitTestBehavior.opaque,
       child: size == null ? content : SizedBox(width: size, child: content),
     );

@@ -48,6 +48,9 @@ import 'vinyl_disc.dart';
 /// Радиус обложки в плеере — заметно круглее блоков (как в референсе).
 const double _coverRadius = 20;
 
+/// Просвет между пилюлей источника и круглыми кнопками шапки.
+const double _headerGap = 8;
+
 /// Что уходит в буфер по тапу на название: «Название — Артист», как на ПК
 /// (`TitleCopyOnClick`: `title + ' — ' + artist`). Артиста нет — одно название,
 /// иначе в буфере оставалось бы висящее тире.
@@ -255,10 +258,14 @@ class _Header extends ConsumerWidget {
         // Пилюля источника — та же плёнка и та же высота, что у круглых кнопок
         // по краям: шапка читается одной ровной строкой, а не ступенькой. Имя
         // источника бывает длинным, поэтому она забирает весь остаток ширины и
-        // ужимается по содержимому уже внутри.
+        // ужимается по содержимому уже внутри. Просветы по бокам обязательны:
+        // без них длинное имя раздувает пилюлю впритык к кружкам, и все три
+        // плёнки слипаются в одну полосу.
+        const SizedBox(width: _headerGap),
         Expanded(
           child: SourcePill(source: state.source, shuffle: state.shuffle),
         ),
+        const SizedBox(width: _headerGap),
         CircleIconButton(
           icon: SolarIconsOutline.menuDots,
           onTap: () => showTrackActions(context, ref, track),

@@ -1,6 +1,10 @@
-/// Тосты Bloom — порт десктопного `GlobalToast` (`#toast` в `search-misc.css`)
-/// вместе с полосой обратного отсчёта, круглым значком-видом и кнопкой
-/// «Отменить».
+/// Тосты Bloom — родня десктопного `GlobalToast` (`#toast` в `search-misc.css`):
+/// значок вида, текст, кнопка «Отменить» и видимый обратный отсчёт.
+///
+/// Вид телефонный, не портированный: стеклянная КАПСУЛА (та же поверхность,
+/// что у шторок и баров — [GlassBox]), а отсчёт идёт КОЛЬЦОМ вокруг значка, а
+/// не полосой по низу. Полоса осталась ровно за прогрессом долгих работ
+/// ([ToastHandle.update]) — там она показывает долю, а не время.
 ///
 /// Почему поверх `ScaffoldMessenger`, а не свой оверлей: очередь (тосты не
 /// налезают друг на друга, а ждут очереди), смахивание, снятие вместе с
@@ -14,6 +18,7 @@
 library;
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -22,6 +27,7 @@ import 'package:solar_icons/solar_icons.dart';
 import '../../app/theme/bloom_theme.dart';
 import '../../app/theme/tokens.dart';
 import '../../core/l10n/l10n.dart';
+import 'glass.dart';
 
 /// Вид тоста: от него зависят значок и цвет полосы (те же четыре, что на ПК).
 enum ToastKind { info, success, warn, error }
@@ -253,8 +259,8 @@ class _LiveToast extends StatelessWidget {
   );
 }
 
-/// Сама плашка: цвет карточки, рамка 1.5, круглый значок в своём цвете, текст,
-/// кнопка и полоса снизу — один в один десктопный `#toast`.
+/// Сама плашка: стеклянная капсула, значок вида с кольцом-отсчётом, текст,
+/// кнопка-пилюля и — только у долгих работ — полоса прогресса по низу.
 class BloomToastCard extends StatelessWidget {
   const BloomToastCard({
     super.key,
@@ -284,93 +290,180 @@ class BloomToastCard extends StatelessWidget {
     final t = context.bloom;
     final color = kindColor(kind, t);
     final label = actionLabel ?? (hasAction ? context.l.commonUndo : null);
+    final action = label != null && onAction != null;
 
-    return Align(
-      // Ширина по содержимому, как inline-flex на ПК: короткому «Трек удалён»
-      // незачем растягиваться во весь экран.
-      alignment: Alignment.center,
-      child: Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: t.card,
-          borderRadius: BorderRadius.circular(t.radius),
-          border: Border.all(color: t.border, width: 1.5),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x73000000),
-              blurRadius: 40,
-              offset: Offset(0, 14),
+    return _Pop(
+      child: Align(
+        // Ширина по содержимому, как inline-flex на ПК: короткому «Трек удалён»
+        // незачем растягиваться во весь экран. Потолок — чтобы на планшете
+        // капсула не расползлась во всю строку.
+        alignment: Alignment.center,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: DecoratedBox(
+            // Тень отдельным слоем ПОД капсулой: `GlassBox` обрезает себя по
+            // форме, внутри неё тени было бы не видно.
+            decoration: const ShapeDecoration(
+              shape: StadiumBorder(),
+              shadows: [
+                BoxShadow(
+                  color: Color(0x59000000),
+                  blurRadius: 28,
+                  offset: Offset(0, 10),
+                ),
+                BoxShadow(
+                  color: Color(0x40000000),
+                  blurRadius: 8,
+                  offset: Offset(0, 3),
+                ),
+              ],
             ),
-            BoxShadow(
-              color: Color(0x4D000000),
-              blurRadius: 14,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _Badge(color: color, kind: kind, busy: busy),
-                  const SizedBox(width: 10),
-                  Flexible(
-                    child: Text(
-                      text,
-                      style: bloomText(
-                        size: 13,
-                        weight: 500,
-                        color: t.text,
-                        height: 1.35,
+            // Своя группа: тост всплывает поверх страницы и её баров, к их
+            // снимку подложки ему присоединяться нельзя (см. `glass.dart`).
+            child: GlassGroup(
+              child: GlassBox(
+                // Поверхность всплывающая — стекло берём то же, что у шторок и
+                // меню, а не то, что у блоков страницы.
+                overlay: true,
+                // `pill`, а не `card`: на тёмной теме `card` — это цвет фона,
+                // и капсула читалась бы только по рамке.
+                color: t.pill,
+                shape: StadiumBorder(
+                  side: BorderSide(color: t.ovlLine2, width: 1),
+                ),
+                child: Stack(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        8,
+                        8,
+                        action ? 8 : 18,
+                        // Место под полосу прогресса — только когда она есть.
+                        progress == null ? 8 : 12,
                       ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (label != null && onAction != null) ...[
-                    const SizedBox(width: 12),
-                    GestureDetector(
-                      onTap: onAction,
-                      behavior: HitTestBehavior.opaque,
-                      child: Padding(
-                        // Отступы только ради площади под палец — визуально
-                        // кнопка остаётся голым текстом.
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 2,
-                          vertical: 6,
-                        ),
-                        child: Text(
-                          label,
-                          style: bloomText(
-                            size: 13,
-                            weight: 700,
-                            color: t.accent,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _Badge(
+                            color: color,
+                            kind: kind,
+                            busy: busy,
+                            duration: barDuration,
                           ),
-                        ),
+                          const SizedBox(width: 11),
+                          Flexible(
+                            child: Text(
+                              text,
+                              style: bloomText(
+                                size: 13.5,
+                                weight: 500,
+                                color: t.text,
+                                height: 1.3,
+                              ),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (action) ...[
+                            const SizedBox(width: 10),
+                            _ActionPill(
+                              label: label,
+                              color: t.accent,
+                              onTap: onAction!,
+                            ),
+                          ],
+                        ],
                       ),
                     ),
+                    if (progress != null)
+                      Positioned(
+                        // Отступы по краям обязательны: у капсулы низ сужен
+                        // скруглением, полоса во всю ширину обрезалась бы.
+                        left: 18,
+                        right: 18,
+                        bottom: 5,
+                        child: _Bar(color: color, progress: progress!),
+                      ),
                   ],
-                ],
+                ),
               ),
             ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _Bar(
-                color: color,
-                progress: progress,
-                duration: barDuration,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
+}
+
+/// Кнопка тоста — пилюля в акценте, а не голый текст: у капсулы правый край
+/// скруглён, и текст без подложки жался бы к дуге.
+class _ActionPill extends StatelessWidget {
+  const _ActionPill({
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: color.withValues(alpha: 0.14),
+    shape: const StadiumBorder(),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        child: Text(
+          label,
+          style: bloomText(size: 12.5, weight: 700, color: color),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Появление: тост не просто выезжает снекбаром, а всплывает — проявляется и
+/// чуть подрастает от нижнего края.
+///
+/// Живёт отдельным виджетом со своим состоянием: `_LiveToast` перестраивает
+/// карточку на каждом обновлении текста, и всплытие не должно играть заново.
+class _Pop extends StatefulWidget {
+  const _Pop({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_Pop> createState() => _PopState();
+}
+
+class _PopState extends State<_Pop> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 320),
+  )..forward();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+    opacity: CurvedAnimation(parent: _c, curve: Curves.easeOutCubic),
+    child: ScaleTransition(
+      scale: Tween(
+        begin: 0.92,
+        end: 1.0,
+      ).animate(CurvedAnimation(parent: _c, curve: Curves.easeOutBack)),
+      alignment: Alignment.bottomCenter,
+      child: widget.child,
+    ),
+  );
 }
 
 /// Цвета видов — те же значения, что в `search-misc.css`; `info` берёт акцент
@@ -382,33 +475,60 @@ Color kindColor(ToastKind kind, BloomTokens t) => switch (kind) {
   ToastKind.error => const Color(0xFFE0494A),
 };
 
+/// Значок вида в круге своего цвета, а вокруг — кольцо обратного отсчёта.
 class _Badge extends StatelessWidget {
-  const _Badge({required this.color, required this.kind, required this.busy});
+  const _Badge({
+    required this.color,
+    required this.kind,
+    required this.busy,
+    this.duration,
+  });
 
   final Color color;
   final ToastKind kind;
   final bool busy;
 
+  /// Сколько тосту осталось жить; `null` — кольца нет (идёт работа или тост
+  /// висит до `close()`).
+  final Duration? duration;
+
   @override
-  Widget build(BuildContext context) => Container(
-    width: 28,
-    height: 28,
-    alignment: Alignment.center,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: color.withValues(alpha: 0.16),
+  Widget build(BuildContext context) => SizedBox(
+    width: 34,
+    height: 34,
+    child: Stack(
+      alignment: Alignment.center,
+      children: [
+        if (duration != null)
+          Positioned.fill(
+            child: _Ring(color: color, duration: duration!),
+          ),
+        Container(
+          width: 27,
+          height: 27,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color.withValues(alpha: 0.16),
+          ),
+          child: busy
+              ? SizedBox(
+                  width: 15,
+                  height: 15,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: color,
+                  ),
+                )
+              // У «успеха» голая галочка, а не `checkCircle`: значок и так
+              // лежит в круге, круг в круге читался бы мишенью (на ПК то же —
+              // `CheckBare`).
+              : kind == ToastKind.success
+              ? Icon(Icons.check_rounded, size: 18, color: color)
+              : Icon(_glyph(kind), size: 17, color: color),
+        ),
+      ],
     ),
-    child: busy
-        ? SizedBox(
-            width: 15,
-            height: 15,
-            child: CircularProgressIndicator(strokeWidth: 2, color: color),
-          )
-        // У «успеха» голая галочка, а не `checkCircle`: значок и так лежит в
-        // круге, круг в круге читался бы мишенью (на ПК то же — `CheckBare`).
-        : kind == ToastKind.success
-        ? Icon(Icons.check_rounded, size: 19, color: color)
-        : Icon(_glyph(kind), size: 18, color: color),
   );
 
   static IconData _glyph(ToastKind kind) => switch (kind) {
@@ -419,21 +539,20 @@ class _Badge extends StatelessWidget {
   };
 }
 
-/// Полоса снизу: либо отсчёт (утекает за время жизни тоста), либо прогресс
-/// загрузки. Отсчёт запускается с задержкой на въезд — таймер снекбара
-/// стартует только по концу анимации появления.
-class _Bar extends StatefulWidget {
-  const _Bar({required this.color, this.progress, this.duration});
+/// Кольцо обратного отсчёта вокруг значка: дуга утекает по часовой за время
+/// жизни тоста. Старт отложен на въезд — таймер снекбара тоже начинается только
+/// по концу анимации появления, иначе кольцо ушло бы вперёд отсчёта.
+class _Ring extends StatefulWidget {
+  const _Ring({required this.color, required this.duration});
 
   final Color color;
-  final double? progress;
-  final Duration? duration;
+  final Duration duration;
 
   @override
-  State<_Bar> createState() => _BarState();
+  State<_Ring> createState() => _RingState();
 }
 
-class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
+class _RingState extends State<_Ring> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(vsync: this);
   Timer? _delay;
 
@@ -444,7 +563,7 @@ class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
   }
 
   @override
-  void didUpdateWidget(_Bar old) {
+  void didUpdateWidget(_Ring old) {
     super.didUpdateWidget(old);
     // Итог подменил содержимое — отсчёт начинается заново.
     if (widget.duration != old.duration) _run();
@@ -452,10 +571,8 @@ class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
 
   void _run() {
     _delay?.cancel();
-    final d = widget.duration;
-    if (d == null) return;
     _c
-      ..duration = d
+      ..duration = widget.duration
       ..value = 0;
     _delay = Timer(_enter, () {
       if (mounted) _c.forward(from: 0);
@@ -470,43 +587,89 @@ class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final progress = widget.progress;
-    if (progress == null && widget.duration == null) {
-      return const SizedBox.shrink();
-    }
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _c,
+    builder: (_, _) => CustomPaint(
+      painter: _RingPainter(color: widget.color, left: 1 - _c.value),
+    ),
+  );
+}
 
-    final bar = SizedBox(
-      height: 2.5,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: widget.color,
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
+class _RingPainter extends CustomPainter {
+  const _RingPainter({required this.color, required this.left});
+
+  final Color color;
+
+  /// Доля оставшегося времени, 1 → 0.
+  final double left;
+
+  static const double _width = 2.5;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final center = rect.center;
+    final radius = (size.shortestSide - _width) / 2;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _width
+      ..strokeCap = StrokeCap.round;
+
+    // Дорожка кольца: тот же цвет, но еле заметный — по ней видно, сколько
+    // времени уже утекло.
+    canvas.drawCircle(
+      center,
+      radius,
+      paint..color = color.withValues(alpha: 0.14),
     );
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      2 * math.pi * left.clamp(0, 1),
+      false,
+      paint..color = color,
+    );
+  }
 
-    if (progress != null) {
-      return TweenAnimationBuilder<double>(
+  @override
+  bool shouldRepaint(_RingPainter old) =>
+      old.left != left || old.color != color;
+}
+
+/// Полоса прогресса долгой работы: доля скачанного, с дорожкой под ней.
+///
+/// Время тоста показывает кольцо у значка — сюда попадает ТОЛЬКО доля, и
+/// только у `busyToast` с прогрессом.
+class _Bar extends StatelessWidget {
+  const _Bar({required this.color, required this.progress});
+
+  final Color color;
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 3,
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: TweenAnimationBuilder<double>(
         tween: Tween(end: progress.clamp(0, 1)),
         duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
         builder: (_, v, child) => FractionallySizedBox(
           alignment: Alignment.centerLeft,
           widthFactor: v,
           child: child,
         ),
-        child: bar,
-      );
-    }
-
-    return AnimatedBuilder(
-      animation: _c,
-      builder: (_, child) => FractionallySizedBox(
-        alignment: Alignment.centerLeft,
-        widthFactor: 1 - _c.value,
-        child: child,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
       ),
-      child: bar,
-    );
-  }
+    ),
+  );
 }

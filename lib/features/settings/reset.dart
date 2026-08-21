@@ -46,6 +46,7 @@ import '../../features/player/speed_store.dart';
 import '../../features/player/track_anim_store.dart';
 import '../../features/profile/achievements.dart';
 import '../../features/profile/profile_store.dart';
+import '../../features/search/recent_store.dart';
 import '../../features/wave/wave_controller.dart';
 import '../../features/wave/wave_store.dart';
 import '../../providers/yandex/ym_auth.dart';
@@ -135,6 +136,7 @@ Future<void> hardReset(WidgetRef ref) async {
   ref.invalidate(statsProvider);
   ref.invalidate(achievementsProvider);
   ref.invalidate(profileProvider);
+  ref.invalidate(recentSearchesProvider);
   ref.invalidate(offlineProvider);
   ref.invalidate(mediaLibProvider);
   ref.invalidate(waveProvider);

@@ -1,10 +1,11 @@
 /// Редактирование профиля.
 ///
-/// Состав полей — десктопный (`ProfileEditModal`): ник, о себе, статус,
-/// пластинка, цвет и градиент обложки. Раскладка — по присланному макету:
-/// круглые кнопки сверху, крупный аватар по центру, дальше блоки «капсовая
-/// подпись + тёмная плашка» со счётчиком символов внутри, снизу одна широкая
-/// кнопка «Сохранить».
+/// Состав полей — десктопный (`ProfileEditModal`) минус пластинка: ник, о себе,
+/// статус, цвет и градиент обложки. Раскладка — по присланному макету, но
+/// сверху не голая строка кнопок, а живой предпросмотр шапки профиля: полоса
+/// обложки, на ней кнопки, аватар свисает с её кромки — ровно так, как страница
+/// будет выглядеть после сохранения. Дальше блоки «капсовая подпись + тёмная
+/// плашка» со счётчиком символов внутри, снизу одна широкая кнопка «Сохранить».
 ///
 /// Обводок нигде нет: ни кольца у аватара, ни рамок у полей и плашек — блоки
 /// держатся своей заливкой. Десктопная настройка «Обводка» вместе с ней и
@@ -34,15 +35,12 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/color_picker.dart';
 import '../../../shared/ui/glass.dart';
 import '../profile_store.dart';
-import 'disc_avatar.dart';
 import 'image_cropper.dart';
 import 'profile_avatar.dart';
+import 'profile_screen.dart' show kProfileAvatarSize, kProfileBannerStrip;
 
 /// Стрелки к [kBannerAngles] — те же, что в десктопной модалке.
 const List<String> _angleArrows = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'];
-
-/// Аватар в редакторе — чуть крупнее, чем на странице: он тут главный.
-const double _avatarSize = 128;
 
 /// Какую из двух картинок профиля меняем.
 enum ProfileImage { avatar, banner }
@@ -127,7 +125,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     final picked = await pickAndCropImage(
       context,
       shape: CropShape.rect,
-      aspect: 168 / width,
+      aspect: kProfileBannerStrip / width,
       output: 1440,
       prefix: 'banner',
     );
@@ -147,11 +145,6 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     final stale = _draft.banner != _saved.banner ? _draft.banner : null;
     _patch(_draft.copyWith(clearBanner: true));
     unawaited(deleteCover(stale));
-  }
-
-  Future<void> _pickColor(Color current, ValueChanged<Color> apply) async {
-    final picked = await showBloomColorPicker(context, current);
-    if (picked != null) apply(picked);
   }
 
   // ── Выход ─────────────────────────────────────────────────────────────────
@@ -210,106 +203,188 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       // «Сохранить» над клавиатурой.
       child: Scaffold(
         backgroundColor: t.bg,
-        body: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
-                  children: [
-                    Row(
+        // Сверху [SafeArea] нет: полоса обложки уходит под системную строку,
+        // как на самой странице профиля, и свой отступ считает сама.
+        body: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.only(bottom: 18),
+                children: [
+                  _BannerHeader(
+                    draft: _draft,
+                    armed: _armed,
+                    onBack: _cancel,
+                    onAvatar: () => _imageMenu(ProfileImage.avatar),
+                    onBanner: () => _imageMenu(ProfileImage.banner),
+                  ),
+                  const SizedBox(height: 22),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
                       children: [
-                        // Взведённая — красная корзина: без модалки видно, что
-                        // следующий тап бросит правку.
-                        CircleIconButton(
-                          icon: _armed
-                              ? SolarIconsBold.trashBinMinimalistic
-                              : SolarIconsOutline.altArrowLeft,
-                          color: _armed ? t.sysFavIco : null,
-                          onTap: _cancel,
+                        _Field(
+                          label: context.l.profileNickname,
+                          controller: _name,
+                          hint: context.l.profileNicknameHint,
+                          limit: 32,
                         ),
-                        const Spacer(),
-                        // Та же кнопка, что в макете: картинка профиля.
-                        CircleIconButton(
-                          icon: SolarIconsOutline.gallery,
-                          onTap: () => _imageMenu(ProfileImage.avatar),
+                        const SizedBox(height: 16),
+                        _Field(
+                          label: context.l.profileAbout,
+                          controller: _bio,
+                          hint: context.l.profileAboutHint,
+                          limit: 300,
+                          lines: 4,
+                        ),
+                        const SizedBox(height: 16),
+                        _Field(
+                          label: context.l.profileStatus,
+                          controller: _status,
+                          hint: context.l.profileStatusHint,
+                          limit: 80,
+                          italic: true,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Center(
-                      child: GestureDetector(
-                        onTap: () => _imageMenu(ProfileImage.avatar),
-                        child: ProfileAvatar(
-                          profile: _draft,
-                          size: _avatarSize,
-                        ),
-                      ),
+                  ),
+                ],
+              ),
+            ),
+            // Кнопка лежит на своей заливке фона: список под ней прокручивается
+            // и без подложки цеплялся бы за текст.
+            ColoredBox(
+              color: t.bg,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                  child: SizedBox(
+                    height: 56,
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _save,
+                      child: Text(context.l.commonSave),
                     ),
-                    const SizedBox(height: 26),
-                    _Field(
-                      label: context.l.profileNickname,
-                      controller: _name,
-                      hint: context.l.profileNicknameHint,
-                      limit: 32,
-                    ),
-                    const SizedBox(height: 16),
-                    _Field(
-                      label: context.l.profileAbout,
-                      controller: _bio,
-                      hint: context.l.profileAboutHint,
-                      limit: 300,
-                      lines: 4,
-                    ),
-                    const SizedBox(height: 16),
-                    _Field(
-                      label: context.l.profileStatus,
-                      controller: _status,
-                      hint: context.l.profileStatusHint,
-                      limit: 80,
-                      italic: true,
-                    ),
-                    const SizedBox(height: 22),
-                    _Section(
-                      title: context.l.profileDisc,
-                      child: _DiscRow(
-                        draft: _draft,
-                        onPreset: (i) => _patch(
-                          _draft.copyWith(discIdx: i, clearDiscColor: true),
-                        ),
-                        onColor: () => _pickColor(
-                          _draft.discColor ??
-                              kDiscDefColors[_draft.discIdx % 6],
-                          (c) => _patch(_draft.copyWith(discColor: c)),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Предпросмотр шапки профиля: полоса обложки, поверх неё кнопки, аватар
+/// свисает с нижней кромки ровно наполовину — порт `_Banner` со страницы, по
+/// её же меркам ([kProfileBannerStrip], [kProfileAvatarSize]).
+///
+/// Обе картинки тут же и меняются: тап по полосе открывает шторку на обложке,
+/// тап по аватару — на аватаре. Отдельной строке кнопок над предпросмотром
+/// места не осталось, поэтому «назад» и «галерея» переехали на саму полосу и
+/// стали стеклянными: на чужом снимке сплошной кружок читается хуже.
+class _BannerHeader extends StatelessWidget {
+  const _BannerHeader({
+    required this.draft,
+    required this.armed,
+    required this.onBack,
+    required this.onAvatar,
+    required this.onBanner,
+  });
+
+  final UserProfile draft;
+
+  /// Стрелка «назад» взведена — показываем корзину.
+  final bool armed;
+
+  final VoidCallback onBack;
+  final VoidCallback onAvatar;
+  final VoidCallback onBanner;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final top = MediaQuery.paddingOf(context).top;
+    final height = kProfileBannerStrip + top;
+
+    return SizedBox(
+      height: height + kProfileAvatarSize / 2,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: height,
+            child: GestureDetector(
+              onTap: onBanner,
+              child: ClipRRect(
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(t.radius * 1.5),
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    _bannerFill(draft),
+                    // Та же тень под кнопки и часы, что на странице: на светлом
+                    // снимке белые иконки без неё пропадают.
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.45),
+                            Colors.black.withValues(alpha: 0),
+                          ],
+                          stops: const [0, 0.45],
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              // Кнопка лежит на своей заливке фона: список под ней прокручивается
-              // и без подложки цеплялся бы за текст.
-              ColoredBox(
-                color: t.bg,
-                child: SafeArea(
-                  top: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                    child: SizedBox(
-                      height: 56,
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _save,
-                        child: Text(context.l.commonSave),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          Positioned(
+            left: 16,
+            right: 16,
+            top: top + 10,
+            child: Row(
+              children: [
+                // Взведённая — красная корзина: без модалки видно, что
+                // следующий тап бросит правку.
+                GlassIconButton(
+                  icon: armed
+                      ? SolarIconsBold.trashBinMinimalistic
+                      : SolarIconsOutline.altArrowLeft,
+                  color: armed ? t.sysFavIco : null,
+                  onTap: onBack,
+                ),
+                const Spacer(),
+                // Та же кнопка, что в макете: картинка профиля.
+                GlassIconButton(
+                  icon: SolarIconsOutline.gallery,
+                  onTap: onAvatar,
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            top: height - kProfileAvatarSize / 2,
+            child: Center(
+              child: GestureDetector(
+                onTap: onAvatar,
+                child: ProfileAvatar(profile: draft, size: kProfileAvatarSize),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -555,35 +630,6 @@ class _ImageTab extends StatelessWidget {
   }
 }
 
-/// Блок настройки: тёмная плашка и, если задана, капсовая подпись над ней.
-class _Section extends StatelessWidget {
-  const _Section({this.title, required this.child});
-
-  final String? title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (title case final title?)
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 8),
-            child: Text(title, style: Theme.of(context).textTheme.labelSmall),
-          ),
-        GlassBox(
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            child: child,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 /// Поле ввода: подпись сверху, счётчик символов внутри плашки справа.
 class _Field extends StatelessWidget {
   const _Field({
@@ -655,83 +701,6 @@ class _Field extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Ряд пластинок: шесть пресетов и седьмой слот — свой цвет. Выбранная
-/// подсвечена кольцом акцента — это состояние, а не украшение.
-class _DiscRow extends StatelessWidget {
-  const _DiscRow({
-    required this.draft,
-    required this.onPreset,
-    required this.onColor,
-  });
-
-  final UserProfile draft;
-  final ValueChanged<int> onPreset;
-  final VoidCallback onColor;
-
-  static const double _size = 46;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-
-    Widget slot({
-      required bool active,
-      required Widget child,
-      required VoidCallback onTap,
-    }) => GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: _size,
-        height: _size,
-        padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: active ? t.accent : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: child,
-      ),
-    );
-
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [
-        for (var i = 0; i < 6; i++)
-          slot(
-            active: i == draft.discIdx && draft.discColor == null,
-            onTap: () => onPreset(i),
-            child: DiscAvatar(idx: i),
-          ),
-        Stack(
-          children: [
-            slot(
-              active: draft.discColor != null,
-              onTap: onColor,
-              child: DiscAvatar(
-                idx: draft.discIdx,
-                color: draft.discColor ?? kDiscDefColors[draft.discIdx % 6],
-              ),
-            ),
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: Container(
-                width: 17,
-                height: 17,
-                decoration: BoxDecoration(color: t.bg, shape: BoxShape.circle),
-                child: Icon(SolarIconsOutline.palette, size: 10, color: t.text),
-              ),
-            ),
-          ],
         ),
       ],
     );

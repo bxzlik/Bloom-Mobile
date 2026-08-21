@@ -230,6 +230,12 @@ abstract class AppLocalizations {
   /// **'Show more'**
   String get commonShowMore;
 
+  /// desktop: search.kind.track
+  ///
+  /// In en, this message translates to:
+  /// **'Track'**
+  String get commonTrack;
+
   /// No description provided for @commonAlbum.
   ///
   /// In en, this message translates to:
@@ -1796,6 +1802,24 @@ abstract class AppLocalizations {
   /// **'All sources'**
   String get searchSourceAll;
 
+  /// desktop: search.recentQueries
+  ///
+  /// In en, this message translates to:
+  /// **'Recent searches'**
+  String get searchRecent;
+
+  /// desktop: search.recentOpened
+  ///
+  /// In en, this message translates to:
+  /// **'Recently opened'**
+  String get searchRecentOpened;
+
+  /// No description provided for @searchRemoveRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from recent'**
+  String get searchRemoveRecent;
+
   /// No description provided for @searchNothingFound.
   ///
   /// In en, this message translates to:
@@ -1951,12 +1975,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'\"My status...\"'**
   String get profileStatusHint;
-
-  /// No description provided for @profileDisc.
-  ///
-  /// In en, this message translates to:
-  /// **'DISC'**
-  String get profileDisc;
 
   /// No description provided for @profileColorSolid.
   ///
@@ -3127,6 +3145,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'CORNERS'**
   String get apCorners;
+
+  /// row that opens the corner radius sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Corner radius'**
+  String get apCornersRow;
+
+  /// desktop: settings.custom.tabs.bg
+  ///
+  /// In en, this message translates to:
+  /// **'BACKGROUND'**
+  String get apBgGroup;
 
   /// No description provided for @apPreviewTitle.
   ///

@@ -1,4 +1,4 @@
-/// Аватар профиля: своя картинка либо винил-диск, в кольце обводки.
+/// Аватар профиля: своя картинка либо заглушка с человечком.
 ///
 /// Один виджет на все места — кнопка в шапке главной, шапка страницы профиля,
 /// превью в редакторе, — поэтому профиль приходит параметром: редактор рисует
@@ -10,11 +10,12 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:solar_icons/solar_icons.dart';
 
+import '../../../app/theme/tokens.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../profile_store.dart';
-import 'disc_avatar.dart';
 
 class ProfileAvatar extends StatelessWidget {
   const ProfileAvatar({
@@ -32,9 +33,22 @@ class ProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.bloom;
     final image = coverImage(profile.avatar);
+    // Своей картинки нет — тот же приём, что у пустой обложки: сплошная тёмная
+    // заливка и приглушённый знак поверх. Только знак тут человечек, а не bloom:
+    // на месте лица логотип читался бы как «трек без обложки».
     final Widget face = image == null
-        ? DiscAvatar(idx: profile.discIdx, color: profile.discColor)
+        ? ColoredBox(
+            color: t.coverEmpty,
+            child: Center(
+              child: Icon(
+                SolarIconsBold.user,
+                size: size * 0.46,
+                color: t.text.withValues(alpha: 0.22),
+              ),
+            ),
+          )
         : Image(image: image, fit: BoxFit.cover);
 
     return SizedBox(
