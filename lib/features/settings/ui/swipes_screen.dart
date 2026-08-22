@@ -232,7 +232,7 @@ class _ActionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
+      padding: const EdgeInsets.fromLTRB(12, 3, 12, 3),
       child: Material(
         // Та же заливка, что у блоков шторки ([SheetPanel]).
         color: sheetPanelColor(context),

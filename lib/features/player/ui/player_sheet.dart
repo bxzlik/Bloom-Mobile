@@ -15,13 +15,16 @@
 ///   старте приложения, ещё до того, как плеер кто-то открыл.
 library;
 
+import 'dart:async' show unawaited;
 import 'dart:ui' show lerpDouble;
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/shell.dart';
 import '../../../app/theme/tokens.dart';
+import '../../../core/entities/entities.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../features/settings/swipe_store.dart';
 import '../../../shared/ui/atoms.dart';
@@ -30,6 +33,7 @@ import '../../../shared/ui/track_flick.dart';
 import '../../../shared/ui/track_swipes.dart';
 import '../mini_style_store.dart';
 import '../player_controller.dart';
+import '../track_swap_dir.dart';
 import 'full_player.dart';
 import 'mini_player.dart';
 
@@ -89,6 +93,11 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet>
   /// обязана идти за пальцем один в один.
   double _travel = 0;
 
+  /// Горизонтальный сдвиг карточки (доля её ширины). Держим его ЗДЕСЬ, а не в
+  /// `TrackFlick`: в карусели («Соседние треки») за пальцем едут ещё и соседи,
+  /// а они лежат отдельным слоем — тем же, из-за краёв которого выглядывают.
+  final ValueNotifier<double> _shift = ValueNotifier<double>(0);
+
   @override
   void initState() {
     super.initState();
@@ -99,6 +108,7 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet>
   void dispose() {
     if (_sheet == this) _sheet = null;
     _t.dispose();
+    _shift.dispose();
     playerSheetOpen.value = false;
     super.dispose();
   }
@@ -130,6 +140,16 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet>
   void _end(double velocity) =>
       _drive(velocity.abs() > kSheetFling ? velocity < 0 : _t.value >= 0.5);
 
+  /// Листнуть карусель. Смену «под пальцем» слои `TrackSwap` не анимируют
+  /// ([markSwapSilent]): её уже показал сам сдвиг карточек — сосед приехал в
+  /// середину. «Назад» здесь всегда предыдущий трек, а не отмотка в начало:
+  /// человек тянет к себе ту карточку, которую видит.
+  void _flip(WidgetRef ref, {required bool forward}) {
+    markSwapSilent();
+    final player = ref.read(playbackProvider.notifier);
+    unawaited(forward ? player.next() : player.prevTrack());
+  }
+
   @override
   Widget build(BuildContext context) {
     // Очередь могла опустеть под нами: смахнули последний трек в шторке очереди,
@@ -153,19 +173,32 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet>
     final navInset = navBarInset(context, ref.watch(settingsProvider).navStyle);
     final cardRadius = miniCardRadius(style.radius, t.radius);
 
+    // Карусель: карточка ужимается с боков, в освободившиеся полоски
+    // выглядывают соседи, и горизонтальный жест забирает себе перелистывание —
+    // что бы ни стояло в «Свайпах». Иначе карточка обещает соседей, а палец
+    // делает «лайк».
+    final peek = style.neighbors;
+    // Листать нечего: в очереди один трек, и соседями с обеих сторон был бы
+    // он же. Тогда ни полосок по краям, ни самого перелистывания.
+    final canFlip = ref.watch(
+      playbackProvider.select((s) => s.queue.length > 1),
+    );
+
     return LayoutBuilder(
       builder: (context, box) {
         final screen = box.biggest;
         // Место карточки в покое — ровно то, что держит под неё пустым нижний
         // бар каркаса (`MiniCardSlot`): поля по 8 с боков, столько же над
-        // таб-баром.
-        final card = Rect.fromLTWH(
-          kFloatGap,
-          screen.height - navInset - kFloatGap - kMiniCardHeight,
-          screen.width - kFloatGap * 2,
-          kMiniCardHeight,
+        // таб-баром. С соседями карточка ужимается на их полоски.
+        final card = miniCardRect(
+          screen: screen,
+          navInset: navInset,
+          neighbors: peek,
         );
         _travel = card.top;
+        // На этот шаг уезжает вся тройка при перелистывании — сосед встаёт
+        // ровно в середину.
+        final stride = miniStride(card.width);
 
         // Своя группа стекла: панель лежит поверх страницы и поверх баров, и с
         // их общим снимком подложки в размытие не попало бы то, что под ней.
@@ -184,9 +217,38 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet>
 
               return Stack(
                 children: [
+                  // Соседи лежат ПОД панелью и живут в своих координатах: они
+                  // выходят за края карточки, а из неё наружу не вылезешь.
+                  // Гаснут они вместе со строкой — развёрнутому плееру соседи
+                  // ни к чему.
+                  if (peek && canFlip && row > 0)
+                    Positioned(
+                      left: kFloatGap,
+                      right: kFloatGap,
+                      top: card.top,
+                      height: kMiniCardHeight,
+                      child: IgnorePointer(
+                        child: Opacity(
+                          opacity: row,
+                          child: ClipRect(
+                            child: _Neighbors(
+                              shift: _shift,
+                              stride: stride,
+                              width: card.width,
+                              // Слой обрезан по полям экрана, а карточка стоит
+                              // глубже — на видимую полоску соседа.
+                              inset: card.left - kFloatGap,
+                              radius: cardRadius,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   Positioned.fromRect(
                     rect: rect,
                     child: TrackFlick(
+                      shift: _shift,
+                      carousel: peek,
                       // Перелистывание свайпом по карточке. У развёрнутого плеера
                       // свой такой же жест внутри — он и выиграет: вложенный
                       // распознаватель встаёт в очередь раньше внешнего. Гасить
@@ -194,7 +256,9 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet>
                       // обработчиков меняет саму форму дерева, и содержимое
                       // панели пересобиралось бы с нуля на первом же пикселе
                       // тяги.
-                      onLeft: swipes.left == SwipeAction.none
+                      onLeft: peek
+                          ? (canFlip ? () => _flip(ref, forward: true) : null)
+                          : swipes.left == SwipeAction.none
                           ? null
                           : () => runSwipeAction(
                               context,
@@ -203,7 +267,9 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet>
                               track: track,
                               fromFlick: true,
                             ),
-                      onRight: swipes.right == SwipeAction.none
+                      onRight: peek
+                          ? (canFlip ? () => _flip(ref, forward: false) : null)
+                          : swipes.right == SwipeAction.none
                           ? null
                           : () => runSwipeAction(
                               context,
@@ -212,8 +278,11 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet>
                               track: track,
                               fromFlick: true,
                             ),
-                      builder: (context, shift) => FlickSlide(
+                      builder: (context, shift) => _Slide(
                         shift: shift,
+                        // Карусель едет целой карточкой и не гаснет: то, что
+                        // тянут к себе, обязано остаться видимым до конца.
+                        stride: peek ? stride : null,
                         child: _gestures(
                           expanded: v > 0,
                           child: MiniCardSkin(
@@ -286,6 +355,94 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet>
       );
 }
 
+/// Что едет за пальцем: в карусели — карточка целиком, на шаг соседа и без
+/// затухания; иначе — содержимое в долях своей ширины ([FlickSlide]).
+class _Slide extends StatelessWidget {
+  const _Slide({
+    required this.shift,
+    required this.stride,
+    required this.child,
+  });
+
+  final ValueListenable<double> shift;
+
+  /// Шаг карусели в пикселях; `null` — карусели нет.
+  final double? stride;
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final step = stride;
+    return step == null
+        ? FlickSlide(shift: shift, child: child)
+        : CarouselSlide(shift: shift, stride: step, child: child);
+  }
+}
+
+/// Карточки соседних треков по краям — «Соседние треки».
+///
+/// Целые карточки, а не обрезки: за край экрана уходит всё остальное, и на
+/// перелистывании сосед приезжает в середину уже собранным. Строка в них
+/// мёртвая ([MiniCardRow.neighbor]) — слой всё равно под [IgnorePointer].
+class _Neighbors extends ConsumerWidget {
+  const _Neighbors({
+    required this.shift,
+    required this.stride,
+    required this.width,
+    required this.inset,
+    required this.radius,
+  });
+
+  final ValueListenable<double> shift;
+
+  /// Шаг карусели: ширина карточки плюс просвет.
+  final double stride;
+
+  /// Ширина карточки — у соседей она та же.
+  final double width;
+
+  /// Левый край карточки в координатах слоя: слой обрезан по полям экрана, а
+  /// карточка стоит глубже — на видимую полоску соседа.
+  final double inset;
+
+  final double radius;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(playbackProvider);
+    final q = state.queue;
+    if (q.length < 2 || state.index < 0 || state.index >= q.length) {
+      return const SizedBox.shrink();
+    }
+    // Закольцовка та же, что у самих «дальше»/«назад» в контроллере: с конца
+    // очереди «следующий» — первый.
+    final prev = q[(state.index - 1 + q.length) % q.length];
+    final next = q[(state.index + 1) % q.length];
+    return CarouselSlide(
+      shift: shift,
+      stride: stride,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [_slot(prev, inset - stride), _slot(next, inset + stride)],
+      ),
+    );
+  }
+
+  Widget _slot(Track track, double left) => Positioned(
+    left: left,
+    top: 0,
+    width: width,
+    height: kMiniCardHeight,
+    child: MiniCardSkin(
+      radius: radius,
+      glass: true,
+      neighbor: track,
+      child: MiniCardRow(neighbor: track),
+    ),
+  );
+}
+
 /// Заливка панели — она же заливка карточки: стекло или тон обложки, рамка и
 /// скругление, которое по мере разворота распрямляется в углы экрана.
 class MiniCardSkin extends ConsumerWidget {
@@ -294,6 +451,7 @@ class MiniCardSkin extends ConsumerWidget {
     required this.radius,
     required this.glass,
     required this.child,
+    this.neighbor,
   });
 
   /// Скругление углов в пикселях.
@@ -302,6 +460,9 @@ class MiniCardSkin extends ConsumerWidget {
   /// Пускать ли стекло. Развёрнутой панели оно ни к чему.
   final bool glass;
 
+  /// Карточка соседа в карусели: тон заливки считается с ЕГО обложки.
+  final Track? neighbor;
+
   final Widget child;
 
   @override
@@ -309,7 +470,7 @@ class MiniCardSkin extends ConsumerWidget {
     final t = context.bloom;
     final style = ref.watch(miniStyleProvider);
     return GlassBox(
-      color: miniCardTint(ref, style),
+      color: miniCardTint(ref, style, neighbor: neighbor),
       // Стекло — только у фона «Тема», как на ПК (`body.glass-mode
       // .mp-bg-theme #miniPlayer`). У «Цвета обложки» заливка и так тёмная
       // (L 0.09–0.18), и полупрозрачной поверх тёмного фона она сходится с ним

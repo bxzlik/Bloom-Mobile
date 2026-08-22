@@ -721,9 +721,22 @@ class PlaybackController extends Notifier<PlaybackState>
       await _player.seek(Duration.zero);
       return;
     }
-    final i = (state.index - 1 + state.queue.length) % state.queue.length;
+    await prevTrack();
+  }
+
+  /// Предыдущий трек — без «первые 3 секунды в начало текущего».
+  ///
+  /// Нужен карусели миниплеера («Соседние треки»): человек тянет к себе
+  /// карточку, которую видит, и привести она обязана именно её. Отмотка в
+  /// начало на середине трека выглядела бы там как сорвавшийся жест.
+  Future<void> prevTrack() async {
+    final q = state.queue;
+    if (q.isEmpty) {
+      cancelSwapSilent();
+      return;
+    }
     markSwapDir(-1);
-    await _load(i);
+    await _load((state.index - 1 + q.length) % q.length);
   }
 
   Future<void> toggle() async {

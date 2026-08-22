@@ -29,6 +29,8 @@ class TrackFlick extends StatefulWidget {
     required this.builder,
     this.onLeft,
     this.onRight,
+    this.shift,
+    this.carousel = false,
   });
 
   /// Свайп влево. `null` — в эту сторону содержимое не двигается.
@@ -36,6 +38,19 @@ class TrackFlick extends StatefulWidget {
 
   /// Свайп вправо.
   final VoidCallback? onRight;
+
+  /// Чужой сдвиг вместо своего. Нужен карусели миниплеера («Соседние треки»):
+  /// за пальцем там едет не только сама карточка, но и соседи по краям, а они
+  /// лежат в другом слое — снаружи этого виджета. Кто дал, тот и освобождает.
+  final ValueNotifier<double>? shift;
+
+  /// Карусель: соседний трек УЖЕ стоит у края и приезжает в середину сам.
+  ///
+  /// Обычный режим уводит содержимое за край и вводит новое с другой стороны —
+  /// показывать соседа ему нечем. Здесь же после смены трека сдвиг просто
+  /// обнуляется: приехавшая карточка и есть новая середина, а въезд поверх неё
+  /// читался бы отскоком.
+  final bool carousel;
 
   final Widget Function(BuildContext context, ValueListenable<double> shift)
   builder;
@@ -46,7 +61,10 @@ class TrackFlick extends StatefulWidget {
 
 class _TrackFlickState extends State<TrackFlick>
     with SingleTickerProviderStateMixin {
-  final ValueNotifier<double> _shift = ValueNotifier<double>(0);
+  /// Сдвиг, который держим сами, — когда своего нам не дали.
+  ValueNotifier<double>? _own;
+
+  late final ValueNotifier<double> _shift;
 
   /// Заводится в [initState], а не ленивым полем: обложку, которую ни разу не
   /// перелистнули, первым и единственным трогал бы `dispose()`, а `vsync`
@@ -59,6 +77,7 @@ class _TrackFlickState extends State<TrackFlick>
   @override
   void initState() {
     super.initState();
+    _shift = widget.shift ?? (_own = ValueNotifier<double>(0));
     _anim = AnimationController(vsync: this, duration: _snap)
       ..addListener(() => _shift.value = _slide?.value ?? 0);
   }
@@ -66,7 +85,7 @@ class _TrackFlickState extends State<TrackFlick>
   @override
   void dispose() {
     _anim.dispose();
-    _shift.dispose();
+    _own?.dispose();
     super.dispose();
   }
 
@@ -103,6 +122,12 @@ class _TrackFlickState extends State<TrackFlick>
     await _animateTo(value.sign, _out);
     if (!mounted) return;
     action();
+    // В карусели этот же сдвиг поставил соседа ровно в середину — вводить с
+    // другого края нечего и незачем: он уже приехал.
+    if (widget.carousel) {
+      _shift.value = 0;
+      return;
+    }
     _shift.value = -value.sign * _enterFrom;
     await _animateTo(0, _back);
   }
@@ -122,6 +147,40 @@ class _TrackFlickState extends State<TrackFlick>
           child: widget.builder(context, _shift),
         );
       },
+    );
+  }
+}
+
+/// Часть, которая едет за пальцем в КАРУСЕЛИ ([TrackFlick.carousel]): сдвиг в
+/// ПИКСЕЛЯХ и без затухания.
+///
+/// [FlickSlide] тут не годится дважды: доля своей ширины увела бы карточку не
+/// на шаг карусели (между карточками ещё просвет), а прозрачность гасила бы
+/// ровно то, что человек тянет к себе, — соседи-то по краям непрозрачны.
+class CarouselSlide extends StatelessWidget {
+  const CarouselSlide({
+    super.key,
+    required this.shift,
+    required this.stride,
+    required this.child,
+  });
+
+  /// Доля сдвига от [TrackFlick] — от ширины карточки.
+  final ValueListenable<double> shift;
+
+  /// Шаг карусели в пикселях: ширина карточки плюс просвет до соседней. Он же
+  /// делает полный сдвиг (доля 1) точной заменой соседа серединой.
+  final double stride;
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<double>(
+      valueListenable: shift,
+      child: child,
+      builder: (context, value, child) =>
+          Transform.translate(offset: Offset(value * stride, 0), child: child),
     );
   }
 }

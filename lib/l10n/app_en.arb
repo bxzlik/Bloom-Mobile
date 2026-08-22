@@ -772,6 +772,16 @@
   "pvLyricsFxGlow": "Glow",
   "pvLyricsFxSpring": "Spring",
 
+  "pvGroupBg": "Player background",
+  "@pvGroupBg": { "description": "the group holding the full-screen player background row; mobile-only, no desktop counterpart" },
+  "pvBgRow": "Player background",
+  "pvBgCover": "Cover",
+  "pvBgCoverSub": "Blurred track cover",
+  "pvBgColor": "Color",
+  "pvBgColorSub": "Adaptive gradient from the cover",
+  "pvBgNone": "None",
+  "pvBgNoneSub": "No background",
+
   "pvGroupMini": "Mini player",
   "@pvGroupMini": { "description": "desktop: settings.view.miniPlayer" },
   "pvMiniBgRow": "Background",
@@ -805,6 +815,10 @@
   "pvMiniButtonPlay": "Play/Pause",
   "pvMiniButtonNext": "Next",
   "pvMiniButtonFav": "Like",
+  "pvMiniNeighborsRow": "Adjacent tracks",
+  "pvMiniNeighborsSub": "the previous and next cards peek at the edges, and a swipe across the card flips through the queue",
+  "pvMiniNeighborsOff": "Hidden",
+  "pvMiniNeighborsOn": "Peeking at the edges",
 
   "@_lyrics": {},
   "playerLyrics": "Lyrics",

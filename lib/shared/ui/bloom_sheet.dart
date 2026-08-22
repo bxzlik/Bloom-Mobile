@@ -374,15 +374,19 @@ class SheetHandle extends StatelessWidget {
 /// Блок пунктов шторки. Один на все шторки — свой такой же собирать руками
 /// нельзя: заливка тут зависит от того, на чём стоит шторка ([sheetPanelColor]).
 class SheetPanel extends StatelessWidget {
-  const SheetPanel({super.key, required this.children});
+  const SheetPanel({super.key, required this.children, this.gap = 6});
 
   final List<Widget> children;
+
+  /// Просвет сверху и снизу. Меньше обычного у списков выбора: там каждая
+  /// строка — свой блок, и полный отступ между ними растаскивает список.
+  final double gap;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+      padding: EdgeInsets.fromLTRB(12, gap, 12, gap),
       child: Material(
         // Без своего размытия: размыт фон шторки, а блок лежит поверх него
         // ровной панелью.

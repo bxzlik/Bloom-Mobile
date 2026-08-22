@@ -1592,6 +1592,30 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pvLyricsFxSpring => 'Пружина';
 
   @override
+  String get pvGroupBg => 'Фон плеера';
+
+  @override
+  String get pvBgRow => 'Фон плеера';
+
+  @override
+  String get pvBgCover => 'Обложка';
+
+  @override
+  String get pvBgCoverSub => 'Размытая обложка трека';
+
+  @override
+  String get pvBgColor => 'Цвет';
+
+  @override
+  String get pvBgColorSub => 'Адаптивный градиент под обложку';
+
+  @override
+  String get pvBgNone => 'Нет';
+
+  @override
+  String get pvBgNoneSub => 'Без фона';
+
+  @override
   String get pvGroupMini => 'Мини-плеер';
 
   @override
@@ -1671,6 +1695,19 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pvMiniButtonFav => 'Лайк';
+
+  @override
+  String get pvMiniNeighborsRow => 'Соседние треки';
+
+  @override
+  String get pvMiniNeighborsSub =>
+      'по краям выглядывают карточки предыдущего и следующего трека, а свайп по карточке листает очередь';
+
+  @override
+  String get pvMiniNeighborsOff => 'Скрыты';
+
+  @override
+  String get pvMiniNeighborsOn => 'Выглядывают по краям';
 
   @override
   String get playerLyrics => 'Текст песни';

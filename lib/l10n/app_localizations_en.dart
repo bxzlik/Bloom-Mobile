@@ -1568,6 +1568,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pvLyricsFxSpring => 'Spring';
 
   @override
+  String get pvGroupBg => 'Player background';
+
+  @override
+  String get pvBgRow => 'Player background';
+
+  @override
+  String get pvBgCover => 'Cover';
+
+  @override
+  String get pvBgCoverSub => 'Blurred track cover';
+
+  @override
+  String get pvBgColor => 'Color';
+
+  @override
+  String get pvBgColorSub => 'Adaptive gradient from the cover';
+
+  @override
+  String get pvBgNone => 'None';
+
+  @override
+  String get pvBgNoneSub => 'No background';
+
+  @override
   String get pvGroupMini => 'Mini player';
 
   @override
@@ -1647,6 +1671,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pvMiniButtonFav => 'Like';
+
+  @override
+  String get pvMiniNeighborsRow => 'Adjacent tracks';
+
+  @override
+  String get pvMiniNeighborsSub =>
+      'the previous and next cards peek at the edges, and a swipe across the card flips through the queue';
+
+  @override
+  String get pvMiniNeighborsOff => 'Hidden';
+
+  @override
+  String get pvMiniNeighborsOn => 'Peeking at the edges';
 
   @override
   String get playerLyrics => 'Lyrics';

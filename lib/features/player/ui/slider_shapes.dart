@@ -71,8 +71,8 @@ SliderThemeData bloomSliderTheme(
   );
 }
 
-/// Круглая пуговка тонкого типа: 10 px акцентом с тенью (десктопные
-/// `body.slider-thin .ps-bar-thumb`).
+/// Круглая пуговка тонкого типа: 10 px акцентом (десктопные
+/// `body.slider-thin .ps-bar-thumb`, но без их тени).
 class DotSliderThumb extends SliderComponentShape {
   const DotSliderThumb({this.size = 10});
 
@@ -98,19 +98,12 @@ class DotSliderThumb extends SliderComponentShape {
   }) {
     final canvas = context.canvas;
     final color = sliderTheme.thumbColor ?? sliderTheme.activeTrackColor!;
-    canvas.drawCircle(
-      center.translate(0, 1),
-      size / 2,
-      Paint()
-        ..color = const Color(0x66000000)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
-    );
     canvas.drawCircle(center, size / 2, Paint()..color = color);
   }
 }
 
-/// Вертикальная капля iOS-типа: 4×28 акцентом с тенью (десктопные
-/// `body.slider-ios .ps-bar-thumb`).
+/// Вертикальная капля iOS-типа: 4×28 акцентом (десктопные
+/// `body.slider-ios .ps-bar-thumb`, но без их тени).
 class CapsuleSliderThumb extends SliderComponentShape {
   const CapsuleSliderThumb({this.width = 4, this.height = 28});
 
@@ -140,12 +133,6 @@ class CapsuleSliderThumb extends SliderComponentShape {
     final rect = RRect.fromRectAndRadius(
       Rect.fromCenter(center: center, width: width, height: height),
       Radius.circular(width / 2),
-    );
-    canvas.drawRRect(
-      rect.shift(const Offset(0, 1)),
-      Paint()
-        ..color = const Color(0x59000000)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
     );
     canvas.drawRRect(rect, Paint()..color = color);
   }

@@ -2744,6 +2744,54 @@ abstract class AppLocalizations {
   /// **'Spring'**
   String get pvLyricsFxSpring;
 
+  /// the group holding the full-screen player background row; mobile-only, no desktop counterpart
+  ///
+  /// In en, this message translates to:
+  /// **'Player background'**
+  String get pvGroupBg;
+
+  /// No description provided for @pvBgRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Player background'**
+  String get pvBgRow;
+
+  /// No description provided for @pvBgCover.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover'**
+  String get pvBgCover;
+
+  /// No description provided for @pvBgCoverSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Blurred track cover'**
+  String get pvBgCoverSub;
+
+  /// No description provided for @pvBgColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Color'**
+  String get pvBgColor;
+
+  /// No description provided for @pvBgColorSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Adaptive gradient from the cover'**
+  String get pvBgColorSub;
+
+  /// No description provided for @pvBgNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get pvBgNone;
+
+  /// No description provided for @pvBgNoneSub.
+  ///
+  /// In en, this message translates to:
+  /// **'No background'**
+  String get pvBgNoneSub;
+
   /// desktop: settings.view.miniPlayer
   ///
   /// In en, this message translates to:
@@ -2905,6 +2953,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Like'**
   String get pvMiniButtonFav;
+
+  /// No description provided for @pvMiniNeighborsRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjacent tracks'**
+  String get pvMiniNeighborsRow;
+
+  /// No description provided for @pvMiniNeighborsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'the previous and next cards peek at the edges, and a swipe across the card flips through the queue'**
+  String get pvMiniNeighborsSub;
+
+  /// No description provided for @pvMiniNeighborsOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden'**
+  String get pvMiniNeighborsOff;
+
+  /// No description provided for @pvMiniNeighborsOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Peeking at the edges'**
+  String get pvMiniNeighborsOn;
 
   /// desktop: player.lyrics
   ///

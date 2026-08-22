@@ -66,7 +66,21 @@ bool playSourceOpens(PlaySource source) =>
     source is! PlainSource && source is! WaveSource;
 
 class SourcePill extends ConsumerWidget {
-  const SourcePill({super.key, required this.source, required this.shuffle});
+  const SourcePill({
+    super.key,
+    required this.source,
+    required this.shuffle,
+    this.background,
+    this.borderColor,
+  });
+
+  /// Заливка. `null` — обычная плашка темы (`pill`). Шапка плеера на своём
+  /// фоне передаёт сюда плёнку блоков: сплошная плашка на нём читается
+  /// чёрной нашлёпкой, а рядом стоят полупрозрачные транспорт и инструменты.
+  final Color? background;
+
+  /// Обводка — по той же причине, что у [CircleIconButton.borderColor].
+  final Color? borderColor;
 
   /// Источник очереди. `null` — очередь ниоткуда (снимок старой сессии,
   /// восстановленный до того, как источник начали запоминать): пилюля тогда
@@ -85,10 +99,16 @@ class SourcePill extends ConsumerWidget {
         : _label(context, ref, source);
     final tappable = source != null && playSourceOpens(source);
 
+    final border = borderColor;
     return Center(
       child: Material(
-        color: t.pill,
-        borderRadius: BorderRadius.circular(kHeaderControl / 2),
+        color: background ?? t.pill,
+        // Пилюля ровно в высоту круглых кнопок, поэтому `StadiumBorder` — тот
+        // же радиус, что был; форма нужна ради обводки: у `Material` она
+        // задаётся либо радиусом, либо формой, но не тем и другим сразу.
+        shape: StadiumBorder(
+          side: border == null ? BorderSide.none : BorderSide(color: border),
+        ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: tappable ? () => openPlaySource(context, source) : null,

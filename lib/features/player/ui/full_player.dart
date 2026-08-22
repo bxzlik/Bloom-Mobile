@@ -29,6 +29,7 @@ import '../../detail/artists_sheet.dart';
 import '../../lyrics/lyrics_store.dart';
 import '../../lyrics/lyrics_style_store.dart';
 import '../../lyrics/ui/lyrics_view.dart';
+import '../player_bg_store.dart';
 import '../player_controller.dart';
 import '../player_style_store.dart';
 import '../player_view_store.dart';
@@ -36,6 +37,7 @@ import '../sleep_timer_store.dart';
 import '../slider_style_store.dart';
 import '../speed_store.dart';
 import '../track_anim_store.dart';
+import 'player_backdrop.dart';
 import 'player_sheet.dart';
 import 'queue_sheet.dart';
 import 'sleep_sheet.dart';
@@ -126,6 +128,9 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
     final swipes = ref.watch(swipeProvider).of(SwipeZone.player);
 
     return Scaffold(
+      // Заливка темы остаётся под фоном плеера: сам фон её накрывает целиком, а
+      // в режиме «Нет» её и видно. Прозрачным `Scaffold` делать нельзя — сквозь
+      // него просвечивало бы то, над чем лежит панель.
       backgroundColor: t.bg,
       // Тяги вниз здесь нет: панель ловит её сама, снаружи содержимого — иначе
       // жест пришлось бы заводить дважды и они спорили бы за палец.
@@ -134,103 +139,123 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
       // подписи: тянуть плеер целиком незачем — шапка и транспорт к треку не
       // относятся. Своя ловушка прогресса ниже перебивает этот жест, как и
       // положено ближнему детектору.
-      body: TrackFlick(
-        onLeft: track == null || swipes.left == SwipeAction.none
-            ? null
-            : () => runSwipeAction(
-                context,
-                ref,
-                swipes.left,
-                track: track,
-                fromFlick: true,
-              ),
-        onRight: track == null || swipes.right == SwipeAction.none
-            ? null
-            : () => runSwipeAction(
-                context,
-                ref,
-                swipes.right,
-                track: track,
-                fromFlick: true,
-              ),
-        builder: (context, shift) => SafeArea(
-          // Низ — не `SafeArea`, а [bottomEdgeInset]: ряд инструментов
-          // обязан кончаться там же, где кромка таб-бара под списком,
-          // иначе открытие плеера выглядит как прыжок раскладки. Заодно
-          // на iOS полный вырез под home indicator (34) поднял бы весь низ
-          // заметно выше, чем на андроиде.
-          bottom: false,
-          child: track == null
-              ? const SizedBox.shrink()
-              : Padding(
-                  // Сверху воздух: шапка не должна липнуть к статус-бару.
-                  padding: EdgeInsets.fromLTRB(
-                    16,
-                    14,
-                    16,
-                    bottomEdgeInset(context),
-                  ),
-                  child: Column(
-                    children: [
-                      _Header(track: track, state: state),
-                      const SizedBox(height: 16),
-                      // Обложка по центру свободного места — или текст на её
-                      // месте, если выбран вид «вместо обложки». В виде
-                      // «поверх» обложка остаётся, а текст ложится на неё
-                      // самой карточкой (см. `_Cover`).
-                      // Именно `Expanded`, а не `Flexible`: панель текста —
-                      // скролл, и по свободным ограничениям он берёт высоту
-                      // по СОДЕРЖИМОМУ. Пока текст грузится, содержимое —
-                      // одна строчка «Загрузка текста…», колонка схлопывалась
-                      // и весь низ экрана уезжал вверх (поймал он). Обложке
-                      // это ничего не меняет: её `Center` и раньше занимал
-                      // всё свободное место.
-                      Expanded(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 260),
-                          child: lyricsOpen && lyricsMode == LyricsMode.replace
-                              ? const _LyricsPane(key: ValueKey('lyrics'))
-                              : Center(
-                                  key: const ValueKey('cover'),
-                                  child: AspectRatio(
-                                    aspectRatio: 1,
-                                    child: FlickSlide(
-                                      shift: shift,
-                                      child: _Cover(
-                                        state: state,
-                                        lyricsOpen:
-                                            lyricsOpen &&
-                                            lyricsMode == LyricsMode.overlay,
-                                      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Фон — настройка «Плеер → Фон плеера». Ниже содержимого и выше
+          // заливки: плёнки блоков (`ovlBg`) обязаны проступать на нём.
+          const PlayerBackdrop(),
+          _body(context, state, track, lyricsOpen, lyricsMode, swipes),
+        ],
+      ),
+    );
+  }
+
+  /// Содержимое плеера поверх фона.
+  Widget _body(
+    BuildContext context,
+    PlaybackState state,
+    Track? track,
+    bool lyricsOpen,
+    LyricsMode lyricsMode,
+    SwipePair swipes,
+  ) {
+    return TrackFlick(
+      onLeft: track == null || swipes.left == SwipeAction.none
+          ? null
+          : () => runSwipeAction(
+              context,
+              ref,
+              swipes.left,
+              track: track,
+              fromFlick: true,
+            ),
+      onRight: track == null || swipes.right == SwipeAction.none
+          ? null
+          : () => runSwipeAction(
+              context,
+              ref,
+              swipes.right,
+              track: track,
+              fromFlick: true,
+            ),
+      builder: (context, shift) => SafeArea(
+        // Низ — не `SafeArea`, а [bottomEdgeInset]: ряд инструментов
+        // обязан кончаться там же, где кромка таб-бара под списком,
+        // иначе открытие плеера выглядит как прыжок раскладки. Заодно
+        // на iOS полный вырез под home indicator (34) поднял бы весь низ
+        // заметно выше, чем на андроиде.
+        bottom: false,
+        child: track == null
+            ? const SizedBox.shrink()
+            : Padding(
+                // Сверху воздух: шапка не должна липнуть к статус-бару.
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  14,
+                  16,
+                  bottomEdgeInset(context),
+                ),
+                child: Column(
+                  children: [
+                    _Header(track: track, state: state),
+                    const SizedBox(height: 16),
+                    // Обложка по центру свободного места — или текст на её
+                    // месте, если выбран вид «вместо обложки». В виде
+                    // «поверх» обложка остаётся, а текст ложится на неё
+                    // самой карточкой (см. `_Cover`).
+                    // Именно `Expanded`, а не `Flexible`: панель текста —
+                    // скролл, и по свободным ограничениям он берёт высоту
+                    // по СОДЕРЖИМОМУ. Пока текст грузится, содержимое —
+                    // одна строчка «Загрузка текста…», колонка схлопывалась
+                    // и весь низ экрана уезжал вверх (поймал он). Обложке
+                    // это ничего не меняет: её `Center` и раньше занимал
+                    // всё свободное место.
+                    Expanded(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 260),
+                        child: lyricsOpen && lyricsMode == LyricsMode.replace
+                            ? const _LyricsPane(key: ValueKey('lyrics'))
+                            : Center(
+                                key: const ValueKey('cover'),
+                                child: AspectRatio(
+                                  aspectRatio: 1,
+                                  child: FlickSlide(
+                                    shift: shift,
+                                    child: _Cover(
+                                      state: state,
+                                      lyricsOpen:
+                                          lyricsOpen &&
+                                          lyricsMode == LyricsMode.overlay,
                                     ),
                                   ),
                                 ),
-                        ),
+                              ),
                       ),
-                      // Отступы вокруг названия одинаковые: оно должно стоять
-                      // ровно посередине между обложкой и прогрессом. Снизу
-                      // те же ~24 набегают из полей вокруг имени артиста, этой
-                      // восьмёрки и верхней половины ловушки прогресса
-                      // (`_Progress.slack`).
-                      const SizedBox(height: 24),
-                      // Подписи отзываются вдвое слабее обложки: они уже
-                      // самой карточки, и на одном с ней ходу успевали бы
-                      // улететь за край раньше неё.
-                      FlickSlide(
-                        shift: shift,
-                        amplitude: 0.5,
-                        child: _TitleBlock(state: state),
-                      ),
-                      const SizedBox(height: 8),
-                      const _Progress(),
-                      const SizedBox(height: 16),
-                      const _Transport(),
-                      const SizedBox(height: 12),
-                      _Tools(queueCount: state.queue.length),
-                    ],
-                  ),
+                    ),
+                    // Отступы вокруг названия одинаковые: оно должно стоять
+                    // ровно посередине между обложкой и прогрессом. Снизу
+                    // те же ~24 набегают из полей вокруг имени артиста, этой
+                    // восьмёрки и верхней половины ловушки прогресса
+                    // (`_Progress.slack`).
+                    const SizedBox(height: 24),
+                    // Подписи отзываются вдвое слабее обложки: они уже
+                    // самой карточки, и на одном с ней ходу успевали бы
+                    // улететь за край раньше неё.
+                    FlickSlide(
+                      shift: shift,
+                      amplitude: 0.5,
+                      child: _TitleBlock(state: state),
+                    ),
+                    const SizedBox(height: 8),
+                    const _Progress(),
+                    const SizedBox(height: 16),
+                    const _Transport(),
+                    const SizedBox(height: 12),
+                    _Tools(queueCount: state.queue.length),
+                  ],
                 ),
-        ),
+              ),
       ),
     );
   }
@@ -247,11 +272,26 @@ class _Header extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.bloom;
+    // На своём фоне шапка красится ТЕМ ЖЕ, чем блоки транспорта и инструментов
+    // (`ovlBg` + `ovlLine`): сплошная плашка темы (`pill`) на цветном фоне
+    // читается чёрной нашлёпкой рядом с полупрозрачным низом — он это и
+    // заметил. Без фона всё остаётся как было: плёнка в три процента поверх
+    // заливки темы — это почти та же заливка, только тусклее.
+    final bg = ref.watch(playerBgProvider);
+    final fill = bg.isNone ? null : t.ovlBg;
+    final line = bg.isNone ? null : t.ovlLine;
+
     return Row(
       children: [
         CircleIconButton(
           icon: SolarIconsOutline.altArrowDown,
           iconSize: 23,
+          background: fill,
+          borderColor: line,
+          // Своя заливка обычно гасит стекло, но здесь это поверхность темы, а
+          // не состояние: при включённой «Прозрачности» шапке стекло положено.
+          glass: true,
           // Не `pop`: плеер — слой каркаса, а не маршрут (см. `PlayerSheet`).
           onTap: collapsePlayerSheet,
         ),
@@ -263,11 +303,19 @@ class _Header extends ConsumerWidget {
         // плёнки слипаются в одну полосу.
         const SizedBox(width: _headerGap),
         Expanded(
-          child: SourcePill(source: state.source, shuffle: state.shuffle),
+          child: SourcePill(
+            source: state.source,
+            shuffle: state.shuffle,
+            background: fill,
+            borderColor: line,
+          ),
         ),
         const SizedBox(width: _headerGap),
         CircleIconButton(
           icon: SolarIconsOutline.menuDots,
+          background: fill,
+          borderColor: line,
+          glass: true,
           onTap: () => showTrackActions(context, ref, track),
         ),
       ],

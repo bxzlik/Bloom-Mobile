@@ -478,6 +478,15 @@
   "pvLyricsFxGlow": "Свечение",
   "pvLyricsFxSpring": "Пружина",
 
+  "pvGroupBg": "Фон плеера",
+  "pvBgRow": "Фон плеера",
+  "pvBgCover": "Обложка",
+  "pvBgCoverSub": "Размытая обложка трека",
+  "pvBgColor": "Цвет",
+  "pvBgColorSub": "Адаптивный градиент под обложку",
+  "pvBgNone": "Нет",
+  "pvBgNoneSub": "Без фона",
+
   "pvGroupMini": "Мини-плеер",
   "pvMiniBgRow": "Фон",
   "pvMiniBgSub": "чем залита карточка над таб-баром",
@@ -505,6 +514,10 @@
   "pvMiniButtonPlay": "Плей/Пауза",
   "pvMiniButtonNext": "Следующий",
   "pvMiniButtonFav": "Лайк",
+  "pvMiniNeighborsRow": "Соседние треки",
+  "pvMiniNeighborsSub": "по краям выглядывают карточки предыдущего и следующего трека, а свайп по карточке листает очередь",
+  "pvMiniNeighborsOff": "Скрыты",
+  "pvMiniNeighborsOn": "Выглядывают по краям",
 
   "playerLyrics": "Текст песни",
   "lyricsLoading": "Загрузка текста…",

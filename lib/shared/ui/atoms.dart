@@ -212,6 +212,8 @@ class CircleIconButton extends StatelessWidget {
     this.size = kHeaderControl,
     this.iconSize = 23,
     this.background,
+    this.borderColor,
+    this.glass,
     this.color,
     this.tooltip,
   });
@@ -221,19 +223,31 @@ class CircleIconButton extends StatelessWidget {
   final double size;
   final double iconSize;
   final Color? background;
+
+  /// Обводка кружка. Нужна там, где заливка почти прозрачна: на фоне плеера
+  /// плёнка в три процента сама по себе не читается — ровно как у блоков
+  /// транспорта, у которых по этой же причине есть `ovlLine`.
+  final Color? borderColor;
+
+  /// Пускать ли стекло. По умолчанию — только кнопкам БЕЗ своей заливки: акцент
+  /// под play и прозрачный кружок миниплеера — это состояние, а не поверхность
+  /// темы. Своя плёнка поверхности (шапка плеера на фоне) — как раз наоборот, и
+  /// ей стекло положено.
+  final bool? glass;
+
   final Color? color;
   final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    // Со своей заливкой (акцент под play, прозрачная у кнопок миниплеера)
-    // кнопка стеклом не становится: этот цвет — состояние, а не поверхность
-    // темы.
+    final border = borderColor;
     final button = GlassBox(
       color: background,
-      enabled: background == null,
-      shape: const CircleBorder(),
+      enabled: glass ?? background == null,
+      shape: CircleBorder(
+        side: border == null ? BorderSide.none : BorderSide(color: border),
+      ),
       child: InkWell(
         onTap: onTap,
         child: SizedBox(

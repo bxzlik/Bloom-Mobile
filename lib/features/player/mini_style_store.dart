@@ -5,6 +5,10 @@
 /// Перенесены четыре настройки: фон карточки, индикаторы прогресса, форма
 /// обложки и скругление границ. Пресеты и набор кнопок — следующим заходом.
 ///
+/// Своего на телефоне два: набор кнопок ([MiniButton]) и «Соседние треки»
+/// ([MiniStyle.neighbors]) — на ПК миниплеер занимает всю ширину окна, и ни
+/// того, ни другого там взяться не может.
+///
 /// Скругление на ПК — тумблер (обычный радиус ↔ pill). Здесь четыре ступени:
 /// карточка над таб-баром лежит на самом виду, и между «квадратной» и
 /// «пилюлей» есть за что зацепиться — промежуточные ступени на ПК просто
@@ -73,12 +77,13 @@ class MiniProgress {
 enum MiniProgressKind { line, fill, ring }
 
 /// Кнопка в карточке. Порядок — тот, в каком они стоят в строке справа от
-/// подписи (и в каком идут строки шторки).
+/// подписи (и в каком идут строки шторки). «Лайк» открывает группу: он не про
+/// перемотку, и разрывать им трио prev–play–next нельзя.
 ///
 /// На ПК прячется только «Лайк» (`mpHide.fav`), трио перемотки там неснимаемо:
 /// в широком баре ему всегда есть место. На телефоне место как раз и кончается
 /// — карточка шириной с экран, и выбор «что важнее» тут настоящий.
-enum MiniButton { prev, play, next, fav }
+enum MiniButton { fav, prev, play, next }
 
 /// Умолчание — трио перемотки, как карточка выглядела до настройки. «Лайк»
 /// выключен: включённым он ужал бы подпись у всех, кто настройку не открывал.
@@ -95,6 +100,7 @@ class MiniStyle {
     this.shape = MiniCoverShape.rounded,
     this.radius = MiniRadius.rounded,
     this.buttons = kDefaultMiniButtons,
+    this.neighbors = false,
   });
 
   final MiniBg bg;
@@ -102,6 +108,14 @@ class MiniStyle {
   final MiniCoverShape shape;
   final MiniRadius radius;
   final Set<MiniButton> buttons;
+
+  /// Соседние треки: карточка сужается, а из-за её краёв выглядывают карточки
+  /// предыдущего и следующего трека, и вся тройка едет за пальцем — карусель.
+  ///
+  /// Своей настройки на ПК нет и взяться ей неоткуда: там миниплеер — полоса во
+  /// всю ширину окна, листать её нечем и краёв, из-за которых выглядывать, у
+  /// неё тоже нет.
+  final bool neighbors;
 
   bool has(MiniProgressKind kind) => switch (kind) {
     MiniProgressKind.line => progress.line,
@@ -117,12 +131,14 @@ class MiniStyle {
     MiniCoverShape? shape,
     MiniRadius? radius,
     Set<MiniButton>? buttons,
+    bool? neighbors,
   }) => MiniStyle(
     bg: bg ?? this.bg,
     progress: progress ?? this.progress,
     shape: shape ?? this.shape,
     radius: radius ?? this.radius,
     buttons: buttons ?? this.buttons,
+    neighbors: neighbors ?? this.neighbors,
   );
 }
 
@@ -164,6 +180,9 @@ class MiniStyleController extends Notifier<MiniStyle> {
                 if ((raw['buttons']! as List).contains(button.name)) button,
             }
           : kDefaultMiniButtons,
+      // Именно `is`, а не приведение: в файле могло лежать что угодно (правили
+      // руками), а падать на входе из-за вида карточки нельзя.
+      neighbors: raw['neighbors'] == true,
     );
   }
 
@@ -182,6 +201,8 @@ class MiniStyleController extends Notifier<MiniStyle> {
       },
     ),
   );
+
+  void setNeighbors(bool on) => _set(state.copyWith(neighbors: on));
 
   void toggleButton(MiniButton button, bool on) {
     final buttons = {...state.buttons};
@@ -208,6 +229,7 @@ class MiniStyleController extends Notifier<MiniStyle> {
         for (final button in MiniButton.values)
           if (next.buttons.contains(button)) button.name,
       ],
+      'neighbors': next.neighbors,
     });
   }
 }

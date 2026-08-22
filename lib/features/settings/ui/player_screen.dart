@@ -31,6 +31,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../features/customization/custom_store.dart';
 import '../../../features/lyrics/lyrics_style_store.dart';
 import '../../../features/player/mini_style_store.dart';
+import '../../../features/player/player_bg_store.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../features/player/player_style_store.dart';
 import '../../../features/player/player_view_store.dart';
@@ -53,6 +54,7 @@ class PlayerSettingsScreen extends ConsumerWidget {
     final style = ref.watch(playerStyleProvider);
     final align = ref.watch(titleAlignProvider);
     final slider = ref.watch(sliderStyleProvider);
+    final bg = ref.watch(playerBgProvider);
     final mini = ref.watch(miniStyleProvider);
     final l = context.l;
 
@@ -141,6 +143,19 @@ class PlayerSettingsScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 22),
+        SettingsCaption(l.pvGroupBg.toUpperCase()),
+        const SizedBox(height: 10),
+        SettingsGroupCard(
+          rows: [
+            _Row(
+              title: l.pvBgRow,
+              value: _playerBgLabel(l, bg),
+              glyph: Icon(_playerBgIcon(bg)),
+              onTap: () => _openPlayerBg(context, ref),
+            ),
+          ],
+        ),
+        const SizedBox(height: 22),
         SettingsCaption(l.pvGroupMini.toUpperCase()),
         const SizedBox(height: 10),
         SettingsGroupCard(
@@ -176,6 +191,12 @@ class PlayerSettingsScreen extends ConsumerWidget {
               // Набор: значок общий — про кнопки.
               glyph: const Icon(SolarIconsOutline.gamepad),
               onTap: () => _openMiniButtons(context),
+            ),
+            _Row(
+              title: l.pvMiniNeighborsRow,
+              value: _miniNeighborsLabel(l, mini.neighbors),
+              glyph: Icon(_miniNeighborsIcon(mini.neighbors)),
+              onTap: () => _openMiniNeighbors(context, ref),
             ),
           ],
         ),
@@ -1595,6 +1616,43 @@ class _KindGlyph extends CustomPainter {
   bool shouldRepaint(_KindGlyph old) => old.kind != kind || old.color != color;
 }
 
+// ── Фон плеера ──────────────────────────────────────────────────────────────
+// Наша настройка, десктопной пары у неё нет: на широком окне за плеером стоит
+// само приложение, а на телефоне он занимает экран целиком, и за обложкой —
+// пустота. Варианты крупными строками с пояснением: словом «Цвет» не объяснить,
+// что цвет берётся от обложки.
+
+String _playerBgLabel(AppLocalizations l, PlayerBg bg) => switch (bg) {
+  PlayerBg.cover => l.pvBgCover,
+  PlayerBg.color => l.pvBgColor,
+  PlayerBg.none => l.pvBgNone,
+};
+
+String _playerBgSub(AppLocalizations l, PlayerBg bg) => switch (bg) {
+  PlayerBg.cover => l.pvBgCoverSub,
+  PlayerBg.color => l.pvBgColorSub,
+  PlayerBg.none => l.pvBgNoneSub,
+};
+
+IconData _playerBgIcon(PlayerBg bg) => switch (bg) {
+  PlayerBg.cover => SolarIconsOutline.gallery,
+  PlayerBg.color => SolarIconsOutline.palette,
+  PlayerBg.none => SolarIconsOutline.forbiddenCircle,
+};
+
+/// Шторка «Фон плеера». Шапки нет: строка, из которой сюда пришли, осталась
+/// видна над шторкой, а что делает каждый вариант, говорит его же подпись.
+/// Закрывается от выбора — как и остальные шторки «одно из».
+Future<void> _openPlayerBg(BuildContext context, WidgetRef ref) => _pickMini(
+  context: context,
+  values: PlayerBg.values,
+  current: ref.read(playerBgProvider),
+  icon: _playerBgIcon,
+  label: (bg) => _playerBgLabel(context.l, bg),
+  sub: (bg) => _playerBgSub(context.l, bg),
+  apply: ref.read(playerBgProvider.notifier).set,
+);
+
 // ── Мини-плеер ──────────────────────────────────────────────────────────────
 // Четыре настройки карточки над таб-баром (десктопные `mp*`): фон, индикаторы
 // прогресса, форма обложки, скругление углов. Варианты — списком в шторке, а не
@@ -1694,6 +1752,27 @@ Future<void> _openMiniRadius(BuildContext context, WidgetRef ref) => _pickMini(
   apply: ref.read(miniStyleProvider.notifier).setRadius,
 );
 
+String _miniNeighborsLabel(AppLocalizations l, bool on) =>
+    on ? l.pvMiniNeighborsOn : l.pvMiniNeighborsOff;
+
+IconData _miniNeighborsIcon(bool on) =>
+    on ? SolarIconsOutline.transferHorizontal : SolarIconsOutline.stop;
+
+/// Соседние треки — выбор из двух, а не тумблер: строка стоит в одной карточке
+/// с остальным видом миниплеера, и её значение должно читаться так же, как у
+/// соседних строк («Фон», «Скругление»).
+Future<void> _openMiniNeighbors(BuildContext context, WidgetRef ref) =>
+    _pickMini<bool>(
+      context: context,
+      title: context.l.pvMiniNeighborsRow,
+      subtitle: context.l.pvMiniNeighborsSub,
+      values: const [false, true],
+      current: ref.read(miniStyleProvider).neighbors,
+      icon: _miniNeighborsIcon,
+      label: (on) => _miniNeighborsLabel(context.l, on),
+      apply: ref.read(miniStyleProvider.notifier).setNeighbors,
+    );
+
 /// Шторка «одно из»: список вариантов; выбор применяется и ЗАКРЫВАЕТ шторку.
 ///
 /// Закрывает, в отличие от шторок анимации: настройка меняет карточку над
@@ -1701,17 +1780,21 @@ Future<void> _openMiniRadius(BuildContext context, WidgetRef ref) => _pickMini(
 /// всё равно нечем (та же причина, что у выбора вида таб-бара).
 Future<void> _pickMini<T>({
   required BuildContext context,
-  required String title,
+  String? title,
   String? subtitle,
   required List<T> values,
   required T current,
   required IconData Function(T) icon,
   required String Function(T) label,
+
+  /// Пояснение под названием варианта. `null` — вариантам хватает подписи.
+  String Function(T)? sub,
   required void Function(T) apply,
 }) async {
   final picked = await showBloomSheetChild<T>(
     context: context,
-    header: _sheetHeader(context, title, subtitle),
+    // Шапки может не быть вовсе: у «Фона плеера» варианты объясняют себя сами.
+    header: title == null ? null : _sheetHeader(context, title, subtitle),
     // Закрывать шторку надо ЕЁ контекстом: она живёт в корневом навигаторе, а
     // страница — во вложенном, и `pop` со страничным закрыл бы «Настройки».
     child: Builder(
@@ -1722,6 +1805,7 @@ Future<void> _pickMini<T>({
             _OptionTile(
               icon: icon(value),
               label: label(value),
+              sub: sub?.call(value),
               active: value == current,
               onTap: () => Navigator.of(sheetContext).pop(value),
             ),
@@ -1824,11 +1908,15 @@ class _OptionTile extends StatelessWidget {
     required this.label,
     required this.active,
     required this.onTap,
+    this.sub,
     this.check = false,
   });
 
   final IconData icon;
   final String label;
+
+  /// Пояснение под названием. `null` — строка в одну строку, как у мини-плеера.
+  final String? sub;
 
   /// Выбранный вариант (или включённый индикатор).
   final bool active;
@@ -1845,18 +1933,21 @@ class _OptionTile extends StatelessWidget {
     final theme = Theme.of(context).textTheme;
     final tint = active && !check;
     return SheetPanel(
+      // Строки списка стоят вплотную друг к другу: сами они крупные, и полный
+      // просвет блока рвал бы список на отдельные плашки.
+      gap: 3,
       children: [
         InkWell(
           onTap: onTap,
           child: Ink(
             color: tint ? t.accent.withValues(alpha: 0.12) : null,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 11, 16, 11),
+              padding: const EdgeInsets.fromLTRB(14, 15, 18, 15),
               child: Row(
                 children: [
                   Container(
-                    width: 34,
-                    height: 34,
+                    width: 38,
+                    height: 38,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: active
@@ -1866,17 +1957,32 @@ class _OptionTile extends StatelessWidget {
                     ),
                     child: Icon(
                       icon,
-                      size: 18,
+                      size: 20,
                       color: active ? t.accent : t.iconFg,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 14),
                   Expanded(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.titleMedium,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.titleMedium,
+                        ),
+                        if (sub case final text?) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            text,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.bodySmall,
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   const SizedBox(width: 12),

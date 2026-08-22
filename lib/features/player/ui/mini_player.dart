@@ -39,6 +39,37 @@ import 'track_swap.dart';
 /// из неё растёт.
 const double kMiniCardHeight = 64;
 
+/// Сколько видно от карточки соседа при включённых «Соседних треках» — узкая
+/// полоска у самого края экрана, как в Яндекс.Музыке.
+const double kMiniPeek = 12;
+
+/// Насколько карточка отодвигается от обычного поля, когда соседи включены:
+/// их видимая полоска плюс просвет до самой карточки. `0` — соседей нет и
+/// карточка стоит как стояла.
+double miniPeekInset(bool neighbors) => neighbors ? kMiniPeek + kFloatGap : 0;
+
+/// Место карточки в покое: поля по [kFloatGap] с боков и столько же над
+/// таб-баром ([navInset] — его высота с системным вырезом). С соседями
+/// карточка ужимается ещё на [miniPeekInset] с каждой стороны — ровно
+/// настолько, чтобы их полоски встали в обычное поле экрана, а не сверх него.
+Rect miniCardRect({
+  required Size screen,
+  required double navInset,
+  required bool neighbors,
+}) {
+  final side = kFloatGap + miniPeekInset(neighbors);
+  return Rect.fromLTWH(
+    side,
+    screen.height - navInset - kFloatGap - kMiniCardHeight,
+    screen.width - side * 2,
+    kMiniCardHeight,
+  );
+}
+
+/// Шаг карусели: карточка плюс просвет до соседней. Сдвиг на него ставит
+/// соседа ровно на место середины.
+double miniStride(double cardWidth) => cardWidth + kFloatGap;
+
 /// Сторона обложки в карточке.
 const double _coverSize = 44;
 
@@ -83,9 +114,14 @@ double miniCardRadius(MiniRadius radius, double themeRadius) =>
 /// Тон заливки карточки: осветлённый доминант обложки в режиме «Цвет обложки».
 /// `null` — заливка темы (в том числе пока цвет ещё считается и если обложку не
 /// прочитать).
-Color? miniCardTint(WidgetRef ref, MiniStyle style) {
+///
+/// [neighbor] — карточка соседа в карусели: тон ей считаем с ЕЁ обложки, иначе
+/// три карточки в ряд были бы одного цвета и карусель читалась бы одной
+/// длинной плашкой.
+Color? miniCardTint(WidgetRef ref, MiniStyle style, {Track? neighbor}) {
   if (style.bg != MiniBg.coverColor) return null;
-  return ref.watch(miniCoverColorProvider(miniCardCover(ref))).value;
+  final cover = neighbor == null ? miniCardCover(ref) : neighbor.cover;
+  return ref.watch(miniCoverColorProvider(cover)).value;
 }
 
 /// Обложка, которую карточка показывает на самом деле: своя из «Кастомизации»
@@ -122,20 +158,31 @@ class MiniCardSlot extends ConsumerWidget {
 /// смысла считать её содержимое, когда её не видно, нет (панель её тогда просто
 /// не строит).
 class MiniCardRow extends ConsumerWidget {
-  const MiniCardRow({super.key});
+  const MiniCardRow({super.key, this.neighbor});
+
+  /// Строка карточки СОСЕДА в карусели («Соседние треки»): рисуется по этому
+  /// треку, а не по играющему, и живого в ней нет ничего — ни индикаторов
+  /// прогресса (прогресс есть только у играющего), ни анимации смены (её и
+  /// делает сама карусель), ни нажатий. `null` — обычная строка миниплеера.
+  final Track? neighbor;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
     final state = ref.watch(playbackProvider);
-    final track = state.track;
+    final live = neighbor == null;
+    final track = neighbor ?? state.track;
     if (track == null) return const SizedBox.shrink();
 
     final theme = Theme.of(context).textTheme;
     final anim = ref.watch(trackAnimProvider).of(TrackAnimSurface.mini);
     final style = ref.watch(miniStyleProvider);
-    final cover = miniCardCover(ref);
-    final tint = miniCardTint(ref, style);
+    // Своя картинка из «Кастомизации» подменяет обложку ИГРАЮЩЕГО трека —
+    // соседи показывают свои.
+    final cover = live ? miniCardCover(ref) : track.cover;
+    final tint = miniCardTint(ref, style, neighbor: neighbor);
+    final progress = live ? style.progress : const MiniProgress(line: false);
+    final error = live ? state.error : null;
     final visible = MiniButton.values.where(style.hasButton).toList();
 
     return SizedBox(
@@ -146,8 +193,7 @@ class MiniCardRow extends ConsumerWidget {
           // стопке, а не z-index, как на ПК.
           if (style.bg == MiniBg.cover)
             Positioned.fill(child: _CoverBackdrop(cover: cover)),
-          if (style.progress.fill)
-            Positioned.fill(child: _FillProgress(tint: tint)),
+          if (progress.fill) Positioned.fill(child: _FillProgress(tint: tint)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Row(
@@ -155,15 +201,15 @@ class MiniCardRow extends ConsumerWidget {
                 _MiniCover(
                   trackId: track.id,
                   cover: cover,
-                  anim: anim.cover,
+                  anim: live ? anim.cover : TrackAnimKind.none,
                   shape: style.shape,
-                  ring: style.progress.ring,
+                  ring: progress.ring,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: TrackSwap(
                     id: track.id,
-                    kind: anim.text,
+                    kind: live ? anim.text : TrackAnimKind.none,
                     tuning: TrackSwapTuning.mini,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -174,11 +220,11 @@ class MiniCardRow extends ConsumerWidget {
                         MarqueeText(track.name, style: theme.titleSmall),
                         const SizedBox(height: 2),
                         Text(
-                          state.error ?? track.artist,
+                          error ?? track.artist,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.bodySmall?.copyWith(
-                            color: state.error != null
+                            color: error != null
                                 ? t.sysFavIco
                                 : _artistColor(t),
                           ),
@@ -195,13 +241,14 @@ class MiniCardRow extends ConsumerWidget {
                   _MiniButton(
                     button: visible[i],
                     track: track,
-                    loading: state.loading,
+                    loading: live && state.loading,
+                    live: live,
                   ),
                 ],
               ],
             ),
           ),
-          if (style.progress.line)
+          if (progress.line)
             const Positioned(left: 0, right: 0, bottom: 0, child: _Hairline()),
         ],
       ),
@@ -216,6 +263,7 @@ class _MiniButton extends ConsumerWidget {
     required this.button,
     required this.track,
     required this.loading,
+    this.live = true,
   });
 
   final MiniButton button;
@@ -223,6 +271,11 @@ class _MiniButton extends ConsumerWidget {
 
   /// Идёт переход на другой трек — место play занимает кружок ожидания.
   final bool loading;
+
+  /// Карточка играющего трека. `false` — сосед в карусели: кнопки там стоят
+  /// только ради раскладки (иначе подпись соседа была бы шире и на въезде
+  /// прыгала), делать им нечего, и play показывает play — сосед не играет.
+  final bool live;
 
   static const double _size = 38;
 
@@ -236,7 +289,7 @@ class _MiniButton extends ConsumerWidget {
           size: _size,
           iconSize: 20,
           background: Colors.transparent,
-          onTap: ref.read(playbackProvider.notifier).prev,
+          onTap: live ? ref.read(playbackProvider.notifier).prev : null,
         );
       case MiniButton.next:
         return CircleIconButton(
@@ -244,7 +297,7 @@ class _MiniButton extends ConsumerWidget {
           size: _size,
           iconSize: 20,
           background: Colors.transparent,
-          onTap: ref.read(playbackProvider.notifier).next,
+          onTap: live ? ref.read(playbackProvider.notifier).next : null,
         );
       case MiniButton.fav:
         final fav = ref.watch(
@@ -256,9 +309,20 @@ class _MiniButton extends ConsumerWidget {
           iconSize: 20,
           background: Colors.transparent,
           color: fav ? t.sysFavIco : null,
-          onTap: () => ref.read(libraryProvider.notifier).toggleFav(track),
+          onTap: live
+              ? () => ref.read(libraryProvider.notifier).toggleFav(track)
+              : null,
         );
       case MiniButton.play:
+        if (!live) {
+          return CircleIconButton(
+            icon: SolarIconsBold.play,
+            iconSize: 18,
+            size: _size,
+            background: t.accent,
+            color: t.accentText,
+          );
+        }
         if (loading) {
           // Кружок тот же, что у play — на переходе трека кнопка не должна
           // пропадать из строки.
