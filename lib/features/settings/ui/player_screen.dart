@@ -1,0 +1,2009 @@
+/// Настройки плеера — пока одна вкладка десктопного раздела: «Анимации».
+///
+/// Порт `AnimCards` из `settings/ui/sections/ViewSection.tsx`. Поверхностей у
+/// нас две (на ПК их три — там ещё полноэкранный режим), у каждой своя
+/// карточка: коробки разного размера, и одна настройка на обеих заставляла бы
+/// выбирать между «красиво в плеере» и «не рябит над таб-баром».
+///
+/// Внутри карточки две независимые строки — обложка и подпись: слайд обложки
+/// при спокойном затухании текста (и наоборот) — рабочее сочетание, а не
+/// недонастройка.
+///
+/// Сами кнопки выбора на странице НЕ стоят: развёрнутыми тремя блоками они
+/// занимали два экрана прокрутки. Остались три строки «название — что сейчас
+/// выбрано», а варианты открываются нижней шторкой — ровно как «Тема» и «Вид
+/// таб-бара» в «Интерфейсе». Шторка от выбора не закрывается: настроек в ней
+/// две-три, и они настраиваются подряд.
+///
+/// Значки вариантов рисуем сами: на ПК это три крошечных SVG (перечёркнутый
+/// круг, две плитки рядом, две плитки внахлёст), в шрифте Solar таких нет.
+///
+/// Вид самой карточки над таб-баром настраивается не тут, а на своей странице
+/// («Мини плеер»): настроек у неё шесть, и в конце этой страницы их приходилось
+/// искать прокруткой. Осталась только строка «Мини-плеер» в «Смене трека» —
+/// переходы обеих поверхностей настраиваются сравнением одна с другой.
+library;
+
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:solar_icons/solar_icons.dart';
+
+import '../../../app/theme/tokens.dart';
+import '../../../core/l10n/l10n.dart';
+import '../../../features/customization/custom_store.dart';
+import '../../../features/lyrics/lyrics_style_store.dart';
+import '../../../features/player/play_button_store.dart';
+import '../../../features/player/player_bg_store.dart';
+import '../../../features/player/player_controller.dart';
+import '../../../features/player/player_style_store.dart';
+import '../../../features/player/player_view_store.dart';
+import '../../../features/player/slider_style_store.dart';
+import '../../../features/player/track_anim_store.dart';
+import '../../../features/player/ui/play_button.dart';
+import '../../../features/player/ui/slider_shapes.dart';
+import '../../../features/player/ui/vinyl_disc.dart';
+import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_sheet.dart';
+import '../../../shared/ui/glass.dart';
+import '../../../shared/ui/subpage_header.dart';
+import '../../../shared/util/format.dart';
+import 'settings_rows.dart';
+import 'settings_sheets.dart';
+
+class PlayerSettingsScreen extends ConsumerWidget {
+  const PlayerSettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final anim = ref.watch(trackAnimProvider);
+    final lyrics = ref.watch(lyricsStyleProvider);
+    final style = ref.watch(playerStyleProvider);
+    final playShape = ref.watch(playButtonShapeProvider);
+    final align = ref.watch(titleAlignProvider);
+    final slider = ref.watch(sliderStyleProvider);
+    final bg = ref.watch(playerBgProvider);
+    final coverFx = ref.watch(coverBgFxProvider);
+    final l = context.l;
+
+    return SubPage(
+      title: l.setPlayer,
+      onBack: () => context.go('/settings'),
+      children: [
+        SettingsCaption(l.pvGroupLook.toUpperCase()),
+        const SizedBox(height: 10),
+        SettingsGroupCard(
+          rows: [
+            SettingsValueRow(
+              title: l.pvStyleRow,
+              value: _styleLabel(l, style),
+              glyph: _StyleGlyph(style: style),
+              onTap: () => _openStyle(context),
+            ),
+            SettingsValueRow(
+              title: l.pvPlayButtonRow,
+              value: _playShapeLabel(l, playShape),
+              glyph: _PlayShapeGlyph(shape: playShape),
+              onTap: () => _openPlayShape(context),
+            ),
+          ],
+        ),
+        const SizedBox(height: 22),
+        SettingsCaption(l.pvGroupQueue.toUpperCase()),
+        const SizedBox(height: 10),
+        const _QueueViewCards(),
+        const SizedBox(height: 12),
+        // Плашка «Далее» стоит в этой же группе, а не у слайдера: настраивает
+        // она не полосу, а то, из чего плашка берётся, — очередь.
+        SettingsGroupCard(
+          rows: [
+            SettingsToggleRow(
+              title: l.pvNextUp,
+              subtitle: l.pvNextUpSub,
+              value: ref.watch(nextUpProvider),
+              onChanged: ref.read(nextUpProvider.notifier).set,
+            ),
+          ],
+        ),
+        const SizedBox(height: 22),
+        SettingsCaption(l.pvGroupBg.toUpperCase()),
+        const SizedBox(height: 10),
+        SettingsGroupCard(
+          rows: [
+            SettingsValueRow(
+              title: l.pvBgRow,
+              value: _playerBgLabel(l, bg),
+              glyph: Icon(_playerBgIcon(bg)),
+              onTap: () => _openPlayerBg(context, ref),
+            ),
+            // Только под «Обложкой»: настраивать нечего, пока за плеером стоит
+            // не она, — и строка, которая ничего не меняет, хуже отсутствующей.
+            if (bg.isCover)
+              SettingsValueRow(
+                title: l.pvBgFxRow,
+                value: _coverFxLabel(l, coverFx),
+                glyph: Icon(_coverFxIcon(coverFx)),
+                onTap: () => _openCoverFx(context, ref),
+              ),
+          ],
+        ),
+        const SizedBox(height: 22),
+        SettingsCaption(l.pvGroupTitle.toUpperCase()),
+        const SizedBox(height: 10),
+        SettingsGroupCard(
+          rows: [
+            SettingsValueRow(
+              title: l.pvTitleAlign,
+              value: _alignLabel(l, align),
+              glyph: _AlignRowGlyph(align: align),
+              onTap: () => _openTitleAlign(context),
+            ),
+          ],
+        ),
+        const SizedBox(height: 22),
+        SettingsCaption(l.pvGroupSlider.toUpperCase()),
+        const SizedBox(height: 10),
+        SettingsGroupCard(
+          rows: [
+            SettingsValueRow(
+              title: l.pvSliderRow,
+              value: _sliderLabel(l, slider),
+              glyph: _SliderRowGlyph(style: slider),
+              onTap: () => _openSlider(context),
+            ),
+          ],
+        ),
+        const SizedBox(height: 22),
+        SettingsCaption(l.pvGroupAnim.toUpperCase()),
+        const SizedBox(height: 10),
+        SettingsGroupCard(
+          rows: [
+            for (final surface in TrackAnimSurface.values)
+              SettingsValueRow(
+                title: _surfaceLabel(l, surface),
+                value: _summary([
+                  for (final target in TrackAnimTarget.values)
+                    _kindLabel(l, anim.of(surface).of(target)),
+                ]),
+                // Значок — поверхность, а не вид перехода: их в строке два
+                // (обложка и подпись), одним значком не показать.
+                glyph: Icon(
+                  surface == TrackAnimSurface.player
+                      ? SolarIconsOutline.maximizeSquare
+                      : SolarIconsOutline.minimizeSquare,
+                ),
+                onTap: () => _openAnim(context, surface),
+              ),
+          ],
+        ),
+        const SizedBox(height: 22),
+        SettingsCaption(l.pvGroupLyrics.toUpperCase()),
+        const SizedBox(height: 10),
+        SettingsGroupCard(
+          rows: [
+            SettingsValueRow(
+              title: l.pvLyricsRow,
+              value: _summary([
+                _modeLabel(l, lyrics.mode),
+                _fillLabel(l, lyrics.fill),
+                _fxLabel(l, lyrics.fx),
+              ]),
+              // Строка настраивает три вещи разом — значок общий, про
+              // оформление.
+              glyph: const Icon(SolarIconsOutline.magicStick),
+              onTap: () => _openLyrics(context),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Подпись строки — выбранное через точку, в том же порядке, в каком настройки
+/// идут в шторке.
+String _summary(List<String> parts) => parts.join(' · ');
+
+/// Шторка одной поверхности: обложка и подпись — двумя блоками.
+///
+/// Настройки читаются ВНУТРИ шторки (`Consumer`): выбор применяется на месте и
+/// закрывать её незачем — вторая строка настраивается тут же.
+Future<void> _openAnim(BuildContext context, TrackAnimSurface surface) {
+  final l = context.l;
+  return showBloomSheetChild<void>(
+    context: context,
+    header: settingsSheetHeader(
+      context,
+      _surfaceLabel(l, surface),
+      _surfaceSub(l, surface),
+    ),
+    child: Consumer(
+      builder: (context, ref, _) {
+        final cfg = ref.watch(trackAnimProvider).of(surface);
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final target in TrackAnimTarget.values)
+              _Section(
+                icon: target == TrackAnimTarget.cover
+                    ? SolarIconsOutline.gallery
+                    : SolarIconsOutline.text,
+                title: _targetLabel(l, target),
+                child: _KindRow(
+                  surface: surface,
+                  target: target,
+                  value: cfg.of(target),
+                ),
+              ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+/// Шторка стиля плеера — порт карточки `settings.view.style` с ПК. Вариантов
+/// два из четырёх: десктопные «Большой» и «Кино» — раскладки на широкое окно.
+///
+/// Устроена как шторка слайдера: сверху живое превью, под ним строки вариантов
+/// с подписью — разница между стилями чисто картиночная, словами её не
+/// объяснить. От выбора шторка НЕ закрывается: варианты для того и смотрят на
+/// превью, что квадрат на глазах скругляется в диск и начинает крутиться.
+/// Шапки нет по той же причине, что у слайдера, — она повторяла бы строку, с
+/// которой в шторку пришли, и съедала высоту у превью.
+Future<void> _openStyle(BuildContext context) {
+  return showBloomSheetChild<void>(
+    context: context,
+    child: Consumer(
+      builder: (context, ref, _) {
+        final current = ref.watch(playerStyleProvider);
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _StylePreview(style: current),
+            for (final style in PlayerStyle.values)
+              _StyleTile(
+                style: style,
+                selected: style == current,
+                onTap: () =>
+                    ref.read(playerStyleProvider.notifier).setStyle(style),
+              ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+// ── Кнопка воспроизведения ──────────────────────────────────────────────────
+// Наша настройка, десктопной пары нет: на ПК транспорт живёт в узкой полосе, и
+// круг там единственно возможный. Настройка одна на обе поверхности — плеер и
+// карточку над таб-баром (см. [PlayButtonShape]).
+
+String _playShapeLabel(AppLocalizations l, PlayButtonShape shape) =>
+    switch (shape) {
+      PlayButtonShape.circle => l.pvPlayButtonCircle,
+      PlayButtonShape.square => l.pvPlayButtonSquare,
+      PlayButtonShape.plain => l.pvPlayButtonPlain,
+    };
+
+String _playShapeSub(AppLocalizations l, PlayButtonShape shape) =>
+    switch (shape) {
+      PlayButtonShape.circle => l.pvPlayButtonCircleSub,
+      PlayButtonShape.square => l.pvPlayButtonSquareSub,
+      PlayButtonShape.plain => l.pvPlayButtonPlainSub,
+    };
+
+/// Шторка формы кнопки. Устроена как шторка стиля плеера: сверху живая кнопка,
+/// под ней варианты — разница между ними чисто картиночная, подписью её не
+/// объяснить. От выбора шторка НЕ закрывается: варианты для того и перебирают,
+/// глядя на превью.
+Future<void> _openPlayShape(BuildContext context) {
+  return showBloomSheetChild<void>(
+    context: context,
+    child: Consumer(
+      builder: (context, ref, _) {
+        final current = ref.watch(playButtonShapeProvider);
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const _PlayShapePreview(),
+            for (final shape in PlayButtonShape.values)
+              _PlayShapeTile(
+                shape: shape,
+                selected: shape == current,
+                onTap: () =>
+                    ref.read(playButtonShapeProvider.notifier).set(shape),
+              ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+/// Живое превью: та самая [PlayButton] из плеера между соседями по транспорту —
+/// иначе «крупнее соседних» не с чем сравнить. Кнопка неживая (`live: false`):
+/// превью показывает вид, а не управляет звуком.
+class _PlayShapePreview extends StatelessWidget {
+  const _PlayShapePreview();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 26),
+        decoration: BoxDecoration(
+          // Та же заливка, что у блоков шторки.
+          color: sheetPanelColor(context),
+          borderRadius: BorderRadius.circular(t.radius),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(SolarIconsBold.skipPrevious, size: 30, color: t.iconFg),
+            const SizedBox(width: 26),
+            const PlayButton(
+              size: 68,
+              iconSize: 28,
+              plainIconSize: 40,
+              spinnerSize: 28,
+              live: false,
+            ),
+            const SizedBox(width: 26),
+            Icon(SolarIconsBold.skipNext, size: 30, color: t.iconFg),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Строка выбора формы — та же, что у стиля плеера: значок в кружке у
+/// выбранного, название, подпись под ним и галочка справа.
+class _PlayShapeTile extends StatelessWidget {
+  const _PlayShapeTile({
+    required this.shape,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final PlayButtonShape shape;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+    final l = context.l;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
+      child: Material(
+        color: sheetPanelColor(context),
+        borderRadius: BorderRadius.circular(t.radius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(t.radius),
+              border: Border.all(
+                color: selected ? t.ovlLine2 : Colors.transparent,
+              ),
+            ),
+            child: Row(
+              children: [
+                _PlayShapeTileGlyph(shape: shape, selected: selected),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _playShapeLabel(l, shape),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.titleMedium,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _playShapeSub(l, shape),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                if (selected)
+                  Icon(SolarIconsBold.checkCircle, size: 20, color: t.accent),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Значок варианта: у выбранного — в кружке, как у стиля плеера.
+class _PlayShapeTileGlyph extends StatelessWidget {
+  const _PlayShapeTileGlyph({required this.shape, required this.selected});
+
+  final PlayButtonShape shape;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final glyph = _PlayShapeGlyph(shape: shape);
+    if (!selected) return SizedBox(width: 38, child: Center(child: glyph));
+    return Container(
+      width: 38,
+      height: 38,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        shape: BoxShape.circle,
+      ),
+      child: glyph,
+    );
+  }
+}
+
+/// Знак play в рамке своей формы — и в строке настройки, и в шторке. Рисуем
+/// сами: в Solar есть готовые «play в круге» и «play в квадрате», но у них
+/// разная толщина и посадка знака, и рядом друг с другом варианты читались бы
+/// как разные иконки, а не как одна кнопка в трёх формах.
+class _PlayShapeGlyph extends StatelessWidget {
+  const _PlayShapeGlyph({required this.shape});
+
+  final PlayButtonShape shape;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    size: const Size(23, 23),
+    painter: _PlayShapePainter(
+      shape: shape,
+      color: IconTheme.of(context).color ?? context.bloom.iconFg,
+    ),
+  );
+}
+
+class _PlayShapePainter extends CustomPainter {
+  const _PlayShapePainter({required this.shape, required this.color});
+
+  final PlayButtonShape shape;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Рисуем в сетке 24×24, как значки Solar, и масштабируем разом.
+    canvas.save();
+    canvas.scale(size.width / 24, size.height / 24);
+    final stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8
+      ..strokeJoin = StrokeJoin.round
+      ..color = color;
+
+    switch (shape) {
+      case PlayButtonShape.circle:
+        canvas.drawCircle(const Offset(12, 12), 9.5, stroke);
+      case PlayButtonShape.square:
+        canvas.drawRRect(
+          // Та же доля стороны, что у самой кнопки (0.3): рамка значка обязана
+          // повторять её скругление, иначе выбор объясняет не то.
+          RRect.fromLTRBR(2.5, 2.5, 21.5, 21.5, const Radius.circular(5.7)),
+          stroke,
+        );
+      case PlayButtonShape.plain:
+        break;
+    }
+
+    // Без рамки знак крупнее — ровно тем же приёмом, что и сама кнопка.
+    final k = shape.isPlain ? 1.9 : 1.0;
+    final path = Path()
+      ..moveTo(12 - 2.6 * k, 12 - 4.2 * k)
+      ..lineTo(12 + 4.4 * k, 12)
+      ..lineTo(12 - 2.6 * k, 12 + 4.2 * k)
+      ..close();
+    canvas.drawPath(path, Paint()..color = color);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_PlayShapePainter old) =>
+      old.shape != shape || old.color != color;
+}
+
+/// Вид очереди — порт десктопной карточки `settings.view.queueView`.
+///
+/// Единственная настройка на странице, которая стоит КАРТОЧКАМИ, а не строкой
+/// со шторкой: вариантов два, объяснять их подписью нечем — разницу показывает
+/// сам значок, и ради двух строк открывать шторку незачем.
+class _QueueViewCards extends ConsumerWidget {
+  const _QueueViewCards();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(queueViewProvider);
+    final l = context.l;
+    return Row(
+      children: [
+        for (final view in QueueView.values) ...[
+          if (view != QueueView.values.first) const SizedBox(width: 12),
+          Expanded(
+            child: _QueueViewCard(
+              view: view,
+              label: view.isExtended ? l.pvQueueExtended : l.pvQueueNormal,
+              selected: view == current,
+              onTap: () => ref.read(queueViewProvider.notifier).set(view),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _QueueViewCard extends StatelessWidget {
+  const _QueueViewCard({
+    required this.view,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final QueueView view;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  /// Ростом с две строки настроек: карточка держит значок и подпись, и на
+  /// меньшей высоте они сходятся вплотную.
+  static const double height = 88;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+    return GlassBox(
+      // Радиус группы настроек: карточки стоят на её месте и обязаны читаться
+      // с ней одинаково.
+      borderRadius: BorderRadius.circular(t.radius * 1.3),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Ink(
+            // Выбранное — тонкая плёнка акцента поверх стекла, как у строки
+            // варианта в шторке (`SheetOptionTile`). Сплошной заливки тут быть
+            // не должно: карточка остаётся поверхностью темы.
+            color: selected ? t.accent.withValues(alpha: 0.12) : null,
+            child: SizedBox(
+              height: height,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _QueueViewGlyph(
+                    extended: view.isExtended,
+                    color: selected ? t.accent : t.iconFg,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.bodyMedium?.copyWith(
+                      color: selected ? t.text : t.text2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Значок вида очереди: плоский список против списка с заголовками секций.
+///
+/// Рисуем сами — в Solar есть только общий «список», и двумя одинаковыми
+/// значками разницу между вариантами не показать.
+class _QueueViewGlyph extends StatelessWidget {
+  const _QueueViewGlyph({required this.extended, required this.color});
+
+  final bool extended;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    size: const Size(26, 20),
+    painter: _QueueGlyphPainter(extended: extended, color: color),
+  );
+}
+
+class _QueueGlyphPainter extends CustomPainter {
+  _QueueGlyphPainter({required this.extended, required this.color});
+
+  final bool extended;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Полоса: доля ширины и своя прозрачность. Заголовок секции — короткий и
+    // приглушённый, строка трека — во всю ширину.
+    const rows = <({double width, double alpha, double height})>[
+      (width: 1, alpha: 0.9, height: 2.5),
+    ];
+    final plan = extended
+        ? const [
+            (width: 0.42, alpha: 0.45, height: 2.0),
+            (width: 1.0, alpha: 0.9, height: 2.5),
+            (width: 1.0, alpha: 0.9, height: 2.5),
+            (width: 0.42, alpha: 0.45, height: 2.0),
+            (width: 1.0, alpha: 0.9, height: 2.5),
+          ]
+        : [for (var i = 0; i < 4; i++) rows.first];
+
+    final total = plan.fold<double>(0, (sum, r) => sum + r.height);
+    final gap = (size.height - total) / (plan.length - 1);
+    final paint = Paint()..style = PaintingStyle.fill;
+    var y = 0.0;
+    for (final row in plan) {
+      paint.color = color.withValues(alpha: color.a * row.alpha);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(0, y, size.width * row.width, row.height),
+          Radius.circular(row.height / 2),
+        ),
+        paint,
+      );
+      y += row.height + gap;
+    }
+  }
+
+  @override
+  bool shouldRepaint(_QueueGlyphPainter old) =>
+      old.extended != extended || old.color != color;
+}
+
+/// Живое превью стиля: мини-плеер с настоящей обложкой играющего трека.
+///
+/// Обложка та же, что в плеере (своя из «Кастомизации» важнее обложки трека), и
+/// диск крутится тем же [VinylSpin] — картинка в настройках не должна
+/// разойтись с настоящей. Ничего не играет — на её месте обычная заглушка.
+class _StylePreview extends ConsumerWidget {
+  const _StylePreview({required this.style});
+
+  final PlayerStyle style;
+
+  /// Сторона обложки в превью.
+  static const double side = 132;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.bloom;
+    final vinyl = style.isVinyl;
+    final url =
+        ref.watch(customSrcProvider(CustomCtx.cover)) ??
+        ref.watch(playbackProvider.select((s) => s.track?.cover));
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 22),
+        decoration: BoxDecoration(
+          // Та же заливка, что у блоков шторки.
+          color: sheetPanelColor(context),
+          borderRadius: BorderRadius.circular(t.radius),
+        ),
+        child: Column(
+          children: [
+            SizedBox(
+              width: side,
+              height: side,
+              child: Stack(
+                children: [
+                  // Квадрат скругляется в круг НА ГЛАЗАХ — по этой доле и видно,
+                  // что настройка сделала. Радиус обложки в плеере (20) на
+                  // превью взят долей стороны, иначе маленькая картинка
+                  // выглядела бы заметно острее настоящей.
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: vinyl ? 1 : 0),
+                    duration: const Duration(milliseconds: 320),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, k, child) => ClipRRect(
+                      borderRadius: BorderRadius.circular(
+                        side * (0.11 + 0.39 * k),
+                      ),
+                      child: child,
+                    ),
+                    child: VinylSpin(
+                      enabled: vinyl,
+                      // В настройках диск крутится ВСЕГДА, пока стиль выбран:
+                      // звука тут нет, а замерший круг от квадрата отличается
+                      // только формой — половина смысла режима осталась бы за
+                      // кадром.
+                      spinning: true,
+                      child: Cover(url: url, size: side, radius: 0),
+                    ),
+                  ),
+                  if (vinyl)
+                    Positioned.fill(
+                      child: Center(
+                        child: VinylLabel(size: side * VinylLabel.share),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            // Название и артист — плашками, а не текстом: превью показывает
+            // раскладку, а не содержимое, и живой заголовок тянул бы на себя
+            // всё внимание.
+            _Bar(width: 104, height: 9, color: t.text.withValues(alpha: 0.55)),
+            const SizedBox(height: 8),
+            _Bar(width: 68, height: 7, color: t.text.withValues(alpha: 0.24)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Плашка на месте строки текста в превью.
+class _Bar extends StatelessWidget {
+  const _Bar({required this.width, required this.height, required this.color});
+
+  final double width;
+  final double height;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: width,
+    height: height,
+    decoration: BoxDecoration(
+      color: color,
+      borderRadius: BorderRadius.circular(height / 2),
+    ),
+  );
+}
+
+/// Строка выбора стиля — та же, что у выравнивания заголовка ([_AlignTile]):
+/// значок в кружке у выбранного, название, подпись под ним и галочка справа.
+/// Отличие одно — от тапа шторка не закрывается, см. [_openStyle].
+class _StyleTile extends StatelessWidget {
+  const _StyleTile({
+    required this.style,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final PlayerStyle style;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+    final l = context.l;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
+      child: Material(
+        color: sheetPanelColor(context),
+        borderRadius: BorderRadius.circular(t.radius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(t.radius),
+              border: Border.all(
+                color: selected ? t.ovlLine2 : Colors.transparent,
+              ),
+            ),
+            child: Row(
+              children: [
+                _StyleTileGlyph(style: style, selected: selected),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _styleLabel(l, style),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.titleMedium,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _styleSub(l, style),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                if (selected)
+                  Icon(SolarIconsBold.checkCircle, size: 20, color: t.accent),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Значок варианта: у выбранного — в кружке, как у выравнивания заголовка.
+class _StyleTileGlyph extends StatelessWidget {
+  const _StyleTileGlyph({required this.style, required this.selected});
+
+  final PlayerStyle style;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final glyph = _StyleGlyph(style: style);
+    if (!selected) return SizedBox(width: 38, child: Center(child: glyph));
+    return Container(
+      width: 38,
+      height: 38,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        shape: BoxShape.circle,
+      ),
+      child: glyph,
+    );
+  }
+}
+
+/// Шторка выравнивания заголовка — порт карточки `settings.view.titleAlign` с
+/// ПК.
+///
+/// Вариантов три и настройка одна: строки крупные, во всю ширину, с подписью и
+/// галочкой — как в шторке «Свайпов», а не тремя кнопками в ряд. И закрывается
+/// от выбора: настраивать в ней больше нечего.
+///
+/// Шапки нет: строка, из которой сюда пришли, осталась видна над шторкой, и
+/// подписывать выбор второй раз незачем.
+Future<void> _openTitleAlign(BuildContext context) {
+  return showBloomSheetChild<void>(
+    context: context,
+    child: Consumer(
+      builder: (context, ref, _) {
+        final current = ref.watch(titleAlignProvider);
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final align in TitleAlign.values)
+              _AlignTile(
+                align: align,
+                selected: align == current,
+                onTap: () => ref.read(titleAlignProvider.notifier).set(align),
+              ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+/// Строка выбора выравнивания. Своя, а не [SheetAction]: строка крупнее пункта
+/// шторки, под названием стоит подпись, а у выбранной — кружок под значком и
+/// галочка справа.
+class _AlignTile extends StatelessWidget {
+  const _AlignTile({
+    required this.align,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final TitleAlign align;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+    final l = context.l;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
+      child: Material(
+        // Та же заливка, что у блоков шторки ([SheetPanel]).
+        color: sheetPanelColor(context),
+        borderRadius: BorderRadius.circular(t.radius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            Navigator.of(context).pop();
+            onTap();
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(t.radius),
+              border: Border.all(
+                color: selected ? t.ovlLine2 : Colors.transparent,
+              ),
+            ),
+            child: Row(
+              children: [
+                _TileGlyph(align: align, selected: selected),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _alignLabel(l, align),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.titleMedium,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _alignSub(l, align),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                if (selected)
+                  Icon(SolarIconsBold.checkCircle, size: 20, color: t.accent),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Значок варианта: у выбранного — в кружке, как в шторке «Свайпов».
+class _TileGlyph extends StatelessWidget {
+  const _TileGlyph({required this.align, required this.selected});
+
+  final TitleAlign align;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final glyph = CustomPaint(
+      size: const Size(22, 22),
+      painter: _AlignGlyph(align: align, color: context.bloom.text),
+    );
+    if (!selected) return SizedBox(width: 38, child: Center(child: glyph));
+    return Container(
+      width: 38,
+      height: 38,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        shape: BoxShape.circle,
+      ),
+      child: glyph,
+    );
+  }
+}
+
+/// Тот же значок для строки настройки: без кружка и цветом [IconTheme] — в
+/// строке он стоит наравне с обычными значками Solar.
+class _AlignRowGlyph extends StatelessWidget {
+  const _AlignRowGlyph({required this.align});
+
+  final TitleAlign align;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    size: const Size(21, 21),
+    painter: _AlignGlyph(
+      align: align,
+      color: IconTheme.of(context).color ?? context.bloom.iconFg,
+    ),
+  );
+}
+
+/// Три строки разной длины, сдвинутые к своему краю, — те же SVG, что в
+/// десктопной карточке выравнивания. В Solar такой тройки нет: `alignLeft`
+/// оттуда — направляющая с планкой, а не текст.
+class _AlignGlyph extends CustomPainter {
+  const _AlignGlyph({required this.align, required this.color});
+
+  final TitleAlign align;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Рисуем в сетке 24×24, как исходные SVG, и масштабируем разом.
+    canvas.save();
+    canvas.scale(size.width / 24, size.height / 24);
+    final stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..color = color;
+
+    // Первая строка всегда во всю ширину — двигаются только короткие, иначе
+    // разница между вариантами не читается в 22 px.
+    canvas.drawLine(const Offset(3, 6), const Offset(21, 6), stroke);
+    final (mid, last) = switch (align) {
+      TitleAlign.left => ((3.0, 15.0), (3.0, 18.0)),
+      TitleAlign.center => ((6.0, 18.0), (4.0, 20.0)),
+      TitleAlign.right => ((9.0, 21.0), (6.0, 21.0)),
+    };
+    canvas.drawLine(Offset(mid.$1, 12), Offset(mid.$2, 12), stroke);
+    canvas.drawLine(Offset(last.$1, 18), Offset(last.$2, 18), stroke);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_AlignGlyph old) =>
+      old.align != align || old.color != color;
+}
+
+String _alignLabel(AppLocalizations l, TitleAlign align) => switch (align) {
+  TitleAlign.left => l.pvTitleAlignLeft,
+  TitleAlign.center => l.pvTitleAlignCenter,
+  TitleAlign.right => l.pvTitleAlignRight,
+};
+
+String _alignSub(AppLocalizations l, TitleAlign align) => switch (align) {
+  TitleAlign.left => l.pvTitleAlignLeftSub,
+  TitleAlign.center => l.pvTitleAlignCenterSub,
+  TitleAlign.right => l.pvTitleAlignRightSub,
+};
+
+/// Шторка типа слайдера — порт карточки `settings.view.slider` с ПК.
+///
+/// Сверху живая полоса прогресса, под ней строки вариантов: разница между
+/// типами — только в том, как выглядит сама полоса, и подписью «Волновой» её не
+/// объяснить. От выбора шторка НЕ закрывается — ради этого превью и стоит:
+/// варианты перебираются подряд, глядя на него.
+///
+/// Шапки у этой шторки нет — в отличие от соседних. Название и пояснение
+/// повторяли строку, с которой в неё пришли, и съедали высоту у того, ради чего
+/// она открыта: превью и вариантов. Что настраивается — видно по самой полосе.
+Future<void> _openSlider(BuildContext context) {
+  return showBloomSheetChild<void>(
+    context: context,
+    child: Consumer(
+      builder: (context, ref, _) {
+        final current = ref.watch(sliderStyleProvider);
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _SliderPreview(style: current),
+            for (final style in SliderStyle.values)
+              _SliderTile(
+                style: style,
+                selected: style == current,
+                onTap: () => ref.read(sliderStyleProvider.notifier).set(style),
+              ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+/// Живая полоса прогресса в шторке: та же [bloomSliderTheme], что в плеере, —
+/// иначе картинка в настройках со временем разошлась бы с настоящей.
+///
+/// Полосу можно тянуть: у половины типов вся разница в пуговке и в том, как она
+/// разрезает дорожку, и на замершей картинке этого не видно. Время слева бежит
+/// за пальцем, справа стоит длительность демо-трека.
+class _SliderPreview extends StatefulWidget {
+  const _SliderPreview({required this.style});
+
+  final SliderStyle style;
+
+  /// Демо-трек: 3:45 с позицией на 1:24 (мс).
+  static const int total = 225000;
+  static const int start = 84000;
+
+  /// Зерно волны — постоянное: узор в настройках не должен меняться от
+  /// открытия к открытию (в плеере он свой на каждый трек).
+  static const int waveSeed = 42;
+
+  @override
+  State<_SliderPreview> createState() => _SliderPreviewState();
+}
+
+class _SliderPreviewState extends State<_SliderPreview> {
+  double _value = _SliderPreview.start.toDouble();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
+        decoration: BoxDecoration(
+          // Та же заливка, что у блоков шторки.
+          color: sheetPanelColor(context),
+          borderRadius: BorderRadius.circular(t.radius),
+        ),
+        child: Column(
+          children: [
+            SizedBox(
+              // Выше плеерной ловушки (там 29: дорожка 5 плюс по 12 воздуха) —
+              // это главное, ради чего шторка открыта, и полоса в ней должна
+              // читаться крупно, а не как строка настройки.
+              height: 44,
+              child: SliderTheme(
+                data: bloomSliderTheme(
+                  SliderTheme.of(context),
+                  style: widget.style,
+                  tokens: t,
+                  waveSeed: _SliderPreview.waveSeed,
+                ),
+                child: Slider(
+                  value: _value,
+                  max: _SliderPreview.total.toDouble(),
+                  onChanged: (v) => setState(() => _value = v),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    mmss(Duration(milliseconds: _value.round())),
+                    style: theme.bodyMedium,
+                  ),
+                  Text(
+                    mmss(const Duration(milliseconds: _SliderPreview.total)),
+                    style: theme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Строка выбора типа слайдера. Устроена как [_AlignTile] (значок в кружке у
+/// выбранного, галочка справа), но без подписи под названием: типов четыре, и
+/// вторая строка в каждом растянула бы шторку на пол-экрана. Что они значат,
+/// показывает превью сверху.
+class _SliderTile extends StatelessWidget {
+  const _SliderTile({
+    required this.style,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final SliderStyle style;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
+      child: Material(
+        color: sheetPanelColor(context),
+        borderRadius: BorderRadius.circular(t.radius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            // Выше строки выравнивания заголовка (там 14 при двух строках
+            // текста): здесь строка одна, и на её высоте кнопка выходила
+            // приплюснутой.
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(t.radius),
+              border: Border.all(
+                color: selected ? t.ovlLine2 : Colors.transparent,
+              ),
+            ),
+            child: Row(
+              children: [
+                _SliderTileGlyph(style: style, selected: selected),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    _sliderLabel(context.l, style),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.titleMedium?.copyWith(fontSize: 16),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                if (selected)
+                  Icon(SolarIconsBold.checkCircle, size: 22, color: t.accent),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Значок варианта: у выбранного — в кружке, как у выравнивания заголовка.
+class _SliderTileGlyph extends StatelessWidget {
+  const _SliderTileGlyph({required this.style, required this.selected});
+
+  final SliderStyle style;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final glyph = CustomPaint(
+      // Пропорции десктопной сетки 44×10 — в 28 px значок читается как
+      // полоска с ползунком, а не как чёрточка.
+      size: const Size(28, 6.4),
+      painter: _SliderGlyph(style: style, color: context.bloom.text),
+    );
+    // Коробка одна и та же с кружком и без него: высоту строки задаёт самый
+    // высокий её элемент, и значок без заданной высоты (а это высота самой
+    // картинки, 6 px) делал невыбранные строки ниже выбранной.
+    if (!selected) {
+      return SizedBox(width: 44, height: 44, child: Center(child: glyph));
+    }
+    return Container(
+      width: 44,
+      height: 44,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        shape: BoxShape.circle,
+      ),
+      child: glyph,
+    );
+  }
+}
+
+/// Тот же значок для строки настройки. Уже, чем в шторке (26 против 28): в
+/// строке он стоит в одной колонке со значками-иконками, и полоса во всю их
+/// коробку выглядела бы рядом с ними линейкой.
+class _SliderRowGlyph extends StatelessWidget {
+  const _SliderRowGlyph({required this.style});
+
+  final SliderStyle style;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    size: const Size(26, 6),
+    painter: _SliderGlyph(
+      style: style,
+      color: IconTheme.of(context).color ?? context.bloom.iconFg,
+    ),
+  );
+}
+
+/// Четыре крошечных SVG из десктопной карточки `settings.view.slider`: полоса с
+/// заливкой, волосяная полоса с кружком, два сегмента с каплей и столбики.
+class _SliderGlyph extends CustomPainter {
+  const _SliderGlyph({required this.style, required this.color});
+
+  final SliderStyle style;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Рисуем в сетке 44×10, как исходные SVG, и масштабируем разом.
+    canvas.save();
+    canvas.scale(size.width / 44, size.height / 10);
+    final fill = Paint()..color = color;
+    // Незалитая часть — та же треть яркости, что у десктопного `opacity={0.3}`.
+    final rest = Paint()..color = color.withValues(alpha: 0.3);
+
+    void bar(double x, double y, double w, double h, Paint paint) =>
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(x, y, w, h),
+            Radius.circular(math.min(1, h / 2)),
+          ),
+          paint,
+        );
+
+    switch (style) {
+      case SliderStyle.standard:
+        bar(0, 4, 44, 2, rest);
+        bar(0, 4, 22, 2, fill);
+      case SliderStyle.thin:
+        bar(0, 4.5, 44, 1, rest);
+        bar(0, 4.5, 22, 1, fill);
+        canvas.drawCircle(const Offset(22, 5), 2.5, fill);
+      case SliderStyle.ios:
+        bar(0, 4, 20, 2, fill);
+        bar(24, 4, 20, 2, rest);
+        bar(21, 1, 2, 8, fill);
+      case SliderStyle.wave:
+        // Пятнадцать столбиков с шагом 3: семь залитых, остальные тихие.
+        const List<double> heights = [
+          4, 6, 3, 8, 5, 7, 4, 6, 3, 7, 5, 4, 8, 3, 5, //
+        ];
+        for (var i = 0; i < heights.length; i++) {
+          final h = heights[i];
+          bar(i * 3, (10 - h) / 2, 2, h, i < 7 ? fill : rest);
+        }
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_SliderGlyph old) =>
+      old.style != style || old.color != color;
+}
+
+String _sliderLabel(AppLocalizations l, SliderStyle style) => switch (style) {
+  SliderStyle.standard => l.pvSliderStandard,
+  SliderStyle.thin => l.pvSliderThin,
+  // Название платформы не переводится — на ПК оно тоже вписано прямо в кнопку.
+  SliderStyle.ios => 'iOS',
+  SliderStyle.wave => l.pvSliderWave,
+};
+
+/// Шторка оформления текста песни: вид, заливка и эффект — порт десктопной
+/// карточки `settings.view.lyricsStyle` (там таких три, по одной на
+/// поверхность; у нас поверхность одна — полноэкранный плеер).
+Future<void> _openLyrics(BuildContext context) {
+  final l = context.l;
+  return showBloomSheetChild<void>(
+    context: context,
+    header: settingsSheetHeader(context, l.pvGroupLyrics),
+    child: Consumer(
+      builder: (context, ref, _) {
+        final style = ref.watch(lyricsStyleProvider);
+        final ctrl = ref.read(lyricsStyleProvider.notifier);
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _Section(
+              icon: SolarIconsOutline.gallery,
+              title: l.pvLyricsMode,
+              subtitle: l.pvLyricsModeSub,
+              // Вид — две крупные кнопки со своими значками: разница между ними
+              // чисто картиночная, одними подписями её не объяснить.
+              child: Row(
+                children: [
+                  for (final mode in LyricsMode.values) ...[
+                    if (mode != LyricsMode.values.first)
+                      const SizedBox(width: 8),
+                    Expanded(
+                      child: _Choice(
+                        label: _modeLabel(l, mode),
+                        active: style.mode == mode,
+                        glyph: _ModeGlyph(mode: mode),
+                        onTap: () => ctrl.setMode(mode),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            _Section(
+              icon: SolarIconsOutline.text,
+              title: l.pvLyricsFill,
+              subtitle: l.pvLyricsFillSub,
+              // Заливка и эффект — по четыре варианта: в один ряд на телефоне
+              // они не встают, поэтому идут плиткой 2×2.
+              child: _Chips(
+                labels: [for (final v in LyricsFill.values) _fillLabel(l, v)],
+                index: LyricsFill.values.indexOf(style.fill),
+                onTap: (i) => ctrl.setFill(LyricsFill.values[i]),
+              ),
+            ),
+            _Section(
+              icon: SolarIconsOutline.magicStick,
+              title: l.pvLyricsFx,
+              subtitle: l.pvLyricsFxSub,
+              child: _Chips(
+                labels: [for (final v in LyricsFx.values) _fxLabel(l, v)],
+                index: LyricsFx.values.indexOf(style.fx),
+                onTap: (i) => ctrl.setFx(LyricsFx.values[i]),
+              ),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+/// Одна настройка в шторке: блок с названием, пояснением и кнопками. Блок —
+/// [SheetPanel], а не своя коробка: у шторки своя заливка, и токен-плёнка
+/// страницы в ней смотрится дырой.
+class _Section extends StatelessWidget {
+  const _Section({
+    required this.icon,
+    required this.title,
+    required this.child,
+    this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SheetPanel(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _Sub(icon: icon, title: title, strong: true),
+              if (subtitle case final text?) ...[
+                const SizedBox(height: 3),
+                Text(text, style: Theme.of(context).textTheme.bodySmall),
+              ],
+              const SizedBox(height: 10),
+              child,
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _styleLabel(AppLocalizations l, PlayerStyle style) => switch (style) {
+  PlayerStyle.standard => l.pvStyleStandard,
+  PlayerStyle.vinyl => l.pvStyleVinyl,
+};
+
+String _styleSub(AppLocalizations l, PlayerStyle style) => switch (style) {
+  PlayerStyle.standard => l.pvStyleStandardSub,
+  PlayerStyle.vinyl => l.pvStyleVinylSub,
+};
+
+String _modeLabel(AppLocalizations l, LyricsMode mode) => switch (mode) {
+  LyricsMode.overlay => l.pvLyricsModeOverlay,
+  LyricsMode.replace => l.pvLyricsModeReplace,
+};
+
+String _fillLabel(AppLocalizations l, LyricsFill fill) => switch (fill) {
+  LyricsFill.line => l.pvLyricsFillLine,
+  LyricsFill.word => l.pvLyricsFillWord,
+  LyricsFill.letter => l.pvLyricsFillLetter,
+  LyricsFill.wipe => l.pvLyricsFillWipe,
+};
+
+String _fxLabel(AppLocalizations l, LyricsFx fx) => switch (fx) {
+  LyricsFx.none => l.pvLyricsFxNone,
+  LyricsFx.fade => l.pvLyricsFxFade,
+  LyricsFx.glow => l.pvLyricsFxGlow,
+  LyricsFx.spring => l.pvLyricsFxSpring,
+};
+
+/// Подзаголовок строки настройки — значок с подписью.
+///
+/// [strong] — блок в шторке: там эта подпись главная в блоке, а не мелкая
+/// метка под названием карточки.
+class _Sub extends StatelessWidget {
+  const _Sub({required this.icon, required this.title, this.strong = false});
+
+  final IconData icon;
+  final String title;
+  final bool strong;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context).textTheme;
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: strong ? 16 : 14,
+          color: strong ? context.bloom.text : context.bloom.muted,
+        ),
+        const SizedBox(width: 6),
+        Text(title, style: strong ? theme.titleMedium : theme.bodySmall),
+      ],
+    );
+  }
+}
+
+/// Ряд из четырёх вариантов плиткой 2×2.
+class _Chips extends StatelessWidget {
+  const _Chips({
+    required this.labels,
+    required this.index,
+    required this.onTap,
+  });
+
+  final List<String> labels;
+  final int index;
+  final void Function(int) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, box) {
+        final width = (box.maxWidth - 8) / 2;
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (var i = 0; i < labels.length; i++)
+              SizedBox(
+                width: width,
+                child: _Choice(
+                  label: labels[i],
+                  active: i == index,
+                  onTap: () => onTap(i),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Кнопка варианта: та же плёнка, рамка и акцент, что у выбора анимации.
+class _Choice extends StatelessWidget {
+  const _Choice({
+    required this.label,
+    required this.active,
+    required this.onTap,
+    this.glyph,
+  });
+
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  /// Картинка над подписью. `null` — вариант объясняется одной подписью.
+  final Widget? glyph;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final color = active ? t.accent : t.iconFg;
+    return Material(
+      color: active ? t.accent.withValues(alpha: 0.14) : t.ovlBg,
+      borderRadius: BorderRadius.circular(t.radius * 0.8),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: glyph == null ? 10 : 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: active ? t.accent : t.ovlLine),
+            borderRadius: BorderRadius.circular(t.radius * 0.8),
+          ),
+          child: Column(
+            children: [
+              if (glyph != null) ...[
+                IconTheme(
+                  data: IconThemeData(color: color),
+                  child: glyph!,
+                ),
+                const SizedBox(height: 6),
+              ],
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: color),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Значок стиля плеера — те же два SVG, что в десктопном `ViewSection`: две
+/// плитки рядом у обычного, круг в круге у пластинки.
+class _StyleGlyph extends StatelessWidget {
+  const _StyleGlyph({required this.style});
+
+  final PlayerStyle style;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    size: const Size(24, 24),
+    painter: _StylePainter(
+      style: style,
+      color: IconTheme.of(context).color ?? context.bloom.iconFg,
+    ),
+  );
+}
+
+class _StylePainter extends CustomPainter {
+  const _StylePainter({required this.style, required this.color});
+
+  final PlayerStyle style;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.scale(size.width / 24, size.height / 24);
+    final stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..color = color;
+
+    switch (style) {
+      // Две плитки рядом: широкая слева, узкая справа.
+      case PlayerStyle.standard:
+        canvas.drawRRect(
+          RRect.fromLTRBR(3, 3, 11, 21, const Radius.circular(1)),
+          stroke,
+        );
+        canvas.drawRRect(
+          RRect.fromLTRBR(14, 3, 21, 21, const Radius.circular(1)),
+          stroke,
+        );
+      // Диск с этикеткой.
+      case PlayerStyle.vinyl:
+        canvas.drawCircle(const Offset(12, 12), 9, stroke);
+        canvas.drawCircle(const Offset(12, 12), 3, stroke);
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_StylePainter old) =>
+      old.style != style || old.color != color;
+}
+
+/// Значок вида: слева квадрат обложки со строками поверх, справа — одни
+/// строки. В Solar таких картинок нет, рисуем сами, как и значки анимации.
+class _ModeGlyph extends StatelessWidget {
+  const _ModeGlyph({required this.mode});
+
+  final LyricsMode mode;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    size: const Size(28, 24),
+    painter: _ModePainter(
+      mode: mode,
+      color: IconTheme.of(context).color ?? context.bloom.iconFg,
+    ),
+  );
+}
+
+class _ModePainter extends CustomPainter {
+  const _ModePainter({required this.mode, required this.color});
+
+  final LyricsMode mode;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.scale(size.width / 28, size.height / 24);
+    final frame = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8
+      ..strokeJoin = StrokeJoin.round
+      ..color = color.withValues(
+        alpha: mode == LyricsMode.overlay ? 0.38 : 0.9,
+      );
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round
+      ..color = color;
+
+    if (mode == LyricsMode.overlay) {
+      // Рамка обложки, а по ней — строки текста.
+      canvas.drawRRect(
+        RRect.fromLTRBR(4, 3, 24, 21, const Radius.circular(3)),
+        frame,
+      );
+      canvas.drawLine(const Offset(8, 9), const Offset(20, 9), line);
+      canvas.drawLine(const Offset(8, 13), const Offset(17, 13), line);
+      canvas.drawLine(const Offset(8, 17), const Offset(19, 17), line);
+    } else {
+      // Обложки нет — одни строки во всю ширину.
+      canvas.drawLine(const Offset(4, 6), const Offset(24, 6), line);
+      canvas.drawLine(const Offset(4, 11), const Offset(20, 11), line);
+      canvas.drawLine(const Offset(4, 16), const Offset(23, 16), line);
+      canvas.drawLine(const Offset(4, 21), const Offset(15, 21), line);
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_ModePainter old) =>
+      old.mode != mode || old.color != color;
+}
+
+String _surfaceLabel(AppLocalizations l, TrackAnimSurface surface) =>
+    switch (surface) {
+      TrackAnimSurface.player => l.pvAnimPlayer,
+      TrackAnimSurface.mini => l.pvAnimMini,
+    };
+
+String _surfaceSub(AppLocalizations l, TrackAnimSurface surface) =>
+    switch (surface) {
+      TrackAnimSurface.player => l.pvAnimPlayerSub,
+      TrackAnimSurface.mini => l.pvAnimMiniSub,
+    };
+
+String _targetLabel(AppLocalizations l, TrackAnimTarget target) =>
+    switch (target) {
+      TrackAnimTarget.cover => l.pvAnimCover,
+      TrackAnimTarget.text => l.pvAnimText,
+    };
+
+String _kindLabel(AppLocalizations l, TrackAnimKind kind) => switch (kind) {
+  TrackAnimKind.none => l.pvAnimNone,
+  TrackAnimKind.slide => l.pvAnimSlide,
+  TrackAnimKind.fade => l.pvAnimFade,
+};
+
+/// Три варианта в ряд — порт десктопного `s-opt-row`.
+class _KindRow extends ConsumerWidget {
+  const _KindRow({
+    required this.surface,
+    required this.target,
+    required this.value,
+  });
+
+  final TrackAnimSurface surface;
+  final TrackAnimTarget target;
+  final TrackAnimKind value;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Row(
+      children: [
+        for (final kind in TrackAnimKind.values) ...[
+          if (kind != TrackAnimKind.values.first) const SizedBox(width: 8),
+          Expanded(
+            child: _KindButton(
+              kind: kind,
+              active: kind == value,
+              onTap: () => ref
+                  .read(trackAnimProvider.notifier)
+                  .setKind(surface, target, kind),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _KindButton extends StatelessWidget {
+  const _KindButton({
+    required this.kind,
+    required this.active,
+    required this.onTap,
+  });
+
+  final TrackAnimKind kind;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final color = active ? t.accent : t.iconFg;
+    return Material(
+      color: active ? t.accent.withValues(alpha: 0.14) : t.ovlBg,
+      borderRadius: BorderRadius.circular(t.radius * 0.8),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: active ? t.accent : t.ovlLine),
+            borderRadius: BorderRadius.circular(t.radius * 0.8),
+          ),
+          child: Column(
+            children: [
+              CustomPaint(
+                size: const Size(24, 24),
+                painter: _KindGlyph(kind: kind, color: color),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _kindLabel(context.l, kind),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: color),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Значок варианта — те же три картинки, что в десктопной строке выбора.
+class _KindGlyph extends CustomPainter {
+  const _KindGlyph({required this.kind, required this.color});
+
+  final TrackAnimKind kind;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Рисуем в сетке 24×24, как исходные SVG, и масштабируем разом.
+    canvas.save();
+    canvas.scale(size.width / 24, size.height / 24);
+    final stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..color = color;
+    final faded = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..color = color.withValues(alpha: 0.38);
+
+    switch (kind) {
+      // Перечёркнутый круг.
+      case TrackAnimKind.none:
+        canvas.drawCircle(const Offset(12, 12), 9, stroke);
+        canvas.drawLine(const Offset(6, 18), const Offset(18, 6), stroke);
+      // Две плитки рядом: приезжающая сплошная, уезжающая тихая.
+      case TrackAnimKind.slide:
+        canvas.drawRRect(
+          RRect.fromLTRBR(2, 6, 11, 18, const Radius.circular(1.5)),
+          faded,
+        );
+        canvas.drawRRect(
+          RRect.fromLTRBR(13, 6, 22, 18, const Radius.circular(1.5)),
+          stroke,
+        );
+        canvas.drawLine(const Offset(9, 12), const Offset(15, 12), faded);
+      // Две плитки внахлёст.
+      case TrackAnimKind.fade:
+        canvas.drawRRect(
+          RRect.fromLTRBR(3, 6, 15, 18, const Radius.circular(1.5)),
+          faded,
+        );
+        canvas.drawRRect(
+          RRect.fromLTRBR(9, 6, 21, 18, const Radius.circular(1.5)),
+          stroke,
+        );
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_KindGlyph old) => old.kind != kind || old.color != color;
+}
+
+// ── Фон плеера ──────────────────────────────────────────────────────────────
+// Наша настройка, десктопной пары у неё нет: на широком окне за плеером стоит
+// само приложение, а на телефоне он занимает экран целиком, и за обложкой —
+// пустота. Варианты крупными строками с пояснением: словом «Цвет» не объяснить,
+// что цвет берётся от обложки.
+
+String _playerBgLabel(AppLocalizations l, PlayerBg bg) => switch (bg) {
+  PlayerBg.cover => l.pvBgCover,
+  PlayerBg.app => l.pvBgApp,
+  PlayerBg.color => l.pvBgColor,
+  PlayerBg.none => l.pvBgNone,
+};
+
+String _playerBgSub(AppLocalizations l, PlayerBg bg) => switch (bg) {
+  PlayerBg.cover => l.pvBgCoverSub,
+  PlayerBg.app => l.pvBgAppSub,
+  PlayerBg.color => l.pvBgColorSub,
+  PlayerBg.none => l.pvBgNoneSub,
+};
+
+IconData _playerBgIcon(PlayerBg bg) => switch (bg) {
+  PlayerBg.cover => SolarIconsOutline.gallery,
+  // Тот же значок, каким «Фон» помечен на плитке картинки в библиотеке
+  // («Кастомизация»): строка и там и тут про одно и то же место.
+  PlayerBg.app => SolarIconsOutline.galleryWide,
+  PlayerBg.color => SolarIconsOutline.palette,
+  PlayerBg.none => SolarIconsOutline.forbiddenCircle,
+};
+
+/// Шторка «Фон плеера». Шапки нет: строка, из которой сюда пришли, осталась
+/// видна над шторкой, а что делает каждый вариант, говорит его же подпись.
+/// Закрывается от выбора — как и остальные шторки «одно из».
+///
+/// «Фон приложения» гаснет, пока фона нет: брать в плеер нечего, и вместо
+/// подписи варианта строка говорит, где его поставить.
+Future<void> _openPlayerBg(BuildContext context, WidgetRef ref) {
+  final hasAppBg = ref.read(playerAppBgProvider) != null;
+  return pickOneSheet(
+    context: context,
+    values: PlayerBg.values,
+    current: ref.read(playerBgProvider),
+    icon: _playerBgIcon,
+    label: (bg) => _playerBgLabel(context.l, bg),
+    sub: (bg) => bg == PlayerBg.app && !hasAppBg
+        ? context.l.pvBgAppOff
+        : _playerBgSub(context.l, bg),
+    enabled: (bg) => bg != PlayerBg.app || hasAppBg,
+    apply: ref.read(playerBgProvider.notifier).set,
+  );
+}
+
+// ── Эффект фона обложки ─────────────────────────────────────────────────────
+// Вторая строка той же группы, и стоит она в ней только под «Обложкой»: у
+// остальных фонов обложки за плеером нет.
+
+String _coverFxLabel(AppLocalizations l, CoverBgFx fx) => switch (fx) {
+  CoverBgFx.dim => l.pvBgFxDim,
+  CoverBgFx.blur => l.pvBgFxBlur,
+  CoverBgFx.original => l.pvBgFxOriginal,
+};
+
+String _coverFxSub(AppLocalizations l, CoverBgFx fx) => switch (fx) {
+  CoverBgFx.dim => l.pvBgFxDimSub,
+  CoverBgFx.blur => l.pvBgFxBlurSub,
+  CoverBgFx.original => l.pvBgFxOriginalSub,
+};
+
+IconData _coverFxIcon(CoverBgFx fx) => switch (fx) {
+  // Луна — то же затемнение, каким «Ночной режим» помечен где угодно; капля —
+  // размытие; палочка со звёздами — «как есть, без обработки».
+  CoverBgFx.dim => SolarIconsOutline.moon,
+  CoverBgFx.blur => SolarIconsOutline.waterdrop,
+  CoverBgFx.original => SolarIconsOutline.magicStick,
+};
+
+/// Шторка «Эффект фона обложки» — устроена как шторка самого фона: варианты
+/// объясняют себя подписью, и от выбора шторка закрывается.
+///
+/// Шапки нет по той же причине: строка, из которой сюда пришли, осталась видна
+/// над шторкой.
+Future<void> _openCoverFx(BuildContext context, WidgetRef ref) {
+  return pickOneSheet(
+    context: context,
+    values: CoverBgFx.values,
+    current: ref.read(coverBgFxProvider),
+    icon: _coverFxIcon,
+    label: (fx) => _coverFxLabel(context.l, fx),
+    sub: (fx) => _coverFxSub(context.l, fx),
+    apply: ref.read(coverBgFxProvider.notifier).set,
+  );
+}

@@ -1,0 +1,44 @@
+name: Проверки
+
+# Быстрая проверка на каждый пуш и pull request: форматирование, анализатор,
+# тесты. Сборки приложений сюда не входят — они долгие и живут в release.yml.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+# Новый пуш в ту же ветку отменяет предыдущий прогон: проверять устаревший
+# коммит смысла нет.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: 3.41.9
+
+jobs:
+  check:
+    name: format · analyze · test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: dart format
+        run: dart format --output=none --set-exit-if-changed lib test tool
+
+      - name: flutter analyze
+        run: flutter analyze lib test tool
+
+      # tool/sc_smoke.dart ходит в живой SoundCloud — здесь только `flutter
+      # test`, сетевой smoke гоняется руками.
+      - name: flutter test
+        run: flutter test

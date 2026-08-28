@@ -1,0 +1,345 @@
+/// Таймер сна: время, персист и шторка.
+///
+/// Проверяем то, что ломается тихо: срок считается по стенным часам (`endsAt`),
+/// «+5 минут» отсчитывается ОТ СРОКА, а не от «сейчас», надпись на кнопке
+/// округляет секунды вверх, а на диск уезжают только настройки — активный
+/// таймер перезапуск переживать не должен.
+library;
+
+import 'package:bloom/app/theme/bloom_theme.dart';
+import 'package:bloom/app/theme/tokens.dart';
+import 'package:bloom/core/l10n/l10n.dart';
+import 'package:bloom/core/store/json_store.dart';
+import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
+import 'package:bloom/features/player/sleep_timer_store.dart';
+import 'package:bloom/features/player/ui/sleep_sheet.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+/// Часы теста: ждать полчаса по-настоящему мы не будем.
+DateTime _now = DateTime(2026, 8, 15, 23, 30);
+
+ProviderContainer _container(JsonStore store) {
+  final c = ProviderContainer(
+    overrides: [
+      jsonStoreProvider.overrideWithValue(store),
+      sleepClockProvider.overrideWithValue(() => _now),
+    ],
+  );
+  addTearDown(c.dispose);
+  return c;
+}
+
+/// Экран с кнопкой, открывающей шторку таймера.
+Future<void> _pumpSheet(WidgetTester tester, JsonStore store) async {
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: _container(store),
+      child: MaterialApp(
+        // Язык прибит гвоздями: проверки текста не должны зависеть от локали
+        // машины, на которой гоняют тесты.
+        locale: const Locale('ru'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        theme: buildBloomTheme(BloomThemes.dark),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showSleepSheet(context),
+              child: const Text('открыть'),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.tap(find.text('открыть'));
+  await tester.pumpAndSettle();
+}
+
+SleepTimerController _ctrlOf(WidgetTester tester) => ProviderScope.containerOf(
+  tester.element(find.byType(Scaffold).first),
+).read(sleepTimerProvider.notifier);
+
+SleepTimerState _stateOf(WidgetTester tester) => ProviderScope.containerOf(
+  tester.element(find.byType(Scaffold).first),
+).read(sleepTimerProvider);
+
+/// Тап + прокрутка времени до записи на диск (`JsonStore` откладывает её на
+/// 400 мс). `pumpAndSettle` здесь не годится: идущий таймер тикает раз в
+/// секунду и перерисовывает шторку — «успокоиться» ей уже не суждено.
+Future<void> _tap(WidgetTester tester, Finder target) async {
+  await tester.tap(target);
+  for (var i = 0; i < 6; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
+/// Снять таймер в конце теста: иначе его тик остаётся висеть и `testWidgets`
+/// падает на «A Timer is still pending».
+void _stop(WidgetTester tester) => _ctrlOf(tester).cancel();
+
+void main() {
+  setUp(() => _now = DateTime(2026, 8, 15, 23, 30));
+
+  group('sleepLabel', () {
+    test('мм:сс до часа', () {
+      expect(sleepLabel(const Duration(minutes: 23, seconds: 14)), '23:14');
+      expect(sleepLabel(const Duration(minutes: 5)), '5:00');
+      expect(sleepLabel(const Duration(seconds: 9)), '0:09');
+    });
+
+    test('ч:мм от часа и дальше', () {
+      expect(sleepLabel(const Duration(hours: 1)), '1:00');
+      expect(sleepLabel(const Duration(minutes: 90)), '1:30');
+      expect(sleepLabel(const Duration(minutes: 120)), '2:00');
+      // Секунды в этом виде не показываем и минуту ими не подгоняем: «1:05»
+      // должно висеть всю пятую минуту, а не мигать «1:06» её первую половину.
+      expect(
+        sleepLabel(const Duration(hours: 1, minutes: 5, seconds: 30)),
+        '1:05',
+      );
+    });
+
+    test('секунды округляются вверх: пока звук идёт, ноля быть не может', () {
+      expect(sleepLabel(const Duration(milliseconds: 200)), '0:01');
+      expect(
+        sleepLabel(const Duration(seconds: 44, milliseconds: 200)),
+        '0:45',
+      );
+      expect(sleepLabel(Duration.zero), '0:00');
+      expect(sleepLabel(const Duration(seconds: -5)), '0:00');
+    });
+  });
+
+  group('стор', () {
+    test('умолчание: таймера нет, затухание включено', () {
+      final sleep = _container(JsonStore.memory()).read(sleepTimerProvider);
+      expect(sleep.mode, SleepMode.off);
+      expect(sleep.active, isFalse);
+      expect(sleep.expired, isFalse);
+      expect(sleep.fade, isTrue);
+      expect(sleep.choice, const Duration(minutes: 30));
+    });
+
+    test('start назначает срок по стенным часам', () {
+      final c = _container(JsonStore.memory());
+      c.read(sleepTimerProvider.notifier).start(const Duration(minutes: 15));
+
+      final sleep = c.read(sleepTimerProvider);
+      expect(sleep.mode, SleepMode.timer);
+      expect(sleep.endsAt, _now.add(const Duration(minutes: 15)));
+      expect(sleep.remaining, const Duration(minutes: 15));
+      expect(sleep.choice, const Duration(minutes: 15));
+      c.read(sleepTimerProvider.notifier).cancel();
+    });
+
+    test('«+5 минут» считается от срока, а не от «сейчас»', () {
+      final c = _container(JsonStore.memory());
+      final ctrl = c.read(sleepTimerProvider.notifier);
+      final started = _now;
+      ctrl.start(const Duration(minutes: 30));
+
+      // Прошло 29 минут — до конца минута.
+      _now = started.add(const Duration(minutes: 29));
+      ctrl.extend();
+
+      expect(
+        c.read(sleepTimerProvider).endsAt,
+        started.add(const Duration(minutes: 35)),
+      );
+      // Не «5 минут от сейчас», а «минута + пять».
+      expect(c.read(sleepTimerProvider).remaining, const Duration(minutes: 6));
+      ctrl.cancel();
+    });
+
+    test('«+5 минут» без таймера ничего не делает', () {
+      final c = _container(JsonStore.memory());
+      c.read(sleepTimerProvider.notifier).extend();
+      expect(c.read(sleepTimerProvider).mode, SleepMode.off);
+      expect(c.read(sleepTimerProvider).endsAt, isNull);
+    });
+
+    test('«до конца трека» — режим без срока', () {
+      final c = _container(JsonStore.memory());
+      final ctrl = c.read(sleepTimerProvider.notifier);
+      ctrl.start(const Duration(minutes: 45));
+      ctrl.untilTrackEnd();
+
+      final sleep = c.read(sleepTimerProvider);
+      expect(sleep.mode, SleepMode.endOfTrack);
+      expect(sleep.active, isTrue);
+      // Срока нет — ждать нечего, и `expired` тут не должен срабатывать: паузу
+      // поставит конец трека.
+      expect(sleep.endsAt, isNull);
+      expect(sleep.expired, isFalse);
+    });
+
+    test('cancel снимает и режим, и срок', () {
+      final c = _container(JsonStore.memory());
+      final ctrl = c.read(sleepTimerProvider.notifier);
+      ctrl.start(const Duration(minutes: 15));
+      ctrl.cancel();
+
+      final sleep = c.read(sleepTimerProvider);
+      expect(sleep.mode, SleepMode.off);
+      expect(sleep.endsAt, isNull);
+      expect(sleep.remaining, Duration.zero);
+    });
+
+    test('на диск уходят настройки, а не идущий таймер', () {
+      final store = JsonStore.memory();
+      final first = _container(store);
+      first.read(sleepTimerProvider.notifier)
+        ..setFade(false)
+        ..start(const Duration(minutes: 45));
+      first.read(sleepTimerProvider.notifier).cancel();
+
+      final second = _container(store).read(sleepTimerProvider);
+      expect(second.fade, isFalse);
+      expect(second.choice, const Duration(minutes: 45));
+      // Перезапуск — тишина: будить некого.
+      expect(second.mode, SleepMode.off);
+      expect(second.endsAt, isNull);
+    });
+
+    test('битая запись читается умолчаниями, время — в границах полосы', () {
+      final broken = JsonStore.memory({
+        'sleep': {'minutes': 'скоро', 'fade': 'ага'},
+      });
+      final sleep = _container(broken).read(sleepTimerProvider);
+      expect(sleep.choice, const Duration(minutes: 30));
+      expect(sleep.fade, isTrue);
+
+      final huge = JsonStore.memory({
+        'sleep': {'minutes': 9000},
+      });
+      expect(
+        _container(huge).read(sleepTimerProvider).choice,
+        const Duration(minutes: kSleepMaxMinutes),
+      );
+    });
+  });
+
+  group('тик', () {
+    testWidgets('остаток уменьшается и упирается в ноль', (tester) async {
+      final store = JsonStore.memory();
+      await _pumpSheet(tester, store);
+
+      await _tap(tester, find.text('15'));
+      expect(_stateOf(tester).remaining, const Duration(minutes: 15));
+
+      // Часы стора двигаем сами: тик только пересчитывает от них остаток.
+      _now = _now.add(const Duration(minutes: 14, seconds: 30));
+      await tester.pump(const Duration(seconds: 1));
+      expect(_stateOf(tester).remaining, const Duration(seconds: 30));
+      expect(_stateOf(tester).expired, isFalse);
+
+      _now = _now.add(const Duration(seconds: 31));
+      await tester.pump(const Duration(seconds: 1));
+      // Ноль — сигнал плееру: пора на паузу. Сам таймер его не снимает.
+      expect(_stateOf(tester).remaining, Duration.zero);
+      expect(_stateOf(tester).expired, isTrue);
+
+      _stop(tester);
+    });
+  });
+
+  group('шторка', () {
+    testWidgets('пресет заводит таймер, повторный тап — снимает', (
+      tester,
+    ) async {
+      final store = JsonStore.memory();
+      await _pumpSheet(tester, store);
+
+      await _tap(tester, find.text('30'));
+      expect(_stateOf(tester).mode, SleepMode.timer);
+      expect(_stateOf(tester).choice, const Duration(minutes: 30));
+
+      await _tap(tester, find.text('30'));
+      expect(_stateOf(tester).mode, SleepMode.off);
+    });
+
+    testWidgets('«до конца трека» переключается тапом', (tester) async {
+      final store = JsonStore.memory();
+      await _pumpSheet(tester, store);
+
+      await _tap(tester, find.text('До конца трека').last);
+      expect(_stateOf(tester).mode, SleepMode.endOfTrack);
+
+      await _tap(tester, find.text('До конца трека').last);
+      expect(_stateOf(tester).mode, SleepMode.off);
+    });
+
+    testWidgets('«+5 минут» и «Выключить» появляются только у таймера', (
+      tester,
+    ) async {
+      final store = JsonStore.memory();
+      await _pumpSheet(tester, store);
+      expect(find.text('+5 минут'), findsNothing);
+      expect(find.text('Выключить таймер'), findsNothing);
+
+      await _tap(tester, find.text('45'));
+      expect(find.text('+5 минут'), findsOneWidget);
+
+      await _tap(tester, find.text('+5 минут'));
+      expect(_stateOf(tester).remaining, const Duration(minutes: 50));
+
+      await _tap(tester, find.text('Выключить таймер'));
+      expect(_stateOf(tester).mode, SleepMode.off);
+
+      // У «до конца трека» продлевать нечего — кнопки быть не должно.
+      await _tap(tester, find.text('До конца трека').last);
+      expect(find.text('+5 минут'), findsNothing);
+      expect(find.text('Выключить таймер'), findsOneWidget);
+      _stop(tester);
+    });
+
+    testWidgets('остаток виден в шапке', (tester) async {
+      final store = JsonStore.memory();
+      await _pumpSheet(tester, store);
+
+      await _tap(tester, find.text('60'));
+      expect(find.text('Осталось 1:00'), findsOneWidget);
+      _stop(tester);
+    });
+
+    testWidgets('тумблер затухания переключается тапом по всей строке', (
+      tester,
+    ) async {
+      final store = JsonStore.memory();
+      await _pumpSheet(tester, store);
+      expect(_stateOf(tester).fade, isTrue);
+
+      await _tap(
+        tester,
+        find.text('Последние 20 секунд громкость уходит в ноль'),
+      );
+      expect(_stateOf(tester).fade, isFalse);
+
+      await _tap(tester, find.text('Плавное затухание'));
+      expect(_stateOf(tester).fade, isTrue);
+    });
+
+    testWidgets('полоса переставляет срок под пальцем', (tester) async {
+      final store = JsonStore.memory();
+      await _pumpSheet(tester, store);
+
+      // Тычем в левую четверть полосы: точное значение зависит от ширины
+      // экрана теста, поэтому проверяем шаг и сторону, а не число.
+      final slider = tester.getRect(find.byType(Slider));
+      await tester.tapAt(
+        Offset(slider.left + slider.width * 0.25, slider.center.dy),
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+
+      final sleep = _stateOf(tester);
+      expect(sleep.mode, SleepMode.timer);
+      expect(sleep.choice.inMinutes % kSleepStepMinutes, 0);
+      expect(sleep.choice.inMinutes, lessThan(kSleepMaxMinutes ~/ 2));
+      expect(sleep.choice.inMinutes, greaterThanOrEqualTo(kSleepMinMinutes));
+      _stop(tester);
+    });
+  });
+}

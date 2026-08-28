@@ -1,0 +1,543 @@
+/// Страница артиста площадки: шапка с баннером и секции — «Популярные»,
+/// «Альбомы», «Репосты», «Похожие исполнители», «Треки».
+///
+/// Состав секций взят с десктопа (`features/search/ui/DetailView.tsx`,
+/// `ArtistBody`), раскладка — из референса: не вкладки, а одна прокрутка.
+/// Плейлисты артиста провайдер отдаёт, но своей секции у них нет и на ПК.
+///
+/// Всё содержимое приходит одним `getArtist` (провайдер собирает его из шести
+/// эндпоинтов параллельно); докручиваются только треки и репосты — курсорами.
+library;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:solar_icons/solar_icons.dart';
+
+import '../../../app/providers.dart';
+import '../../../app/theme/tokens.dart';
+import '../../../core/entities/entities.dart';
+import '../../../core/l10n/l10n.dart';
+import '../../../core/providers/music_provider.dart';
+import '../../../core/store/library_store.dart';
+import '../../../features/customization/ui/app_background.dart';
+import '../../../features/player/play_source.dart';
+import '../../../features/player/player_controller.dart';
+import '../../../features/wave/wave_actions.dart';
+import '../../../features/wave/wave_seeds.dart' show pickQueueSeeds;
+import '../../../shared/share/share_link.dart';
+import '../../../shared/share/share_sheet.dart';
+import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_sheet.dart';
+import '../../../shared/ui/bloom_toast.dart';
+import '../../../shared/ui/cover_hero.dart';
+import '../../../shared/ui/detail_hero.dart';
+import '../../../shared/ui/entity_tiles.dart';
+import '../../../shared/ui/glass.dart';
+import '../../../shared/util/format.dart';
+
+class ArtistScreen extends ConsumerStatefulWidget {
+  const ArtistScreen({
+    super.key,
+    required this.artistId,
+    this.initial,
+    this.flight,
+  });
+
+  /// Сквозной id артиста («sc_artist_123»).
+  final String artistId;
+
+  /// Артист из карточки, с которой пришли: шапка рисуется до ответа сети.
+  final Artist? initial;
+
+  /// Аватарка карточки, с которой пришли: она перелетает в шапку.
+  final CoverFlight? flight;
+
+  @override
+  ConsumerState<ArtistScreen> createState() => _ArtistScreenState();
+}
+
+class _ArtistScreenState extends ConsumerState<ArtistScreen> {
+  ArtistPageData? _data;
+  String? _error;
+  bool _loading = true;
+
+  /// Треки и репосты живут в состоянии экрана, а не в [_data]: их докручивают
+  /// курсорами, и список растёт.
+  List<Track> _tracks = const [];
+  String? _tracksCursor;
+  List<RepostItem> _reposts = const [];
+  String? _repostsCursor;
+
+  /// Сколько репостов раскрыто: как на ПК — превью из пяти, «Загрузить ещё»
+  /// наращивает лимит и, когда загруженного перестаёт хватать, тянет страницу.
+  int _repostsLimit = _repostsStep;
+  static const int _repostsStep = 5;
+
+  /// Что именно догружается сейчас — чтобы не жать кнопку дважды.
+  String? _loadingMore;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final provider = ref.read(registryProvider).forEntity(widget.artistId);
+    if (provider == null) {
+      setState(() {
+        _loading = false;
+        _error = context.l.artistSourceNotConnected;
+      });
+      return;
+    }
+    try {
+      final data = await provider.getArtist(widget.artistId);
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        if (data == null) {
+          _error = context.l.artistNotFound;
+          return;
+        }
+        _data = data;
+        _tracks = data.tracks;
+        _tracksCursor = data.tracksCursor;
+        _reposts = data.reposts;
+        _repostsCursor = data.repostsCursor;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _moreTracks() async {
+    final cursor = _tracksCursor;
+    if (cursor == null || _loadingMore != null) return;
+    setState(() => _loadingMore = 'tracks');
+    final provider = ref.read(registryProvider).forEntity(widget.artistId);
+    TrackPage? page;
+    try {
+      page = await provider?.getArtistTracksPage(cursor);
+    } catch (_) {
+      page = null;
+    }
+    if (!mounted) return;
+    setState(() {
+      _loadingMore = null;
+      if (page == null) {
+        // Не вышло — курсор гасим, иначе кнопка «Загрузить ещё» будет вечной.
+        _tracksCursor = null;
+        return;
+      }
+      _tracks = [..._tracks, ...page.tracks];
+      _tracksCursor = page.cursor;
+    });
+  }
+
+  /// «Загрузить ещё» под репостами: раскрываем следующую пятёрку, и только если
+  /// раскрывать больше нечего — догружаем страницу из сети.
+  Future<void> _moreReposts() async {
+    if (_loadingMore != null) return;
+    final limit = _repostsLimit + _repostsStep;
+    setState(() => _repostsLimit = limit);
+    if (limit < _reposts.length) return;
+
+    final cursor = _repostsCursor;
+    if (cursor == null) return;
+    setState(() => _loadingMore = 'reposts');
+    final provider = ref.read(registryProvider).forEntity(widget.artistId);
+    RepostPage? page;
+    try {
+      page = await provider?.getArtistRepostsPage(cursor);
+    } catch (_) {
+      page = null;
+    }
+    if (!mounted) return;
+    setState(() {
+      _loadingMore = null;
+      if (page == null) {
+        _repostsCursor = null;
+        return;
+      }
+      _reposts = [..._reposts, ...page.reposts];
+      _repostsCursor = page.cursor;
+    });
+  }
+
+  /// Что играет кнопка «Воспроизвести»: сначала «популярные», их у SoundCloud
+  /// отдаёт отдельный эндпоинт и они точнее представляют артиста.
+  List<Track> get _playQueue {
+    final top = _data?.topTracks ?? const <Track>[];
+    return top.isNotEmpty ? top : _tracks;
+  }
+
+  /// Источник для пилюли плеера — сама страница: с неё играют и «популярные»,
+  /// и лента репостов, и полный список треков. Артист мог ещё не загрузиться
+  /// (страницу открыли по одному id) — тогда источника нет.
+  PlaySource? get _source {
+    final artist = _data?.artist ?? widget.initial;
+    return artist == null ? null : ArtistSource(artist);
+  }
+
+  /// Из чего волна берёт сиды: популярные и загруженные треки вместе. Больше
+  /// охват — точнее подбор; лишнее отсеет сам [pickQueueSeeds].
+  List<Track> get _waveSeeds => [...?_data?.topTracks, ..._tracks];
+
+  void _play() {
+    final queue = _playQueue;
+    if (queue.isEmpty) return;
+    ref.read(playbackProvider.notifier).playQueue(queue, 0, source: _source);
+  }
+
+  void _shuffle() {
+    final queue = _playQueue;
+    if (queue.isEmpty) return;
+    ref
+        .read(playbackProvider.notifier)
+        .playQueueShuffled(queue, source: _source);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final artist = _data?.artist ?? widget.initial;
+    final queue = _playQueue;
+
+    return Scaffold(
+      // Под страницей может лежать картинка фона — тогда своей заливки нет.
+      backgroundColor: ref.watch(backgroundOnProvider)
+          ? Colors.transparent
+          : t.bg,
+      body: CustomScrollView(
+        slivers: [
+          DetailHero(
+            image: artist?.avatar,
+            title: artist?.name ?? context.l.commonArtist,
+            subtitle: _subtitle(artist),
+            flight: widget.flight,
+            onMenu: artist == null ? null : () => _menu(artist),
+            actions: HeroActions(
+              sourceId: _source?.id,
+              onPlay: queue.isEmpty ? null : _play,
+              trailing: [
+                GlassIconButton(
+                  icon: SolarIconsOutline.shuffle,
+                  size: 46,
+                  onTap: queue.isEmpty ? null : _shuffle,
+                ),
+                if (artist != null) _FollowButton(artist: artist),
+              ],
+            ),
+          ),
+          if (_loading)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                child: Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: t.accent,
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else if (_error case final message?)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: t.sysFavIco),
+                ),
+              ),
+            )
+          else
+            SliverList.list(children: _sections()),
+          // Просвет в конце — плюс бары каркаса: они плавают над содержимым.
+          const SliverBottomBarsInset(extra: 16),
+        ],
+      ),
+    );
+  }
+
+  /// Подпись под именем: подписчики и сколько треков загружено.
+  String _subtitle(Artist? artist) {
+    final parts = <String>[
+      if (artist?.followers case final n? when n > 0)
+        context.l.followersCount(n, compactCount(n)),
+      if (_tracks.isNotEmpty) context.l.tracksCount(_tracks.length),
+    ];
+    return parts.join(' · ');
+  }
+
+  List<Widget> _sections() {
+    final data = _data;
+    if (data == null) return const [];
+
+    final top = data.topTracks;
+    final albums = data.albums;
+    final similar = data.similarArtists;
+    // Показываем превью из [_repostsLimit] штук — остальное за «Загрузить ещё».
+    final reposts = _reposts.take(_repostsLimit).toList();
+    // Очередь для строки трека в смешанной ленте репостов — только треки, и
+    // только показанные: играем ровно то, что видно на экране. Сеты в неё не
+    // попадают.
+    final repostTracks = reposts
+        .whereType<RepostTrack>()
+        .map((r) => r.track)
+        .toList();
+
+    return [
+      if (top.isNotEmpty) ...[
+        SectionTitle(context.l.artistPopular),
+        EntityCarousel(
+          height: 194,
+          itemCount: top.length,
+          builder: (i) =>
+              TrackCard(track: top[i], queue: top, index: i, source: _source),
+        ),
+      ],
+      if (albums.isNotEmpty) ...[
+        SectionTitle(context.l.commonAlbums),
+        EntityCarousel(
+          height: 194,
+          itemCount: albums.length,
+          builder: (i) => SetCard(set: albums[i]),
+        ),
+      ],
+      if (_reposts.isNotEmpty) ...[
+        SectionTitle(context.l.artistReposts),
+        // Лента смешанная: трек играется в очереди из соседних треков ленты,
+        // сет — открывается страницей.
+        for (final item in reposts)
+          switch (item) {
+            RepostTrack(:final track) => TrackRow(
+              track: track,
+              queue: repostTracks,
+              index: repostTracks.indexOf(track),
+              source: _source,
+            ),
+            RepostSet(:final playlist) => SetRow(set: playlist),
+          },
+        // Кнопка нужна, пока есть нераскрытое локально ИЛИ есть курсор.
+        if (_reposts.length > _repostsLimit || _repostsCursor != null)
+          _MoreButton(busy: _loadingMore == 'reposts', onTap: _moreReposts),
+      ],
+      if (similar.isNotEmpty) ...[
+        SectionTitle(context.l.artistSimilar),
+        EntityCarousel(
+          height: 168,
+          itemCount: similar.length,
+          builder: (i) => ArtistCard(artist: similar[i], centerLabel: true),
+        ),
+      ],
+      if (_tracks.isNotEmpty) ...[
+        SectionTitle(context.l.commonTracks),
+        for (var i = 0; i < _tracks.length; i++)
+          TrackRow(
+            track: _tracks[i],
+            queue: _tracks,
+            index: i,
+            source: _source,
+          ),
+        if (_tracksCursor != null)
+          _MoreButton(busy: _loadingMore == 'tracks', onTap: _moreTracks),
+      ],
+      if (top.isEmpty && albums.isEmpty && _reposts.isEmpty && _tracks.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 40),
+          child: Center(
+            child: Text(
+              context.l.artistNoTracks,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: context.bloom.muted),
+            ),
+          ),
+        ),
+    ];
+  }
+
+  Future<void> _menu(Artist artist) async {
+    final queue = _playQueue;
+    final following = ref.read(libraryProvider).isFollowing(artist.id);
+    // Импортируем то, что уже загружено: догружать всю дискографию ради
+    // импорта — минуты ожидания на популярном артисте.
+    final forImport = _tracks.isNotEmpty ? _tracks : queue;
+
+    await showBloomSheet(
+      context: context,
+      backdrop: artist.avatar,
+      header: SheetLineHeader(
+        cover: artist.avatar,
+        title: artist.name,
+        subtitle: _subtitle(artist),
+        circle: true,
+      ),
+      groups: [
+        [
+          SheetAction(
+            icon: SolarIconsBold.play,
+            label: context.l.commonPlay,
+            onTap: queue.isEmpty ? null : _play,
+          ),
+          SheetAction(
+            icon: SolarIconsOutline.shuffle,
+            label: context.l.commonShuffle,
+            onTap: queue.isEmpty ? null : _shuffle,
+          ),
+          // Волна по артисту: у Яндекса это его нативная станция, у SoundCloud
+          // — подбор по тем трекам, что страница уже загрузила.
+          if (canStartWaveFromArtist(artist, _waveSeeds))
+            SheetAction(
+              icon: SolarIconsOutline.playStream,
+              label: context.l.waveFromArtist,
+              onTap: () => startWaveFromArtist(
+                context,
+                ref,
+                artist,
+                seedTracks: _waveSeeds,
+              ),
+            ),
+        ],
+        [
+          SheetAction(
+            icon: following
+                ? SolarIconsBold.userCheckRounded
+                : SolarIconsOutline.userPlusRounded,
+            label: following
+                ? context.l.commonUnfollow
+                : context.l.commonFollow,
+            onTap: () {
+              final on = ref
+                  .read(libraryProvider.notifier)
+                  .toggleFollow(artist);
+              _toast(
+                on
+                    ? context.l.followedToast(artist.name)
+                    : context.l.unfollowedToast,
+              );
+            },
+          ),
+          SheetAction(
+            icon: SolarIconsOutline.import,
+            label: context.l.artistTracksToNewPlaylist,
+            onTap: forImport.isEmpty
+                ? null
+                : () {
+                    ref
+                        .read(libraryProvider.notifier)
+                        .createPlaylist(
+                          artist.name,
+                          tracks: forImport,
+                          cover: artist.avatar,
+                        );
+                    _toast(
+                      context.l.addedToast(
+                        artist.name,
+                        context.l.tracksCount(forImport.length),
+                      ),
+                      ToastKind.success,
+                    );
+                  },
+          ),
+        ],
+        [
+          // «Поделиться» вместо прежней «Скопировать ссылку»: ссылку копирует
+          // сама шторка, и это ссылка Bloom, как на ПК, а не сырой permalink
+          // площадки.
+          SheetAction(
+            icon: SolarIconsOutline.share,
+            label: context.l.shareAction,
+            onTap: () => showShareSheet(context, ShareTarget.artist(artist)),
+          ),
+        ],
+      ],
+    );
+  }
+
+  void _toast(String message, [ToastKind kind = ToastKind.info]) {
+    if (!mounted) return;
+    showToast(context, message, kind: kind);
+  }
+}
+
+/// Подписка на артиста — та же, что в библиотеке: активная кнопка заливается
+/// акцентом, как чип-фильтр.
+class _FollowButton extends ConsumerWidget {
+  const _FollowButton({required this.artist});
+
+  final Artist artist;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.bloom;
+    final following = ref.watch(libraryProvider).isFollowing(artist.id);
+    return GlassIconButton(
+      icon: following
+          ? SolarIconsBold.userCheckRounded
+          : SolarIconsOutline.userPlusRounded,
+      size: 46,
+      background: following ? t.accent : null,
+      color: following ? t.accentText : null,
+      onTap: () {
+        final on = ref.read(libraryProvider.notifier).toggleFollow(artist);
+        showToast(
+          context,
+          on ? context.l.followedToast(artist.name) : context.l.unfollowedToast,
+        );
+      },
+    );
+  }
+}
+
+class _MoreButton extends StatelessWidget {
+  const _MoreButton({required this.busy, required this.onTap});
+
+  final bool busy;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
+      child: GlassBox(
+        borderRadius: BorderRadius.circular(999),
+        child: InkWell(
+          onTap: busy ? null : onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Center(
+              child: busy
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: t.iconFg,
+                      ),
+                    )
+                  : Text(
+                      context.l.commonLoadMore,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
