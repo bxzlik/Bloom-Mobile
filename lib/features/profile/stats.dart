@@ -17,6 +17,7 @@ import '../../core/l10n/l10n.dart';
 import '../../core/entities/entities.dart';
 import '../../core/store/library_store.dart';
 import '../../core/store/stats_store.dart';
+import '../../shared/util/artists.dart';
 
 /// Строка «Топ треков».
 class TrackPlays {
@@ -147,20 +148,28 @@ class ProfileStats {
       listenSec += seconds;
       if (plays > 0) rows.add(TrackPlays(track, plays));
 
-      final name = track.artist.isEmpty ? 'Unknown Artist' : track.artist;
-      final artist =
-          artists[name] ??
-          (plays: 0, cover: null, best: -1, sources: <MusicSource, int>{});
-      final better = track.cover != null && plays > artist.best;
-      artists[name] = (
-        plays: artist.plays + plays,
-        cover: better ? track.cover : artist.cover,
-        best: better ? plays : artist.best,
-        // Считаем прослушивания по площадкам: по ним потом и выбирается, где
-        // этого артиста искать.
-        sources: artist.sources
-          ..update(source, (n) => n + plays, ifAbsent: () => plays),
-      );
+      // Строка артиста бывает мультиартистной («reidenshi, Øneheart») —
+      // считаем каждого отдельно, иначе в топе стоит склеенное имя, по
+      // которому не найдётся ни аватар, ни страница артиста. Совместный трек
+      // идёт в зачёт обоим.
+      final names = track.artist.isEmpty
+          ? const ['Unknown Artist']
+          : parseArtists(track.artist);
+      for (final name in names) {
+        final artist =
+            artists[name] ??
+            (plays: 0, cover: null, best: -1, sources: <MusicSource, int>{});
+        final better = track.cover != null && plays > artist.best;
+        artists[name] = (
+          plays: artist.plays + plays,
+          cover: better ? track.cover : artist.cover,
+          best: better ? plays : artist.best,
+          // Считаем прослушивания по площадкам: по ним потом и выбирается, где
+          // этого артиста искать.
+          sources: artist.sources
+            ..update(source, (n) => n + plays, ifAbsent: () => plays),
+        );
+      }
     }
 
     rows.sort((a, b) => b.plays.compareTo(a.plays));

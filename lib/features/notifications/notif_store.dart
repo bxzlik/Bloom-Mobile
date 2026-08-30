@@ -20,6 +20,7 @@
 /// уже не из чего.
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/l10n/l10n.dart';
@@ -45,6 +46,12 @@ enum NotifTitle {
 
   /// `notif.trackUnavailable.title` — трек не заиграл.
   trackUnavailable,
+
+  /// `wrapped.month` — готовы итоги прошедшего месяца.
+  wrappedMonth,
+
+  /// `wrapped.year` — готовы итоги года.
+  wrappedYear,
 }
 
 /// Сколько уведомлений держим (десктопный `MAX`).
@@ -62,6 +69,7 @@ class NotifItem {
     required this.body,
     required this.ts,
     this.read = false,
+    this.action,
   });
 
   final String id;
@@ -76,6 +84,14 @@ class NotifItem {
 
   final bool read;
 
+  /// Куда ведёт карточка. `null` — уведомление только сообщает (так у всех,
+  /// кроме «Итогов»: на ПК действие тоже есть лишь у них и у апдейтера).
+  ///
+  /// Замыкание, а не данные, потому что список живёт только сессию и на диск
+  /// не едет. Свой контекст оно приносит с собой: контекст шторки к моменту
+  /// перехода уже мёртв — её закрывают ДО вызова.
+  final NotifAction? action;
+
   NotifItem copyWith({bool? read}) => NotifItem(
     id: id,
     kind: kind,
@@ -83,7 +99,19 @@ class NotifItem {
     body: body,
     ts: ts,
     read: read ?? this.read,
+    action: action,
   );
+}
+
+/// Действие карточки: что делать и как назвать кнопку.
+@immutable
+class NotifAction {
+  const NotifAction({required this.label, required this.run});
+
+  /// Готовая подпись кнопки — снимок, как и тело.
+  final String label;
+
+  final VoidCallback run;
 }
 
 final notifCenterProvider = NotifierProvider<NotifCenter, List<NotifItem>>(
@@ -109,6 +137,7 @@ class NotifCenter extends Notifier<List<NotifItem>> {
     required NotifKind kind,
     required NotifTitle title,
     String body = '',
+    NotifAction? action,
   }) {
     final now = ref.read(notifClockProvider)();
     final item = NotifItem(
@@ -117,6 +146,7 @@ class NotifCenter extends Notifier<List<NotifItem>> {
       title: title,
       body: body,
       ts: now,
+      action: action,
     );
     state = [item, ...state].take(kNotifMax).toList();
     // Заодно в журнал работы: список уведомлений живёт только эту сессию, а
@@ -151,4 +181,6 @@ String notifTitleText(AppLocalizations l, NotifTitle title) => switch (title) {
   NotifTitle.offlineReady => l.notifOfflineReady,
   NotifTitle.offlineError => l.notifOfflineError,
   NotifTitle.trackUnavailable => l.notifTrackUnavailable,
+  NotifTitle.wrappedMonth => l.wrMonth,
+  NotifTitle.wrappedYear => l.wrYear,
 };

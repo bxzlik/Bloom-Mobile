@@ -171,6 +171,37 @@ class _Card extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(item.body, style: theme.bodySmall),
                 ],
+                // Кнопка есть только у «Итогов» — десктопный `actionLabel`.
+                // Шторку закрываем ДО перехода: она перекрыла бы то, куда
+                // уходим, а её контекст к тому моменту уже мёртв — поэтому своё
+                // действие несёт с собой и свой контекст.
+                if (item.action case final action?) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Material(
+                      color: t.accent.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(999),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          action.run();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 7,
+                          ),
+                          child: Text(
+                            action.label,
+                            style: theme.labelLarge?.copyWith(color: t.accent),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

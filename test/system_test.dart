@@ -539,17 +539,18 @@ void main() {
   });
 
   group('запуск и сброс', () {
-    test('автовоспроизведение включает восстановление', () {
+    test('автовоспроизведение восстановление не включает', () {
       final c = _container(JsonStore.memory());
       final settings = c.read(settingsProvider.notifier);
       settings.setAutoplay(true);
-      expect(c.read(settingsProvider).restoreQueue, isTrue);
+      expect(c.read(settingsProvider).restoreQueue, isFalse);
       expect(c.read(settingsProvider).autoplay, isTrue);
     });
 
     test('выключенное восстановление гасит автовоспроизведение', () {
       final c = _container(JsonStore.memory());
       final settings = c.read(settingsProvider.notifier);
+      settings.setRestoreQueue(true);
       settings.setAutoplay(true);
       settings.setRestoreQueue(false);
       expect(c.read(settingsProvider).autoplay, isFalse);
@@ -558,7 +559,9 @@ void main() {
 
     test('оба флага переживают перезапуск', () {
       final store = JsonStore.memory();
-      _container(store).read(settingsProvider.notifier).setAutoplay(true);
+      final settings = _container(store).read(settingsProvider.notifier);
+      settings.setRestoreQueue(true);
+      settings.setAutoplay(true);
       final again = _container(store).read(settingsProvider);
       expect(again.autoplay, isTrue);
       expect(again.restoreQueue, isTrue);

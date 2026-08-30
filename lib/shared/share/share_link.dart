@@ -64,6 +64,38 @@ String buildShareUrl({
   return '$kShareBase?${Uri(queryParameters: params).query}';
 }
 
+/// Ссылка на профиль — порт `onCopy` из десктопной `ProfileShareModal`.
+///
+/// Отдельной функцией, а не пятым значением [ShareKind]: у профиля нет ни id,
+/// ни permalink, зато есть свои поля со статистикой — общий [buildShareUrl] к
+/// ним не сводится.
+///
+/// [avatar] в ссылку попадает только сетевой, и на телефоне это значит «никогда»:
+/// картинки профиля здесь всегда свои, файлом. Проверка всё равно стоит — ровно
+/// та же, что на ПК, и ссылка не потащит наружу `local:`.
+String buildProfileShareUrl({
+  required String name,
+  required int tracks,
+  required int plays,
+  required String time,
+  String? favArtist,
+  String? bio,
+  String? avatar,
+}) {
+  final params = <String, String>{
+    'type': 'profile',
+    'name': name,
+    'tracks': '$tracks',
+    'plays': '$plays',
+    'time': time,
+  };
+  if (favArtist != null && favArtist.isNotEmpty) params['artist'] = favArtist;
+  final linkAvatar = _linkCover(avatar);
+  if (linkAvatar != null) params['avatar'] = linkAvatar;
+  if (bio != null && bio.isNotEmpty) params['bio'] = bio;
+  return '$kShareBase?${Uri(queryParameters: params).query}';
+}
+
 /// Готовые данные карточки — порт `ShareData`.
 class ShareTarget {
   const ShareTarget({

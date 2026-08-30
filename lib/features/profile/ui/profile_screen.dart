@@ -24,11 +24,15 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/glass.dart';
+import '../../wrapped/ui/wrapped_entries.dart';
+import '../../wrapped/wrapped_store.dart';
 import '../achievements.dart';
 import '../profile_store.dart';
 import '../stats.dart';
 import 'achievements_sheet.dart';
 import 'profile_avatar.dart';
+import 'profile_entry_card.dart';
+import 'profile_share_sheet.dart';
 import 'stats_sheet.dart';
 
 /// Сторона аватара на странице — десктопные 120 из `.acc-ava`.
@@ -49,11 +53,34 @@ class ProfileScreen extends ConsumerStatefulWidget {
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+class _ProfileScreenState extends ConsumerState<ProfileScreen>
+    with WidgetsBindingObserver {
   /// Метку держим у себя: `extra` живёт на ВСЮ ссылку, и стоит уйти отсюда в
   /// редактор, как страница профиля перестраивается уже без неё — аватару
   /// стало бы некуда лететь на обратном пути.
   late CoverFlight? _flight = widget.flight;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Приложение может провисеть открытым до 1-го числа: сверяем дату по
+    // возвращению из фона, иначе входы в «Итоги» дожили бы до перезапуска со
+    // вчерашним периодом. На ПК ту же роль играет слушатель `focus` у окна.
+    if (state == AppLifecycleState.resumed) {
+      ref.read(wrappedDayProvider.notifier).refresh();
+    }
+  }
 
   @override
   void didUpdateWidget(ProfileScreen old) {
@@ -113,69 +140,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 }
 
 /// Входы в шторки — две широкие карточки одного вида: статистика и достижения.
-class _SheetButtons extends StatelessWidget {
+///
+/// Над ними в декабре встаёт плашка «Итоги года», а сама карточка статистики
+/// раз в месяц ПОДМЕНЯЕТСЯ входом в итоги месяца — ровно до первого просмотра
+/// (см. `wrapped_entries.dart`).
+class _SheetButtons extends ConsumerWidget {
   const _SheetButtons();
 
   @override
-  Widget build(BuildContext context) {
-    return const Column(
-      children: [_StatsCard(), SizedBox(height: 10), _AchCard()],
-    );
-  }
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final wrapped = ref.watch(wrappedEntriesProvider);
+    final year = wrapped.year;
+    final month = wrapped.month;
 
-/// Общий вид карточки-входа (по присланному макету): слева крупное число со
-/// значком, справа второе число с подписью, у края — плитка 48.
-class _EntryCard extends StatelessWidget {
-  const _EntryCard({
-    required this.value,
-    required this.icon,
-    required this.side,
-    required this.caption,
-    required this.tile,
-    required this.onTap,
-  });
-
-  final String value;
-  final IconData icon;
-  final String side;
-  final String caption;
-  final Widget tile;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    return GlassBox(
-      borderRadius: BorderRadius.circular(t.radius),
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 18, 18),
-          child: Row(
-            children: [
-              Text(value, style: theme.headlineSmall?.copyWith(fontSize: 30)),
-              const SizedBox(width: 8),
-              Icon(icon, size: 16, color: t.muted),
-              const Spacer(),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(side, style: theme.titleLarge?.copyWith(fontSize: 20)),
-                  const SizedBox(height: 1),
-                  Text(
-                    caption,
-                    style: theme.bodySmall?.copyWith(color: t.muted),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 14),
-              tile,
-            ],
-          ),
-        ),
-      ),
+    return Column(
+      children: [
+        if (year != null) ...[
+          WrappedYearBanner(data: year, unseen: wrapped.yearUnseen),
+          const SizedBox(height: 10),
+        ],
+        if (month != null && wrapped.monthUnseen)
+          WrappedMonthCard(data: month)
+        else
+          const _StatsCard(),
+        const SizedBox(height: 10),
+        const _AchCard(),
+      ],
     );
   }
 }
@@ -201,11 +191,10 @@ class _StatsCard extends ConsumerWidget {
     final t = context.bloom;
     final s = ref.watch(profileStatsProvider);
 
-    return _EntryCard(
+    return ProfileEntryCard(
       value: '${s.totalPlays}',
       icon: SolarIconsOutline.musicNote,
       side: _time(context, s.listenSec),
-      caption: context.l.statsTotal,
       // Обложки самых слушаемых треков — тот же коллаж, что у списков без
       // своей картинки.
       tile: Cover(
@@ -233,11 +222,10 @@ class _AchCard extends ConsumerWidget {
     // карточке достижения.
     final medal = done > 0 ? tierColor(AchTier.gold) : t.muted;
 
-    return _EntryCard(
+    return ProfileEntryCard(
       value: '$done',
       icon: SolarIconsOutline.medalStar,
       side: '$total',
-      caption: context.l.statsTotal,
       tile: Container(
         width: 56,
         height: 56,
@@ -325,6 +313,12 @@ class _Banner extends StatelessWidget {
                       onTap: () => context.go('/home'),
                     ),
                   const Spacer(),
+                  // Порядок десктопный: «Поделиться», за ней карандаш.
+                  GlassIconButton(
+                    icon: SolarIconsOutline.share,
+                    onTap: () => showProfileShareSheet(context),
+                  ),
+                  const SizedBox(width: 8),
                   GlassIconButton(
                     icon: SolarIconsOutline.pen,
                     onTap: () => context.go('${profileBase(context)}/edit'),

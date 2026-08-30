@@ -95,6 +95,23 @@ void main() {
     expect(stats.uniqueArtists, 2);
   });
 
+  test('мультиартистный трек идёт в зачёт каждому участнику', () {
+    final c = _container();
+    final lib = c.read(libraryProvider.notifier);
+    lib.pushHistory(_track('sc_1', artist: 'reidenshi, Øneheart'));
+    lib.pushHistory(_track('sc_2', artist: 'Øneheart'));
+    lib.pushHistory(_track('sc_2', artist: 'Øneheart'));
+
+    final stats = c.read(profileStatsProvider);
+    // Склеенного имени в топе нет — по нему не нашлись бы ни аватар, ни
+    // страница артиста.
+    expect(stats.topArtists.map((a) => a.name), ['Øneheart', 'reidenshi']);
+    expect(stats.topArtists.map((a) => a.plays), [3, 1]);
+    expect(stats.uniqueArtists, 2);
+    expect(stats.favArtist, 'Øneheart');
+    expect(stats.topArtists.last.source, MusicSource.soundcloud);
+  });
+
   test('стрик держится, пока сегодня ещё не слушали (грейс со вчера)', () {
     final today = DateTime.now();
     String key(int daysAgo) => dayKey(today.subtract(Duration(days: daysAgo)));

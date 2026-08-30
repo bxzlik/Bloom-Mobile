@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/entities/entities.dart';
 import '../../core/store/stats_store.dart' show dayKey;
+import '../../shared/util/artists.dart';
 import 'periods.dart';
 import 'play_log.dart';
 
@@ -65,8 +66,9 @@ class WrappedArtist {
   /// которым пришлось бы лезть на площадку (аватар догружается в интерфейсе).
   final String? cover;
 
-  /// Площадка того же трека — у неё интерфейс и спрашивает аватар: аккаунт с
-  /// тем же именем на соседней площадке принадлежит другому человеку.
+  /// Площадка, где его слушали чаще всего: у неё интерфейс спрашивает аватар и
+  /// на неё же уходит по нажатию. Аккаунт с тем же именем на соседней площадке
+  /// принадлежит другому человеку, поэтому площадку выбирают, а не берут любую.
   final MusicSource source;
 }
 
@@ -157,6 +159,30 @@ const int kWrappedTopSize = 5;
 /// Ключ группировки артиста: регистр и лишние пробелы не должны плодить дубли.
 String _artistKey(String name) => name.trim().toLowerCase();
 
+/// Имена артистов трека по отдельности: строка бывает мультиартистной
+/// («reidenshi, Øneheart»), а в топ должен попадать каждый сам по себе — по
+/// склеенному имени площадка не найдёт ни аватара, ни страницы.
+///
+/// Кеш — потому что зовётся на КАЖДОЕ событие журнала, а строк артистов там
+/// заметно меньше, чем прослушиваний.
+List<String> _splitArtists(String str, Map<String, List<String>> cache) =>
+    cache[str] ??= parseArtists(str);
+
+/// Площадка артиста — та, где его слушали чаще. Свои файлы в счёт не идут,
+/// пока есть хоть одна площадка: у локального артиста своей страницы нет, и
+/// поискать его там, где слушали хотя бы раз, — единственный способ на неё
+/// попасть.
+MusicSource _artistSource(Map<MusicSource, int> plays) {
+  MusicSource? top;
+  var best = 0;
+  for (final e in plays.entries) {
+    if (e.key == MusicSource.local || e.value <= best) continue;
+    top = e.key;
+    best = e.value;
+  }
+  return top ?? MusicSource.local;
+}
+
 WrappedData buildWrapped(PlayLog log, PeriodRange range) {
   final from = range.fromMs;
   final to = range.toMs;
@@ -170,6 +196,9 @@ WrappedData buildWrapped(PlayLog log, PeriodRange range) {
   final artistAgg = <String, WrappedArtist>{};
   // Сколько прослушиваний было у трека, от которого взята обложка артиста.
   final artistBest = <String, int>{};
+  // На каких площадках его слушали и сколько раз — из этого [_artistSource]
+  // выбирает ту, куда вести за аватаром и страницей.
+  final artistSrcs = <String, Map<MusicSource, int>>{};
   final srcAgg = <MusicSource, WrappedSource>{};
   final dayAgg = <String, int>{};
   final hours = List<int>.filled(24, 0);
@@ -178,13 +207,16 @@ WrappedData buildWrapped(PlayLog log, PeriodRange range) {
   var seconds = 0;
   var newTracksCount = 0;
   final newArtistKeys = <String>{};
+  final splitCache = <String, List<String>>{};
 
   for (final e in log.events) {
     if (e.ts < from) {
       seenTracks.add(e.id);
       final before = log.meta[e.id];
       if (before != null && before.artist.isNotEmpty) {
-        seenArtists.add(_artistKey(before.artist));
+        for (final n in _splitArtists(before.artist, splitCache)) {
+          seenArtists.add(_artistKey(n));
+        }
       }
       continue;
     }
@@ -218,29 +250,36 @@ WrappedData buildWrapped(PlayLog log, PeriodRange range) {
     }
 
     if (artist.isNotEmpty) {
-      final key = _artistKey(artist);
-      final a = artistAgg[key];
-      if (a == null) {
-        artistAgg[key] = WrappedArtist(
-          name: artist,
-          plays: 1,
-          cover: cover,
-          source: source,
-        );
-        artistBest[key] = cover != null ? 1 : -1;
-        if (!seenArtists.contains(key)) newArtistKeys.add(key);
-      } else {
-        // Обложка артиста — от его самого заслушанного трека в периоде; оттуда
-        // же и площадка, у которой интерфейс потом спросит аватар.
-        final trackPlays = trackAgg[e.id]!.plays;
-        final better = cover != null && trackPlays > (artistBest[key] ?? -1);
-        artistAgg[key] = WrappedArtist(
-          name: a.name,
-          plays: a.plays + 1,
-          cover: better ? cover : a.cover,
-          source: better ? source : a.source,
-        );
-        if (better) artistBest[key] = trackPlays;
+      // Обложка артиста — от его самого заслушанного трека в периоде.
+      final trackPlays = trackAgg[e.id]!.plays;
+      // Каждый участник строки считается сам по себе (см. [_splitArtists]),
+      // так что совместный трек идёт в зачёт обоим.
+      for (final name in _splitArtists(artist, splitCache)) {
+        final key = _artistKey(name);
+        final srcs = artistSrcs[key] ??= {};
+        srcs[source] = (srcs[source] ?? 0) + 1;
+        final a = artistAgg[key];
+        if (a == null) {
+          // Площадка здесь — заглушка: настоящую поставит [_artistSource],
+          // когда весь период уже сосчитан.
+          artistAgg[key] = WrappedArtist(
+            name: name,
+            plays: 1,
+            cover: cover,
+            source: source,
+          );
+          artistBest[key] = cover != null ? 1 : -1;
+          if (!seenArtists.contains(key)) newArtistKeys.add(key);
+        } else {
+          final better = cover != null && trackPlays > (artistBest[key] ?? -1);
+          artistAgg[key] = WrappedArtist(
+            name: a.name,
+            plays: a.plays + 1,
+            cover: better ? cover : a.cover,
+            source: a.source,
+          );
+          if (better) artistBest[key] = trackPlays;
+        }
       }
     }
 
@@ -263,7 +302,17 @@ WrappedData buildWrapped(PlayLog log, PeriodRange range) {
       return byPlays != 0 ? byPlays : b.seconds.compareTo(a.seconds);
     });
 
-  final artists = artistAgg.values.toList();
+  // Площадку артиста ставим уже на выходе: пока идёт разбор, известна только
+  // площадка очередного трека, а нужна та, где его слушали чаще всего.
+  final artists = [
+    for (final e in artistAgg.entries)
+      WrappedArtist(
+        name: e.value.name,
+        plays: e.value.plays,
+        cover: e.value.cover,
+        source: _artistSource(artistSrcs[e.key]!),
+      ),
+  ];
   final topArtists = [...artists]..sort((a, b) => b.plays.compareTo(a.plays));
   final newArtists =
       artists.where((a) => newArtistKeys.contains(_artistKey(a.name))).toList()

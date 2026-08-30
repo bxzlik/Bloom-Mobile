@@ -225,6 +225,33 @@ void main() {
       expect(find.text('Трек доступен офлайн'), findsOneWidget);
       expect(find.text('Не удалось скачать офлайн'), findsOneWidget);
       expect(find.text('Недоступный трек'), findsOneWidget);
+      expect(find.text('Итоги месяца'), findsOneWidget);
+      expect(find.text('Итоги года'), findsOneWidget);
+    });
+
+    testWidgets('кнопка действия закрывает шторку и ведёт дальше', (
+      tester,
+    ) async {
+      // Действие есть только у «Итогов»; шторка обязана закрыться ДО перехода —
+      // иначе она перекроет то, куда ушли.
+      final c = _container();
+      var opened = 0;
+      c
+          .read(notifCenterProvider.notifier)
+          .add(
+            kind: NotifKind.info,
+            title: NotifTitle.wrappedMonth,
+            body: 'Июль 2026',
+            action: NotifAction(label: 'Смотреть', run: () => opened++),
+          );
+      await _pump(tester, c, const NotifBell());
+      await tester.tap(find.byIcon(SolarIconsOutline.bell));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Смотреть'));
+      await tester.pumpAndSettle();
+      expect(opened, 1);
+      expect(find.text('Итоги месяца'), findsNothing);
     });
   });
 }

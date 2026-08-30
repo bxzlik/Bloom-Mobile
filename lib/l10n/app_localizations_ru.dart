@@ -1108,6 +1108,29 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sharePlaylist => 'Поделиться плейлистом';
 
   @override
+  String get shareProfile => 'Поделиться профилем';
+
+  @override
+  String get shareProfileSub => 'делится профилем';
+
+  @override
+  String shareProfilePlays(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString прослушиваний',
+      many: '$countString прослушиваний',
+      few: '$countString прослушивания',
+      one: '$countString прослушивание',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get shareFail => 'Не удалось отправить карточку';
 
   @override
@@ -1405,9 +1428,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String statsHoursValue(String hours) {
     return '$hoursч';
   }
-
-  @override
-  String get statsTotal => 'всего';
 
   @override
   String get statsShareTitle => '🎵 Моя статистика в Bloom';
@@ -2766,25 +2786,22 @@ class AppLocalizationsRu extends AppLocalizations {
   String get notifTrackUnavailable => 'Недоступный трек';
 
   @override
-  String get wrTitle => 'Итоги';
-
-  @override
-  String get wrWeek => 'Итоги недели';
-
-  @override
   String get wrMonth => 'Итоги месяца';
 
   @override
   String get wrYear => 'Итоги года';
 
   @override
-  String get wrPrev => 'Назад';
+  String get wrNext => 'Далее';
 
   @override
-  String get wrNext => 'Дальше';
+  String get wrClose => 'Закрыть';
 
   @override
-  String get wrIntroWeek => 'Твоя неделя в Bloom';
+  String get wrWatch => 'Смотреть';
+
+  @override
+  String get wrNew => 'Новое';
 
   @override
   String get wrIntroMonth => 'Твой месяц в Bloom';
@@ -2807,9 +2824,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get wrTimeLessThanMin => 'Меньше минуты';
 
   @override
-  String get wrCountsKicker => 'Если в цифрах';
-
-  @override
   String get wrCountsTitle => 'Вот сколько всего было';
 
   @override
@@ -2818,22 +2832,17 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get wrTracksKicker => 'На повторе';
-
-  @override
-  String get wrTracksTitle => 'Твои топ-треки';
-
-  @override
-  String get wrTracksTitleOne => 'Твой трек периода';
-
-  @override
-  String get wrArtistsKicker => 'Голоса периода';
-
-  @override
-  String get wrArtistsTitle => 'Твои топ-артисты';
-
-  @override
-  String get wrArtistsTitleOne => 'Твой артист периода';
+  String wrArtistsTotalN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count артистов всего',
+      many: '$count артистов всего',
+      few: '$count артиста всего',
+      one: '$count артист всего',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get wrSourcesKicker => 'Откуда музыка';
@@ -3015,6 +3024,19 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String wrHoursWord(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'часов',
+      many: 'часов',
+      few: 'часа',
+      one: 'час',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String wrMinutesN(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -3023,6 +3045,45 @@ class AppLocalizationsRu extends AppLocalizations {
       many: '$count минут',
       few: '$count минуты',
       one: '$count минута',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrMinutesWord(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'минут',
+      many: 'минут',
+      few: 'минуты',
+      one: 'минута',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrTimesN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count раз',
+      many: '$count раз',
+      few: '$count раза',
+      one: '$count раз',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrTimesWord(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'раз',
+      many: 'раз',
+      few: 'раза',
+      one: 'раз',
     );
     return '$_temp0';
   }
@@ -3040,14 +3101,14 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get wrSetShowSub =>
-      'Кружок-сторис на главной, когда есть что подводить';
+      'Карточка месяца в профиле и декабрьская плашка года, когда есть что подводить';
 
   @override
   String get wrSetAlways => 'Показывать всегда';
 
   @override
   String get wrSetAlwaysSub =>
-      'Не ждать расписания — открывать итоги в любой день';
+      'Не ждать расписания — итоги года в любой день, а месяцем считать идущий';
 
   @override
   String get sysStartup => 'Запуск';

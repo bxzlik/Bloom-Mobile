@@ -1,4 +1,5 @@
-/// «Поделиться»: ссылка, раскладка карточки и шторка.
+/// «Поделиться»: ссылка, раскладка карточки и шторка — и для сущностей
+/// площадок, и для профиля.
 ///
 /// Ссылку проверяем по параметрам, а не по строке целиком: их порядок для
 /// страницы-посредника значения не имеет, а вот имена и значения — да (порт
@@ -12,6 +13,9 @@ import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/l10n/l10n.dart';
 import 'package:bloom/core/store/json_store.dart';
 import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
+import 'package:bloom/features/profile/profile_store.dart';
+import 'package:bloom/features/profile/ui/profile_share_card.dart';
+import 'package:bloom/features/profile/ui/profile_share_sheet.dart';
 import 'package:bloom/shared/share/share_card.dart';
 import 'package:bloom/shared/share/share_link.dart';
 import 'package:bloom/shared/share/share_sheet.dart';
@@ -163,6 +167,92 @@ void main() {
     });
   });
 
+  group('профиль: ссылка', () {
+    test('поля на местах, тип profile', () {
+      final params = _params(
+        buildProfileShareUrl(
+          name: 'bxzlik',
+          tracks: 128,
+          plays: 1240,
+          time: '47ч 12м',
+          favArtist: 'Portishead',
+          bio: 'слушаю всё подряд',
+        ),
+      );
+      expect(params['type'], 'profile');
+      expect(params['name'], 'bxzlik');
+      expect(params['tracks'], '128');
+      expect(params['plays'], '1240');
+      expect(params['time'], '47ч 12м');
+      expect(params['artist'], 'Portishead');
+      expect(params['bio'], 'слушаю всё подряд');
+    });
+
+    test('пустые артист и био выпадают, свой аватар не идёт', () {
+      final params = _params(
+        buildProfileShareUrl(
+          name: 'bxzlik',
+          tracks: 0,
+          plays: 0,
+          time: '0 мин',
+          favArtist: null,
+          bio: '',
+          // На телефоне картинки профиля ВСЕГДА свои, файлом: снаружи такую
+          // ссылку никто не откроет.
+          avatar: 'local:ava.png',
+        ),
+      );
+      expect(params.containsKey('artist'), isFalse);
+      expect(params.containsKey('bio'), isFalse);
+      expect(params.containsKey('avatar'), isFalse);
+      // Нули и пустая статистика ссылку не ломают.
+      expect(params['tracks'], '0');
+    });
+  });
+
+  group('профиль: карточка', () {
+    testWidgets('дизайн-бокс 380 и высота как на ПК', (tester) async {
+      await _pumpProfileCard(tester);
+      final size = tester.getSize(find.byType(ProfileShareCard));
+      expect(size.width, kShareCardW);
+      // 20 + 38 + 18 + 1 + 18 + 64 + 16 + 126 + 21 + 1 + 9 + 40 + 22
+      expect(size.height, closeTo(394, 1));
+
+      expect(find.text('Bloom'), findsOneWidget);
+      expect(find.text('bxzlik'), findsOneWidget);
+      // Подписи ячеек — капсом, как `stats.card.*` на ПК.
+      expect(find.text('ТРЕКОВ'), findsOneWidget);
+      expect(find.text('ЛЮБИМЫЙ ИСПОЛНИТЕЛЬ'), findsOneWidget);
+      // Число прослушиваний в футере — с разрядами (у русского разделитель
+      // НЕРАЗРЫВНЫЙ пробел) и в нужной форме множественного числа.
+      expect(find.text('1 240 прослушиваний'), findsOneWidget);
+    });
+
+    testWidgets('без аватара — буква ника на градиенте', (tester) async {
+      await _pumpProfileCard(tester);
+      expect(find.text('B'), findsOneWidget);
+    });
+
+    testWidgets('длинное значение ужимается, но не мельче 11', (tester) async {
+      await _pumpProfileCard(tester, favArtist: 'Godspeed You! Black Emperor');
+      final value = tester.widget<Text>(
+        find.text('Godspeed You! Black Emperor'),
+      );
+      expect(value.style?.fontSize, lessThan(20));
+      expect(value.style?.fontSize, greaterThanOrEqualTo(11));
+      // Ячейка от этого не растёт: высота карточки прежняя.
+      expect(
+        tester.getSize(find.byType(ProfileShareCard)).height,
+        closeTo(394, 1),
+      );
+    });
+
+    testWidgets('нет любимого артиста — прочерк', (tester) async {
+      await _pumpProfileCard(tester, favArtist: null);
+      expect(find.text('—'), findsOneWidget);
+    });
+  });
+
   group('шторка', () {
     testWidgets('заголовок по типу, обе кнопки на месте', (tester) async {
       await _pumpSheet(tester, ShareTarget.track(_track(cover: null)));
@@ -198,12 +288,78 @@ void main() {
       // Шторка закрывается сразу, как модалка на ПК.
       expect(find.text('Поделиться треком'), findsNothing);
     });
+
+    testWidgets('профиль: свой заголовок и ссылка type=profile', (
+      tester,
+    ) async {
+      final calls = <MethodCall>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          calls.add(call);
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+
+      await _pumpSheet(tester, null);
+      expect(find.text('Поделиться профилем'), findsOneWidget);
+      expect(find.text('Поделиться'), findsOneWidget);
+
+      await tester.tap(find.text('Скопировать ссылку'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      final copy = calls.firstWhere((c) => c.method == 'Clipboard.setData');
+      final params = _params((copy.arguments as Map)['text'] as String);
+      expect(params['type'], 'profile');
+      // Ника никто не задавал — в ссылку уходит тот же дефолт, что видно на
+      // карточке, а не пустая строка.
+      expect(params['name'], 'Пользователь');
+      expect(find.text('Поделиться профилем'), findsNothing);
+    });
   });
+}
+
+/// Карточка профиля: локализация ей нужна вся (подписи ячеек, футер, дефолтный
+/// ник), поэтому дом у неё `MaterialApp` с делегатами.
+Future<void> _pumpProfileCard(
+  WidgetTester tester, {
+  String? favArtist = 'Portishead',
+}) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      locale: const Locale('ru'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Center(
+        child: ProfileShareCard(
+          profile: const UserProfile(name: 'bxzlik', bio: 'слушаю всё подряд'),
+          stats: ProfileCardStats(
+            tracks: 128,
+            plays: 1240,
+            time: '47ч 12м',
+            favArtist: favArtist,
+          ),
+          avatar: null,
+          logo: null,
+        ),
+      ),
+    ),
+  );
 }
 
 /// Хост со шторкой: она идёт через корневой навигатор и читает настройки
 /// прозрачности, поэтому нужен и `MaterialApp`, и контейнер с хранилищем.
-Future<void> _pumpSheet(WidgetTester tester, ShareTarget target) async {
+///
+/// `target == null` — шторка профиля: у неё цели нет, всё нужное она берёт из
+/// провайдеров.
+Future<void> _pumpSheet(WidgetTester tester, ShareTarget? target) async {
   final container = ProviderContainer(
     overrides: [jsonStoreProvider.overrideWithValue(JsonStore.memory())],
   );
@@ -220,7 +376,9 @@ Future<void> _pumpSheet(WidgetTester tester, ShareTarget target) async {
         home: Scaffold(
           body: Builder(
             builder: (context) => TextButton(
-              onPressed: () => showShareSheet(context, target),
+              onPressed: () => target == null
+                  ? showProfileShareSheet(context)
+                  : showShareSheet(context, target),
               child: const Text('открыть'),
             ),
           ),

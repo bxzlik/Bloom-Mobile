@@ -1868,6 +1868,24 @@ abstract class AppLocalizations {
   /// **'Share playlist'**
   String get sharePlaylist;
 
+  /// desktop: profile.shareTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Share profile'**
+  String get shareProfile;
+
+  /// the line under “Bloom” in the head of the profile card — desktop draws it in English only
+  ///
+  /// In en, this message translates to:
+  /// **'shares their profile'**
+  String get shareProfileSub;
+
+  /// desktop: stats.card.playsFooter — the number carries thousands separators there (toLocaleString)
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} play} other{{count} plays}}'**
+  String shareProfilePlays(int count);
+
   /// desktop: share.toast.saveFail — the card could not be handed to the system
   ///
   /// In en, this message translates to:
@@ -2407,12 +2425,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{hours}h'**
   String statsHoursValue(String hours);
-
-  /// profile card: caption under the time
-  ///
-  /// In en, this message translates to:
-  /// **'total'**
-  String get statsTotal;
 
   /// No description provided for @statsShareTitle.
   ///
@@ -4850,18 +4862,6 @@ abstract class AppLocalizations {
   /// **'Track unavailable'**
   String get notifTrackUnavailable;
 
-  /// desktop: wrapped.title
-  ///
-  /// In en, this message translates to:
-  /// **'Wrapped'**
-  String get wrTitle;
-
-  /// No description provided for @wrWeek.
-  ///
-  /// In en, this message translates to:
-  /// **'Week in review'**
-  String get wrWeek;
-
   /// No description provided for @wrMonth.
   ///
   /// In en, this message translates to:
@@ -4874,23 +4874,29 @@ abstract class AppLocalizations {
   /// **'Year in review'**
   String get wrYear;
 
-  /// No description provided for @wrPrev.
-  ///
-  /// In en, this message translates to:
-  /// **'Back'**
-  String get wrPrev;
-
   /// No description provided for @wrNext.
   ///
   /// In en, this message translates to:
   /// **'Next'**
   String get wrNext;
 
-  /// No description provided for @wrIntroWeek.
+  /// desktop: common.close — the button under the last slide
   ///
   /// In en, this message translates to:
-  /// **'Your week in Bloom'**
-  String get wrIntroWeek;
+  /// **'Close'**
+  String get wrClose;
+
+  /// desktop: wrapped.watch — the pill on both entry cards
+  ///
+  /// In en, this message translates to:
+  /// **'Watch'**
+  String get wrWatch;
+
+  /// desktop: wrapped.new — badge on an entry nobody opened yet
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get wrNew;
 
   /// No description provided for @wrIntroMonth.
   ///
@@ -4907,7 +4913,7 @@ abstract class AppLocalizations {
   /// No description provided for @wrIntroSub.
   ///
   /// In en, this message translates to:
-  /// **'LetвЂ™s see how it went'**
+  /// **'Let’s see how it went'**
   String get wrIntroSub;
 
   /// No description provided for @wrTimeKicker.
@@ -4928,16 +4934,10 @@ abstract class AppLocalizations {
   /// **'Less than a minute'**
   String get wrTimeLessThanMin;
 
-  /// No description provided for @wrCountsKicker.
-  ///
-  /// In en, this message translates to:
-  /// **'In numbers'**
-  String get wrCountsKicker;
-
   /// No description provided for @wrCountsTitle.
   ///
   /// In en, this message translates to:
-  /// **'HereвЂ™s the whole picture'**
+  /// **'Here’s the whole picture'**
   String get wrCountsTitle;
 
   /// No description provided for @wrCountsNewTracks.
@@ -4946,41 +4946,11 @@ abstract class AppLocalizations {
   /// **'Heard for the first time: {count}'**
   String wrCountsNewTracks(int count);
 
-  /// No description provided for @wrTracksKicker.
+  /// desktop: wrapped.artists.total — the note under the artists list
   ///
   /// In en, this message translates to:
-  /// **'On repeat'**
-  String get wrTracksKicker;
-
-  /// No description provided for @wrTracksTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Your top tracks'**
-  String get wrTracksTitle;
-
-  /// No description provided for @wrTracksTitleOne.
-  ///
-  /// In en, this message translates to:
-  /// **'Your track of the period'**
-  String get wrTracksTitleOne;
-
-  /// No description provided for @wrArtistsKicker.
-  ///
-  /// In en, this message translates to:
-  /// **'Voices of the period'**
-  String get wrArtistsKicker;
-
-  /// No description provided for @wrArtistsTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Your top artists'**
-  String get wrArtistsTitle;
-
-  /// No description provided for @wrArtistsTitleOne.
-  ///
-  /// In en, this message translates to:
-  /// **'Your artist of the period'**
-  String get wrArtistsTitleOne;
+  /// **'{count, plural, one{{count} artist in total} other{{count} artists in total}}'**
+  String wrArtistsTotalN(int count);
 
   /// No description provided for @wrSourcesKicker.
   ///
@@ -5015,13 +4985,13 @@ abstract class AppLocalizations {
   /// No description provided for @wrHabitsNight.
   ///
   /// In en, this message translates to:
-  /// **'YouвЂ™re a night listener'**
+  /// **'You’re a night listener'**
   String get wrHabitsNight;
 
   /// No description provided for @wrHabitsDay.
   ///
   /// In en, this message translates to:
-  /// **'YouвЂ™re a daytime listener'**
+  /// **'You’re a daytime listener'**
   String get wrHabitsDay;
 
   /// No description provided for @wrHabitsPeak.
@@ -5105,7 +5075,7 @@ abstract class AppLocalizations {
   /// No description provided for @wrJokeOneTrack.
   ///
   /// In en, this message translates to:
-  /// **'One track, one artist вЂ” respect the consistency.'**
+  /// **'One track, one artist — respect the consistency.'**
   String get wrJokeOneTrack;
 
   /// No description provided for @wrPlaysN.
@@ -5156,16 +5126,40 @@ abstract class AppLocalizations {
   /// **'{count, plural, one{{count} hour} other{{count} hours}}'**
   String wrHoursN(int count);
 
+  /// the noun alone, for slides where the number is rendered huge and separately
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{hour} other{hours}}'**
+  String wrHoursWord(int count);
+
   /// No description provided for @wrMinutesN.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, one{{count} minute} other{{count} minutes}}'**
   String wrMinutesN(int count);
 
+  /// No description provided for @wrMinutesWord.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{minute} other{minutes}}'**
+  String wrMinutesWord(int count);
+
+  /// desktop: wrapped.n.times — the short form for tight spots: under an artist name the full «plays» eats the line
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} time} other{{count} times}}'**
+  String wrTimesN(int count);
+
+  /// No description provided for @wrTimesWord.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{time} other{times}}'**
+  String wrTimesWord(int count);
+
   /// favorite hour, both sides already formatted as HH:00
   ///
   /// In en, this message translates to:
-  /// **'{from} вЂ” {to}'**
+  /// **'{from} — {to}'**
   String wrHourRange(Object from, Object to);
 
   /// No description provided for @wrSetCaption.
@@ -5183,7 +5177,7 @@ abstract class AppLocalizations {
   /// No description provided for @wrSetShowSub.
   ///
   /// In en, this message translates to:
-  /// **'A story circle on the home screen when thereвЂ™s something to sum up'**
+  /// **'The month card in your profile and the year banner in December — when there’s something to sum up'**
   String get wrSetShowSub;
 
   /// No description provided for @wrSetAlways.
@@ -5195,7 +5189,7 @@ abstract class AppLocalizations {
   /// No description provided for @wrSetAlwaysSub.
   ///
   /// In en, this message translates to:
-  /// **'Skip the schedule вЂ” open wrapped on any day'**
+  /// **'Skip the schedule — the year in review on any day, the month counted as the current one'**
   String get wrSetAlwaysSub;
 
   /// desktop: settings.system.startup

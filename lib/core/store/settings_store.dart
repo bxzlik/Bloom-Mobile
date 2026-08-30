@@ -375,8 +375,8 @@ class SettingsState {
   final bool restoreQueue;
 
   /// Восстановить сессию и сразу продолжить воспроизведение — десктопная
-  /// `settings.system.autoplay`. Включает [restoreQueue]: играть, ничего не
-  /// восстановив, всё равно нечего.
+  /// `settings.system.autoplay`. Надстройка над [restoreQueue]: сама она ничего
+  /// не восстанавливает, поэтому без него не показывается и не действует.
   final bool autoplay;
 
   /// Свои темы — в порядке создания, после встроенных.
@@ -665,9 +665,9 @@ class SettingsController extends Notifier<SettingsState> {
   }
 
   /// Восстанавливать сессию при запуске. Выключение снимает и
-  /// [SettingsState.autoplay]: играть, ничего не восстановив, нечего, и
-  /// состояние «автовоспроизведение без восстановления» просто не имеет
-  /// смысла.
+  /// [SettingsState.autoplay]: его строку экран прячет, а поднятый флаг в
+  /// скрытой строке остаться не должен — иначе восстановление вернут и получат
+  /// внезапно играющий с порога плеер.
   void setRestoreQueue(bool value) {
     state = value
         ? state.copyWith(restoreQueue: true)
@@ -675,12 +675,11 @@ class SettingsController extends Notifier<SettingsState> {
     _save();
   }
 
-  /// Автовоспроизведение. Включение включает и восстановление — по той же
-  /// причине, по которой выключение восстановления гасит его самого.
+  /// Автовоспроизведение. Восстановление обратно не включает: тумблер
+  /// показывают только под уже включённым восстановлением, и надстройка «и
+  /// сразу продолжить» им не распоряжается.
   void setAutoplay(bool value) {
-    state = value
-        ? state.copyWith(autoplay: true, restoreQueue: true)
-        : state.copyWith(autoplay: false);
+    state = state.copyWith(autoplay: value);
     _save();
   }
 

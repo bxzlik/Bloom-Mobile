@@ -24,6 +24,7 @@ library;
 
 import 'dart:math' show Random, min;
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -242,8 +243,14 @@ class AppearanceScreen extends ConsumerWidget {
             if (settings.coverAsBg) ..._coverAsBgRows(context, ref),
           ],
         ),
-        const SizedBox(height: 26),
-        ..._wrappedGroup(context, ref),
+        // Тумблеры «Итогов» — только в отладочной сборке, как повтор онбординга
+        // (см. `settings_screen.dart`). В релизе итоги не настраиваются, они
+        // случаются: на ПК настроек нет вовсе, а расписание там снимают скрытым
+        // флагом в `localStorage`.
+        if (kDebugMode) ...[
+          const SizedBox(height: 26),
+          ..._wrappedGroup(context, ref),
+        ],
       ],
     );
   }
@@ -292,18 +299,21 @@ List<Widget> _coverAsBgRows(BuildContext context, WidgetRef ref) {
   ];
 }
 
-/// Группа «ИТОГИ» — порт десктопной категории `settings.wrapped.*` (на ПК она
-/// живёт в секции «Вкладки», где настраивается сам пункт сайдбара).
+/// Группа «ИТОГИ». На ПК тумблеров больше нет (итоги не настраиваются, они
+/// случаются), и роль «показать вне расписания» там играет скрытый флаг в
+/// `localStorage`; на телефоне девтулзы нет, поэтому оба тумблера остались.
 ///
-/// «Показывать всегда» — единственный способ увидеть итоги вне окна показа:
-/// без него неделю пришлось бы ждать до понедельника, а год — до 21 декабря.
+/// «Показывать всегда» — единственный способ увидеть итоги года вне декабря, а
+/// месяцем считать идущий: журнал копится только с обновления, и у прошедшего
+/// месяца сплошь и рядом ноль событий.
 List<Widget> _wrappedGroup(BuildContext context, WidgetRef ref) {
   final prefs = ref.watch(wrappedPrefsProvider);
   final controller = ref.read(wrappedPrefsProvider.notifier);
   final l = context.l;
 
   return [
-    SettingsCaption(l.wrSetCaption),
+    // Метку «DEBUG» несёт сама подпись — как у группы повтора онбординга.
+    SettingsCaption('${l.wrSetCaption} · DEBUG'),
     const SizedBox(height: 10),
     SettingsGroupCard(
       rows: [

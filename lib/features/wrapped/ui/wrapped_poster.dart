@@ -27,7 +27,7 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../periods.dart';
 import '../wrapped_data.dart';
 import '../wrapped_format.dart';
-import 'wrapped_stories.dart' show coverOfWrappedTrack, periodTitle;
+import 'wrapped_sheet.dart' show coverOfWrappedTrack, periodTitle;
 
 /// Дизайн-бокс постера (3:4, как на ПК — удобно для сторис и чатов).
 const double _kPosterW = 420;

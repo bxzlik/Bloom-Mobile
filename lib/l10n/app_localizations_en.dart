@@ -1085,6 +1085,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sharePlaylist => 'Share playlist';
 
   @override
+  String get shareProfile => 'Share profile';
+
+  @override
+  String get shareProfileSub => 'shares their profile';
+
+  @override
+  String shareProfilePlays(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString plays',
+      one: '$countString play',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get shareFail => 'Couldn’t share the card';
 
   @override
@@ -1381,9 +1402,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String statsHoursValue(String hours) {
     return '${hours}h';
   }
-
-  @override
-  String get statsTotal => 'total';
 
   @override
   String get statsShareTitle => '🎵 My Bloom stats';
@@ -2732,25 +2750,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notifTrackUnavailable => 'Track unavailable';
 
   @override
-  String get wrTitle => 'Wrapped';
-
-  @override
-  String get wrWeek => 'Week in review';
-
-  @override
   String get wrMonth => 'Month in review';
 
   @override
   String get wrYear => 'Year in review';
 
   @override
-  String get wrPrev => 'Back';
-
-  @override
   String get wrNext => 'Next';
 
   @override
-  String get wrIntroWeek => 'Your week in Bloom';
+  String get wrClose => 'Close';
+
+  @override
+  String get wrWatch => 'Watch';
+
+  @override
+  String get wrNew => 'New';
 
   @override
   String get wrIntroMonth => 'Your month in Bloom';
@@ -2759,7 +2774,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get wrIntroYear => 'Your year in Bloom';
 
   @override
-  String get wrIntroSub => 'LetвЂ™s see how it went';
+  String get wrIntroSub => 'Let’s see how it went';
 
   @override
   String get wrTimeKicker => 'You listened for';
@@ -2773,10 +2788,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get wrTimeLessThanMin => 'Less than a minute';
 
   @override
-  String get wrCountsKicker => 'In numbers';
-
-  @override
-  String get wrCountsTitle => 'HereвЂ™s the whole picture';
+  String get wrCountsTitle => 'Here’s the whole picture';
 
   @override
   String wrCountsNewTracks(int count) {
@@ -2784,22 +2796,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get wrTracksKicker => 'On repeat';
-
-  @override
-  String get wrTracksTitle => 'Your top tracks';
-
-  @override
-  String get wrTracksTitleOne => 'Your track of the period';
-
-  @override
-  String get wrArtistsKicker => 'Voices of the period';
-
-  @override
-  String get wrArtistsTitle => 'Your top artists';
-
-  @override
-  String get wrArtistsTitleOne => 'Your artist of the period';
+  String wrArtistsTotalN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count artists in total',
+      one: '$count artist in total',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get wrSourcesKicker => 'Where it came from';
@@ -2825,10 +2830,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get wrHabitsKicker => 'Your habits';
 
   @override
-  String get wrHabitsNight => 'YouвЂ™re a night listener';
+  String get wrHabitsNight => 'You’re a night listener';
 
   @override
-  String get wrHabitsDay => 'YouвЂ™re a daytime listener';
+  String get wrHabitsDay => 'You’re a daytime listener';
 
   @override
   String get wrHabitsPeak => 'Favorite hour';
@@ -2873,7 +2878,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get wrJokeOneTrack =>
-      'One track, one artist вЂ” respect the consistency.';
+      'One track, one artist — respect the consistency.';
 
   @override
   String wrPlaysN(int count) {
@@ -2964,6 +2969,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String wrHoursWord(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'hours',
+      one: 'hour',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String wrMinutesN(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -2975,8 +2991,41 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String wrMinutesWord(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'minutes',
+      one: 'minute',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrTimesN(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count times',
+      one: '$count time',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wrTimesWord(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'times',
+      one: 'time',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String wrHourRange(Object from, Object to) {
-    return '$from вЂ” $to';
+    return '$from — $to';
   }
 
   @override
@@ -2987,13 +3036,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get wrSetShowSub =>
-      'A story circle on the home screen when thereвЂ™s something to sum up';
+      'The month card in your profile and the year banner in December — when there’s something to sum up';
 
   @override
   String get wrSetAlways => 'Always show';
 
   @override
-  String get wrSetAlwaysSub => 'Skip the schedule вЂ” open wrapped on any day';
+  String get wrSetAlwaysSub =>
+      'Skip the schedule — the year in review on any day, the month counted as the current one';
 
   @override
   String get sysStartup => 'Startup';

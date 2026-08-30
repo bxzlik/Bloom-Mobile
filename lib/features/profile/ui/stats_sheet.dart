@@ -34,7 +34,10 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../detail/detail_nav.dart';
 import '../../player/player_controller.dart';
+import '../../wrapped/periods.dart';
 import '../../wrapped/play_log.dart';
+import '../../wrapped/ui/wrapped_sheet.dart';
+import '../../wrapped/wrapped_store.dart';
 import '../achievements.dart';
 import '../artist_avatars.dart';
 import '../stats.dart';
@@ -129,6 +132,7 @@ class _StatsSheetState extends ConsumerState<StatsSheet> {
     final t = context.bloom;
     final s = ref.watch(profileStatsProvider);
     final avatars = ref.watch(artistAvatarsProvider);
+    final wrappedMonth = ref.watch(wrappedEntriesProvider).month;
 
     // Аватары исполнителей догружаются в фоне и оседают в кеше на 30 дней;
     // из `build` их дёргать нельзя — стор меняет состояние. Каждый ищется у
@@ -217,6 +221,34 @@ class _StatsSheetState extends ConsumerState<StatsSheet> {
               ? _Heatmap(log: s.activity)
               : _Bars(log: s.activity, days: _period == _Period.week ? 7 : 30),
         ),
+        // Постоянный вход в итоги месяца — единственная «положительная» кнопка
+        // футера, поэтому она отдельной строкой и с акцентной заливкой.
+        // Подмена карточки статистики гаснет после первого просмотра, а
+        // пересматривают итоги отсюда.
+        if (wrappedMonth != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: Row(
+              children: [
+                _ToolButton(
+                  icon: SolarIconsOutline.cup,
+                  label: context.l.wrMonth,
+                  color: t.accent,
+                  background: t.accent.withValues(alpha: 0.12),
+                  onTap: () {
+                    // Шторку закрываем ДО открытия: итоги — своя шторка, и
+                    // вешать её поверх этой нельзя.
+                    Navigator.of(context).pop();
+                    showWrappedSheet(
+                      context,
+                      period: PeriodKind.month,
+                      data: wrappedMonth,
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
           child: Row(
@@ -890,13 +922,14 @@ class _Heatmap extends StatelessWidget {
   }
 }
 
-/// Кнопка внизу шторки — «Скопировать» и «Очистить».
+/// Кнопка внизу шторки — «Скопировать», «Очистить» и вход в итоги месяца.
 class _ToolButton extends StatelessWidget {
   const _ToolButton({
     required this.icon,
     required this.label,
     required this.onTap,
     this.color,
+    this.background,
   });
 
   final IconData icon;
@@ -904,12 +937,15 @@ class _ToolButton extends StatelessWidget {
   final VoidCallback onTap;
   final Color? color;
 
+  /// Своя заливка — у входа в итоги: он единственный здесь не нейтральный.
+  final Color? background;
+
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
     return Expanded(
       child: Material(
-        color: sheetPanelColor(context),
+        color: background ?? sheetPanelColor(context),
         borderRadius: BorderRadius.circular(999),
         clipBehavior: Clip.antiAlias,
         child: InkWell(

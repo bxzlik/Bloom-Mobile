@@ -22,6 +22,21 @@ String fmtListenTime(AppLocalizations l, int seconds) {
   return '${l.wrHoursN(h)} ${l.wrMinutesN(m)}';
 }
 
+/// То же время, но разобранное на части: слайду нужны отдельные ОГРОМНЫЕ числа
+/// с мелкой подписью («2» + «часа»), а не готовая строка.
+///
+/// Пустой список — меньше минуты (слайд сам покажет `wrTimeLessThanMin`).
+List<({int n, String word})> splitListenTime(AppLocalizations l, int seconds) {
+  final totalMin = (seconds / 60).round();
+  if (totalMin < 1) return const [];
+  final h = totalMin ~/ 60;
+  final m = totalMin % 60;
+  return [
+    if (h > 0) (n: h, word: l.wrHoursWord(h)),
+    if (m > 0 || h == 0) (n: m, word: l.wrMinutesWord(m)),
+  ];
+}
+
 /// «14:00 — 15:00» для любимого часа.
 String fmtHourRange(AppLocalizations l, int hour) => l.wrHourRange(
   '${hour.toString().padLeft(2, '0')}:00',

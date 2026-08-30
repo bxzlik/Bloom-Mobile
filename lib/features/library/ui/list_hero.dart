@@ -2,7 +2,7 @@
 ///
 /// У встроенных разделов всегда плоский тинт с цветной иконкой; у плейлистов —
 /// своя обложка → коллаж из первых треков (`CoverCollage`, он же на плитке
-/// библиотеки) → тот же тинт.
+/// библиотеки) → заглушка пустой обложки со знаком bloom.
 library;
 
 import 'package:flutter/material.dart';
@@ -11,6 +11,7 @@ import 'package:solar_icons/solar_icons.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/store/cover_store.dart';
+import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/cover_collage.dart';
 
 class ListHeroBackground extends StatelessWidget {
@@ -55,11 +56,21 @@ class ListHeroBackground extends StatelessWidget {
   }
 
   Widget _tint(BloomTokens t) {
+    // У плейлиста без обложки и без треков заглушка та же, что у пустой
+    // обложки везде (`Cover`, шапка карточки площадки), — приглушённый знак
+    // bloom: своего фирменного цвета, в отличие от встроенных разделов, у него
+    // нет, и нотка тут читалась бы как ещё один раздел.
+    if (!_system) {
+      return ColoredBox(
+        color: t.coverEmpty,
+        child: Center(child: BloomMark(size: 96, color: t.text, opacity: 0.16)),
+      );
+    }
+
     final (Color tint, Color color, IconData icon) = switch (listId) {
       'fav' => (t.sysFavTint, t.sysFavIco, SolarIconsBold.heart),
       'history' => (t.sysHistTint, t.sysHistIco, SolarIconsOutline.clockCircle),
-      'all' => (t.sysAllTint, t.sysAllIco, SolarIconsOutline.musicNote),
-      _ => (t.ovlBg, t.muted, SolarIconsBold.musicNote),
+      _ => (t.sysAllTint, t.sysAllIco, SolarIconsOutline.musicNote),
     };
     return ColoredBox(
       // Тинт раздела мешаем с поверхностью темы: как плёнка он показывал бы

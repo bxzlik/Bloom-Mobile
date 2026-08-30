@@ -8,11 +8,7 @@
 /// руками, на телефоне незачем — тот же выбор, что у постера «Итогов».
 library;
 
-import 'dart:typed_data' show Uint8List;
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:solar_icons/solar_icons.dart';
 
@@ -124,7 +120,7 @@ class _ShareBodyState extends State<_ShareBody> {
           Row(
             children: [
               Expanded(
-                child: _ShareButton(
+                child: ShareActionButton(
                   icon: SolarIconsOutline.share,
                   label: l.shareAction,
                   primary: true,
@@ -134,7 +130,7 @@ class _ShareBodyState extends State<_ShareBody> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _ShareButton(
+                child: ShareActionButton(
                   icon: SolarIconsOutline.link,
                   label: l.commonCopyLink,
                   onTap: _copy,
@@ -194,7 +190,7 @@ class _ShareBodyState extends State<_ShareBody> {
     setState(() => _busy = true);
     var ok = false;
     try {
-      final png = await _capture();
+      final png = await captureShareCard(_shot, pixelRatio: kShareCardCapture);
       if (png != null) {
         ok = await shareImageBytes(png, filename: _filename());
       }
@@ -215,16 +211,6 @@ class _ShareBodyState extends State<_ShareBody> {
     messenger.toast(l10n.commonLinkCopied, kind: ToastKind.success);
   }
 
-  Future<Uint8List?> _capture() async {
-    final boundary =
-        _shot.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-    if (boundary == null) return null;
-    final image = await boundary.toImage(pixelRatio: kShareCardCapture);
-    final data = await image.toByteData(format: ui.ImageByteFormat.png);
-    image.dispose();
-    return data?.buffer.asUint8List();
-  }
-
   /// Имя файла видно человеку в системной шторке и в галерее, поэтому в нём
   /// название сущности — но только то, что годится в имя файла на любой ФС.
   String _filename() {
@@ -239,8 +225,11 @@ class _ShareBodyState extends State<_ShareBody> {
 
 /// Кнопка под карточкой — порт `.sc-card-btn`: обе одной ширины в ряд, у
 /// главной заливка чуть плотнее.
-class _ShareButton extends StatelessWidget {
-  const _ShareButton({
+///
+/// Публичная: тем же рядом кнопок живёт шторка «Поделиться профилем».
+class ShareActionButton extends StatelessWidget {
+  const ShareActionButton({
+    super.key,
     required this.icon,
     required this.label,
     required this.onTap,

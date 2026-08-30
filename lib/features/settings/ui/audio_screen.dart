@@ -46,16 +46,21 @@ class AudioSettingsScreen extends ConsumerWidget {
               value: settings.restoreQueue,
               onChanged: controller.setRestoreQueue,
             ),
-            // Автовоспроизведение включает восстановление само (см.
-            // `SettingsController.setAutoplay`): играть, ничего не восстановив,
-            // всё равно нечего.
-            SettingsToggleRow(
-              icon: SolarIconsOutline.play,
-              title: l.audAutoplayTitle,
-              subtitle: l.audAutoplaySub,
-              value: settings.autoplay,
-              onChanged: controller.setAutoplay,
-            ),
+            // Автовоспроизведение — вложенная настройка восстановления («и
+            // сразу продолжить»), само оно ничего не восстанавливает. Поэтому
+            // строка появляется только при включённом восстановлении, ровно
+            // как на ПК, а его выключение гасит и флаг (см.
+            // `SettingsController.setRestoreQueue`): скрытая строка не должна
+            // остаться поднятой в bloom.json, иначе возврат восстановления дал
+            // бы играющий с порога плеер.
+            if (settings.restoreQueue)
+              SettingsToggleRow(
+                icon: SolarIconsOutline.play,
+                title: l.audAutoplayTitle,
+                subtitle: l.audAutoplaySub,
+                value: settings.autoplay,
+                onChanged: controller.setAutoplay,
+              ),
           ],
         ),
       ],

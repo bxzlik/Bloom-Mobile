@@ -9,6 +9,7 @@ library;
 
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +19,7 @@ import '../core/l10n/l10n.dart';
 import '../features/customization/ui/app_background.dart';
 import '../core/store/cover_store.dart';
 import '../core/store/settings_store.dart';
+import '../features/notifications/notif_store.dart';
 import '../features/player/ui/mini_player.dart';
 import '../features/player/ui/player_sheet.dart';
 import '../features/profile/achievements.dart';
@@ -26,6 +28,11 @@ import '../features/profile/ui/profile_avatar.dart';
 import '../features/settings/about_store.dart';
 import '../features/settings/update_notes_store.dart';
 import '../features/settings/ui/update_notes_sheet.dart';
+import '../features/wrapped/periods.dart';
+import '../features/wrapped/play_log.dart';
+import '../features/wrapped/ui/wrapped_sheet.dart';
+import '../features/wrapped/wrapped_format.dart';
+import '../features/wrapped/wrapped_store.dart';
 import '../shared/ui/atoms.dart';
 import '../shared/ui/bloom_toast.dart';
 import '../shared/ui/cover_hero.dart';
@@ -55,6 +62,7 @@ class _BloomShellState extends ConsumerState<BloomShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _sync();
+      _wrappedNotice();
       _whatsNew();
     });
   }
@@ -75,6 +83,56 @@ class _BloomShellState extends ConsumerState<BloomShell> {
     final note = await ref.read(updateNotesProvider).whatsNew(version, locale);
     if (!mounted || note == null) return;
     await showUpdateNote(context, note);
+  }
+
+  /// Напоминание про готовые «Итоги» — порт десктопного `WrappedHost`.
+  ///
+  /// Здесь, а не в профиле, по той же причине, что и достижения: входы в итоги
+  /// живут на странице профиля, но узнать о них человек должен, даже если туда
+  /// не заходит.
+  ///
+  /// Уведомление кидается в свой день (1-е число / декабрьское окно), один раз
+  /// на период и только если за период есть что показывать. Отметку ставим ДО
+  /// уведомления — она на диске, и перезапуск в тот же день не звенит повторно.
+  void _wrappedNotice() {
+    final entries = ref.read(wrappedEntriesProvider);
+    if (entries.isEmpty) return;
+    final prefs = ref.read(wrappedPrefsProvider.notifier);
+    final now = ref.read(playLogClockProvider)();
+    final l = context.l;
+    final locale = Localizations.localeOf(context).languageCode;
+
+    for (final kind in scheduledPeriods(
+      now,
+      force: ref.read(wrappedPrefsProvider).always && kDebugMode,
+    )) {
+      final data = kind == PeriodKind.year ? entries.year : entries.month;
+      if (data == null || prefs.isNotified(data.range)) continue;
+      prefs.markNotified(data.range);
+      ref
+          .read(notifCenterProvider.notifier)
+          .add(
+            kind: NotifKind.info,
+            title: kind == PeriodKind.year
+                ? NotifTitle.wrappedYear
+                : NotifTitle.wrappedMonth,
+            body:
+                '${periodDatesLabel(data.range, locale)} · '
+                '${l.wrPlaysN(data.plays)} · ${fmtListenTime(l, data.seconds)}',
+            action: NotifAction(
+              label: l.wrWatch,
+              // Данные берём заново в момент нажатия: между уведомлением и
+              // тапом могли смениться сутки, а с ними и период.
+              run: () {
+                if (!mounted) return;
+                final fresh = ref.read(wrappedEntriesProvider);
+                final data = kind == PeriodKind.year ? fresh.year : fresh.month;
+                if (data == null) return;
+                showWrappedSheet(context, period: kind, data: data);
+              },
+            ),
+          );
+    }
   }
 
   /// Достижения ловятся здесь, а не на вкладке профиля: иначе они «получались»

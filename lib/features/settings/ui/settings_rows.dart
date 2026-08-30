@@ -12,8 +12,8 @@ import 'package:solar_icons/solar_icons.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../shared/ui/atoms.dart';
 
-/// Строка с тумблером. [enabled] `false` — настройка сейчас недоступна
-/// (выключен её «родитель»): текст гаснет, тумблер не нажимается.
+/// Строка с тумблером. Вложенную настройку экран не гасит, а просто не строит,
+/// пока выключен её «родитель» — как «Автовоспроизведение» в «Аудио».
 class SettingsToggleRow extends StatelessWidget {
   const SettingsToggleRow({
     super.key,
