@@ -6,7 +6,7 @@
 
 **Музыка из всех источников в одном плеере.**
 
-Мобильный плеер: Yandex Music, SoundCloud и YouTube Music в одном приложении.
+Мобильный плеер: локальная медиатека, Yandex Music, SoundCloud и YouTube Music в одном приложении
 
 [**📦 Релизы**](https://github.com/bxzlik/Bloom-Mobile/releases) · [**🖥 Десктоп**](https://github.com/bxzlik/Bloom) · [**🌐 Сайт**](https://bloom-site-x.vercel.app/)
 

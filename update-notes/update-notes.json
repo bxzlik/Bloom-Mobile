@@ -1,4 +1,17 @@
 {
+  "1.0.2": {
+    "title": { "ru": "Что нового в 1.0.2", "en": "What's new in 1.0.2" },
+    "date": "2026-09-01",
+    "pages": [
+      {
+        "title": { "ru": "Быстрый фикс", "en": "Hotfix" },
+        "body": {
+          "ru": "- Починили воспроизведение с YouTube Music\n- Починили импорт лайков из SoundCloud",
+          "en": "- Fixed YouTube Music playback\n- Fixed importing likes from SoundCloud"
+        }
+      }
+    ]
+  },
   "1.0.1": {
     "title": { "ru": "Что нового в 1.0.1", "en": "What's new in 1.0.1" },
     "date": "2026-08-31",

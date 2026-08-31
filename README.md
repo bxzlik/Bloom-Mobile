@@ -6,7 +6,7 @@
 
 **Music from every source in one player.**
 
-A mobile player: Yandex Music, SoundCloud, and YouTube Music in a single app
+A mobile player: local library, Yandex Music, SoundCloud, and YouTube Music in a single app
 
 [**📦 Releases**](https://github.com/bxzlik/Bloom-Mobile/releases) · [**🖥 Desktop**](https://github.com/bxzlik/Bloom) · [**🌐 Website**](https://bloom-site-x.vercel.app/)
 

@@ -501,20 +501,39 @@ Future<List<ScRawPlaylist>> userPlaylists(String idOrUrl) async {
 }
 
 /// Лайкнутые треки пользователя (профиль по ссылке); ошибки — пустой список.
+/// SC отдаёт лайки страницами (в выдаче попадаются и плейлисты — их пропускаем),
+/// поэтому идём по `next_href` до конца; ошибка на середине — отдаём накопленное.
 Future<List<ScRawTrack>> userLikes(String idOrUrl) async {
+  final out = <ScRawTrack>[];
+  final seen = <int>{};
   try {
     final id = await _resolveUserId(idOrUrl);
-    final d = await apiFetch(
-      'https://api-v2.soundcloud.com/users/$id/likes?limit=200',
-    );
-    return _varr(d, 'collection')
-        .map((x) => _obj(x, 'track'))
-        .where((t) => t != null && _hasId(t))
-        .map(mapRawTrack)
-        .toList();
+    var url =
+        'https://api-v2.soundcloud.com/users/$id/likes?limit=200&linked_partitioning=1';
+    // Потолок в 25 страниц (~5000 лайков) — страховка от «висячего» курсора.
+    for (var page = 0; page < 25; page++) {
+      final Object? d;
+      try {
+        d = await apiFetch(url);
+      } catch (_) {
+        break;
+      }
+      final coll = _varr(d, 'collection');
+      if (coll.isEmpty) break;
+      for (final x in coll) {
+        final t = _obj(x, 'track');
+        if (t == null || !_hasId(t)) continue;
+        final tr = mapRawTrack(t);
+        if (seen.add(tr.id)) out.add(tr);
+      }
+      final next = _vstr(d, 'next_href');
+      if (next == null) break;
+      url = next;
+    }
   } catch (_) {
-    return [];
+    return out;
   }
+  return out;
 }
 
 /// Разбор страницы ленты репостов + курсор следующей. [minFull] — размер

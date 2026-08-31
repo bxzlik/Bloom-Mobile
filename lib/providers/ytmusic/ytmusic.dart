@@ -9,9 +9,17 @@
 ///
 /// Без авторизации (публичный поиск/стрим). Поиск и страницы — клиент
 /// `WEB_REMIX`, разбор `musicResponsiveListItemRenderer`. Стрим — клиент
-/// `ANDROID_VR` к `player`-эндпоинту: он отдаёт `streamingData.adaptiveFormats[]`
+/// `VISIONOS` к `player`-эндпоинту: он отдаёт `streamingData.adaptiveFormats[]`
 /// с ПРЯМЫМИ url (без расшифровки signatureCipher / n-throttling) и, в отличие
 /// от web/ios/android, **не требует PoToken** (гайд yt-dlp «PO Token»).
+///
+/// ВАЖНО (2026-08-31): раньше основным был `ANDROID_VR`, теперь он мёртв —
+/// googlevideo отдаёт по его ссылкам 403 на всё, что выходит за первый 1 MiB
+/// файла. Симптом коварный: `player` отвечает `OK` и с прямыми url, ссылка
+/// «выглядит рабочей», а ExoPlayer/AVPlayer первым делом просит файл целиком
+/// → 403 → трек включается и стоит на 0:00. yt-dlp подтверждает пометкой у
+/// `android_vr`: «Since 2026.08.17, ALL formats are 403'd». Здесь прокси нет,
+/// перехватить 403 негде, поэтому ANDROID_VR убран из цепочки совсем.
 ///
 /// КРИТИЧНО: во все запросы идёт `visitorData` (см. [visitorData]). Без него
 /// `player` отвечает `LOGIN_REQUIRED` («Sign in to confirm you're not a bot»).
@@ -48,17 +56,14 @@ const String kWebUa =
 /// Клиент обычного youtube.com — только чтобы выпросить `visitorData`.
 const String kYtClientVersion = '2.20260708.00.00';
 
-/// ANDROID_VR (гарнитура Oculus) — основной клиент для `player`.
-const String kVrClientVersion = '1.65.10';
-const String kVrUa =
-    'com.google.android.apps.youtube.vr.oculus/1.65.10 '
-    '(Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip';
-
-/// VISIONOS (Apple Vision Pro) — запасной клиент с теми же свойствами: если
-/// ANDROID_VR упрётся в ограничение (например «made for kids»), пробуем его.
+/// VISIONOS (Apple Vision Pro) — основной (и единственный) клиент для `player`.
+/// Не требует PoToken, отдаёт прямые url и, в отличие от ANDROID_VR, честно
+/// обслуживает произвольные Range-запросы: файл целиком, перемотку в середину
+/// и в хвост. Версию/UA/deviceModel обновлять по yt-dlp `INNERTUBE_CLIENTS`.
 const String kVisionClientVersion = '1.02';
 const String kVisionUa =
-    'com.google.ios.youtube/1.02 (Apple Vision Pro; U; CPU visionOS 1_0 like Mac OS X)';
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 '
+    '(KHTML, like Gecko) Version/26.0 Safari/605.1.15';
 
 final http.Client _http = http.Client();
 
@@ -1469,23 +1474,13 @@ Future<String?> _getText(String url) async {
 
 // ============================ Стрим ============================
 
-Map<String, dynamic> _vrClient() => {
-  'clientName': 'ANDROID_VR',
-  'clientVersion': kVrClientVersion,
-  'deviceMake': 'Oculus',
-  'deviceModel': 'Quest 3',
-  'osName': 'Android',
-  'osVersion': '12L',
-  'androidSdkVersion': 32,
-};
-
 Map<String, dynamic> _visionClient() => {
   'clientName': 'VISIONOS',
   'clientVersion': kVisionClientVersion,
   'deviceMake': 'Apple',
-  'deviceModel': 'RealityDevice14,1',
+  'deviceModel': 'RealityDevice17,1',
   'osName': 'visionOS',
-  'osVersion': '1.0.22N301',
+  'osVersion': '26.5.23O471',
 };
 
 /// Один запрос к `player` конкретным клиентом.
@@ -1533,19 +1528,20 @@ bool playable(Object? v) =>
 
 /// Запрос к player-эндпоинту (даёт прямые url + videoDetails).
 ///
-/// Порядок: ANDROID_VR → (при отказе) свежий `visitorData` и повтор → VISIONOS.
-/// Протухший `visitorData` выглядит как `LOGIN_REQUIRED`, поэтому одна
-/// ретрай-попытка со сбросом сессии закрывает самый частый сбой.
+/// Порядок: VISIONOS → (при отказе) свежий `visitorData` и повтор. Протухший
+/// `visitorData` выглядит как `LOGIN_REQUIRED`, поэтому одна ретрай-попытка со
+/// сбросом сессии закрывает самый частый сбой.
+///
+/// Второго клиента в цепочке намеренно нет (почему — док библиотеки): ссылка
+/// от ANDROID_VR проходит проверку [playable], но затем отдаёт 403, то есть
+/// отказ выглядел бы как успех.
 Future<Map<String, dynamic>> player(String videoId) async {
-  final first = await _playerWith(_vrClient(), kVrUa, videoId);
+  final first = await _playerWith(_visionClient(), kVisionUa, videoId);
   if (playable(first)) return first;
 
   resetVisitorData();
-  final retry = await _playerWith(_vrClient(), kVrUa, videoId);
+  final retry = await _playerWith(_visionClient(), kVisionUa, videoId);
   if (playable(retry)) return retry;
-
-  final vision = await _playerWith(_visionClient(), kVisionUa, videoId);
-  if (playable(vision)) return vision;
 
   // Ничего не сыграло — возвращаем первый ответ ради его playabilityStatus:
   // из него вызывающий соберёт человекочитаемую причину.
