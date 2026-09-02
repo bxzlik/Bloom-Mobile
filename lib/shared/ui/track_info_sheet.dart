@@ -16,7 +16,14 @@ import '../../core/l10n/l10n.dart';
 import '../util/format.dart';
 import 'bloom_sheet.dart';
 
-Future<void> showTrackInfoSheet(BuildContext context, Track track) {
+/// [addedAt] — когда трек попал в библиотеку: шапка тут та же, что в шторке
+/// действий, и без этой строки при переходе она бы дёргалась. Читает её
+/// звонящий: до библиотеки отсюда не дотянуться, `ref` в шторку не приходит.
+Future<void> showTrackInfoSheet(
+  BuildContext context,
+  Track track, {
+  int? addedAt,
+}) {
   return showBloomSheetChild<void>(
     context: context,
     backdrop: track.cover,
@@ -24,6 +31,7 @@ Future<void> showTrackInfoSheet(BuildContext context, Track track) {
       cover: track.cover,
       title: track.name,
       subtitle: track.artist,
+      meta: sheetDateMeta(context, context.l.commonAddedOn, addedAt),
     ),
     child: _TrackInfo(track: track),
   );

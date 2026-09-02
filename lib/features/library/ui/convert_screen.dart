@@ -384,7 +384,7 @@ class _ItemRow extends StatelessWidget {
         ConvertStatus.same => (l.cvTagOnTarget, t.text2),
         ConvertStatus.notfound => (
           item.failed ? l.cvSearchFailed : l.cvNotFound(target.label10n(l)),
-          t.sysFavIco,
+          t.danger,
         ),
         _ => (l.cvTagOriginal, t.text2),
       },
@@ -592,7 +592,7 @@ class _DecisionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final color = danger ? t.sysFavIco : t.text;
+    final color = danger ? t.danger : t.text;
 
     return InkWell(
       onTap: onTap,

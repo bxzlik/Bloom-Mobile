@@ -203,7 +203,7 @@ class _SoundCloudSettingsScreenState
               Icon(
                 r.ok ? SolarIconsBold.checkCircle : SolarIconsBold.closeCircle,
                 size: 18,
-                color: r.ok ? kPlatformOk : t.sysFavIco,
+                color: r.ok ? kPlatformOk : t.danger,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -220,7 +220,7 @@ class _SoundCloudSettingsScreenState
           ],
           if (r.error case final error?) ...[
             const SizedBox(height: 6),
-            Text(error, style: theme.bodySmall?.copyWith(color: t.sysFavIco)),
+            Text(error, style: theme.bodySmall?.copyWith(color: t.danger)),
           ],
         ],
       ],

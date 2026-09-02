@@ -27,6 +27,10 @@ double _lum(Color c) => 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
 /// даже из сохранённого файла.
 const double kBloomRadius = 14;
 
+/// Красный опасных действий и ошибок — десктопный `.plctx-item.danger`.
+/// От темы не зависит: это сигнал, а не поверхность.
+const Color kBloomDanger = Color(0xFFE03030);
+
 @immutable
 class BloomTokens extends ThemeExtension<BloomTokens> {
   // Три цвета темы.
@@ -68,6 +72,14 @@ class BloomTokens extends ThemeExtension<BloomTokens> {
   // Иконки.
   final Color iconFg;
   final Color iconFgSb;
+
+  /// Опасное и ошибочное: «Удалить», «Очистить», опасная зона, текст ошибок.
+  ///
+  /// Отдельно от [sysFavIco] намеренно. Раньше и то и другое красилось розовым
+  /// `#FF5578` — цветом системного «Любимое», — и удаление выходило розовым, а
+  /// не красным. Значение с десктопа, `.plctx-item.danger` (`#E03030`).
+  final Color danger;
+  final Color dangerTint;
 
   // Системные разделы.
   final Color folderTint;
@@ -112,6 +124,8 @@ class BloomTokens extends ThemeExtension<BloomTokens> {
     required this.pill,
     required this.iconFg,
     required this.iconFgSb,
+    required this.danger,
+    required this.dangerTint,
     required this.folderTint,
     required this.sysFavTint,
     required this.sysFavIco,
@@ -173,6 +187,8 @@ class BloomTokens extends ThemeExtension<BloomTokens> {
       track: ovl.withValues(alpha: light ? 0.07 : 0.04),
       iconFg: light ? const Color(0xFF3A3A3A) : const Color(0xFFD0D0D0),
       iconFgSb: light ? const Color(0xFF5A5A5A) : const Color(0xFFA8A8A8),
+      danger: kBloomDanger,
+      dangerTint: kBloomDanger.withValues(alpha: 0.16),
       folderTint: accent.withValues(alpha: 0.12),
       sysFavTint: const Color(0xFFE03454).withValues(alpha: 0.16),
       sysFavIco: const Color(0xFFFF5578),

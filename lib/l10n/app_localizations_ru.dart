@@ -135,6 +135,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonOfflineBadge => 'офлайн';
 
   @override
+  String get commonAddedOn => 'Добавлен';
+
+  @override
+  String get commonCreatedOn => 'Создан';
+
+  @override
   String tracksCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -377,10 +383,25 @@ class AppLocalizationsRu extends AppLocalizations {
   String get tlSortArtist => 'По исполнителю';
 
   @override
+  String get tlSortAlbum => 'По альбому';
+
+  @override
   String get tlSortDuration => 'По длительности';
 
   @override
+  String get tlSortDate => 'По дате добавления';
+
+  @override
+  String get tlSortPlays => 'По прослушиваниям';
+
+  @override
+  String get tlSortDownloaded => 'Только скачанные';
+
+  @override
   String get tlNothingFound => 'Ничего не нашлось';
+
+  @override
+  String get tlNothingDownloaded => 'Скачанных треков тут нет';
 
   @override
   String get tlEmptyFav => 'Пока ничего не залайкано';
@@ -477,11 +498,13 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get leAlreadyFavorite => 'Уже в любимых';
-
-  @override
   String leAddedToFavorites(String tracks) {
     return 'В любимые: $tracks';
+  }
+
+  @override
+  String leRemovedFromFavorites(String tracks) {
+    return 'Из любимых: $tracks';
   }
 
   @override

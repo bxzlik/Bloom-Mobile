@@ -84,6 +84,9 @@ class _ListEditorState extends ConsumerState<ListEditor> {
   /// что-то убрали: там это удаление насквозь.
   bool _armedPurge = false;
 
+  /// Трек, который тянут прямо сейчас. `null` — не тянут.
+  String? _dragId;
+
   UserPlaylist? get _playlist => widget.playlist;
 
   List<String> get _ids => [for (final t in _tracks) t.id];
@@ -95,6 +98,27 @@ class _ListEditorState extends ConsumerState<ListEditor> {
 
   bool get _allSelected =>
       _tracks.isNotEmpty && _selected.length == _tracks.length;
+
+  /// Сколько строк уедет текущим перетаскиванием: тянут выделенную — весь
+  /// блок, любую другую — её одну.
+  int get _dragGroup {
+    final id = _dragId;
+    return id != null && _selected.contains(id) ? _selected.length : 1;
+  }
+
+  /// Строка едет вместе с блоком, но прокси у списка ровно один, и под пальцем
+  /// её нет.
+  bool _movingWithDrag(String id) =>
+      _dragGroup > 1 && id != _dragId && _selected.contains(id);
+
+  /// Лайк стоит у ВСЕХ выделенных — тогда сердечко в панели залито и следующее
+  /// нажатие лайк снимет. Ради этого и слушаем библиотеку: лайк идёт мимо
+  /// черновика, сразу в «Любимые».
+  bool get _selectedAllFav {
+    final lib = ref.watch(libraryProvider);
+    return _selected.isNotEmpty &&
+        _selectedTracks.every((t) => lib.isFav(t.id));
+  }
 
   bool get _dirty =>
       _name != widget.title ||
@@ -121,10 +145,36 @@ class _ListEditorState extends ConsumerState<ListEditor> {
     if (!all) _selected.addAll(_ids);
   });
 
+  /// Тащат выделенную строку — едет всё выделение разом, одним блоком: иначе
+  /// собранные по всему списку треки пришлось бы носить по одному.
+  ///
+  /// Считаем не по индексам, а по «якорю» — первой строке ниже точки сброса,
+  /// которая сама никуда не едет: у блока изъятие сдвигает индексы вокруг, и
+  /// поправка `to--` тут уже не спасает.
   void _reorder(int from, int to) => setState(() {
-    // Индекс вставки считается ДО изъятия строки — всё, что ниже, уже сдвинуто.
-    if (to > from) to--;
-    _tracks.insert(to, _tracks.removeAt(from));
+    final dragged = _tracks[from];
+    final group = _selected.contains(dragged.id) && _selected.length > 1
+        ? {..._selected}
+        : {dragged.id};
+    String? anchor;
+    for (var i = to; i < _tracks.length; i++) {
+      if (!group.contains(_tracks[i].id)) {
+        anchor = _tracks[i].id;
+        break;
+      }
+    }
+    final moving = [
+      for (final t in _tracks)
+        if (group.contains(t.id)) t,
+    ];
+    _tracks.removeWhere((t) => group.contains(t.id));
+    // Якоря нет — сбросили ниже всех оставшихся строк, блок уходит в конец.
+    _tracks.insertAll(
+      anchor == null
+          ? _tracks.length
+          : _tracks.indexWhere((t) => t.id == anchor),
+      moving,
+    );
   });
 
   void _removeSelected() => setState(() {
@@ -133,23 +183,41 @@ class _ListEditorState extends ConsumerState<ListEditor> {
   });
 
   /// Лайк выделенному — сразу, не в черновик: «Любимые» это другой список.
+  ///
+  /// Переключатель: пока хоть один выделенный трек без лайка — дожимаем
+  /// остальных, а когда лайк уже у всех, то же нажатие его снимает. Выделение
+  /// при этом НЕ сбрасывается: снимать было бы нечем.
   void _favSelected() {
     final lib = ref.read(libraryProvider.notifier);
     final was = ref.read(libraryProvider);
     final batch = _selectedTracks;
-    var added = 0;
+    if (batch.isEmpty) return;
+    final off = batch.every((t) => was.isFav(t.id));
+    var n = 0;
     for (final track in batch) {
-      if (was.isFav(track.id)) continue;
+      if (was.isFav(track.id) != off) continue;
       lib.toggleFav(track);
-      added++;
+      n++;
     }
-    setState(_selected.clear);
+    final tracks = context.l.tracksCount(n);
     showToast(
       context,
-      added == 0
-          ? context.l.leAlreadyFavorite
-          : context.l.leAddedToFavorites(context.l.tracksCount(added)),
-      kind: added == 0 ? ToastKind.warn : ToastKind.success,
+      off
+          ? context.l.leRemovedFromFavorites(tracks)
+          : context.l.leAddedToFavorites(tracks),
+      kind: off ? ToastKind.warn : ToastKind.success,
+    );
+  }
+
+  /// Источники — шторкой из шапки: на самой странице секция стояла между
+  /// обложкой и треками и читалась как часть первой строки списка.
+  void _openSources() {
+    unawaited(
+      showPlSourcesSheet(
+        context,
+        sources: _sources,
+        onChanged: (next) => setState(() => _sources = next),
+      ),
     );
   }
 
@@ -167,6 +235,16 @@ class _ListEditorState extends ConsumerState<ListEditor> {
     if (picked == null || !mounted) return;
     final stale = _cover != _playlist?.cover ? _cover : null;
     setState(() => _cover = picked);
+    unawaited(deleteCover(stale));
+  }
+
+  /// Снять обложку: плейлист вернётся к мозаике из обложек треков. Своя
+  /// картинка ПЛЕЙЛИСТА при этом ещё жива — её файл удалит только ✓ (иначе
+  /// ✕ возвращал бы обложку, которой уже нет на диске); а вот только что
+  /// выбранный, но не записанный файл чистим тут же, как и в [_pickCover].
+  void _removeCover() {
+    final stale = _cover != _playlist?.cover ? _cover : null;
+    setState(() => _cover = null);
     unawaited(deleteCover(stale));
   }
 
@@ -279,18 +357,15 @@ class _ListEditorState extends ConsumerState<ListEditor> {
                 onCancel: _cancel,
                 onDone: _commit,
                 onCover: _pickCover,
+                // Убирать нечего, пока обложки нет: у списка без своей
+                // картинки в шапке и так мозаика из треков.
+                onCoverRemove: (_cover?.isEmpty ?? true) ? null : _removeCover,
                 onRename: () => setState(() => _renaming = true),
+                // Источники есть только у плейлиста: встроенным разделам тянуть
+                // треки неоткуда.
+                sources: _playlist == null ? null : _sources.length,
+                onSources: _openSources,
               ),
-              // Источники есть только у плейлиста: встроенным разделам тянуть
-              // треки неоткуда. Секция стоит НАД списком, как на ПК, — она
-              // относится ко всему плейлисту, а не к строкам под ней.
-              if (_playlist != null)
-                SliverToBoxAdapter(
-                  child: PlSourcesEditor(
-                    sources: _sources,
-                    onChanged: (next) => setState(() => _sources = next),
-                  ),
-                ),
               SliverPadding(
                 // Снизу — место под плавающую панель и бары каркаса: последняя
                 // строка не должна оставаться под ними.
@@ -298,12 +373,21 @@ class _ListEditorState extends ConsumerState<ListEditor> {
                 sliver: SliverReorderableList(
                   itemCount: _tracks.length,
                   onReorder: _reorder,
-                  proxyDecorator: (child, _, _) => Material(
-                    color: t.pill,
-                    elevation: 6,
-                    borderRadius: BorderRadius.circular(t.radius * 0.85),
-                    child: child,
-                  ),
+                  // Кто именно едет — знаем только мы: список тащит одну
+                  // строку и про выделение ничего не слышал.
+                  onReorderStart: (i) =>
+                      setState(() => _dragId = _tracks[i].id),
+                  onReorderEnd: (_) => setState(() => _dragId = null),
+                  proxyDecorator: (child, _, _) {
+                    final card = Material(
+                      color: t.pill,
+                      elevation: 6,
+                      borderRadius: BorderRadius.circular(t.radius * 0.85),
+                      child: child,
+                    );
+                    final n = _dragGroup;
+                    return n < 2 ? card : _DragDeck(count: n, child: card);
+                  },
                   itemBuilder: (context, i) {
                     final track = _tracks[i];
                     return _EditRow(
@@ -314,6 +398,9 @@ class _ListEditorState extends ConsumerState<ListEditor> {
                       index: widget.listId == 'history' ? null : i,
                       track: track,
                       selected: _selected.contains(track.id),
+                      // Уедет с блоком, но под пальцем её нет — гасим, чтобы
+                      // было видно, что строка уже «в руке».
+                      ghost: _movingWithDrag(track.id),
                       onTap: () => _toggle(track.id),
                     );
                   },
@@ -337,10 +424,12 @@ class _ListEditorState extends ConsumerState<ListEditor> {
                   )
                 : _EditBar(
                     count: _selected.length,
+                    total: _tracks.length,
                     allSelected: _allSelected,
                     // В «Любимых» лайк уже стоит у каждой строки — там его
                     // место занимает корзина, она же «снять лайк».
                     canFav: widget.listId != 'fav',
+                    favOn: _selectedAllFav,
                     onToggleAll: _tracks.isEmpty ? null : _toggleAll,
                     onAdd: _addSelectedToPlaylist,
                     onFav: _favSelected,
@@ -373,7 +462,10 @@ class _EditHero extends StatelessWidget {
     required this.onCancel,
     required this.onDone,
     required this.onCover,
+    required this.onCoverRemove,
     required this.onRename,
+    required this.sources,
+    required this.onSources,
   });
 
   final String listId;
@@ -395,7 +487,17 @@ class _EditHero extends StatelessWidget {
   final VoidCallback onCancel;
   final VoidCallback onDone;
   final VoidCallback onCover;
+
+  /// Снять обложку. `null` — снимать нечего: своей картинки у списка нет.
+  final VoidCallback? onCoverRemove;
+
   final VoidCallback onRename;
+
+  /// Сколько источников привязано. `null` — это встроенный раздел, и кнопки
+  /// источников у него нет вовсе.
+  final int? sources;
+
+  final VoidCallback onSources;
 
   @override
   Widget build(BuildContext context) {
@@ -417,11 +519,27 @@ class _EditHero extends StatelessWidget {
           ),
           if (editable)
             Center(
-              child: GlassIconButton(
-                icon: SolarIconsOutline.gallery,
-                size: 66,
-                iconSize: 28,
-                onTap: onCover,
+              // Корзина рядом, а не крестиком на самой кнопке: цель размером
+              // с ноготь на обложке промахивается чаще, чем попадает.
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GlassIconButton(
+                    icon: SolarIconsOutline.gallery,
+                    size: 66,
+                    iconSize: 28,
+                    onTap: onCover,
+                  ),
+                  if (onCoverRemove case final remove?) ...[
+                    const SizedBox(width: 14),
+                    GlassIconButton(
+                      icon: SolarIconsOutline.trashBinMinimalistic,
+                      size: 52,
+                      iconSize: 23,
+                      onTap: remove,
+                    ),
+                  ],
+                ],
               ),
             ),
         ],
@@ -481,7 +599,72 @@ class _EditHero extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(context.l.tracksCount(tracks.length), style: theme.bodyMedium),
+          if (sources case final count?) ...[
+            const SizedBox(height: 10),
+            _SourcesButton(count: count, onTap: onSources),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+/// Кнопка источников в шапке правки: стеклянная пилюля со счётчиком привязок.
+/// Стекло, а не плашка темы, — она стоит на обложке, как и кнопки шапки.
+class _SourcesButton extends StatelessWidget {
+  const _SourcesButton({required this.count, required this.onTap});
+
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context).textTheme;
+
+    return GlassSurface(
+      shape: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 9, 8, 9),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(SolarIconsOutline.link, size: 18, color: Colors.white),
+              const SizedBox(width: 9),
+              Text(
+                context.l.psTitle,
+                style: theme.titleMedium?.copyWith(
+                  fontSize: 14,
+                  color: Colors.white,
+                ),
+              ),
+              // Ноль не показываем: пустой счётчик у кнопки, которая как раз и
+              // заводит первую привязку, только сбивает.
+              if (count > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: theme.bodySmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+              const Icon(Icons.chevron_right, size: 20, color: Colors.white70),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -504,8 +687,8 @@ class _BarButton extends StatelessWidget {
     final t = context.bloom;
     return GlassIconButton(
       icon: icon,
-      color: armed ? t.sysFavIco : null,
-      background: armed ? t.sysFavIco.withValues(alpha: 0.16) : null,
+      color: armed ? t.danger : null,
+      background: armed ? t.danger.withValues(alpha: 0.16) : null,
       onTap: onTap,
     );
   }
@@ -521,6 +704,7 @@ class _EditRow extends StatelessWidget {
     required this.index,
     required this.track,
     required this.selected,
+    required this.ghost,
     required this.onTap,
   });
 
@@ -529,6 +713,11 @@ class _EditRow extends StatelessWidget {
   final int? index;
   final Track track;
   final bool selected;
+
+  /// Строка «в руке» вместе с блоком выделенных: пока её тащат, она гаснет на
+  /// своём старом месте.
+  final bool ghost;
+
   final VoidCallback onTap;
 
   @override
@@ -538,45 +727,111 @@ class _EditRow extends StatelessWidget {
     final drag = index;
     final Widget cover = Cover(url: track.cover, size: 52);
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(t.radius * 0.85),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        child: Row(
-          children: [
-            _Check(on: selected),
-            const SizedBox(width: 12),
-            if (drag == null)
-              cover
-            else
-              ReorderableDelayedDragStartListener(index: drag, child: cover),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    track.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.titleMedium,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    track.artist,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.bodySmall?.copyWith(color: t.text2),
-                  ),
-                ],
+    return AnimatedOpacity(
+      opacity: ghost ? 0.3 : 1,
+      duration: const Duration(milliseconds: 120),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(t.radius * 0.85),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(
+            children: [
+              _Check(on: selected),
+              const SizedBox(width: 12),
+              if (drag == null)
+                cover
+              else
+                ReorderableDelayedDragStartListener(index: drag, child: cover),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      track.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.titleMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      track.artist,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.bodySmall?.copyWith(color: t.text2),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            DurationPill(track: track, active: false),
-          ],
+              const SizedBox(width: 10),
+              DurationPill(track: track, active: false),
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// Карточка перетаскивания, когда едет целый блок выделенных строк: под ней
+/// выглядывают ещё плашки, в углу — сколько строк уедет.
+///
+/// Нужна потому, что прокси у `SliverReorderableList` ровно один: под пальцем
+/// в любом случае будет одна строка, и без колоды перенос блока выглядит как
+/// перенос единственного трека.
+class _DragDeck extends StatelessWidget {
+  const _DragDeck({required this.count, required this.child});
+
+  final int count;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final shape = BorderRadius.circular(t.radius * 0.85);
+
+    // Плашка ростом с саму карточку, сдвинутая вниз на [inset]: наружу торчит
+    // ровно этот сдвиг. Прокси размером со строку её не обрежет — оверлей
+    // режет только по краю экрана.
+    Widget sheet(double inset, Color color) => Positioned(
+      left: inset,
+      right: inset,
+      top: inset,
+      bottom: -inset,
+      child: DecoratedBox(
+        decoration: BoxDecoration(color: color, borderRadius: shape),
+      ),
+    );
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // Дальняя плашка — только если в блоке правда больше двух строк.
+        if (count > 2) sheet(13, Color.lerp(t.pill, t.bg, 0.55)!),
+        sheet(6.5, Color.lerp(t.pill, t.bg, 0.28)!),
+        child,
+        Positioned(
+          top: -9,
+          right: -4,
+          child: Material(
+            color: t.accent,
+            elevation: 6,
+            shadowColor: Colors.black,
+            borderRadius: BorderRadius.circular(999),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+              child: Text(
+                '$count',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: t.accentText,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -607,13 +862,16 @@ class _Check extends StatelessWidget {
   }
 }
 
-/// Плавающая панель режима правки. Пока никого не выбрали, в ней только
-/// «выбрать все» — остальным действиям не над чем работать.
+/// Плавающая панель режима правки: слева «выбрать все» со счётчиком выделения,
+/// справа действия над ним. Пока никого не выбрали, действий нет — им не над
+/// чем работать, — и панель показывает один счёт строк.
 class _EditBar extends StatelessWidget {
   const _EditBar({
     required this.count,
+    required this.total,
     required this.allSelected,
     required this.canFav,
+    required this.favOn,
     required this.onToggleAll,
     required this.onAdd,
     required this.onFav,
@@ -621,8 +879,13 @@ class _EditBar extends StatelessWidget {
   });
 
   final int count;
+  final int total;
   final bool allSelected;
   final bool canFav;
+
+  /// Лайк стоит у всех выделенных — сердечко залито, и оно снимает лайк.
+  final bool favOn;
+
   final VoidCallback? onToggleAll;
   final VoidCallback onAdd;
   final VoidCallback onFav;
@@ -631,14 +894,12 @@ class _EditBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
     final some = count > 0;
 
     return _BarShell(
       child: Row(
         children: [
-          if (some)
-            Text('$count', style: Theme.of(context).textTheme.titleLarge),
-          const Spacer(),
           _BarIcon(
             icon: allSelected
                 ? SolarIconsBold.checklistMinimalistic
@@ -646,14 +907,38 @@ class _EditBar extends StatelessWidget {
             color: allSelected ? t.accent : null,
             onTap: onToggleAll,
           ),
+          const SizedBox(width: 4),
+          // Знаменатель приглушён: считают тут выделенные, а всего строк — это
+          // только мерка, насколько выделение близко к полному.
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: '$count',
+                  style: TextStyle(color: some ? t.text : t.text2),
+                ),
+                TextSpan(
+                  text: '/$total',
+                  style: TextStyle(color: t.text2),
+                ),
+              ],
+            ),
+            style: theme.titleLarge,
+          ),
+          const Spacer(),
           if (some) ...[
             _BarIcon(icon: SolarIconsOutline.plus, onTap: onAdd),
-            if (canFav) _BarIcon(icon: SolarIconsOutline.heart, onTap: onFav),
+            if (canFav)
+              _BarIcon(
+                icon: favOn ? SolarIconsBold.heart : SolarIconsOutline.heart,
+                color: favOn ? t.accent : null,
+                onTap: onFav,
+              ),
             const SizedBox(width: 4),
             _BarIcon(
               icon: SolarIconsOutline.trashBinMinimalistic,
-              color: t.sysFavIco,
-              background: t.sysFavIco.withValues(alpha: 0.16),
+              color: t.danger,
+              background: t.danger.withValues(alpha: 0.16),
               onTap: onRemove,
             ),
           ],

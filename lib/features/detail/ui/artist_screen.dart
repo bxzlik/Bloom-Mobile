@@ -259,7 +259,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                   textAlign: TextAlign.center,
                   style: Theme.of(
                     context,
-                  ).textTheme.bodyMedium?.copyWith(color: t.sysFavIco),
+                  ).textTheme.bodyMedium?.copyWith(color: t.danger),
                 ),
               ),
             )

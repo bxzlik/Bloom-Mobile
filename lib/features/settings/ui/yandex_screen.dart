@@ -85,7 +85,7 @@ class _YandexSettingsScreenState extends ConsumerState<YandexSettingsScreen> {
               textAlign: TextAlign.center,
               style: theme.bodySmall?.copyWith(
                 color: s.note!.kind == YmAuthNoteKind.error
-                    ? t.sysFavIco
+                    ? t.danger
                     : t.text2,
               ),
             ),

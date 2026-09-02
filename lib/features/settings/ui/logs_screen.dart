@@ -198,7 +198,7 @@ class _LogButton extends StatelessWidget {
     final color = !enabled
         ? t.muted
         : danger
-        ? t.sysFavIco
+        ? t.danger
         : t.text;
 
     return GlassBox(

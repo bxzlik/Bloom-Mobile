@@ -362,7 +362,7 @@ class _BannerHeader extends StatelessWidget {
                   icon: armed
                       ? SolarIconsBold.trashBinMinimalistic
                       : SolarIconsOutline.altArrowLeft,
-                  color: armed ? t.sysFavIco : null,
+                  color: armed ? t.danger : null,
                   onTap: onBack,
                 ),
                 const Spacer(),
@@ -581,7 +581,7 @@ class _ImageSheetState extends State<_ImageSheet> {
                 banner
                     ? context.l.profileRemoveImage
                     : context.l.profileRemovePhoto,
-                style: TextStyle(color: t.sysFavIco),
+                style: TextStyle(color: t.danger),
               ),
             ),
         ],

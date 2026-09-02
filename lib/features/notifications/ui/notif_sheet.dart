@@ -218,10 +218,11 @@ class _Card extends StatelessWidget {
   };
 }
 
-/// Цвета видов — значения из `notifications.css`. Свои, не тостовые: там своя
-/// палитра (`search-misc.css`), и совпадать они не обязаны.
+/// Цвета видов — значения из `notifications.css`, кроме ошибки: она берёт общий
+/// красный опасного, иначе в приложении три разных красных (десктопный тут
+/// `#FF6B6B` — заметно светлее и розовее).
 Color notifKindColor(NotifKind kind, BloomTokens t) => switch (kind) {
-  NotifKind.error => const Color(0xFFFF6B6B),
+  NotifKind.error => t.danger,
   NotifKind.success => const Color(0xFF4ADE80),
   NotifKind.info => t.text2,
 };

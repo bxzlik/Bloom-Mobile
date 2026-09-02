@@ -264,7 +264,7 @@ class _StatsSheetState extends ConsumerState<StatsSheet> {
                 label: _confirmClear
                     ? context.l.statsClearConfirm
                     : context.l.statsClear,
-                color: t.sysFavIco,
+                color: t.danger,
                 onTap: _clear,
               ),
             ],

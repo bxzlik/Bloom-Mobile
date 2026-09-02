@@ -72,11 +72,11 @@ class SettingsLinkRow extends StatelessWidget {
       icon: icon,
       title: title,
       subtitle: subtitle,
-      color: danger ? t.sysFavIco : null,
+      color: danger ? t.danger : null,
       trailing: Icon(
         SolarIconsOutline.altArrowRight,
         size: 16,
-        color: danger ? t.sysFavIco : t.text2,
+        color: danger ? t.danger : t.text2,
       ),
       onTap: onTap,
     );

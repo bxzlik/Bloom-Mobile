@@ -238,9 +238,7 @@ class MiniCardRow extends ConsumerWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.bodySmall?.copyWith(
-                            color: error != null
-                                ? t.sysFavIco
-                                : _artistColor(t),
+                            color: error != null ? t.danger : _artistColor(t),
                           ),
                         ),
                       ],

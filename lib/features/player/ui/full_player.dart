@@ -572,7 +572,7 @@ class _TitleBlock extends ConsumerWidget {
       // строка, и она должна читаться с руки.
       style: theme.bodyMedium?.copyWith(
         fontSize: 16,
-        color: state.error != null ? t.sysFavIco : null,
+        color: state.error != null ? t.danger : null,
       ),
     );
 

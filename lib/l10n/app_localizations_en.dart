@@ -135,6 +135,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonOfflineBadge => 'offline';
 
   @override
+  String get commonAddedOn => 'Added';
+
+  @override
+  String get commonCreatedOn => 'Created';
+
+  @override
   String tracksCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -371,10 +377,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tlSortArtist => 'By artist';
 
   @override
+  String get tlSortAlbum => 'By album';
+
+  @override
   String get tlSortDuration => 'By length';
 
   @override
+  String get tlSortDate => 'By date added';
+
+  @override
+  String get tlSortPlays => 'By plays';
+
+  @override
+  String get tlSortDownloaded => 'Downloaded only';
+
+  @override
   String get tlNothingFound => 'Nothing found';
+
+  @override
+  String get tlNothingDownloaded => 'Nothing downloaded here';
 
   @override
   String get tlEmptyFav => 'Nothing liked yet';
@@ -469,11 +490,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get leAlreadyFavorite => 'Already liked';
-
-  @override
   String leAddedToFavorites(String tracks) {
     return 'Liked: $tracks';
+  }
+
+  @override
+  String leRemovedFromFavorites(String tracks) {
+    return 'Unliked: $tracks';
   }
 
   @override

@@ -8,6 +8,10 @@
 ///
 /// Черновик живёт у родителя ([ListEditor]) и записывается только по ✓, как имя
 /// и обложка: сеть здесь дёргается сразу, а вот сама привязка — нет.
+///
+/// На странице правки секции больше нет: она стоит за кнопкой в шапке и
+/// открывается шторкой ([showPlSourcesSheet]) — между обложкой и треками она
+/// разрывала список и читалась как довесок к первой строке.
 library;
 
 import 'package:flutter/material.dart';
@@ -18,10 +22,50 @@ import '../../../app/providers.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/library_store.dart';
+import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../import_url.dart';
 import 'create_playlist_sheet.dart' show detectLinkSource;
+
+/// Открыть источники шторкой. Правки уходят наверх [onChanged] по мере дела, а
+/// не по закрытию: шторку бросают и свайпом, и «назад», и терять привязки на
+/// этом нельзя. В сам плейлист они всё так же попадают только по ✓ страницы.
+Future<void> showPlSourcesSheet(
+  BuildContext context, {
+  required List<PlSourceRef> sources,
+  required ValueChanged<List<PlSourceRef>> onChanged,
+}) {
+  return showBloomSheetChild<void>(
+    context: context,
+    child: _PlSourcesSheet(sources: sources, onChanged: onChanged),
+  );
+}
+
+/// Черновик источников на время жизни шторки: страница под ней уже не
+/// перестраивается, и обновлять список привязок некому.
+class _PlSourcesSheet extends StatefulWidget {
+  const _PlSourcesSheet({required this.sources, required this.onChanged});
+
+  final List<PlSourceRef> sources;
+  final ValueChanged<List<PlSourceRef>> onChanged;
+
+  @override
+  State<_PlSourcesSheet> createState() => _PlSourcesSheetState();
+}
+
+class _PlSourcesSheetState extends State<_PlSourcesSheet> {
+  late List<PlSourceRef> _sources = widget.sources;
+
+  @override
+  Widget build(BuildContext context) => PlSourcesEditor(
+    sources: _sources,
+    onChanged: (next) {
+      setState(() => _sources = next);
+      widget.onChanged(next);
+    },
+  );
+}
 
 class PlSourcesEditor extends ConsumerStatefulWidget {
   const PlSourcesEditor({
@@ -96,7 +140,8 @@ class _PlSourcesEditorState extends ConsumerState<PlSourcesEditor> {
     final theme = Theme.of(context).textTheme;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+      // По краю блоков шторки: секция живёт только в ней.
+      padding: const EdgeInsets.fromLTRB(kSheetEdge, 6, kSheetEdge, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -143,7 +188,9 @@ class _SourceRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
       decoration: BoxDecoration(
-        color: t.pill,
+        // Плашка внутри шторки красится по её скину, а не токеном страницы:
+        // на стекле сплошной `pill` остался бы единственным глухим пятном.
+        color: sheetPanelColor(context),
         borderRadius: BorderRadius.circular(t.radius),
       ),
       child: Row(
@@ -221,7 +268,7 @@ class _AddRow extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
-              color: t.pill,
+              color: sheetPanelColor(context),
               borderRadius: BorderRadius.circular(t.radius),
             ),
             child: Row(
@@ -257,7 +304,7 @@ class _AddRow extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Material(
-          color: filled ? t.accent : t.pill,
+          color: filled ? t.accent : sheetPanelColor(context),
           borderRadius: BorderRadius.circular(t.radius),
           clipBehavior: Clip.antiAlias,
           child: InkWell(

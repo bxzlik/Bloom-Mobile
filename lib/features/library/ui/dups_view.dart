@@ -259,7 +259,7 @@ class _Row extends StatelessWidget {
               icon: Icon(
                 SolarIconsOutline.closeCircle,
                 size: 20,
-                color: t.sysFavIco,
+                color: t.danger,
               ),
             ),
         ],
@@ -315,9 +315,9 @@ class _TextButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         child: Text(
           label,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: danger ? t.sysFavIco : t.text,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: danger ? t.danger : t.text),
         ),
       ),
     );

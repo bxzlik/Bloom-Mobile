@@ -350,6 +350,18 @@ abstract class AppLocalizations {
   /// **'offline'**
   String get commonOfflineBadge;
 
+  /// label before the date a track joined the library, in a sheet header
+  ///
+  /// In en, this message translates to:
+  /// **'Added'**
+  String get commonAddedOn;
+
+  /// label before the date a playlist was created, in a sheet header
+  ///
+  /// In en, this message translates to:
+  /// **'Created'**
+  String get commonCreatedOn;
+
   /// Replaces the hand-rolled tracksCount() from shared/util/format.dart
   ///
   /// In en, this message translates to:
@@ -746,17 +758,47 @@ abstract class AppLocalizations {
   /// **'By artist'**
   String get tlSortArtist;
 
+  /// No description provided for @tlSortAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'By album'**
+  String get tlSortAlbum;
+
   /// No description provided for @tlSortDuration.
   ///
   /// In en, this message translates to:
   /// **'By length'**
   String get tlSortDuration;
 
+  /// No description provided for @tlSortDate.
+  ///
+  /// In en, this message translates to:
+  /// **'By date added'**
+  String get tlSortDate;
+
+  /// No description provided for @tlSortPlays.
+  ///
+  /// In en, this message translates to:
+  /// **'By plays'**
+  String get tlSortPlays;
+
+  /// No description provided for @tlSortDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloaded only'**
+  String get tlSortDownloaded;
+
   /// No description provided for @tlNothingFound.
   ///
   /// In en, this message translates to:
   /// **'Nothing found'**
   String get tlNothingFound;
+
+  /// No description provided for @tlNothingDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing downloaded here'**
+  String get tlNothingDownloaded;
 
   /// No description provided for @tlEmptyFav.
   ///
@@ -902,17 +944,17 @@ abstract class AppLocalizations {
   /// **'Playlist “{name}” and its tracks deleted'**
   String tlPlaylistAndTracksDeleted(String name);
 
-  /// No description provided for @leAlreadyFavorite.
-  ///
-  /// In en, this message translates to:
-  /// **'Already liked'**
-  String get leAlreadyFavorite;
-
   /// No description provided for @leAddedToFavorites.
   ///
   /// In en, this message translates to:
   /// **'Liked: {tracks}'**
   String leAddedToFavorites(String tracks);
+
+  /// No description provided for @leRemovedFromFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Unliked: {tracks}'**
+  String leRemovedFromFavorites(String tracks);
 
   /// No description provided for @leDeleteArm.
   ///

@@ -327,7 +327,7 @@ class _SwitchRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final color = danger && value ? t.sysFavIco : t.text;
+    final color = danger && value ? t.danger : t.text;
 
     return InkWell(
       onTap: () => onChanged(!value),
@@ -349,7 +349,7 @@ class _SwitchRow extends StatelessWidget {
               value: value,
               onChanged: onChanged,
               activeThumbColor: t.accentText,
-              activeTrackColor: danger ? t.sysFavIco : t.accent,
+              activeTrackColor: danger ? t.danger : t.accent,
             ),
           ],
         ),

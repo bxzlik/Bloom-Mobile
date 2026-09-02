@@ -91,11 +91,7 @@ class SystemSettingsScreen extends ConsumerWidget {
         // на десктопе.
         Row(
           children: [
-            Icon(
-              SolarIconsOutline.dangerTriangle,
-              size: 13,
-              color: t.sysFavIco,
-            ),
+            Icon(SolarIconsOutline.dangerTriangle, size: 13, color: t.danger),
             const SizedBox(width: 6),
             SettingsCaption(l.sysDangerZone.toUpperCase()),
           ],
@@ -207,10 +203,10 @@ class _ConfirmBody extends StatelessWidget {
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              color: t.sysFavIco.withValues(alpha: 0.12),
+              color: t.danger.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 28, color: t.sysFavIco),
+            child: Icon(icon, size: 28, color: t.danger),
           ),
           const SizedBox(height: 16),
           Text(title, style: theme.titleLarge),

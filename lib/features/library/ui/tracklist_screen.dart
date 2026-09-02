@@ -61,12 +61,18 @@ const double _histPadTop = 4;
 /// место строки в прокрученной истории не посчитать.
 const double kHistoryHeaderHeight = 33;
 
-/// Сортировка трек-листа — те же режимы, что на десктопе.
+/// Сортировка трек-листа — все режимы десктопного `TrackSortMode` и вдобавок
+/// «Скачанные»: этот не сортирует, а оставляет в списке только то, что уже
+/// лежит на устройстве (на ПК такого нет).
 enum TrackSort {
   manual(SolarIconsOutline.playlistMinimalistic),
   name(SolarIconsOutline.sortByAlphabet),
   artist(SolarIconsOutline.userRounded),
-  duration(SolarIconsOutline.sortByTime);
+  album(SolarIconsOutline.album),
+  duration(SolarIconsOutline.sortByTime),
+  date(SolarIconsOutline.calendar),
+  plays(SolarIconsOutline.play),
+  downloaded(SolarIconsOutline.diskette);
 
   const TrackSort(this.icon);
   final IconData icon;
@@ -75,8 +81,22 @@ enum TrackSort {
     TrackSort.manual => l.tlSortManual,
     TrackSort.name => l.tlSortName,
     TrackSort.artist => l.tlSortArtist,
+    TrackSort.album => l.tlSortAlbum,
     TrackSort.duration => l.tlSortDuration,
+    TrackSort.date => l.tlSortDate,
+    TrackSort.plays => l.tlSortPlays,
+    TrackSort.downloaded => l.tlSortDownloaded,
   };
+
+  /// Порядок разворачивается повторным тапом — кроме тех режимов, где своего
+  /// порядка нет: «По порядку» отдаёт список как есть, «Скачанные» только
+  /// отсеивают лишнее.
+  bool get directional =>
+      this != TrackSort.manual && this != TrackSort.downloaded;
+
+  /// С какого конца режим начинается: у даты и прослушиваний сверху свежее и
+  /// частое — как `defaultDir` в десктопном сторе.
+  bool get descFirst => this == TrackSort.date || this == TrackSort.plays;
 }
 
 class TracklistScreen extends ConsumerStatefulWidget {
@@ -96,6 +116,10 @@ class TracklistScreen extends ConsumerStatefulWidget {
 
 class _TracklistScreenState extends ConsumerState<TracklistScreen> {
   TrackSort _sort = TrackSort.manual;
+
+  /// Порядок развёрнут — обратный тому, с которого режим начинается.
+  bool _desc = false;
+
   bool _searchOpen = false;
   String _query = '';
 
@@ -176,7 +200,13 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
       );
     }
 
-    final tracks = _apply(source);
+    // Офлайн-состав спрашиваем, только когда он на экран влияет: индекс дёргается
+    // на каждом проценте пакетной загрузки, и подписываться на него ради списка,
+    // который её не показывает, значит перестраивать его без повода.
+    final offline = _sort == TrackSort.downloaded
+        ? ref.watch(offlineProvider)
+        : null;
+    final tracks = _apply(source, lib, offline);
     // Ключи нужны не только перетаскиванию: строку можно смахнуть, а список
     // тут не анимированный — без ключа состояние жеста досталось бы соседу,
     // который встал на освободившееся место.
@@ -233,7 +263,8 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
               flight: playlist?.cover == null ? null : widget.flight,
               height: width * 0.62 + 76,
               sort: _sort,
-              onSort: (s) => setState(() => _sort = s),
+              desc: _desc,
+              onSort: _pickSort,
               searchOpen: _searchOpen,
               query: _query,
               onToggleSearch: () => setState(() {
@@ -246,6 +277,7 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
                 _searchOpen = false;
                 _query = '';
                 _sort = TrackSort.manual;
+                _desc = false;
               }),
             ),
             // Ход пакетной загрузки больше не строка под шапкой: он в тосте
@@ -266,6 +298,11 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
                     child: Text(
                       _query.isNotEmpty
                           ? context.l.tlNothingFound
+                          // Список не пуст — просто в нём нечего показать под
+                          // отбором: об этом и говорим, иначе «Плейлист пуст»
+                          // на полном плейлисте выглядит поломкой.
+                          : _sort == TrackSort.downloaded
+                          ? context.l.tlNothingDownloaded
                           : switch (widget.listId) {
                               'fav' => context.l.tlEmptyFav,
                               'history' => context.l.tlEmptyHistory,
@@ -376,6 +413,20 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
     );
   }
 
+  /// Выбор в шторке сортировки. Повторный тап по уже выбранному режиму
+  /// разворачивает порядок — как на десктопе, где та же строка меню показывает
+  /// ↑/↓ и переключает их.
+  void _pickSort(TrackSort next) {
+    setState(() {
+      if (next == _sort && next.directional) {
+        _desc = !_desc;
+      } else {
+        _sort = next;
+        _desc = next.descFirst;
+      }
+    });
+  }
+
   /// Тянуть строки можно, только когда на экране собственный порядок списка:
   /// при сортировке и поиске видно не его, и перестановка легла бы не туда.
   ///
@@ -444,9 +495,15 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
     return out;
   }
 
-  /// Поиск и сортировка применяются к копии: исходный порядок плейлиста
+  /// Поиск, отбор и сортировка применяются к копии: исходный порядок плейлиста
   /// трогать нельзя, «По порядку» должен уметь вернуть его как было.
-  List<Track> _apply(List<Track> source) {
+  ///
+  /// [offline] приходит только в режиме «Скачанные» — остальным он не нужен.
+  List<Track> _apply(
+    List<Track> source,
+    LibraryState lib,
+    OfflineState? offline,
+  ) {
     final q = _query.trim().toLowerCase();
     final list = q.isEmpty
         ? [...source]
@@ -457,20 +514,54 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
                     t.artist.toLowerCase().contains(q),
               )
               .toList();
-    switch (_sort) {
-      case TrackSort.manual:
-        break;
-      case TrackSort.name:
-        list.sort(
-          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-        );
-      case TrackSort.artist:
-        list.sort(
-          (a, b) => a.artist.toLowerCase().compareTo(b.artist.toLowerCase()),
-        );
-      case TrackSort.duration:
-        list.sort((a, b) => a.duration.compareTo(b.duration));
+
+    if (_sort == TrackSort.downloaded) {
+      // Порядок остаётся своим — режим только отсеивает то, чего на устройстве
+      // нет. Качающиеся сейчас треки не в счёт: файла ещё нет, играть нечего.
+      // Свои треки — файлы с телефона, и в офлайн-индексе их нет (качать
+      // нечего): без них список «скачанного» врал бы про свою же музыку.
+      list.removeWhere(
+        (t) => t.source != MusicSource.local && offline?.has(t.id) != true,
+      );
+      return list;
     }
+    if (!_sort.directional) return list;
+
+    // Время добавления берём из того раздела, который на экране: в «Любимых»
+    // это время лайка, в «Истории» — время прослушивания (на ПК то же деление
+    // по `libMode`). Записи истории считаем один раз: геттер собирает карту
+    // заново на каждый вызов, а из компаратора его дёргали бы n·log n раз.
+    final hist = (_sort == TrackSort.plays || widget.listId == 'history')
+        ? lib.historyById
+        : const <String, HistoryEntry>{};
+    int addedAt(Track t) => switch (widget.listId) {
+      'fav' => lib.favs[t.id] ?? 0,
+      'history' => hist[t.id]?.at ?? 0,
+      _ => lib.inLib[t.id] ?? 0,
+    };
+
+    // Прослушивания — СВОИ, из истории: в `track.playCount` лежит глобальный
+    // счётчик площадки (см. заметку в `wave_seeds.dart`), и по нему список
+    // ранжировался бы чужими прослушиваниями.
+    final int dir = _desc ? -1 : 1;
+    list.sort((a, b) {
+      final c = switch (_sort) {
+        TrackSort.name => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        TrackSort.artist => a.artist.toLowerCase().compareTo(
+          b.artist.toLowerCase(),
+        ),
+        TrackSort.album => (a.album ?? '').toLowerCase().compareTo(
+          (b.album ?? '').toLowerCase(),
+        ),
+        TrackSort.duration => a.duration.compareTo(b.duration),
+        TrackSort.date => addedAt(a).compareTo(addedAt(b)),
+        TrackSort.plays => (hist[a.id]?.count ?? 0).compareTo(
+          hist[b.id]?.count ?? 0,
+        ),
+        TrackSort.manual || TrackSort.downloaded => 0,
+      };
+      return dir * c;
+    });
     return list;
   }
 }
@@ -541,6 +632,7 @@ class _Hero extends ConsumerWidget {
     required this.flight,
     required this.height,
     required this.sort,
+    required this.desc,
     required this.onSort,
     required this.searchOpen,
     required this.query,
@@ -567,6 +659,7 @@ class _Hero extends ConsumerWidget {
   /// места начинается список.
   final double height;
   final TrackSort sort;
+  final bool desc;
   final ValueChanged<TrackSort> onSort;
   final bool searchOpen;
   final String query;
@@ -609,7 +702,7 @@ class _Hero extends ConsumerWidget {
                 onTap: () => context.go('/library'),
               ),
               const SizedBox(width: 8),
-              _SortButton(sort: sort, onSort: onSort),
+              _SortButton(sort: sort, desc: desc, onSort: onSort),
               const Spacer(),
               // Плюс — только во «Всех треках», как `libUploadBtn` на ПК
               // (`mode === 'all'`): в «Любимых» и «Истории» состав не свой, а
@@ -742,16 +835,28 @@ class _AddLocalButtonState extends ConsumerState<_AddLocalButton> {
 }
 
 class _SortButton extends StatelessWidget {
-  const _SortButton({required this.sort, required this.onSort});
+  const _SortButton({
+    required this.sort,
+    required this.desc,
+    required this.onSort,
+  });
 
   final TrackSort sort;
+  final bool desc;
   final ValueChanged<TrackSort> onSort;
 
   @override
   Widget build(BuildContext context) {
+    final t = context.bloom;
+    // Список показан не как есть — кнопка горит акцентом, как у сортировки
+    // библиотеки: иначе отбор «Скачанные» ничем себя не выдаёт, и коротким
+    // плейлист выглядит поломкой.
+    final on = sort != TrackSort.manual;
     return GlassIconButton(
       icon: SolarIconsOutline.tuning_2,
-      onTap: () => showSortSheet(context, sort, onSort),
+      background: on ? t.accent : null,
+      color: on ? t.accentText : null,
+      onTap: () => showSortSheet(context, sort, desc, onSort),
     );
   }
 }
@@ -759,9 +864,13 @@ class _SortButton extends StatelessWidget {
 /// Выбор сортировки списка — такая же нижняя шторка, как по удержанию трека, а
 /// не всплывающее меню: на телефоне до низа экрана рука достаёт, до угла шапки
 /// нет.
+///
+/// Повторный тап по выбранному режиму разворачивает порядок — стрелка справа
+/// показывает, каким концом список идёт сейчас.
 Future<void> showSortSheet(
   BuildContext context,
   TrackSort sort,
+  bool desc,
   ValueChanged<TrackSort> onSort,
 ) {
   final t = context.bloom;
@@ -774,9 +883,17 @@ Future<void> showSortSheet(
             icon: s.icon,
             label: s.label(context.l),
             onTap: () => onSort(s),
-            trailing: s == sort
-                ? Icon(SolarIconsBold.checkCircle, size: 18, color: t.accent)
-                : null,
+            trailing: s != sort
+                ? null
+                : Icon(
+                    s.directional
+                        ? (desc
+                              ? SolarIconsBold.altArrowDown
+                              : SolarIconsBold.altArrowUp)
+                        : SolarIconsBold.checkCircle,
+                    size: 18,
+                    color: t.accent,
+                  ),
           ),
       ],
     ],
@@ -931,6 +1048,15 @@ Future<void> showPlaylistMenu(
       cover: cover,
       title: playlist.name,
       subtitle: context.l.tracksCount(tracks.length),
+      // Тот же офлайн-тег, что на плитке в библиотеке: «сколько скачано» видно
+      // и здесь, а не только на плитке.
+      subtitleTrailing: OfflineTag(
+        tracks: tracks,
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+      ),
+      meta: sheetDateMeta(context, l10n.commonCreatedOn, playlist.createdAt),
     ),
     groups: [
       [

@@ -23,11 +23,6 @@ const double kSwipeThreshold = 0.32;
 /// Бросок быстрее этого срабатывает и без порога.
 const double _flingVelocity = 900;
 
-/// Красный плашки удаления — тот же тон, из которого на десктопе сделан
-/// системный «Любимое» (`#E03454`): своего «опасного» цвета в токенах нет, а
-/// заводить ещё один красный ради одной плашки незачем.
-const Color kSwipeDangerColor = Color(0xFFE03454);
-
 const Duration _snapBack = Duration(milliseconds: 220);
 const Duration _flyOut = Duration(milliseconds: 160);
 
@@ -222,7 +217,7 @@ class _Panel extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(t.radius * 0.85),
           child: ColoredBox(
-            color: panel.danger ? kSwipeDangerColor : t.pill,
+            color: panel.danger ? t.danger : t.pill,
             child: Center(
               child: Opacity(
                 opacity: show,

@@ -196,7 +196,7 @@ class _ClearAllRow extends ConsumerWidget {
               child: Icon(
                 SolarIconsOutline.trashBinMinimalistic,
                 size: 20,
-                color: empty ? t.muted : t.sysFavIco,
+                color: empty ? t.muted : t.danger,
               ),
             ),
             const SizedBox(width: 14),
@@ -494,7 +494,7 @@ class _ClearBody extends StatelessWidget {
             value: enabled ? fraction : 0,
             size: 132,
             stroke: 8,
-            color: danger ? t.sysFavIco : null,
+            color: danger ? t.danger : null,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

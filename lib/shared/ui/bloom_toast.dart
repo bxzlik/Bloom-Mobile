@@ -467,12 +467,13 @@ class _PopState extends State<_Pop> with SingleTickerProviderStateMixin {
 }
 
 /// Цвета видов — те же значения, что в `search-misc.css`; `info` берёт акцент
-/// темы, поэтому считается от токенов.
+/// темы, а `error` — общий красный опасного, чтобы в приложении был ровно один
+/// красный (десктопный `#E0494A` от него почти неотличим).
 Color kindColor(ToastKind kind, BloomTokens t) => switch (kind) {
   ToastKind.info => t.accent,
   ToastKind.success => const Color(0xFF2FBF6C),
   ToastKind.warn => const Color(0xFFE0A52E),
-  ToastKind.error => const Color(0xFFE0494A),
+  ToastKind.error => t.danger,
 };
 
 /// Значок вида в круге своего цвета, а вокруг — кольцо обратного отсчёта.

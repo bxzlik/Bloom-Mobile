@@ -1143,7 +1143,7 @@ class _ProfileSlide extends ConsumerWidget {
                             height: 34,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: avatar == null ? t.accent : t.sysFavIco,
+                              color: avatar == null ? t.accent : t.danger,
                               shape: BoxShape.circle,
                               border: Border.all(color: t.bg, width: 3),
                             ),

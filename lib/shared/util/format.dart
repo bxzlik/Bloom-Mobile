@@ -42,6 +42,14 @@ String? releaseDateLabel(String? raw, String locale) {
   ).format(day).replaceFirst(RegExp(r'\s*г\.$'), '');
 }
 
+/// Короткая дата события из метки времени: «2 сент. 2026 г.» / «Sep 2, 2026».
+/// Ею подписаны шапки шторок («Добавлен …», «Создан …»).
+///
+/// В отличие от [releaseDateLabel] русское «г.» тут остаётся: строка стоит
+/// одна, отдельной, и без него читается как обрубок.
+String stampDate(int ms, String locale) =>
+    DateFormat.yMMMd(locale).format(DateTime.fromMillisecondsSinceEpoch(ms));
+
 // «12 треков» переехало в словарь: ключ `tracksCount` в `lib/l10n/*.arb`
 // считает формы через ICU-плюрали, поэтому русская тройка (трек/трека/треков)
 // и английская пара живут рядом с остальными строками, а не в коде.

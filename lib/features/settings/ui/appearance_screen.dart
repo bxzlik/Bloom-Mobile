@@ -1646,7 +1646,7 @@ class _PresetCardState extends State<_PresetCard> {
                             ? SolarIconsBold.trashBinMinimalistic
                             : SolarIconsOutline.closeCircle,
                         size: 18,
-                        color: _armed ? preview.sysFavIco : preview.muted,
+                        color: _armed ? preview.danger : preview.muted,
                       ),
                     ),
                   ),

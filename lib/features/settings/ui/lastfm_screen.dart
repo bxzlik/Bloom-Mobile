@@ -217,7 +217,7 @@ class _LastfmSettingsScreenState extends ConsumerState<LastfmSettingsScreen>
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: note.kind == LfmNoteKind.error
-                    ? context.bloom.sysFavIco
+                    ? context.bloom.danger
                     : context.bloom.text2,
               ),
             ),

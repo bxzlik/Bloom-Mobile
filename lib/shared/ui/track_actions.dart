@@ -79,6 +79,9 @@ Future<void> showTrackActions(
       cover: track.cover,
       title: track.name,
       subtitle: track.artist,
+      // Дата — когда трек попал в библиотеку (`inLib`): в самом плейлисте
+      // времени добавления не хранится, там лежат одни id.
+      meta: sheetDateMeta(context, l10n.commonAddedOn, lib.inLib[track.id]),
     ),
     groups: [
       // Очередь первой группой, как на десктопе: это действие «сейчас», а не
@@ -176,7 +179,8 @@ Future<void> showTrackActions(
           icon: SolarIconsOutline.infoCircle,
           label: context.l.tiTitle,
           chevron: true,
-          onTap: () => showTrackInfoSheet(context, track),
+          onTap: () =>
+              showTrackInfoSheet(context, track, addedAt: lib.inLib[track.id]),
         ),
       ],
       [

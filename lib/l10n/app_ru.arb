@@ -43,6 +43,8 @@
   "commonAlreadyInLibrary": "Уже в библиотеке",
   "commonUnknownArtist": "Неизвестный",
   "commonOfflineBadge": "офлайн",
+  "commonAddedOn": "Добавлен",
+  "commonCreatedOn": "Создан",
 
   "tracksCount": "{count, plural, one{{count} трек} few{{count} трека} many{{count} треков} other{{count} треков}}",
   "followersCount": "{count, plural, one{{formatted} подписчик} few{{formatted} подписчика} many{{formatted} подписчиков} other{{formatted} подписчиков}}",
@@ -118,8 +120,13 @@
   "tlSortManual": "По порядку",
   "tlSortName": "По названию",
   "tlSortArtist": "По исполнителю",
+  "tlSortAlbum": "По альбому",
   "tlSortDuration": "По длительности",
+  "tlSortDate": "По дате добавления",
+  "tlSortPlays": "По прослушиваниям",
+  "tlSortDownloaded": "Только скачанные",
   "tlNothingFound": "Ничего не нашлось",
+  "tlNothingDownloaded": "Скачанных треков тут нет",
   "tlEmptyFav": "Пока ничего не залайкано",
   "tlEmptyHistory": "История пуста",
   "histToday": "Сегодня",
@@ -145,8 +152,8 @@
   "tlDeletePlaylistWithTracks": "Удалить плейлист и треки",
   "tlPlaylistAndTracksDeleted": "Плейлист «{name}» удалён вместе с треками",
 
-  "leAlreadyFavorite": "Уже в любимых",
   "leAddedToFavorites": "В любимые: {tracks}",
+  "leRemovedFromFavorites": "Из любимых: {tracks}",
   "leDeleteArm": "Ещё раз — {tracks} пропадут отовсюду",
   "leDiscardArm": "Ещё раз — правка не сохранится",
 

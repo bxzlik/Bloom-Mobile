@@ -89,14 +89,14 @@ class WideButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final color = danger ? t.sysFavIco : t.text;
+    final color = danger ? t.danger : t.text;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: GlassBox(
         // Опасная кнопка красная и в стекле: её цвет — сигнал, а не
         // поверхность темы, поэтому прозрачной она не становится.
-        color: danger ? t.sysFavTint : null,
+        color: danger ? t.dangerTint : null,
         enabled: !danger,
         child: Container(
           height: 52,

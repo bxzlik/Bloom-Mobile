@@ -258,7 +258,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           child: Text(
             _error!,
             textAlign: TextAlign.center,
-            style: theme.bodyMedium?.copyWith(color: t.sysFavIco),
+            style: theme.bodyMedium?.copyWith(color: t.danger),
           ),
         ),
       );

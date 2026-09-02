@@ -326,7 +326,7 @@ class _ScFormState extends ConsumerState<_ScForm> {
           Text(
             r.ok ? l.scConnectionOk : '${l.scConnectionFail} ${r.error ?? ''}',
             style: theme.bodySmall?.copyWith(
-              color: r.ok ? const Color(0xFF4CAF50) : t.sysFavIco,
+              color: r.ok ? const Color(0xFF4CAF50) : t.danger,
             ),
           ),
         ],
@@ -421,7 +421,7 @@ class _YmForm extends ConsumerWidget {
           Text(
             _noteText(l, note),
             style: theme.bodySmall?.copyWith(
-              color: note.kind == YmAuthNoteKind.error ? t.sysFavIco : t.muted,
+              color: note.kind == YmAuthNoteKind.error ? t.danger : t.muted,
             ),
           ),
         ],
