@@ -1457,12 +1457,15 @@ String? findId(String text, String prefix) {
   return id.length > prefix.length ? id : null;
 }
 
-Future<String?> _getText(String url) async {
+Future<String?> _getText(String url, {String userAgent = kWebUa}) async {
   try {
     final r = await _http
         .get(
           Uri.parse(url),
-          headers: {'User-Agent': kWebUa, 'Accept-Language': 'en-US,en;q=0.9'},
+          headers: {
+            'User-Agent': userAgent,
+            'Accept-Language': 'en-US,en;q=0.9',
+          },
         )
         .timeout(_timeout);
     if (r.statusCode < 200 || r.statusCode >= 300) return null;
@@ -1566,11 +1569,15 @@ Future<YtmRawTrack> track(String videoId) async {
   );
 }
 
-/// Прямой аудио-URL для videoId.
+/// Аудио-URL для videoId.
 ///
 /// Предпочтение: m4a/aac (itag 140 — самый совместимый контейнер), затем всё
 /// остальное по битрейту.
-Future<String> streamUrl(String videoId) async {
+///
+/// [hls] просит вместо прямой ссылки плейлист — он нужен AVPlayer'у на iOS,
+/// см. [_hlsAudioUrl]. Если плейлиста в ответе нет, молча отдаём прямую: это
+/// хуже, но играет.
+Future<String> streamUrl(String videoId, {bool hls = false}) async {
   final v = await player(videoId);
 
   final status = str(at(v, ['playabilityStatus', 'status']));
@@ -1578,6 +1585,11 @@ Future<String> streamUrl(String videoId) async {
     final reason = str(at(v, ['playabilityStatus', 'reason']));
     // Причина приходит текстом от самой площадки — отдаём как есть.
     throw YtmException(reason.isEmpty ? 'ytm.err.unplayable' : reason);
+  }
+
+  if (hls) {
+    final playlist = await _hlsAudioUrl(v);
+    if (playlist != null) return playlist;
   }
 
   Object? best;
@@ -1596,4 +1608,38 @@ Future<String> streamUrl(String videoId) async {
   final url = str(at(best, ['url']));
   if (url.isEmpty) throw const YtmException('ytm.err.noAudio');
   return url;
+}
+
+/// Аудио-дорожка из HLS-манифеста — ссылка для iOS.
+///
+/// Зачем отдельный путь. Прямая ссылка itag 140 ведёт на ФРАГМЕНТИРОВАННЫЙ mp4
+/// (`moov` с `mvex`, дальше `sidx` и цепочка `moof`/`mdat`) — контейнер DASH.
+/// ExoPlayer и Chromium играют его как обычный файл, а AVFoundation признаёт
+/// фрагментированный mp4 только внутри HLS: по прямой ссылке AVPlayer читает
+/// длительность вдвое больше настоящей. Звук при этом верный, но трек
+/// «доигрывает» в тишину до выдуманного конца и не уходит на следующий.
+///
+/// В манифесте есть готовые дорожки только со звуком: группа `234` — тот же
+/// AAC 128k, что и itag 140, `233` — 48k про запас. Плейлист приходит как
+/// `#EXT-X-PLAYLIST-TYPE:VOD` с `#EXT-X-ENDLIST`, то есть с честной
+/// длительностью, а сегменты — ADTS AAC, родной для AVPlayer формат.
+///
+/// `null` значит «не вышло» — вызывающий возьмёт прямую ссылку.
+Future<String?> _hlsAudioUrl(Object? v) async {
+  final master = str(at(v, ['streamingData', 'hlsManifestUrl']));
+  if (master.isEmpty) return null;
+  final text = await _getText(master, userAgent: kVisionUa);
+  if (text == null) return null;
+  return _mediaPlaylist(text, '234') ?? _mediaPlaylist(text, '233');
+}
+
+/// URI дорожки `#EXT-X-MEDIA` с нужным `GROUP-ID` из мастер-манифеста.
+String? _mediaPlaylist(String manifest, String group) {
+  for (final line in const LineSplitter().convert(manifest)) {
+    if (!line.startsWith('#EXT-X-MEDIA:')) continue;
+    if (!line.contains('GROUP-ID="$group"')) continue;
+    final uri = RegExp(r'URI="([^"]+)"').firstMatch(line)?.group(1);
+    if (uri != null && uri.isNotEmpty) return uri;
+  }
+  return null;
 }

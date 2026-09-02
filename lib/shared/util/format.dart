@@ -3,6 +3,8 @@ library;
 
 import 'package:intl/intl.dart';
 
+import '../../l10n/app_localizations.dart';
+
 String mmss(Duration d) {
   final s = d.inSeconds.clamp(0, 24 * 3600);
   final m = s ~/ 60;
@@ -12,6 +14,16 @@ String mmss(Duration d) {
 }
 
 String mmssMs(int ms) => mmss(Duration(milliseconds: ms));
+
+/// Суммарное время списка: «1ч 23м» / «45 мин» — порт `fmtTotalDur` с десктопа.
+///
+/// Не [mmss]: у сотни треков часы-минуты-секунды читаются как таймкод, а в
+/// подписи под названием секунды не нужны вовсе. Меньше минуты — «0 мин»,
+/// но звонящий такой список подписывать не обязан.
+String totalDur(AppLocalizations l, Duration d) {
+  final m = d.inMinutes;
+  return m >= 60 ? l.commonDurHm(m ~/ 60, m % 60) : l.commonDurMin(m);
+}
 
 /// Короткое число: 1234 → «1.2K», 6700572 → «6.7M».
 String compactCount(int n) {

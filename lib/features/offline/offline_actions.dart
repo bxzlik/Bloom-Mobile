@@ -10,7 +10,6 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../core/entities/entities.dart';
 import '../../core/l10n/l10n.dart';
@@ -221,57 +220,10 @@ class BatchToastBody extends ConsumerWidget {
   }
 }
 
-/// Индикатор «доступно офлайн» для подписи списка: скачан целиком — «офлайн»,
-/// частично — «N/M». Пока ни одного трека нет, не рисуется вовсе. Цвет — как у
-/// самой подписи, акцентом не выделяется (порт `PlaylistOfflineTag`).
-class OfflineTag extends ConsumerWidget {
-  const OfflineTag({
-    super.key,
-    required this.tracks,
-    this.dot = true,
-    this.style,
-  });
-
-  final List<Track> tracks;
-
-  /// Ставить ли точку-разделитель перед тегом.
-  final bool dot;
-
-  /// Стиль подписи, к которой тег приписывается. По умолчанию — `bodyMedium`
-  /// шапки списка; на плитках библиотеки подпись мельче, и стиль приходит свой.
-  final TextStyle? style;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final status = listOfflineState(
-      ref.watch(offlineProvider),
-      ref.read(offlineProvider.notifier),
-      tracks,
-    );
-    if (!status.any) return const SizedBox.shrink();
-    final style = this.style ?? Theme.of(context).textTheme.bodyMedium;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (dot) Text(' · ', style: style),
-        // Та же дискета, что в строке трека и в теге плейлиста на десктопе.
-        Icon(
-          SolarIconsOutline.diskette,
-          size: style?.fontSize ?? 13,
-          color: style?.color,
-        ),
-        const SizedBox(width: 3),
-        Text(
-          status.all
-              ? context.l.commonOfflineBadge
-              : '${status.cached}/${status.total}',
-          style: style,
-        ),
-      ],
-    );
-  }
-}
+// Индикатор «доступно офлайн» (порт `PlaylistOfflineTag`) отдельным виджетом
+// больше не живёт: он всюду шёл в одной строке со счётчиком треков и общим
+// временем, а ужимать эту строку под ширину можно только целиком —
+// см. `ListMeta` в `features/library/ui/list_meta.dart`.
 
 /// Причина отказа офлайна — фразой. Живёт здесь, а не в сторе: только у UI
 /// есть язык интерфейса.

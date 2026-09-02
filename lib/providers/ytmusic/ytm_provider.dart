@@ -8,6 +8,8 @@
 /// всегда в выдаче (в отличие от Яндекса, которому нужен токен).
 library;
 
+import 'dart:io';
+
 import '../../core/entities/entities.dart';
 import '../../core/providers/music_provider.dart';
 import 'models.dart';
@@ -252,30 +254,39 @@ class YtmusicProvider extends MusicProvider {
 
   /// Прямая ссылка `googlevideo` — плеер тянет её сам. Локального прокси, как на
   /// десктопе, здесь нет: он там нужен из-за CORS и range-запросов WebView2.
+  ///
+  /// На iOS вместо неё идёт HLS-плейлист: прямая ведёт на фрагментированный
+  /// mp4, а AVPlayer вне HLS считает его длительность вдвое больше настоящей
+  /// (подробности — у `_hlsAudioUrl` в `ytmusic.dart`).
   @override
   Future<PlayableStream?> resolveStream(Track track) async =>
-      PlayableStream(url: await _streamUrl(track));
+      PlayableStream(url: await _streamUrl(track, hls: Platform.isIOS));
 
   /// Скачивается ровно то, что играет: `adaptiveFormats` — цельный файл
   /// (itag 140, m4a), а не плейлист кусков.
   @override
   bool canDownload(Track track) => true;
 
+  /// Качаем всегда прямую ссылку — даже на iOS, где играем через плейлист:
+  /// офлайн-копия должна быть одним файлом, а не набором сегментов.
   @override
   Future<PlayableStream?> resolveDownload(Track track) async =>
       PlayableStream(url: await _streamUrl(track));
 
   /// Подписанная ссылка googlevideo живёт минуты — держим кеш 4, как на
   /// десктопе: иначе пауза с последующим play требовала бы нового резолва.
-  Future<String> _streamUrl(Track track) async {
+  Future<String> _streamUrl(Track track, {bool hls = false}) async {
     final videoId = parseYtmTrackId(track.id);
     if (videoId == null) throw const YtmException('ytm.err.trackNotFound');
-    final cached = _streamCache[videoId];
+    // Плеер и скачивание берут у одного трека РАЗНЫЕ ссылки — общий ключ отдал
+    // бы скачиванию плейлист (или наоборот), смотря кто попросил первым.
+    final key = hls ? '$videoId#hls' : videoId;
+    final cached = _streamCache[key];
     if (cached != null && DateTime.now().difference(cached.at) < _streamTtl) {
       return cached.url;
     }
-    final url = await ytm.streamUrl(videoId);
-    _streamCache[videoId] = (url: url, at: DateTime.now());
+    final url = await ytm.streamUrl(videoId, hls: hls);
+    _streamCache[key] = (url: url, at: DateTime.now());
     return url;
   }
 }

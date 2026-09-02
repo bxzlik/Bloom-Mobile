@@ -362,6 +362,18 @@ abstract class AppLocalizations {
   /// **'Created'**
   String get commonCreatedOn;
 
+  /// desktop: fmtTotalDur — total time of a list, an hour or longer
+  ///
+  /// In en, this message translates to:
+  /// **'{h}h {m}m'**
+  String commonDurHm(int h, int m);
+
+  /// desktop: fmtTotalDur — total time of a list, under an hour
+  ///
+  /// In en, this message translates to:
+  /// **'{m} min'**
+  String commonDurMin(int m);
+
   /// Replaces the hand-rolled tracksCount() from shared/util/format.dart
   ///
   /// In en, this message translates to:

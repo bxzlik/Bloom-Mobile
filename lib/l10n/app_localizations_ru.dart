@@ -141,6 +141,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonCreatedOn => 'Создан';
 
   @override
+  String commonDurHm(int h, int m) {
+    return '$hч $mм';
+  }
+
+  @override
+  String commonDurMin(int m) {
+    return '$m мин';
+  }
+
+  @override
   String tracksCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

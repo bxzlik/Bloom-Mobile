@@ -335,12 +335,36 @@ class OfflineController extends Notifier<OfflineState> {
   }
 }
 
+/// Каким куском берём файл с CDN.
+///
+/// Одной длинной загрузкой googlevideo отдавать не хочет: соединение рвётся на
+/// середине трека («Connection closed while receiving data»), и особенно охотно
+/// на iOS. Кусок в мегабайт живёт секунды — рваться там почти нечему, а если
+/// всё же порвалось, перезапрашивается только он, а не весь файл.
+const int _chunkBytes = 1 << 20;
+
+/// Сколько раз подряд повторить кусок, который не доехал. Сбрасывается на
+/// каждом куске, где пришёл хоть байт: иначе длинная загрузка с редкими
+/// обрывами упиралась бы в общий лимит.
+const int _chunkRetries = 3;
+
+const Duration _retryPause = Duration(milliseconds: 400);
+
+/// Сколько ждать следующий байт. Оборванное соединение не всегда приходит
+/// ошибкой: бывает, что оно просто замолкает — и без этого срока загрузка
+/// висела бы в «качается…» до конца жизни приложения.
+const Duration _stallTimeout = Duration(seconds: 20);
+
 /// Качает трек по прямой ссылке в [dir] и возвращает получившийся файл.
 ///
 /// Пишем потоком во временный `.part`: трек это мегабайты, держать их целиком
 /// в памяти незачем, а оборванная загрузка не должна оставить огрызок, который
 /// сойдёт за готовый файл. Общая для обоих скачиваний — офлайн-копии и
 /// сохранения файлом в память телефона.
+///
+/// Берём файл кусками с `Range` (см. [_chunkBytes]). Площадка, которая Range не
+/// понимает, отвечает на такой запрос обычным 200 с телом целиком — его просто
+/// дочитываем, как раньше.
 Future<File> fetchAudioToFile({
   required String url,
   required Map<String, String> headers,
@@ -349,45 +373,117 @@ Future<File> fetchAudioToFile({
   void Function(double)? onProgress,
 }) async {
   final client = http.Client();
-  try {
-    final request = http.Request('GET', Uri.parse(url))
-      ..followRedirects = true
-      ..headers.addAll(headers);
-    final response = await client.send(request);
-    if (response.statusCode != 200) {
-      throw HttpException('CDN ответил ${response.statusCode}');
-    }
+  final uri = Uri.parse(url);
+  final part = File(
+    '${dir.path}/.part_${DateTime.now().microsecondsSinceEpoch}',
+  );
+  final sink = part.openWrite();
+  // Расширение — по первым байтам, как `audio_ext` на ПК: SoundCloud отдаёт
+  // и mp3, и m4a, а по URL этого не понять.
+  String? ext;
+  var received = 0;
+  int? total;
+  var done = false;
+  var fails = 0;
 
-    final part = File(
-      '${dir.path}/.part_${DateTime.now().microsecondsSinceEpoch}',
-    );
-    final sink = part.openWrite();
-    final total = response.contentLength ?? 0;
-    var received = 0;
-    // Расширение — по первым байтам, как `audio_ext` на ПК: SoundCloud отдаёт
-    // и mp3, и m4a, а по URL этого не понять.
-    String? ext;
+  try {
     try {
-      await for (final chunk in response.stream) {
-        if (ext == null && chunk.length >= 8) ext = _audioExt(chunk);
-        sink.add(chunk);
-        received += chunk.length;
-        onProgress?.call(total > 0 ? received / total : -1);
+      while (!done) {
+        final request = http.Request('GET', uri)
+          ..followRedirects = true
+          ..headers.addAll(headers)
+          ..headers['Range'] = 'bytes=$received-${received + _chunkBytes - 1}';
+
+        http.StreamedResponse response;
+        try {
+          response = await client.send(request).timeout(_stallTimeout);
+        } on Exception {
+          if (++fails > _chunkRetries) rethrow;
+          await Future<void>.delayed(_retryPause);
+          continue;
+        }
+
+        if (response.statusCode == 200) {
+          // Range не поддержан — в теле весь файл с нуля. В середине загрузки
+          // это означало бы дубль уже записанного, поэтому только в начале.
+          if (received > 0) {
+            throw const HttpException('CDN потерял позицию в файле');
+          }
+          total = response.contentLength;
+          done = true;
+        } else if (response.statusCode == 206) {
+          total ??= _rangeTotal(response.headers['content-range']);
+        } else if (response.statusCode == 416) {
+          // Запросили за концом файла: у CDN длины мы не спрашивали, так что
+          // конец мог совпасть с границей куска.
+          break;
+        } else {
+          throw HttpException('CDN ответил ${response.statusCode}');
+        }
+
+        final before = received;
+        try {
+          await for (final chunk in response.stream.timeout(_stallTimeout)) {
+            if (ext == null && chunk.length >= 8) ext = _audioExt(chunk);
+            sink.add(chunk);
+            received += chunk.length;
+            onProgress?.call(
+              total != null && total > 0 ? received / total : -1,
+            );
+          }
+        } on Exception {
+          // Кусок оборвался на полпути — дописанное остаётся, повторяем с той
+          // позиции, до которой дошли.
+          if (received > before) fails = 0;
+          if (++fails > _chunkRetries) rethrow;
+          await Future<void>.delayed(_retryPause);
+          continue;
+        }
+
+        fails = 0;
+        if (total != null) {
+          done = received >= total;
+        } else if (received - before < _chunkBytes) {
+          // Длины не знаем — конец виден по недобору куска.
+          done = true;
+        }
       }
       await sink.flush();
     } finally {
       await sink.close();
     }
+
     if (received == 0) {
       await part.delete();
       throw const HttpException('пустой ответ');
     }
+    if (total != null && received < total) {
+      await part.delete();
+      throw const HttpException('файл доехал не целиком');
+    }
 
     final name = _uniqueName(dir, base, ext ?? 'mp3');
     return part.rename('${dir.path}/$name');
+  } catch (_) {
+    // Недокачанный огрызок не должен пережить ошибку: он никому не пригодится,
+    // а место в кеше занимает.
+    if (part.existsSync()) {
+      try {
+        await part.delete();
+      } catch (_) {
+        // Не удалился — переживём, о самой ошибке загрузки доложим выше.
+      }
+    }
+    rethrow;
   } finally {
     client.close();
   }
+}
+
+/// Общий размер файла из заголовка `Content-Range: bytes 0-1048575/3283727`.
+int? _rangeTotal(String? header) {
+  final size = header?.split('/').last;
+  return size == null ? null : int.tryParse(size);
 }
 
 /// Итог пакетной загрузки — общий для обоих скачиваний. Фразу из него делает

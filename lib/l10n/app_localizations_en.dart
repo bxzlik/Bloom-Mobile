@@ -141,6 +141,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonCreatedOn => 'Created';
 
   @override
+  String commonDurHm(int h, int m) {
+    return '${h}h ${m}m';
+  }
+
+  @override
+  String commonDurMin(int m) {
+    return '$m min';
+  }
+
+  @override
   String tracksCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

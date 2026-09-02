@@ -36,10 +36,10 @@ import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/glass.dart';
 import '../../detail/detail_nav.dart';
-import '../../offline/offline_actions.dart';
 import '../lib_order_store.dart';
 import '../pl_auto_store.dart';
 import 'create_playlist_sheet.dart';
+import 'list_meta.dart';
 import 'pl_auto_sheet.dart';
 import 'tracklist_screen.dart';
 
@@ -819,20 +819,12 @@ class _SetTileState extends ConsumerState<_SetTile> {
               ],
             ),
             const SizedBox(height: 2),
-            Row(
-              children: [
-                // Счётчик ужимается первым: тег офлайна короткий и должен
-                // оставаться целым, даже если название списка длинное.
-                Flexible(
-                  child: Text(
-                    context.l.tracksCount(playlist.trackIds.length),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.bodySmall,
-                  ),
-                ),
-                OfflineTag(tracks: tracks, style: theme.bodySmall),
-              ],
+            // Счётчик по составу плейлиста, а не по поднятым трекам: плитка
+            // рисуется и до того, как библиотека их резолвит.
+            ListMeta(
+              tracks: tracks,
+              count: playlist.trackIds.length,
+              style: theme.bodySmall,
             ),
           ],
         ),

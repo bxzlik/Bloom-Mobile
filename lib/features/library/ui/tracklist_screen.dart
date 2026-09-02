@@ -47,6 +47,7 @@ import '../refresh_playlist.dart';
 import 'convert_screen.dart';
 import 'dups_view.dart';
 import 'list_edit.dart';
+import 'list_meta.dart';
 import 'merge_sheet.dart';
 import 'list_hero.dart';
 import 'now_playing_jump.dart';
@@ -744,21 +745,14 @@ class _Hero extends ConsumerWidget {
             style: theme.headlineSmall?.copyWith(fontSize: 30),
           ),
           const SizedBox(height: 4),
-          Row(
-            children: [
-              Text(
-                // В «Истории» счётчика нет: список упирается в [kHistoryLimit],
-                // и число всегда показывало бы 200. Строку оставляем пустой —
-                // высота шапки задана снаружи, и выброшенная строка растянула
-                // бы отступ до ряда действий.
-                listId == 'history' ? '' : context.l.tracksCount(tracks.length),
-                style: theme.bodyMedium,
-              ),
-              // Сколько из списка уже на устройстве — та же подпись, что в
-              // шапке плейлиста на десктопе. Только у плейлиста: у «Всех
-              // треков» / «Любимых» / «Истории» на ПК её нет.
-              if (playlist != null) OfflineTag(tracks: tracks),
-            ],
+          // Счётчик, офлайн-тег и общее время: в «Истории» из них не остаётся
+          // ничего (см. [ListMeta]), но строка держит высоту сама.
+          ListMeta(
+            tracks: tracks,
+            style: theme.bodyMedium,
+            showCount: listId != 'history',
+            showOffline: playlist != null,
+            showDuration: listId != 'history',
           ),
           const SizedBox(height: 14),
           _Actions(
@@ -1047,10 +1041,9 @@ Future<void> showPlaylistMenu(
     header: SheetCoverHeader(
       cover: cover,
       title: playlist.name,
-      subtitle: context.l.tracksCount(tracks.length),
-      // Тот же офлайн-тег, что на плитке в библиотеке: «сколько скачано» видно
-      // и здесь, а не только на плитке.
-      subtitleTrailing: OfflineTag(
+      // Та же подпись, что на плитке в библиотеке: сколько треков, сколько из
+      // них скачано и сколько всего играть.
+      subtitleWidget: ListMeta(
         tracks: tracks,
         style: Theme.of(
           context,

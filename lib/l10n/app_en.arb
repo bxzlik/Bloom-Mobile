@@ -75,6 +75,19 @@
   "@commonAddedOn": { "description": "label before the date a track joined the library, in a sheet header" },
   "commonCreatedOn": "Created",
   "@commonCreatedOn": { "description": "label before the date a playlist was created, in a sheet header" },
+  "commonDurHm": "{h}h {m}m",
+  "@commonDurHm": {
+    "description": "desktop: fmtTotalDur — total time of a list, an hour or longer",
+    "placeholders": {
+      "h": { "type": "int" },
+      "m": { "type": "int" }
+    }
+  },
+  "commonDurMin": "{m} min",
+  "@commonDurMin": {
+    "description": "desktop: fmtTotalDur — total time of a list, under an hour",
+    "placeholders": { "m": { "type": "int" } }
+  },
 
   "@_plurals": {},
   "tracksCount": "{count, plural, one{{count} track} other{{count} tracks}}",

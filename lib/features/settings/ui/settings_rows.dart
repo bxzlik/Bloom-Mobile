@@ -39,9 +39,9 @@ class SettingsToggleRow extends StatelessWidget {
       title: title,
       subtitle: subtitle,
       trailing: BloomSwitch(value: value, onChanged: onChanged),
-      // Тап по строке делает то же, что тумблер: попасть по нему пальцем
-      // труднее, чем по строке во всю ширину.
-      onTap: () => onChanged(!value),
+      // Строка нажатие НЕ ловит — переключает только сам тумблер, как во всех
+      // остальных разделах («Интерфейс», Last.fm). Тап во всю ширину тут
+      // выглядел бы переходом на страницу, а не переключателем.
     );
   }
 }

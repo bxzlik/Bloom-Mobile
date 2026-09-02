@@ -45,6 +45,8 @@
   "commonOfflineBadge": "офлайн",
   "commonAddedOn": "Добавлен",
   "commonCreatedOn": "Создан",
+  "commonDurHm": "{h}ч {m}м",
+  "commonDurMin": "{m} мин",
 
   "tracksCount": "{count, plural, one{{count} трек} few{{count} трека} many{{count} треков} other{{count} треков}}",
   "followersCount": "{count, plural, one{{formatted} подписчик} few{{formatted} подписчика} many{{formatted} подписчиков} other{{formatted} подписчиков}}",

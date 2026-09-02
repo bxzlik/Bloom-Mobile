@@ -859,18 +859,20 @@ class SheetCoverHeader extends StatelessWidget {
     super.key,
     required this.cover,
     required this.title,
-    required this.subtitle,
+    this.subtitle = '',
     this.meta,
-    this.subtitleTrailing,
+    this.subtitleWidget,
   });
 
   final String? cover;
   final String title;
   final String subtitle;
 
-  /// Довесок к подписи справа — офлайн-тег списка («· 🖫 1/177»), тот же, что на
-  /// плитке в библиотеке. Виджетом, а не строкой: тег живой и со значком.
-  final Widget? subtitleTrailing;
+  /// Подпись виджетом вместо строки — мета-строка списка («177 треков · 🖫
+  /// 1/177 · 1ч 23м»), та же, что на плитке в библиотеке. Виджетом, а не
+  /// строкой: офлайн-тег живой и со значком. Когда задана, [subtitle] не
+  /// показывается.
+  final Widget? subtitleWidget;
 
   /// Когда плейлист завели. У списков, заведённых до появления этой метки
   /// (`createdAt == 0`), даты нет — строка тогда не встаёт вовсе.
@@ -925,25 +927,17 @@ class SheetCoverHeader extends StatelessWidget {
                         color: Colors.white,
                       ),
                     ),
-                    if (subtitle.isNotEmpty) ...[
+                    if (subtitleWidget != null || subtitle.isNotEmpty) ...[
                       const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          // Число треков ужимается первым: тег справа короткий
-                          // и обрезать его нечем.
-                          Flexible(
-                            child: Text(
-                              subtitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.bodyMedium?.copyWith(
-                                color: Colors.white70,
-                              ),
+                      subtitleWidget ??
+                          Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.bodyMedium?.copyWith(
+                              color: Colors.white70,
                             ),
                           ),
-                          ?subtitleTrailing,
-                        ],
-                      ),
                     ],
                     if (meta case final meta?) ...[
                       const SizedBox(height: 2),
