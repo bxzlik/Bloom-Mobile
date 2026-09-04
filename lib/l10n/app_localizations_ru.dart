@@ -1996,6 +1996,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get thDeleted => 'Пресет удалён';
 
   @override
+  String get thAutoName => 'Авто тема';
+
+  @override
+  String get thAutoCard => 'Под обложку трека';
+
+  @override
   String get apAutoAccent => 'Авто акцент';
 
   @override
@@ -2074,6 +2080,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get apNavLabelsActive => 'Только у активного';
+
+  @override
+  String get apNavHomeLogoRow => 'Логотип вместо «Главной»';
+
+  @override
+  String get apNavHomeLogoSub => 'Знак Bloom на месте иконки таба «Главная»';
 
   @override
   String get scHelp =>

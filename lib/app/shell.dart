@@ -34,6 +34,7 @@ import '../features/wrapped/ui/wrapped_sheet.dart';
 import '../features/wrapped/wrapped_format.dart';
 import '../features/wrapped/wrapped_store.dart';
 import '../shared/ui/atoms.dart';
+import '../shared/ui/bloom_mark.dart';
 import '../shared/ui/bloom_toast.dart';
 import '../shared/ui/cover_hero.dart';
 import '../shared/ui/glass.dart';
@@ -203,6 +204,7 @@ class _BloomShellState extends ConsumerState<BloomShell> {
               tabs: ref.watch(settingsProvider).navBarTabs,
               indicator: ref.watch(settingsProvider).navIndicator,
               labels: ref.watch(settingsProvider).navLabels,
+              homeLogo: ref.watch(settingsProvider).navHomeLogo,
               branch: shell.currentIndex,
               panelKey: _panelKey,
               onTap: (tab) => shell.goBranch(
@@ -415,6 +417,7 @@ class _NavBar extends StatelessWidget {
     required this.tabs,
     required this.indicator,
     required this.labels,
+    required this.homeLogo,
     required this.branch,
     required this.panelKey,
     required this.onTap,
@@ -432,6 +435,9 @@ class _NavBar extends StatelessWidget {
 
   /// Подписи под иконками, см. [NavLabels].
   final NavLabels labels;
+
+  /// Знак Bloom на месте иконки «Главной», см. [SettingsState.navHomeLogo].
+  final bool homeLogo;
 
   /// Открытая ветка каркаса. Не место в баре: у веток своя нумерация, а таба
   /// открытой ветки в баре может и не быть вовсе — тогда подсвечивать нечего.
@@ -530,6 +536,7 @@ class _NavBar extends StatelessWidget {
             child: _NavItem(
               spec: _items[tabs[i]]!,
               active: i == slot,
+              mark: homeLogo && tabs[i] == NavTab.home,
               iconSize: floating ? _kNavFloatIcon : _kNavIcon,
               textIconSize: floating ? _kNavFloatIconText : _kNavIconText,
               labels: labels,
@@ -806,6 +813,7 @@ class _NavItem extends StatefulWidget {
   const _NavItem({
     required this.spec,
     required this.active,
+    required this.mark,
     required this.iconSize,
     required this.textIconSize,
     required this.labels,
@@ -815,6 +823,9 @@ class _NavItem extends StatefulWidget {
 
   final _NavSpec spec;
   final bool active;
+
+  /// Вместо пары глифов — знак Bloom (настройка [SettingsState.navHomeLogo]).
+  final bool mark;
 
   /// Глиф без подписи под ним.
   final double iconSize;
@@ -992,6 +1003,12 @@ class _NavItemState extends State<_NavItem> with TickerProviderStateMixin {
     // всего три глифа, и тусклые они читаются как выключенные. Активный таб
     // и без разницы в яркости виден — по заливке и акценту.
     final color = Color.lerp(t.text, t.accent, m)!;
+    // Знак бренда парой глифов не бывает: он нарисован одной заливкой, и
+    // наплывать в нём нечему — выбранность показывает тот же цвет, что у
+    // остальных табов. Чуть мельче глифа: звезда занимает свой квадрат почти
+    // целиком, а у Solar внутри бокса есть поля, и в равном размере знак в
+    // ряду выпирал бы.
+    if (widget.mark) return BloomMark(size: size * 0.86, color: color);
     final fill = Curves.easeOut.transform(m);
     final line = 1 - const Interval(0.35, 1).transform(m);
     final spec = widget.spec;

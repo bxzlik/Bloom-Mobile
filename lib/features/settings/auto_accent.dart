@@ -5,6 +5,10 @@
 /// держим в поле: ползунок яркости пересчитывает акцент из него, не трогая
 /// картинку заново.
 ///
+/// Тот же мост обслуживает и авто-тему (`kAutoThemeId` в списке тем): скан
+/// обложки один и тот же, отличается только то, что из тона собирается — один
+/// акцент или все три цвета. Режимы взаимоисключающие, см. `settings_store`.
+///
 /// Провайдер держится живым из `main()` — как мост на десктопе монтируется в
 /// `App.tsx`: акцент должен ехать за треком, даже когда настройки закрыты.
 library;
@@ -22,6 +26,9 @@ final autoAccentProvider = Provider<AutoAccentBridge>((ref) {
     (_, _) => bridge.rescan(),
   );
   ref.listen(settingsProvider.select((s) => s.autoAccent), (_, _) {
+    bridge.rescan();
+  });
+  ref.listen(settingsProvider.select((s) => s.autoTheme), (_, _) {
     bridge.rescan();
   });
   // Яркость — пересчёт из уже известного тона, скан не нужен.
@@ -47,7 +54,8 @@ class AutoAccentBridge {
   Future<void> rescan() async {
     final settings = _ref.read(settingsProvider);
     final cover = _ref.read(playbackProvider).track?.cover;
-    if (!settings.autoAccent || cover == null || cover.isEmpty) return;
+    if (!settings.autoAccent && !settings.autoTheme) return;
+    if (cover == null || cover.isEmpty) return;
     final my = ++_token;
     final hsl = await extractCoverHsl(cover);
     if (my != _token || hsl == null) return;
@@ -66,9 +74,13 @@ class AutoAccentBridge {
   }
 
   void _apply(CoverHsl hsl) {
-    final level = _ref.read(settingsProvider).autoAccentL;
-    _ref
-        .read(settingsProvider.notifier)
-        .applyAutoAccent(accentFromHsl(hsl, level));
+    final settings = _ref.read(settingsProvider);
+    final controller = _ref.read(settingsProvider.notifier);
+    final accent = accentFromHsl(hsl, settings.autoAccentL);
+    if (settings.autoTheme) {
+      controller.applyAutoTheme(autoThemeSurfaceFromHsl(hsl), accent);
+    } else {
+      controller.applyAutoAccent(accent);
+    }
   }
 }

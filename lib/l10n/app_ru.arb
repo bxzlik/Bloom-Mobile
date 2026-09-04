@@ -611,6 +611,8 @@
   "thRandom": "Случайные цвета",
   "thCreated": "Тема «{name}» создана",
   "thDeleted": "Пресет удалён",
+  "thAutoName": "Авто тема",
+  "thAutoCard": "Под обложку трека",
   "apAutoAccent": "Авто акцент",
   "apAutoAccentSub": "Цвет акцента из обложки трека",
   "apAutoAccentLevel": "Яркость акцента",
@@ -637,6 +639,8 @@
   "apNavLabelsNone": "Нет",
   "apNavLabelsAlways": "Всегда",
   "apNavLabelsActive": "Только у активного",
+  "apNavHomeLogoRow": "Логотип вместо «Главной»",
+  "apNavHomeLogoSub": "Знак Bloom на месте иконки таба «Главная»",
 
   "scHelp": "Обычно не нужен: ключ подбирается сам — скрейпом сайта, а если не вышло, перебором известных. Своё значение имеет смысл вбить, если SoundCloud перестал отвечать.",
   "scHint": "Автоматически",

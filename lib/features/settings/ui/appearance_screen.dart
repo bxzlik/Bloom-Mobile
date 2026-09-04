@@ -71,7 +71,14 @@ class AppearanceScreen extends ConsumerWidget {
                       children: [
                         Text(context.l.apThemeRow, style: theme.titleMedium),
                         const SizedBox(height: 3),
-                        Text(settings.preset.name, style: theme.bodySmall),
+                        // У авто-темы пресетного имени нет — она режим, и
+                        // называется переводом, как на ПК.
+                        Text(
+                          settings.autoTheme
+                              ? context.l.thAutoName
+                              : settings.preset.name,
+                          style: theme.bodySmall,
+                        ),
                       ],
                     ),
                   ),
@@ -81,23 +88,26 @@ class AppearanceScreen extends ConsumerWidget {
               ),
             ),
             // Авто-акцент — тот же тоггл, что в десктопной секции «Интерфейс»:
-            // ручного выбора акцента нет ни там, ни здесь.
-            _SettingsCard(
-              child: _SettingsRow(
-                title: context.l.apAutoAccent,
-                subtitle: context.l.apAutoAccentSub,
-                trailing: BloomSwitch(
-                  value: settings.autoAccent,
-                  onChanged: controller.setAutoAccent,
+            // ручного выбора акцента нет ни там, ни здесь. При авто-теме его
+            // не показывают вовсе (так же на ПК): она красит акцент сама, и
+            // выбирать между ними нечего.
+            if (!settings.autoTheme)
+              _SettingsCard(
+                child: _SettingsRow(
+                  title: context.l.apAutoAccent,
+                  subtitle: context.l.apAutoAccentSub,
+                  trailing: BloomSwitch(
+                    value: settings.autoAccent,
+                    onChanged: controller.setAutoAccent,
+                  ),
                 ),
               ),
-            ),
             // Яркость — отдельной строкой под тогглом, ровно как на ПК: она
-            // нужна, только пока авто-акцент включён. Ползунок не на самой
-            // странице, а в шторке — тем же способом, что и ползунки
-            // прозрачности ниже: строка показывает значение, крутят его в
-            // шторке.
-            if (settings.autoAccent)
+            // нужна, пока включён авто-акцент ИЛИ авто-тема (акцент у них
+            // считается одной формулой). Ползунок не на самой странице, а в
+            // шторке — тем же способом, что и ползунки прозрачности ниже:
+            // строка показывает значение, крутят его в шторке.
+            if (settings.autoAccent || settings.autoTheme)
               _ValueRow(
                 icon: SolarIconsOutline.sun2,
                 title: context.l.apAutoAccentLevel,
@@ -212,6 +222,19 @@ class AppearanceScreen extends ConsumerWidget {
                   SolarIconsOutline.altArrowRight,
                   size: 20,
                   color: t.iconFgSb,
+                ),
+              ),
+            ),
+            // Тумблером, а не пятой шторкой: выбирать нечего — либо иконка,
+            // либо знак. Стоит последним в блоке, потому что настройка не про
+            // саму панель, а про один её таб.
+            _SettingsCard(
+              child: _SettingsRow(
+                title: context.l.apNavHomeLogoRow,
+                subtitle: context.l.apNavHomeLogoSub,
+                trailing: BloomSwitch(
+                  value: settings.navHomeLogo,
+                  onChanged: controller.setNavHomeLogo,
                 ),
               ),
             ),
@@ -1209,6 +1232,22 @@ Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Авто-тема — режим, а не палитра: стоит первой строкой во всю
+              // ширину, чтобы не читаться как ещё один пресет и не ломать пары
+              // ниже (десктопное `.tp-auto{grid-column:1/-1}`). Кружки живые —
+              // это те цвета, что сейчас сняты с обложки.
+              _AutoThemeCard(
+                preset: ThemePreset(
+                  id: kAutoThemeId,
+                  name: context.l.thAutoCard,
+                  bg: settings.preset.bg,
+                  blockColor: settings.preset.blockColor,
+                  accent: settings.tokens.accent,
+                ),
+                active: settings.autoTheme,
+                onTap: () => controller.setTheme(kAutoThemeId),
+              ),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 12,
                 runSpacing: 12,
@@ -1552,6 +1591,61 @@ class _ThemeDots extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Авто-тема в шторке: строка во всю ширину над сеткой пресетов. Своих цветов
+/// у неё нет — карточка красится теми, что сейчас на экране, и это как раз её
+/// лицо, снятое с обложки. Плиткой в пару к пресету не ставится намеренно: на
+/// ПК она тоже занимает весь ряд (`.tp-auto{grid-column:1/-1}`).
+class _AutoThemeCard extends StatelessWidget {
+  const _AutoThemeCard({
+    required this.preset,
+    required this.active,
+    required this.onTap,
+  });
+
+  final ThemePreset preset;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final preview = preset.tokens();
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: preview.bg,
+          borderRadius: BorderRadius.circular(t.radius),
+          border: Border.all(
+            color: active ? t.accent : preview.border,
+            width: active ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            _ThemeDots(preset: preset, size: 24, ring: preview.bg),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                preset.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: preview.text),
+              ),
+            ),
+            if (active)
+              Icon(SolarIconsBold.checkCircle, size: 18, color: preview.accent),
+          ],
+        ),
       ),
     );
   }

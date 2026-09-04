@@ -117,6 +117,23 @@ final coverAccentProvider = FutureProvider.autoDispose.family<Color?, String?>((
   return hsl == null ? null : accentFromHsl(hsl, level);
 });
 
+/// Светлота и потолок насыщенности поверхности авто-темы — десктопные
+/// `AUTO_THEME_BG_L` и `AUTO_THEME_BG_S_MAX`.
+const double _autoThemeBgL = 0.075;
+const double _autoThemeBgSMax = 0.5;
+
+/// Доминантный HSL → поверхность авто-темы: фон и блоки одним цветом.
+///
+/// Поверхность плоская, как у встроенных пресетов, и цвет обложки входит в неё
+/// лишь оттенком — иначе интерфейс превращается в цветное пятно. Светлота
+/// 0.075 сидит между Dark (#0a0a0a) и Midnight (#101828).
+Color autoThemeSurfaceFromHsl(CoverHsl hsl) => HSLColor.fromAHSL(
+  1,
+  hsl.h % 360,
+  (hsl.s * 0.6).clamp(0.0, _autoThemeBgSMax),
+  _autoThemeBgL,
+).toColor();
+
 /// Доминантный HSL → фон миниплеера в режиме «Цвет обложки» (десктопный
 /// `extractMpBgColor`).
 ///

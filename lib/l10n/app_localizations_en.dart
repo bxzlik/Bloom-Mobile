@@ -1971,6 +1971,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get thDeleted => 'Preset deleted';
 
   @override
+  String get thAutoName => 'Auto theme';
+
+  @override
+  String get thAutoCard => 'Match track cover';
+
+  @override
   String get apAutoAccent => 'Auto accent';
 
   @override
@@ -2049,6 +2055,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get apNavLabelsActive => 'Active tab only';
+
+  @override
+  String get apNavHomeLogoRow => 'Logo instead of Home';
+
+  @override
+  String get apNavHomeLogoSub =>
+      'Show the Bloom mark in place of the Home tab icon';
 
   @override
   String get scHelp =>

@@ -3500,6 +3500,18 @@ abstract class AppLocalizations {
   /// **'Preset deleted'**
   String get thDeleted;
 
+  /// desktop: theme.auto.name
+  ///
+  /// In en, this message translates to:
+  /// **'Auto theme'**
+  String get thAutoName;
+
+  /// desktop: theme.auto.card — label of the auto theme card in the picker
+  ///
+  /// In en, this message translates to:
+  /// **'Match track cover'**
+  String get thAutoCard;
+
   /// desktop: settings.interface.autoAccent.title
   ///
   /// In en, this message translates to:
@@ -3655,6 +3667,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Active tab only'**
   String get apNavLabelsActive;
+
+  /// desktop: settings.interface.nav.homeLogo.title
+  ///
+  /// In en, this message translates to:
+  /// **'Logo instead of Home'**
+  String get apNavHomeLogoRow;
+
+  /// desktop: settings.interface.nav.homeLogo.sub
+  ///
+  /// In en, this message translates to:
+  /// **'Show the Bloom mark in place of the Home tab icon'**
+  String get apNavHomeLogoSub;
 
   /// No description provided for @scHelp.
   ///

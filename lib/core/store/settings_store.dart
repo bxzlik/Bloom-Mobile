@@ -115,6 +115,12 @@ const List<ThemePreset> kThemePresets = [
   ),
 ];
 
+/// id авто-темы. В [kThemePresets] её нет намеренно: это РЕЖИМ, а не набор
+/// цветов — три цвета ей приносит обложка играющего трека (см.
+/// `features/settings/auto_accent.dart`), — но в списке тем она стоит такой же
+/// карточкой и выбирается тем же [SettingsController.setTheme].
+const String kAutoThemeId = 'auto';
+
 /// Границы и дефолт яркости авто-акцента — те же числа, что в десктопном
 /// `coverAccent.ts`: центр коридора светлоты, вокруг которого зажимается цвет
 /// обложки.
@@ -332,7 +338,17 @@ class SettingsState {
   final bool autoAccent;
 
   /// Яркость авто-акцента: центр коридора светлоты, см. [clampAutoAccentL].
+  /// Общая с авто-темой — акцент та считает по той же формуле.
   final double autoAccentL;
+
+  /// Поверхность авто-темы — цвет, снятый с обложки. Фон и блоки у неё
+  /// одинаковые, как у встроенных пресетов, поэтому цвет один.
+  ///
+  /// Живёт и когда авто-тема не выбрана: это последнее её лицо, им и рисуется
+  /// карточка в шторке выбора. При включении авто-темы сюда кладётся цвет
+  /// текущей темы — до первой обложки перекрашивать не из чего (десктопный
+  /// `applyTheme` в этом месте тоже остаётся на текущих цветах).
+  final Color? autoSurface;
 
   /// Ручной client_id SoundCloud (пусто — авто-подбор).
   final String? scClientId;
@@ -359,6 +375,12 @@ class SettingsState {
 
   /// Подписи под иконками, см. [NavLabels].
   final NavLabels navLabels;
+
+  /// Знак Bloom вместо иконки «Главной» — десктопная
+  /// `settings.interface.nav.homeLogo`. Пара глифов у таба при этом остаётся:
+  /// знак нарисован одной заливкой, и наплыва outline→bold ему не из чего
+  /// собрать — выбранность у него показывает только цвет.
+  final bool navHomeLogo;
 
   /// Обложка играющего трека как фон приложения — десктопная
   /// `settings.background.coverAsBg`. Своя картинка фона (её ставят в
@@ -388,6 +410,7 @@ class SettingsState {
     this.accent,
     this.autoAccent = false,
     this.autoAccentL = kAutoAccentLDefault,
+    this.autoSurface,
     this.scClientId,
     this.accentBadges = false,
     this.navStyle = NavBarStyle.bar,
@@ -395,6 +418,7 @@ class SettingsState {
     this.navOrder = kDefaultNavOrder,
     this.navIndicator = NavIndicator.pill,
     this.navLabels = NavLabels.none,
+    this.navHomeLogo = false,
     this.coverAsBg = false,
     this.localImport = LocalImportMode.inPlace,
     this.restoreQueue = false,
@@ -412,10 +436,28 @@ class SettingsState {
   /// Встроенные и свои разом — в этом порядке они и показываются.
   List<ThemePreset> get allThemes => [...kThemePresets, ...customThemes];
 
-  ThemePreset get preset => allThemes.firstWhere(
-    (p) => p.id == themeId,
-    orElse: () => kThemePresets.first,
-  );
+  /// Выбрана авто-тема: цвета едут за обложкой.
+  bool get autoTheme => themeId == kAutoThemeId;
+
+  ThemePreset get preset {
+    if (autoTheme) {
+      // Пресета с таким id нет — собираем его из снятых с обложки цветов.
+      // Название тут служебное: в интерфейсе у авто-темы своя строка из
+      // переводов (`thAutoName`), пресетное имя ей не показывают.
+      final surface = autoSurface ?? kThemePresets.first.bg;
+      return ThemePreset(
+        id: kAutoThemeId,
+        name: 'Auto',
+        bg: surface,
+        blockColor: surface,
+        accent: accent ?? kThemePresets.first.accent,
+      );
+    }
+    return allThemes.firstWhere(
+      (p) => p.id == themeId,
+      orElse: () => kThemePresets.first,
+    );
+  }
 
   BloomTokens get tokens => preset.tokens(accentOverride: accent);
 
@@ -427,6 +469,7 @@ class SettingsState {
     bool clearAccent = false,
     bool? autoAccent,
     double? autoAccentL,
+    Color? autoSurface,
     String? scClientId,
     bool clearClientId = false,
     bool? accentBadges,
@@ -435,6 +478,7 @@ class SettingsState {
     List<NavTab>? navOrder,
     NavIndicator? navIndicator,
     NavLabels? navLabels,
+    bool? navHomeLogo,
     bool? coverAsBg,
     LocalImportMode? localImport,
     bool? restoreQueue,
@@ -446,6 +490,7 @@ class SettingsState {
     accent: clearAccent ? null : (accent ?? this.accent),
     autoAccent: autoAccent ?? this.autoAccent,
     autoAccentL: autoAccentL ?? this.autoAccentL,
+    autoSurface: autoSurface ?? this.autoSurface,
     scClientId: clearClientId ? null : (scClientId ?? this.scClientId),
     accentBadges: accentBadges ?? this.accentBadges,
     navStyle: navStyle ?? this.navStyle,
@@ -453,6 +498,7 @@ class SettingsState {
     navOrder: navOrder ?? this.navOrder,
     navIndicator: navIndicator ?? this.navIndicator,
     navLabels: navLabels ?? this.navLabels,
+    navHomeLogo: navHomeLogo ?? this.navHomeLogo,
     coverAsBg: coverAsBg ?? this.coverAsBg,
     localImport: localImport ?? this.localImport,
     restoreQueue: restoreQueue ?? this.restoreQueue,
@@ -470,6 +516,7 @@ class SettingsController extends Notifier<SettingsState> {
   SettingsState build() {
     final raw = ref.read(jsonStoreProvider).readMap('settings');
     final accent = raw['accent'];
+    final autoSurface = raw['autoSurface'];
     final clientId = raw['scClientId'];
     final state = SettingsState(
       themeId: raw['themeId'] as String? ?? 'dark',
@@ -479,6 +526,7 @@ class SettingsController extends Notifier<SettingsState> {
       autoAccentL: clampAutoAccentL(
         (raw['autoAccentL'] as num?)?.toDouble() ?? kAutoAccentLDefault,
       ),
+      autoSurface: autoSurface is num ? Color(autoSurface.toInt()) : null,
       scClientId: clientId is String && clientId.isNotEmpty ? clientId : null,
       accentBadges: raw['accentBadges'] as bool? ?? false,
       navStyle: readNavStyle(raw['navStyle']),
@@ -486,6 +534,7 @@ class SettingsController extends Notifier<SettingsState> {
       navOrder: readNavOrder(raw['navOrder']),
       navIndicator: readNavIndicator(raw),
       navLabels: readNavLabels(raw['navLabels']),
+      navHomeLogo: raw['navHomeLogo'] as bool? ?? false,
       coverAsBg: raw['coverAsBg'] as bool? ?? false,
       localImport: readLocalImportMode(raw['localImport']),
       restoreQueue: raw['restoreQueue'] as bool? ?? false,
@@ -508,6 +557,8 @@ class SettingsController extends Notifier<SettingsState> {
       if (state.accent != null) 'accent': state.accent!.toARGB32(),
       'autoAccent': state.autoAccent,
       'autoAccentL': state.autoAccentL,
+      if (state.autoSurface != null)
+        'autoSurface': state.autoSurface!.toARGB32(),
       if (state.scClientId != null) 'scClientId': state.scClientId,
       'accentBadges': state.accentBadges,
       'navStyle': state.navStyle.name,
@@ -515,6 +566,7 @@ class SettingsController extends Notifier<SettingsState> {
       'navOrder': [for (final tab in state.navOrder) tab.name],
       'navIndicator': state.navIndicator.name,
       'navLabels': state.navLabels.name,
+      'navHomeLogo': state.navHomeLogo,
       'coverAsBg': state.coverAsBg,
       'localImport': state.localImport.name,
       'restoreQueue': state.restoreQueue,
@@ -524,8 +576,22 @@ class SettingsController extends Notifier<SettingsState> {
   }
 
   /// Смена темы НЕ трогает акцент и радиус — это независимые настройки вида.
+  ///
+  /// Исключение — авто-тема: акцент у неё свой, снятый с обложки. На входе она
+  /// затравливается текущими цветами (перекрашивать пока не из чего) и гасит
+  /// авто-акцент — вдвоём они спорили бы за один акцент; на выходе снятый цвет
+  /// сбрасывается, иначе выбранный пресет остался бы с чужим акцентом.
   void setTheme(String id) {
-    state = state.copyWith(themeId: id);
+    if (id == kAutoThemeId) {
+      state = state.copyWith(
+        themeId: id,
+        autoSurface: state.preset.bg,
+        accent: state.tokens.accent,
+        autoAccent: false,
+      );
+    } else {
+      state = state.copyWith(themeId: id, clearAccent: state.autoTheme);
+    }
     _save();
   }
 
@@ -579,9 +645,19 @@ class SettingsController extends Notifier<SettingsState> {
   /// Включить/выключить авто-акцент. При выключении акцент сразу возвращается
   /// к цвету пресета — на десктопе там точка восстановления (`accentManual`),
   /// но ручного акцента у нас нет, восстанавливать нечего.
+  ///
+  /// Включение снимает авто-тему — она шире, и красить акцент им обоим нельзя
+  /// (то же правило в десктопном `setAutoAccent`). Уходить приходится на
+  /// встроенную тему: замороженных цветов, как `activeThemeId: 'custom'` на ПК,
+  /// у нас держать негде. На экране вида тоггла при авто-теме и нет вовсе —
+  /// сюда приходят разве что из онбординга.
   void setAutoAccent(bool value) {
     state = value
-        ? state.copyWith(autoAccent: true)
+        ? state.copyWith(
+            autoAccent: true,
+            themeId: state.autoTheme ? kThemePresets.first.id : null,
+            clearAccent: state.autoTheme,
+          )
         : state.copyWith(autoAccent: false, clearAccent: true);
     _save();
   }
@@ -598,6 +674,19 @@ class SettingsController extends Notifier<SettingsState> {
     if (!state.autoAccent) return;
     if (state.accent?.toARGB32() == color.toARGB32()) return;
     state = state.copyWith(accent: color);
+    _save();
+  }
+
+  /// Цвета авто-темы, посчитанные от обложки: поверхность (фон = блоки) и
+  /// акцент. Приходят из того же моста; тему могли успеть переключить, пока
+  /// грузилась картинка, — тогда молча выходим.
+  void applyAutoTheme(Color surface, Color accent) {
+    if (!state.autoTheme) return;
+    if (state.autoSurface?.toARGB32() == surface.toARGB32() &&
+        state.accent?.toARGB32() == accent.toARGB32()) {
+      return;
+    }
+    state = state.copyWith(autoSurface: surface, accent: accent);
     _save();
   }
 
@@ -649,6 +738,11 @@ class SettingsController extends Notifier<SettingsState> {
 
   void setNavLabels(NavLabels value) {
     state = state.copyWith(navLabels: value);
+    _save();
+  }
+
+  void setNavHomeLogo(bool value) {
+    state = state.copyWith(navHomeLogo: value);
     _save();
   }
 
