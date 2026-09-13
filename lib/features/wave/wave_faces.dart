@@ -22,12 +22,14 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/entities/entities.dart';
+import '../../core/store/history_store.dart';
 import '../../core/store/library_store.dart';
+import '../../core/store/play_stats.dart';
 import '../../providers/soundcloud/sc_provider.dart' show trackFromSc;
 import '../../providers/yandex/ym_provider.dart' show trackFromYm;
 import '../../providers/yandex/yandex.dart' as ym;
 import 'wave_seeds.dart';
-import 'wave_sources.dart';
+import '../../providers/soundcloud/sc_sources.dart';
 import 'wave_store.dart';
 import 'wave_types.dart';
 
@@ -86,6 +88,8 @@ void resetWaveFaces() => _cache.clear();
 WaveLibrary _view(Ref ref) => WaveLibrary(
   lib: ref.read(libraryProvider),
   disliked: ref.read(waveStoreProvider).dislikes.keys.toSet(),
+  stats: ref.read(playStatsProvider),
+  recent: [for (final row in ref.read(historyRowsProvider)) row.id],
 );
 
 /// Обложки кольца выбранной площадки.

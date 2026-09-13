@@ -59,6 +59,11 @@ Track trackFromYm(YmRawTrack t) => Track(
   // одного: не гонять запрос за треком, который Яндекс сам пометил
   // недоступным.
   sourceData: {'available': t.available},
+  // Чартовые поля есть только у ответа чарта; у прочих запросов места нет — и
+  // интерфейс не рисует ни цифры, ни стрелки.
+  chartPos: t.chartPos > 0 ? t.chartPos : null,
+  chartShift: t.chartShift,
+  chartNew: t.chartNew,
 );
 
 Artist artistFromYm(YmRawArtist a) => Artist(
@@ -76,8 +81,11 @@ Playlist albumFromYm(YmRawAlbum a) => Playlist(
   // четырнадцатью хуже, чем ничего.
   trackCount: a.trackCount > 0 ? a.trackCount : null,
   ownerName: _blankToNull(a.artist),
+  ownerAvatar: _blankToNull(a.artistCover),
+  ownerId: a.artistId.isEmpty ? null : ymArtistId(a.artistId),
   year: _blankToNull(a.year),
   releaseDate: _blankToNull(a.releaseDate),
+  albumType: _blankToNull(a.albumType),
   sourceUrl: 'https://music.yandex.ru/album/${a.id}',
   isAlbum: true,
   source: MusicSource.yandex,
@@ -219,6 +227,16 @@ class YandexProvider extends MusicProvider {
     return trackFromYm(await ym.trackOne(numeric));
   }
 
+  /// Похожие для витрин главной. Под префиксом `ym_` живут и артисты, альбомы,
+  /// плейлисты — похожих у них нет, в сеть за ними не ходим.
+  @override
+  Future<List<Track>?> getSimilarTracks(String seedId) async {
+    if (!RegExp(r'^ym_\d+$').hasMatch(seedId)) return const [];
+    return (await ym.similarTracks(
+      seedId.substring(3),
+    )).map(trackFromYm).toList();
+  }
+
   @override
   Future<ArtistPageData?> getArtist(String id) async {
     final numeric = ymNumericId(id);
@@ -231,12 +249,33 @@ class YandexProvider extends MusicProvider {
         avatar: _blankToNull(e.cover),
         source: MusicSource.yandex,
       ),
-      // «Популярные» — из brief-info; «Треки» — вся дискография, как раскладка
+      // «Популярные» — из brief-info; «Треки» — первая страница дискографии,
+      // остальное — «Загрузить ещё» через [getArtistTracksPage]. Раскладка
       // страницы артиста у SoundCloud.
       topTracks: e.popularTracks.map(trackFromYm).toList(),
       tracks: e.tracks.map(trackFromYm).toList(),
       albums: e.albums.map(albumFromYm).toList(),
       similarArtists: e.similarArtists.map(artistFromYm).toList(),
+      tracksCursor: e.tracksNextPage == null
+          ? null
+          : '$numeric:${e.tracksNextPage}',
+      tracksTotal: e.tracksTotal,
+    );
+  }
+
+  /// Догрузка «Треков» артиста. Курсор — `<id артиста>:<номер страницы>`
+  /// (см. [getArtist]).
+  @override
+  Future<TrackPage?> getArtistTracksPage(String cursor) async {
+    final m = RegExp(r'^(\d+):(\d+)$').firstMatch(cursor);
+    if (m == null) return null;
+    final id = m.group(1)!;
+    final page = await ym.artistTracksPage(id, int.parse(m.group(2)!));
+    final next = page.nextPage;
+    return TrackPage(
+      tracks: page.tracks.map(trackFromYm).toList(),
+      hasMore: next != null,
+      cursor: next == null ? null : '$id:$next',
     );
   }
 

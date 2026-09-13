@@ -99,7 +99,9 @@ class _FromResume extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final track = data.track;
     final total = track.duration;
-    final start = ref.read(playbackProvider.notifier).resumeSession;
+    // Очередь — целиком, какой была до очистки (`fullQueue`).
+    void start(ResumeData data) =>
+        ref.read(playbackProvider.notifier).resumeSession(data.forContinue());
     return _CardShell(
       track: track,
       progress: total.inMilliseconds <= 0

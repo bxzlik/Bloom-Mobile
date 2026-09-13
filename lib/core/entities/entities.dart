@@ -92,6 +92,19 @@ class Track {
   /// Сырьё площадки для [MusicProvider.resolveStream] и скачивания.
   final Map<String, dynamic>? sourceData;
 
+  /// Место в чарте площадки (1-based) — только у треков из `getCharts()`
+  /// (витрина на главной и страница «Чарт»), у остальных `null`.
+  ///
+  /// В [toJson] не пишется намеренно: место меняется каждые сутки, и трек,
+  /// сохранённый из чарта в библиотеку, носил бы вчерашнее место вечно.
+  final int? chartPos;
+
+  /// Сдвиг места за сутки: >0 — поднялся, <0 — опустился.
+  final int chartShift;
+
+  /// Новичок чарта — вместо стрелки «нов.».
+  final bool chartNew;
+
   const Track({
     required this.id,
     required this.name,
@@ -113,6 +126,9 @@ class Track {
     this.creditedArtist,
     this.playCount,
     this.sourceData,
+    this.chartPos,
+    this.chartShift = 0,
+    this.chartNew = false,
   });
 
   /// Сериализация для локальной библиотеки. `sourceData` пишется как есть —
@@ -270,12 +286,20 @@ class Playlist {
   final String? ownerName;
   final String? ownerAvatar;
 
+  /// Сквозной id артиста-владельца (альбом) — переход на его страницу с
+  /// карточки релиза.
+  final String? ownerId;
+
   /// Год выпуска (у альбомов; у плейлистов чаще пусто).
   final String? year;
 
   /// Полная дата релиза, если площадка знает её точнее года — см.
   /// [Track.releaseDate].
   final String? releaseDate;
+
+  /// Тип релиза от площадки: `single` | `compilation` | `podcast` | …;
+  /// `null` — обычный альбом.
+  final String? albumType;
   final MusicSource source;
   final bool isAlbum;
 
@@ -293,8 +317,10 @@ class Playlist {
     this.trackCount,
     this.ownerName,
     this.ownerAvatar,
+    this.ownerId,
     this.year,
     this.releaseDate,
+    this.albumType,
     this.isAlbum = false,
     this.duration,
     this.sourceUrl,
@@ -307,8 +333,10 @@ class Playlist {
     if (trackCount != null) 'trackCount': trackCount,
     if (ownerName != null) 'ownerName': ownerName,
     if (ownerAvatar != null) 'ownerAvatar': ownerAvatar,
+    if (ownerId != null) 'ownerId': ownerId,
     if (year != null) 'year': year,
     if (releaseDate != null) 'releaseDate': releaseDate,
+    if (albumType != null) 'albumType': albumType,
     if (isAlbum) 'isAlbum': true,
     if (sourceUrl != null) 'sourceUrl': sourceUrl,
   };
@@ -325,8 +353,10 @@ class Playlist {
       trackCount: (json['trackCount'] as num?)?.toInt(),
       ownerName: json['ownerName'] as String?,
       ownerAvatar: json['ownerAvatar'] as String?,
+      ownerId: json['ownerId'] as String?,
       year: json['year'] as String?,
       releaseDate: json['releaseDate'] as String?,
+      albumType: json['albumType'] as String?,
       isAlbum: json['isAlbum'] == true,
       sourceUrl: json['sourceUrl'] as String?,
     );

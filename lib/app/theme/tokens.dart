@@ -75,9 +75,9 @@ class BloomTokens extends ThemeExtension<BloomTokens> {
 
   /// Опасное и ошибочное: «Удалить», «Очистить», опасная зона, текст ошибок.
   ///
-  /// Отдельно от [sysFavIco] намеренно. Раньше и то и другое красилось розовым
-  /// `#FF5578` — цветом системного «Любимое», — и удаление выходило розовым, а
-  /// не красным. Значение с десктопа, `.plctx-item.danger` (`#E03030`).
+  /// Отдельно от [sysFavIco] намеренно: значение сейчас то же (`#E03030`, как
+  /// на ПК), но роли разные, и менять одно не должно тянуть другое. Значение с
+  /// десктопа, `.plctx-item.danger`.
   final Color danger;
   final Color dangerTint;
 
@@ -190,8 +190,10 @@ class BloomTokens extends ThemeExtension<BloomTokens> {
       danger: kBloomDanger,
       dangerTint: kBloomDanger.withValues(alpha: 0.16),
       folderTint: accent.withValues(alpha: 0.12),
-      sysFavTint: const Color(0xFFE03454).withValues(alpha: 0.16),
-      sysFavIco: const Color(0xFFFF5578),
+      sysFavTint: const Color(0xFFE03030).withValues(alpha: 0.16),
+      // Один красный «избранного» на всё приложение — `--sys-fav-ico` с ПК.
+      // Все активные сердечки берут его отсюда, своих копий цвета не держат.
+      sysFavIco: const Color(0xFFE03030),
       sysHistTint: const Color(0xFFFFB400).withValues(alpha: 0.15),
       sysHistIco: const Color(0xFFFFB400),
       sysAllTint: const Color(0xFF2D83A8).withValues(alpha: 0.16),

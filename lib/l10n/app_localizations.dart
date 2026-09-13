@@ -443,14 +443,92 @@ abstract class AppLocalizations {
   /// No description provided for @homeCharts.
   ///
   /// In en, this message translates to:
-  /// **'Charts'**
+  /// **'Chart'**
   String get homeCharts;
 
   /// No description provided for @homeNewReleases.
   ///
   /// In en, this message translates to:
-  /// **'New releases'**
+  /// **'Releases'**
   String get homeNewReleases;
+
+  /// desktop: chart.up
+  ///
+  /// In en, this message translates to:
+  /// **'Up {n}'**
+  String chartUp(int n);
+
+  /// desktop: chart.down
+  ///
+  /// In en, this message translates to:
+  /// **'Down {n}'**
+  String chartDown(int n);
+
+  /// No description provided for @chartSame.
+  ///
+  /// In en, this message translates to:
+  /// **'No change'**
+  String get chartSame;
+
+  /// No description provided for @chartNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New entry'**
+  String get chartNew;
+
+  /// No description provided for @chartNewShort.
+  ///
+  /// In en, this message translates to:
+  /// **'new'**
+  String get chartNewShort;
+
+  /// No description provided for @relAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'album'**
+  String get relAlbum;
+
+  /// No description provided for @relSingle.
+  ///
+  /// In en, this message translates to:
+  /// **'single'**
+  String get relSingle;
+
+  /// No description provided for @relCompilation.
+  ///
+  /// In en, this message translates to:
+  /// **'compilation'**
+  String get relCompilation;
+
+  /// No description provided for @relPodcast.
+  ///
+  /// In en, this message translates to:
+  /// **'podcast'**
+  String get relPodcast;
+
+  /// No description provided for @homeForYou.
+  ///
+  /// In en, this message translates to:
+  /// **'For you'**
+  String get homeForYou;
+
+  /// No description provided for @homeForYouAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All picks'**
+  String get homeForYouAll;
+
+  /// No description provided for @homeSimilarTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Similar to'**
+  String get homeSimilarTo;
+
+  /// No description provided for @homeSimilarArtist.
+  ///
+  /// In en, this message translates to:
+  /// **'Artist'**
+  String get homeSimilarArtist;
 
   /// desktop: settings.view.mpEl.queue
   ///
@@ -1760,6 +1838,12 @@ abstract class AppLocalizations {
   /// **'Release date'**
   String get tiReleased;
 
+  /// No description provided for @setRelease.
+  ///
+  /// In en, this message translates to:
+  /// **'Release'**
+  String get setRelease;
+
   /// No description provided for @tiDuration.
   ///
   /// In en, this message translates to:
@@ -2887,78 +2971,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Instead of the cover'**
   String get pvLyricsModeReplace;
-
-  /// desktop: settings.view.lyricsStyle.fill
-  ///
-  /// In en, this message translates to:
-  /// **'Fill'**
-  String get pvLyricsFill;
-
-  /// No description provided for @pvLyricsFillSub.
-  ///
-  /// In en, this message translates to:
-  /// **'what measures progress along the line; granular fills need synced lyrics'**
-  String get pvLyricsFillSub;
-
-  /// No description provided for @pvLyricsFillLine.
-  ///
-  /// In en, this message translates to:
-  /// **'By line'**
-  String get pvLyricsFillLine;
-
-  /// No description provided for @pvLyricsFillWord.
-  ///
-  /// In en, this message translates to:
-  /// **'By word'**
-  String get pvLyricsFillWord;
-
-  /// No description provided for @pvLyricsFillLetter.
-  ///
-  /// In en, this message translates to:
-  /// **'By letter'**
-  String get pvLyricsFillLetter;
-
-  /// No description provided for @pvLyricsFillWipe.
-  ///
-  /// In en, this message translates to:
-  /// **'Smooth'**
-  String get pvLyricsFillWipe;
-
-  /// desktop: settings.view.lyricsStyle.fx
-  ///
-  /// In en, this message translates to:
-  /// **'Effect'**
-  String get pvLyricsFx;
-
-  /// No description provided for @pvLyricsFxSub.
-  ///
-  /// In en, this message translates to:
-  /// **'how the part being sung lights up'**
-  String get pvLyricsFxSub;
-
-  /// No description provided for @pvLyricsFxNone.
-  ///
-  /// In en, this message translates to:
-  /// **'None'**
-  String get pvLyricsFxNone;
-
-  /// No description provided for @pvLyricsFxFade.
-  ///
-  /// In en, this message translates to:
-  /// **'Soft'**
-  String get pvLyricsFxFade;
-
-  /// No description provided for @pvLyricsFxGlow.
-  ///
-  /// In en, this message translates to:
-  /// **'Glow'**
-  String get pvLyricsFxGlow;
-
-  /// No description provided for @pvLyricsFxSpring.
-  ///
-  /// In en, this message translates to:
-  /// **'Spring'**
-  String get pvLyricsFxSpring;
 
   /// desktop: settings.view.queueView — the group holding the queue view cards
   ///
@@ -5288,6 +5300,24 @@ abstract class AppLocalizations {
   /// **'Bring the track, queue and position back on launch — paused'**
   String get audRestoreSub;
 
+  /// No description provided for @audQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Queue'**
+  String get audQueue;
+
+  /// No description provided for @audAutoSimilarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Autoplay similar'**
+  String get audAutoSimilarTitle;
+
+  /// No description provided for @audAutoSimilarSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatically load similar tracks when there is no next one'**
+  String get audAutoSimilarSub;
+
   /// desktop: settings.system.autoplay.title
   ///
   /// In en, this message translates to:
@@ -5671,6 +5701,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'YouTube is not responding'**
   String get errYtmNetwork;
+
+  /// desktop: settings.interface.cat.font
+  ///
+  /// In en, this message translates to:
+  /// **'FONT'**
+  String get apFontCat;
+
+  /// desktop: settings.interface.font.title
+  ///
+  /// In en, this message translates to:
+  /// **'Interface font'**
+  String get apFontTitle;
+
+  /// desktop: settings.interface.font.desc
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a font for the whole app'**
+  String get apFontDesc;
+
+  /// desktop: settings.interface.font.add
+  ///
+  /// In en, this message translates to:
+  /// **'Upload your own font'**
+  String get apFontAdd;
+
+  /// desktop: settings.interface.font.remove
+  ///
+  /// In en, this message translates to:
+  /// **'Remove font'**
+  String get apFontRemove;
+
+  /// desktop: settings.interface.font.toast.added
+  ///
+  /// In en, this message translates to:
+  /// **'Fonts added: {n}'**
+  String apFontAdded(int n);
+
+  /// desktop: settings.interface.font.toast.badFormat, without .woff/.woff2 — Flutter cannot read them
+  ///
+  /// In en, this message translates to:
+  /// **'Only .ttf and .otf are supported'**
+  String get apFontBadFormat;
+
+  /// desktop: settings.interface.font.toast.tooBig
+  ///
+  /// In en, this message translates to:
+  /// **'Font file is larger than {mb} MB'**
+  String apFontTooBig(int mb);
+
+  /// desktop: settings.interface.font.toast.readErr
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read the font file'**
+  String get apFontReadErr;
 }
 
 class _AppLocalizationsDelegate

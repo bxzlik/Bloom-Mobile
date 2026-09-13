@@ -65,6 +65,10 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
   /// курсорами, и список растёт.
   List<Track> _tracks = const [];
   String? _tracksCursor;
+
+  /// Сколько треков у артиста всего по данным площадки — см.
+  /// [ArtistPageData.tracksTotal].
+  int? _tracksTotal;
   List<RepostItem> _reposts = const [];
   String? _repostsCursor;
 
@@ -103,6 +107,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         _data = data;
         _tracks = data.tracks;
         _tracksCursor = data.tracksCursor;
+        _tracksTotal = data.tracksTotal;
         _reposts = data.reposts;
         _repostsCursor = data.repostsCursor;
       });
@@ -272,12 +277,18 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
     );
   }
 
-  /// Подпись под именем: подписчики и сколько треков загружено.
+  /// Подпись под именем: подписчики и сколько треков. Пока треки приходят
+  /// порциями, счётчик берём у площадки (у Яндекса это `pager.total`) — иначе
+  /// в шапке стояло бы «50 треков» у артиста с тремя сотнями.
   String _subtitle(Artist? artist) {
+    final total = _tracksTotal ?? 0;
+    final count = _tracksCursor != null && total > _tracks.length
+        ? total
+        : _tracks.length;
     final parts = <String>[
       if (artist?.followers case final n? when n > 0)
         context.l.followersCount(n, compactCount(n)),
-      if (_tracks.isNotEmpty) context.l.tracksCount(_tracks.length),
+      if (count > 0) context.l.tracksCount(count),
     ];
     return parts.join(' · ');
   }

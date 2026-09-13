@@ -13,6 +13,7 @@ import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/l10n/l10n.dart';
 import 'package:bloom/core/store/json_store.dart';
 import 'package:bloom/core/store/library_store.dart';
+import 'package:bloom/core/store/play_log.dart';
 import 'package:bloom/features/wave/ui/wave_card.dart';
 import 'package:bloom/features/wave/ui/wave_dislikes_sheet.dart';
 import 'package:bloom/features/wave/ui/wave_ring.dart';
@@ -35,6 +36,8 @@ ProviderContainer _container([JsonStore? store]) {
   final c = ProviderContainer(
     overrides: [
       jsonStoreProvider.overrideWithValue(store ?? JsonStore.memory()),
+      // Волна читает статистику прослушиваний, а та — журнал.
+      playLogStoreProvider.overrideWithValue(JsonStore.memory()),
     ],
   );
   addTearDown(c.dispose);

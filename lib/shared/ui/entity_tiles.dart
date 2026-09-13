@@ -16,6 +16,7 @@ import '../../features/player/play_source.dart';
 import '../../features/player/player_controller.dart';
 import '../util/format.dart';
 import 'atoms.dart';
+import 'chart_trend.dart';
 import 'cover_hero.dart';
 import 'platform_logo.dart';
 import 'track_actions.dart';
@@ -70,6 +71,7 @@ class TrackRow extends ConsumerWidget {
     this.mark,
     this.onOpen,
     this.number,
+    this.rank,
   });
 
   final Track track;
@@ -78,6 +80,9 @@ class TrackRow extends ConsumerWidget {
 
   /// Порядковый номер вместо обложки — см. [TrackRowShell.number].
   final int? number;
+
+  /// Место в чарте — см. [TrackRowShell.rank].
+  final int? rank;
 
   /// Позвать перед запуском — «записать в недавно открытые» на экране поиска.
   /// В остальных списках не задан: недавние копит только поиск, как на ПК
@@ -122,6 +127,7 @@ class TrackRow extends ConsumerWidget {
       dragIndex: dragIndex,
       mark: mark,
       number: number,
+      rank: rank,
     );
   }
 }
@@ -139,9 +145,14 @@ class TrackRowShell extends StatelessWidget {
     this.dragIndex,
     this.mark,
     this.number,
+    this.rank,
   });
 
   final Track track;
+
+  /// Место в чарте: колонка «номер + динамика» ПЕРЕД обложкой — обложка, в
+  /// отличие от [number], остаётся. Только на странице «Чарт».
+  final int? rank;
 
   /// «Играет сейчас»: название акцентом, вместо длительности эквалайзер.
   /// Считает вызывающий — в очереди один трек может стоять дважды, и по id их
@@ -171,9 +182,20 @@ class TrackRowShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final drag = dragIndex;
-    final Widget cover = switch (number) {
+    final Widget plain = switch (number) {
       final n? => _Number(number: n, active: active),
       null => _Cover(track: track),
+    };
+    final Widget cover = switch (rank) {
+      final r? => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _Rank(rank: r, track: track, active: active),
+          const SizedBox(width: 6),
+          plain,
+        ],
+      ),
+      null => plain,
     };
 
     return InkWell(
@@ -253,6 +275,39 @@ class _Number extends StatelessWidget {
             fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Место в чарте и его динамика — десктопный `.trrank`: цифра, под ней «▲2».
+class _Rank extends StatelessWidget {
+  const _Rank({required this.rank, required this.track, required this.active});
+
+  final int rank;
+  final Track track;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return SizedBox(
+      width: kTrackRowNumber + 4,
+      height: kTrackRowCover,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '$rank',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: active ? t.accent : t.text,
+              fontWeight: FontWeight.w700,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+          const SizedBox(height: 3),
+          ChartTrend(track: track),
+        ],
       ),
     );
   }
@@ -753,10 +808,20 @@ class _ArtistCardState extends State<ArtistCard> {
 /// [size] `null` — на всю ширину ячейки сетки, число — фиксированная ширина
 /// карусели.
 class SetCard extends StatefulWidget {
-  const SetCard({super.key, required this.set, this.size = 132, this.onOpen});
+  const SetCard({
+    super.key,
+    required this.set,
+    this.size = 132,
+    this.onOpen,
+    this.subtitle,
+  });
 
   final Playlist set;
   final double? size;
+
+  /// Своя подпись вместо «владелец · год · N треков» — у сетки «Релизы» там
+  /// «артист · сингл».
+  final String? subtitle;
 
   /// См. [TrackRow.onOpen].
   final VoidCallback? onOpen;
@@ -776,11 +841,13 @@ class _SetCardState extends State<SetCard> {
     final flight = _flightFor(set.cover, _tag);
     // Год и счётчик есть не всегда — пустые части просто выпадают, вместо
     // «0 треков» и пустых разделителей.
-    final sub = [
-      set.ownerName,
-      set.year,
-      if (set.trackCount != null) context.l.tracksCount(set.trackCount!),
-    ].whereType<String>().where((s) => s.isNotEmpty).join(' · ');
+    final sub =
+        widget.subtitle ??
+        [
+          set.ownerName,
+          set.year,
+          if (set.trackCount != null) context.l.tracksCount(set.trackCount!),
+        ].whereType<String>().where((s) => s.isNotEmpty).join(' · ');
 
     final content = LayoutBuilder(
       builder: (context, box) => Column(

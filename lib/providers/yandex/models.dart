@@ -38,6 +38,15 @@ class YmRawTrack {
   final String releaseDate;
   final bool available;
 
+  /// Место в чарте (1-based); 0 — трек пришёл не из чарта.
+  final int chartPos;
+
+  /// Сдвиг места за сутки: >0 — поднялся, <0 — опустился, 0 — без изменений.
+  final int chartShift;
+
+  /// Новичок чарта (`progress: "new"`) — вместо стрелки «нов.».
+  final bool chartNew;
+
   const YmRawTrack({
     required this.id,
     required this.title,
@@ -48,7 +57,31 @@ class YmRawTrack {
     required this.year,
     required this.available,
     this.releaseDate = '',
+    this.chartPos = 0,
+    this.chartShift = 0,
+    this.chartNew = false,
   });
+
+  /// Тот же трек с местом в чарте: чартовые поля лежат не в самом треке, а в
+  /// обёртке элемента чарта, и проставляются поверх разобранного.
+  YmRawTrack withChart({
+    required int pos,
+    required int shift,
+    required bool isNew,
+  }) => YmRawTrack(
+    id: id,
+    title: title,
+    artist: artist,
+    artistId: artistId,
+    cover: cover,
+    duration: duration,
+    year: year,
+    available: available,
+    releaseDate: releaseDate,
+    chartPos: pos,
+    chartShift: shift,
+    chartNew: isNew,
+  );
 }
 
 class YmRawArtist {
@@ -74,6 +107,17 @@ class YmRawAlbum {
   final String releaseDate;
   final int trackCount;
 
+  /// id первого артиста — переход на его страницу с карточки релиза.
+  final String artistId;
+
+  /// Фото первого артиста 1000×1000 — крупный круг карточки релиза. Крупнее
+  /// обложек: круг почти во всю ширину карточки, и 400×400 там мылит.
+  final String artistCover;
+
+  /// Тип релиза от Яндекса: `single` | `compilation` | `podcast` | …; пусто —
+  /// обычный альбом.
+  final String albumType;
+
   const YmRawAlbum({
     required this.id,
     required this.title,
@@ -82,6 +126,9 @@ class YmRawAlbum {
     required this.year,
     required this.trackCount,
     this.releaseDate = '',
+    this.artistId = '',
+    this.artistCover = '',
+    this.albumType = '',
   });
 }
 
@@ -140,7 +187,30 @@ class YmEntity {
     this.releaseDate = '',
     this.ownerAvatar = '',
     this.similarArtists = const [],
+    this.tracksNextPage,
+    this.tracksTotal,
   });
+
+  /// Только у артиста: номер следующей страницы «Треков»; `null` — дискография
+  /// уместилась в первую.
+  final int? tracksNextPage;
+
+  /// Только у артиста: всего треков в «Треках» (`pager.total`) — счётчик в
+  /// шапке, пока догружено не всё.
+  final int? tracksTotal;
+}
+
+/// Страница «Треков» артиста (догрузка по «Загрузить ещё»).
+class YmTracksPage {
+  const YmTracksPage({this.tracks = const [], this.nextPage, this.total});
+
+  final List<YmRawTrack> tracks;
+
+  /// Номер следующей страницы; `null` — это была последняя.
+  final int? nextPage;
+
+  /// Всего треков у артиста; `null` — Яндекс не отдал pager.
+  final int? total;
 }
 
 /// Результат поиска по всем категориям.

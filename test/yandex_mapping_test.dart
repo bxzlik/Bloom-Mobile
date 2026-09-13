@@ -4,10 +4,12 @@
 library;
 
 import 'package:bloom/core/entities/entities.dart';
+import 'package:bloom/features/home/ui/release_card.dart' show releaseDayLabel;
 import 'package:bloom/providers/yandex/models.dart';
 import 'package:bloom/providers/yandex/ym_provider.dart';
 import 'package:bloom/providers/yandex/yandex.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
   group('разбор выдачи', () {
@@ -245,5 +247,147 @@ void main() {
     setToken('abc');
     expect(const YandexProvider().isEnabled, isTrue);
     setToken(null);
+  });
+
+  group('чарт и релизы', () {
+    test('чарт: место и динамика из обёртки, голый трек — по порядку', () {
+      final tracks = parseChart({
+        'chart': {
+          'tracks': [
+            {
+              'track': {'id': 1, 'title': 'Первый'},
+              'chart': {'position': 1, 'shift': 2, 'progress': 'up'},
+            },
+            {
+              'track': {'id': 2, 'title': 'Новичок'},
+              'chart': {'position': 2, 'shift': 0, 'progress': 'new'},
+            },
+            // Элемент без обёртки — сам уже трек.
+            {'id': 3, 'title': 'Голый'},
+          ],
+        },
+      });
+
+      expect(tracks.map((t) => t.chartPos), [1, 2, 3]);
+      expect(tracks.first.chartShift, 2);
+      expect(tracks[1].chartNew, isTrue);
+      expect(tracks.last.chartShift, 0);
+      expect(tracks.last.chartNew, isFalse);
+    });
+
+    test('место в чарте доходит до трека, у обычного трека его нет', () {
+      final chartTrack = trackFromYm(
+        parseChart({
+          'chart': {
+            'tracks': [
+              {
+                'track': {'id': 5},
+                'chart': {'position': 7, 'shift': -3},
+              },
+            ],
+          },
+        }).single,
+      );
+      expect(chartTrack.chartPos, 7);
+      expect(chartTrack.chartShift, -3);
+
+      expect(trackFromYm(parseTrack({'id': 6})!).chartPos, isNull);
+    });
+
+    test('альбом: id и фото первого артиста, тип и дата выхода', () {
+      final raw = parseAlbum({
+        'id': 10,
+        'title': 'Сингл',
+        'type': 'single',
+        'releaseDate': '2026-08-14T00:00:00+03:00',
+        'artists': [
+          {
+            'id': 77,
+            'name': 'Артист',
+            'cover': {'uri': 'avatars.yandex.net/a/%%'},
+          },
+        ],
+      })!;
+      expect(raw.artistId, '77');
+      expect(raw.artistCover, 'https://avatars.yandex.net/a/1000x1000');
+      expect(raw.albumType, 'single');
+
+      final album = albumFromYm(raw);
+      expect(album.ownerId, 'ym_artist_77');
+      expect(album.ownerAvatar, 'https://avatars.yandex.net/a/1000x1000');
+      expect(album.albumType, 'single');
+      // Пустой тип — обычный альбом, поля нет вовсе.
+      expect(albumFromYm(parseAlbum({'id': 11})!).albumType, isNull);
+    });
+
+    test(
+      'дата релиза: день и месяц в этом году, с годом — в прошлые',
+      () async {
+        // В приложении данные локалей грузит flutter_localizations; в голом
+        // тесте их нужно поднять руками, иначе полная дата бросает.
+        await initializeDateFormatting('en');
+        final now = DateTime(2026, 9, 13);
+        const fresh = Playlist(
+          id: 'ym_album_1',
+          title: 'A',
+          source: MusicSource.yandex,
+          releaseDate: '2026-08-14T00:00:00+03:00',
+        );
+        const old = Playlist(
+          id: 'ym_album_2',
+          title: 'B',
+          source: MusicSource.yandex,
+          releaseDate: '2024-05-13',
+        );
+        const yearOnly = Playlist(
+          id: 'ym_album_3',
+          title: 'C',
+          source: MusicSource.yandex,
+          year: '2019',
+        );
+        expect(releaseDayLabel(fresh, 'en', now: now), 'August 14');
+        expect(releaseDayLabel(old, 'en', now: now), 'May 13, 2024');
+        expect(releaseDayLabel(yearOnly, 'en', now: now), '2019');
+      },
+    );
+  });
+
+  group('треки артиста порциями', () {
+    List<Map<String, Object>> tracks(int n, [int from = 0]) => [
+      for (var i = 0; i < n; i++) {'id': from + i, 'title': 'T${from + i}'},
+    ];
+
+    test('по pager: есть ещё, пока загружено меньше total', () {
+      final first = parseArtistTracksPage({
+        'tracks': tracks(50),
+        'pager': {'total': 120, 'perPage': 50, 'page': 0},
+      }, 0);
+      expect(first.tracks.length, 50);
+      expect(first.nextPage, 1);
+      expect(first.total, 120);
+
+      final last = parseArtistTracksPage({
+        'tracks': tracks(20, 100),
+        'pager': {'total': 120, 'perPage': 50, 'page': 2},
+      }, 2);
+      expect(last.nextPage, isNull);
+    });
+
+    test('без pager полная страница значит «возможно, есть»', () {
+      expect(parseArtistTracksPage({'tracks': tracks(50)}, 0).nextPage, 1);
+      final short = parseArtistTracksPage({'tracks': tracks(12)}, 0);
+      expect(short.nextPage, isNull);
+      expect(short.total, isNull);
+    });
+
+    test('пустая страница заканчивает список', () {
+      final empty = parseArtistTracksPage({
+        'tracks': <Object>[],
+        'pager': {'total': 120},
+      }, 3);
+      expect(empty.tracks, isEmpty);
+      expect(empty.nextPage, isNull);
+      expect(parseArtistTracksPage(null, 0).nextPage, isNull);
+    });
   });
 }

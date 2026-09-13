@@ -220,7 +220,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
                 ),
               ),
             )
-          else
+          else ...[
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(8, 4, 8, 16),
               sliver: SliverList.builder(
@@ -237,6 +237,9 @@ class _SetScreenState extends ConsumerState<SetScreen> {
                 ),
               ),
             ),
+            if (_releaseLabel() case final release?)
+              SliverToBoxAdapter(child: _ReleaseBlock(date: release)),
+          ],
           // Хвост под бары каркаса: они плавают над списком, и последняя строка
           // иначе остаётся под миниплеером.
           const SliverBottomBarsInset(),
@@ -245,28 +248,51 @@ class _SetScreenState extends ConsumerState<SetScreen> {
     );
   }
 
-  /// Подпись под названием: дата выхода, число треков, общая длительность —
-  /// как в шапке сета на десктопе.
-  ///
-  /// Дата — полная («13 мая 2024»), когда площадка знает день и месяц; знает
-  /// только год — остаётся год, как и было.
+  /// Подпись под названием: год, число треков, общая длительность — как в
+  /// шапке сета на десктопе. Полная дата выхода у альбома стоит отдельным
+  /// блоком «Релиз» под треклистом (см. [_releaseLabel]), в шапке — только год.
   String _subtitle() {
     final count = _tracks.isNotEmpty ? _tracks.length : _set.trackCount;
     final total = _tracks.isEmpty
         ? _set.duration
         : _tracks.fold(Duration.zero, (sum, x) => sum + x.duration);
-    final released =
-        releaseDateLabel(
-          _set.releaseDate,
-          Localizations.localeOf(context).toString(),
-        ) ??
-        _set.year;
+    final year = _year();
     return [
       _kindWord(context),
-      if (released != null && released.isNotEmpty) released,
+      ?year,
       if (count case final n?) context.l.tracksCount(n),
       if (total case final d? when d > Duration.zero) mmss(d),
     ].join(' · ');
+  }
+
+  /// Год: от площадки, иначе из даты выхода, иначе самый частый среди треков.
+  String? _year() {
+    if (_set.year case final y? when y.isNotEmpty) return y;
+    final date = _set.releaseDate;
+    if (date != null && date.length >= 4) return date.substring(0, 4);
+    final counts = <String, int>{};
+    for (final t in _tracks) {
+      if (t.year case final y? when y.isNotEmpty) {
+        counts[y] = (counts[y] ?? 0) + 1;
+      }
+    }
+    if (counts.isEmpty) return null;
+    return (counts.entries.toList()..sort((a, b) => b.value - a.value))
+        .first
+        .key;
+  }
+
+  /// Подпись блока «Релиз» под треклистом (порт `albumRelease` десктопного
+  /// `DetailView`, 3.0): полная дата от площадки («13 мая 2024»), иначе год —
+  /// SoundCloud и YouTube Music отдают только его. Только у альбома; нет ни
+  /// того ни другого — блока нет.
+  String? _releaseLabel() {
+    if (!_set.isAlbum) return null;
+    return releaseDateLabel(
+          _set.releaseDate,
+          Localizations.localeOf(context).toString(),
+        ) ??
+        _year();
   }
 
   void _save(bool alreadySaved) {
@@ -340,5 +366,49 @@ class _SetScreenState extends ConsumerState<SetScreen> {
   void _toast(String message, [ToastKind kind = ToastKind.info]) {
     if (!mounted) return;
     showToast(context, message, kind: kind);
+  }
+}
+
+/// Блок «Релиз» под треклистом альбома — десктопный `.sp-am-release`: тонкая
+/// линия сверху, приглушённая подпись и крупная дата.
+class _ReleaseBlock extends StatelessWidget {
+  const _ReleaseBlock({required this.date});
+
+  final String date;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      padding: const EdgeInsets.fromLTRB(8, 18, 8, 4),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: t.ovlLine)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l.setRelease,
+            style: theme.labelLarge?.copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: t.text2,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            date,
+            style: theme.headlineSmall?.copyWith(
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.26,
+              color: t.text,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

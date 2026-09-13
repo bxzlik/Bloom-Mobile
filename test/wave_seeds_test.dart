@@ -6,6 +6,8 @@ library;
 
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/store/library_store.dart';
+import 'package:bloom/core/store/play_log.dart';
+import 'package:bloom/core/store/play_stats.dart';
 import 'package:bloom/features/wave/wave_seeds.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -13,14 +15,12 @@ Track _track(
   String id, {
   MusicSource source = MusicSource.soundcloud,
   String artist = 'Artist',
-  List<String> genres = const [],
 }) => Track(
   id: id,
   name: id,
   artist: artist,
   duration: const Duration(seconds: 100),
   source: source,
-  genres: genres,
 );
 
 int _daysAgo(int days) =>
@@ -37,24 +37,28 @@ WaveLibrary _library(
   List<Track> extras = const [],
 }) {
   final now = DateTime.now().millisecondsSinceEpoch;
+  // Прослушивания подаём старой историей — это тот же путь в [PlayStats], что и
+  // журнал, только без сотни событий на трек.
+  final history = [
+    for (final e in plays.entries)
+      HistoryEntry(
+        e.key,
+        playedDaysAgo.containsKey(e.key)
+            ? _daysAgo(playedDaysAgo[e.key]!)
+            : now,
+        count: e.value,
+      ),
+  ];
   return WaveLibrary(
     lib: LibraryState(
       tracks: {for (final t in tracks) t.id: t},
       // Свежие сверху: порядок раздела держится временем добавления.
       inLib: {for (var i = 0; i < tracks.length; i++) tracks[i].id: now - i},
       favs: {for (final id in favs) id: now - favs.toList().indexOf(id)},
-      history: [
-        for (final e in plays.entries)
-          HistoryEntry(
-            e.key,
-            playedDaysAgo.containsKey(e.key)
-                ? _daysAgo(playedDaysAgo[e.key]!)
-                : now,
-            count: e.value,
-          ),
-      ],
     ),
     disliked: disliked,
+    stats: PlayStats.build(const PlayLog(), history),
+    recent: [for (final h in history) h.trackId],
     extras: extras,
   );
 }
@@ -133,6 +137,29 @@ void main() {
       expect(seeds.length, lessThanOrEqualTo(5));
       expect(seeds, containsAll(['sc_0', 'sc_1']));
       expect(seeds, containsAll(['sc_7', 'sc_8']));
+    });
+
+    test('третий сид — следующий из топа, а не случайный «по жанру»', () {
+      final tracks = [for (var i = 0; i < 6; i++) _track('sc_$i')];
+      final view = _library(
+        tracks,
+        plays: {'sc_0': 10, 'sc_1': 8, 'sc_2': 6, 'sc_3': 4},
+      );
+      // Лайков нет: два из топа плюс следующий за ними — и больше ничего.
+      expect(pickPersonalSeeds(view, 0), ['sc_0', 'sc_1', 'sc_2']);
+    });
+
+    test('следующий из топа уже взят — третьим идёт следующий лайк', () {
+      final tracks = [for (var i = 0; i < 6; i++) _track('sc_$i')];
+      final view = _library(
+        tracks,
+        // В топе всего два трека: «следующий» по кругу — снова первый.
+        plays: {'sc_0': 10, 'sc_1': 8},
+        favs: {'sc_3', 'sc_4', 'sc_5'},
+      );
+      final seeds = pickPersonalSeeds(view, 0);
+      expect(seeds, containsAll(['sc_0', 'sc_1', 'sc_3', 'sc_4', 'sc_5']));
+      expect(seeds.length, 5);
     });
 
     test('ротация сдвигает выбор — вторая волна начинается не с того же', () {

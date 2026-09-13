@@ -15,7 +15,7 @@ import '../../core/entities/entities.dart';
 import '../../core/store/stats_store.dart' show dayKey;
 import '../../shared/util/artists.dart';
 import 'periods.dart';
-import 'play_log.dart';
+import '../../core/store/play_log.dart';
 
 @immutable
 class WrappedTrack {

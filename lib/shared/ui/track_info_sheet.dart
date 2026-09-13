@@ -89,7 +89,8 @@ class _TrackInfo extends StatelessWidget {
           SheetPanel(
             children: [
               for (var i = 0; i < rows.length; i++) ...[
-                if (i > 0) sheetDivider(),
+                // Иконок у строк нет — текст стоит на отступе 16.
+                if (i > 0) sheetDivider(indent: 16),
                 rows[i],
               ],
             ],

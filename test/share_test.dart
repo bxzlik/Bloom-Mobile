@@ -13,6 +13,7 @@ import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/l10n/l10n.dart';
 import 'package:bloom/core/store/json_store.dart';
 import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
+import 'package:bloom/core/store/play_log.dart' show playLogStoreProvider;
 import 'package:bloom/features/profile/profile_store.dart';
 import 'package:bloom/features/profile/ui/profile_share_card.dart';
 import 'package:bloom/features/profile/ui/profile_share_sheet.dart';
@@ -361,7 +362,11 @@ Future<void> _pumpProfileCard(
 /// провайдеров.
 Future<void> _pumpSheet(WidgetTester tester, ShareTarget? target) async {
   final container = ProviderContainer(
-    overrides: [jsonStoreProvider.overrideWithValue(JsonStore.memory())],
+    overrides: [
+      jsonStoreProvider.overrideWithValue(JsonStore.memory()),
+      // Цифры карточки профиля считаются по журналу прослушиваний.
+      playLogStoreProvider.overrideWithValue(JsonStore.memory()),
+    ],
   );
   addTearDown(container.dispose);
 

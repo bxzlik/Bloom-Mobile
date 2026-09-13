@@ -438,7 +438,8 @@ Future<void> showAddTracksToPlaylistSheet(
               },
             ),
             for (final pl in playlists) ...[
-              sheetDivider(),
+              // Текст строки плейлиста: 12 + обложка 40 + 12.
+              sheetDivider(indent: 64),
               _PlaylistRow(playlist: pl, tracks: tracks),
             ],
           ],

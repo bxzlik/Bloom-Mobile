@@ -5,9 +5,7 @@
 /// их три (страница плеера, боковая панель, фуллскрин) и настраиваются они
 /// порознь — там разный кегль и размер коробки.
 ///
-/// Две независимые оси заливки и эффекта — тоже с ПК. ЗАЛИВКА отвечает, чем
-/// меряется прогресс по активной строке, ЭФФЕКТ — как единица появляется;
-/// комбинируются любые.
+/// Заливку и эффект с ПК не переносим: активная строка всегда горит целиком.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,54 +22,13 @@ enum LyricsMode {
   replace,
 }
 
-/// Чем меряется прогресс по активной строке.
-enum LyricsFill {
-  /// Строка целиком, без дробления.
-  line,
-
-  /// По словам: слово переключается в свой момент.
-  word,
-
-  /// По буквам: то же, но единица — символ.
-  letter,
-
-  /// Градиент бежит ВНУТРИ слова за его длительность (как в Apple Music).
-  wipe,
-}
-
-/// Как выглядит переход единицы.
-enum LyricsFx {
-  /// Сразу, сменой цвета.
-  none,
-
-  /// Единица втекает непрозрачностью.
-  fade,
-
-  /// Текущая единица подсвечивается свечением в акцент.
-  glow,
-
-  /// Текущая единица вспухает и с отдачей садится назад.
-  spring,
-}
-
 class LyricsStyle {
-  const LyricsStyle({
-    this.mode = LyricsMode.overlay,
-    this.fill = LyricsFill.word,
-    this.fx = LyricsFx.none,
-  });
+  const LyricsStyle({this.mode = LyricsMode.overlay});
 
   final LyricsMode mode;
 
-  final LyricsFill fill;
-  final LyricsFx fx;
-
-  LyricsStyle copyWith({LyricsMode? mode, LyricsFill? fill, LyricsFx? fx}) =>
-      LyricsStyle(
-        mode: mode ?? this.mode,
-        fill: fill ?? this.fill,
-        fx: fx ?? this.fx,
-      );
+  LyricsStyle copyWith({LyricsMode? mode}) =>
+      LyricsStyle(mode: mode ?? this.mode);
 }
 
 final lyricsStyleProvider =
@@ -86,22 +43,14 @@ class LyricsStyleController extends Notifier<LyricsStyle> {
     const def = LyricsStyle();
     return LyricsStyle(
       mode: _fromName(LyricsMode.values, raw['mode'], def.mode),
-      fill: _fromName(LyricsFill.values, raw['fill'], def.fill),
-      fx: _fromName(LyricsFx.values, raw['fx'], def.fx),
     );
   }
 
   void setMode(LyricsMode mode) => _set(state.copyWith(mode: mode));
-  void setFill(LyricsFill fill) => _set(state.copyWith(fill: fill));
-  void setFx(LyricsFx fx) => _set(state.copyWith(fx: fx));
 
   void _set(LyricsStyle next) {
     state = next;
-    ref.read(jsonStoreProvider).write('lyricsStyle', {
-      'mode': next.mode.name,
-      'fill': next.fill.name,
-      'fx': next.fx.name,
-    });
+    ref.read(jsonStoreProvider).write('lyricsStyle', {'mode': next.mode.name});
   }
 }
 

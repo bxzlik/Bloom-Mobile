@@ -13,6 +13,7 @@ import UniformTypeIdentifiers
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    Nightcore.install()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
@@ -21,6 +22,106 @@ import UniformTypeIdentifiers
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "BloomFiles") {
       files = FilesChannel(registrar: registrar)
     }
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "BloomNightcore") {
+      Nightcore.register(registrar: registrar)
+    }
+  }
+}
+
+/// «Nightcore» на iOS — канал `bloom/nightcore`.
+///
+/// just_audio на iOS `setPitch` не умеет, а каждому треку ставит
+/// `AVAudioTimePitchAlgorithmTimeDomain` — тон сохраняется при любой скорости.
+/// Тон, едущий за темпом, у AVFoundation называется `varispeed`, но наружу
+/// плагин эту ручку не даёт. Поэтому подменяем два сеттера (swizzling):
+/// алгоритм трека — пока nightcore включён, вместо того что просит плагин
+/// ставим `varispeed`; скорость плеера — запоминаем плеер и докручиваем
+/// алгоритм текущему треку, чтобы тумблер срабатывал не только со следующего.
+///
+/// Это опора на устройство плагина (0.10.6): если он перестанет звать
+/// сеттер алгоритма, nightcore просто замолчит — падать тут нечему.
+///
+/// ВНИМАНИЕ: живьём не гонялось — Mac'а у проекта нет, собирает только CI.
+enum Nightcore {
+  /// Включён ли nightcore. Всё на главном потоке: и плагин, и канал.
+  static var on = false
+  /// Плеер just_audio — узнаём его при первой установке скорости.
+  static weak var player: AVPlayer?
+  private static var installed = false
+
+  static func install() {
+    guard !installed else { return }
+    installed = true
+    swap(
+      AVPlayerItem.self,
+      #selector(setter: AVPlayerItem.audioTimePitchAlgorithm),
+      #selector(AVPlayerItem.bloom_setAudioTimePitchAlgorithm(_:))
+    )
+    swap(
+      AVPlayer.self,
+      #selector(setter: AVPlayer.rate),
+      #selector(AVPlayer.bloom_setRate(_:))
+    )
+  }
+
+  static func register(registrar: FlutterPluginRegistrar) {
+    let channel = FlutterMethodChannel(
+      name: "bloom/nightcore",
+      binaryMessenger: registrar.messenger()
+    )
+    channel.setMethodCallHandler { call, result in
+      guard call.method == "set" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      Nightcore.apply(call.arguments as? Bool ?? false)
+      result(nil)
+    }
+  }
+
+  /// Переключить на ходу: переставить алгоритм всем трекам очереди. Через
+  /// подменённый сеттер — он сам решит, `varispeed` или `timeDomain`.
+  private static func apply(_ value: Bool) {
+    guard value != on else { return }
+    on = value
+    guard let player = player else { return }
+    let items = (player as? AVQueuePlayer)?.items() ?? [player.currentItem].compactMap { $0 }
+    for item in items {
+      item.audioTimePitchAlgorithm = .timeDomain
+    }
+    // Играющему треку новый алгоритм надёжнее всего подсовывать переустановкой
+    // скорости: за `rate` плагин не следит, так что это безопасно.
+    if player.rate > 0 {
+      player.rate = player.rate
+    }
+  }
+
+  private static func swap(_ cls: AnyClass, _ original: Selector, _ replacement: Selector) {
+    guard
+      let a = class_getInstanceMethod(cls, original),
+      let b = class_getInstanceMethod(cls, replacement)
+    else { return }
+    method_exchangeImplementations(a, b)
+  }
+}
+
+extension AVPlayerItem {
+  /// После обмена реализаций вызов `bloom_…` внутри — это исходный сеттер.
+  @objc dynamic func bloom_setAudioTimePitchAlgorithm(_ value: AVAudioTimePitchAlgorithm) {
+    bloom_setAudioTimePitchAlgorithm(Nightcore.on ? .varispeed : value)
+  }
+}
+
+extension AVPlayer {
+  /// После обмена реализаций вызов `bloom_…` внутри — это исходный сеттер.
+  @objc dynamic func bloom_setRate(_ value: Float) {
+    Nightcore.player = self
+    if Nightcore.on, value > 0, let item = currentItem,
+      item.audioTimePitchAlgorithm != .varispeed
+    {
+      item.audioTimePitchAlgorithm = .varispeed
+    }
+    bloom_setRate(value)
   }
 }
 

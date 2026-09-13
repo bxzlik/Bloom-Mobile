@@ -18,7 +18,7 @@ import 'package:bloom/core/store/library_store.dart';
 import 'package:bloom/features/profile/ui/profile_entry_card.dart'
     show kProfileEntryHeight;
 import 'package:bloom/features/wrapped/periods.dart';
-import 'package:bloom/features/wrapped/play_log.dart';
+import 'package:bloom/core/store/play_log.dart';
 import 'package:bloom/features/wrapped/ui/wrapped_entries.dart';
 import 'package:bloom/features/wrapped/ui/wrapped_poster.dart';
 import 'package:bloom/features/wrapped/ui/wrapped_sheet.dart';
@@ -115,6 +115,13 @@ void main() {
       expect(inYearWindow(DateTime(2026, 12, 31)), isTrue);
       // «Показывать всегда» открывает окно в любой день.
       expect(inYearWindow(_now, force: true), isTrue);
+    });
+
+    test('неделя подсказки — 1–7 число', () {
+      expect(inMonthHintWindow(DateTime(2026, 8, 1)), isTrue);
+      expect(inMonthHintWindow(DateTime(2026, 8, 7, 23)), isTrue);
+      expect(inMonthHintWindow(DateTime(2026, 8, 8)), isFalse);
+      expect(inMonthHintWindow(DateTime(2026, 8, 20), force: true), isTrue);
     });
 
     test('напоминать уместно 1-го числа и в декабрьском окне', () {
@@ -518,6 +525,19 @@ void main() {
         DateTime(2026, 7, 1),
       );
       expect(c.read(wrappedPrefsProvider.notifier).isSeen(older), isFalse);
+    });
+
+    test('подсказка «Итоги месяца» — первую неделю и после просмотра', () {
+      final c = withPlays([(DateTime(2026, 7, 28, 9), _track('sc_1'))]);
+      expect(c.read(wrappedEntriesProvider).monthHint, isTrue);
+      final range = c.read(wrappedEntriesProvider).month!.range;
+      c.read(wrappedPrefsProvider.notifier).markSeen(range);
+      expect(c.read(wrappedEntriesProvider).monthHint, isTrue);
+
+      final later = withPlays([
+        (DateTime(2026, 7, 28, 9), _track('sc_1')),
+      ], now: DateTime(2026, 8, 8, 12));
+      expect(later.read(wrappedEntriesProvider).monthHint, isFalse);
     });
   });
 

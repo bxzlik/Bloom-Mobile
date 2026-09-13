@@ -5,11 +5,10 @@
 /// остальных приходится искать по имени ([findArtistCached]). Поиск общий со
 /// шторкой, поэтому открытая до этого шторка (и наоборот) уже всё нашла.
 ///
-/// Пока ищем — не показываем НИЧЕГО, и не нашли — тоже: заглушка со знаком
-/// bloom рядом с именем читалась бы как чужая аватарка, а пустой кружок — как
-/// недогруз. Строка с именем от этого разъезжается один раз, когда картинки
-/// приезжают; у трека с одним артистом этого не видно вовсе — его аватарка
-/// приходит вместе с треком, без сети.
+/// Пока ищем и грузим — не показываем НИЧЕГО, не нашли или картинка битая —
+/// тоже: заглушка со знаком bloom рядом с именем читалась бы как чужая
+/// аватарка, а пустой кружок — как недогруз. Строка с именем от этого
+/// разъезжается один раз, когда картинки приезжают.
 library;
 
 import 'dart:async';
@@ -21,6 +20,8 @@ import '../../../app/providers.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/providers/artist_lookup.dart';
 import '../../../core/providers/music_provider.dart';
+import '../../../core/store/cover_store.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/util/artists.dart';
 
@@ -38,10 +39,13 @@ const double _gap = 2;
 /// Отступ от стопки до имени.
 const double _lead = 8;
 
-/// Сколько кружков показываем. Строка «A, B, C, D, E» дала бы стопку шире
-/// самого имени; хвост просто не рисуем — все артисты и так перечислены рядом
-/// текстом.
-const int _max = 3;
+/// «Неизвестный исполнитель» на всех языках — не имя, искать его по площадкам
+/// бессмысленно. Все языки, а не текущий: строка пишется в трек при импорте
+/// локального файла и остаётся на языке, который был тогда.
+final Set<String> _unknownArtist = {
+  for (final locale in AppLocalizations.supportedLocales)
+    lookupAppLocalizations(locale).commonUnknownArtist,
+};
 
 class TrackArtistAvatars extends ConsumerStatefulWidget {
   const TrackArtistAvatars({super.key, required this.track});
@@ -81,20 +85,35 @@ class _TrackArtistAvatarsState extends ConsumerState<TrackArtistAvatars> {
   }
 
   void _sync() {
-    final names = parseArtists(widget.track.artist).take(_max).toList();
+    // Кружок на КАЖДОЕ имя, без потолка, как на десктопе: обрезанная на трёх
+    // стопка врала, что артистов трое.
+    final artist = widget.track.artist.trim();
+    final names = _unknownArtist.contains(artist)
+        ? const <String>[]
+        : parseArtists(artist);
     _names = names;
     _urls = {};
 
     // Артист один — значит строка трека и есть имя аккаунта, который его залил,
-    // а его аватарку трек уже везёт с собой. Это обычный случай, и он обходится
-    // без сети и без разъезжающейся строки.
+    // а его аватарку трек уже везёт с собой — искать не надо, только догрузить.
     final own = widget.track.artistAvatar;
     if (names.length == 1 && own != null && own.isNotEmpty) {
-      _urls[names.first] = own;
+      unawaited(_accept(names, names.first, own));
       return;
     }
     if (names.isEmpty) return;
     unawaited(_resolve(names));
+  }
+
+  /// Ставит картинку в стопку, только когда она ДОГРУЗИЛАСЬ. Битая ссылка
+  /// выпадает из стопки целиком, как на десктопе: заглушка [Cover] на её месте
+  /// читалась бы чужой аватаркой, и пока грузится — тоже.
+  Future<void> _accept(List<String> forNames, String name, String url) async {
+    if (!await _loads(url)) return;
+    // Трек мог смениться, пока грузили: тогда ответ уже не про то, что на
+    // экране.
+    if (!mounted || !identical(_names, forNames)) return;
+    setState(() => _urls[name] = url);
   }
 
   Future<void> _resolve(List<String> names) async {
@@ -119,11 +138,9 @@ class _TrackArtistAvatarsState extends ConsumerState<TrackArtistAvatars> {
     } catch (_) {
       // Сети нет или площадка отказала — имя останется без картинки.
     }
-    // Трек мог смениться, пока искали: тогда ответ уже не про то, что на
-    // экране.
     if (!mounted || !identical(_names, forNames)) return;
     if (url == null || url.isEmpty) return;
-    setState(() => _urls[name] = url!);
+    await _accept(forNames, name, url);
   }
 
   @override
@@ -161,6 +178,27 @@ class _TrackArtistAvatarsState extends ConsumerState<TrackArtistAvatars> {
       ),
     );
   }
+}
+
+/// `true` — картинка декодировалась (и лежит в кеше, так что [Cover] покажет её
+/// сразу), `false` — ссылка битая или сети нет.
+Future<bool> _loads(String url) {
+  final image = coverImage(url);
+  if (image == null) return Future.value(false);
+  final done = Completer<bool>();
+  final stream = image.resolve(ImageConfiguration.empty);
+  late final ImageStreamListener listener;
+  void finish(bool ok) {
+    if (!done.isCompleted) done.complete(ok);
+    stream.removeListener(listener);
+  }
+
+  listener = ImageStreamListener(
+    (_, _) => finish(true),
+    onError: (_, _) => finish(false),
+  );
+  stream.addListener(listener);
+  return done.future;
 }
 
 /// Круг за вычетом соседа слева, раздутого на [gap].

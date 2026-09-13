@@ -24,12 +24,14 @@ library;
 
 import 'dart:math' show Random, min;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:solar_icons/solar_icons.dart';
 
+import '../../../app/theme/fonts.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
@@ -42,6 +44,7 @@ import '../../customization/custom_store.dart';
 import '../../customization/media_store.dart' show kBgBlurMax, kBgDimMax;
 import '../../wrapped/wrapped_store.dart';
 import '../transparency_store.dart';
+import '../user_fonts.dart';
 
 class AppearanceScreen extends ConsumerWidget {
   const AppearanceScreen({super.key});
@@ -142,6 +145,12 @@ class AppearanceScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 26),
         ..._transparencyGroup(context, ref),
+        // Шрифт — после прозрачности, как на ПК (там между ними ещё
+        // «Масштаб», которого на телефоне нет).
+        const SizedBox(height: 26),
+        SettingsCaption(context.l.apFontCat),
+        const SizedBox(height: 10),
+        const SettingsGroupCard(rows: [_FontCard()]),
         const SizedBox(height: 26),
         SettingsCaption(context.l.apNavBar),
         const SizedBox(height: 10),
@@ -1178,6 +1187,247 @@ class _SettingsCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
         child: child,
+      ),
+    );
+  }
+}
+
+/// Карточка шрифта — порт десктопного `FontCard`: заголовок с «+» справа и
+/// сетка плиток «Aa + название» в три столбца, каждая нарисована своим
+/// шрифтом. Свои плитки идут после встроенных; крестик у них виден всегда
+/// (наведения на телефоне нет) и спрашивает вторым нажатием, как у своих тем.
+class _FontCard extends ConsumerWidget {
+  const _FontCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+    final current = ref.watch(uiFontProvider);
+    final userFonts = ref.watch(userFontsProvider);
+    final settings = ref.read(settingsProvider.notifier);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(context.l.apFontTitle, style: theme.titleMedium),
+                    const SizedBox(height: 3),
+                    Text(context.l.apFontDesc, style: theme.bodySmall),
+                  ],
+                ),
+              ),
+              Semantics(
+                button: true,
+                label: context.l.apFontAdd,
+                child: GestureDetector(
+                  onTap: () => _addFonts(context, ref),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 2, 0, 8),
+                    child: Icon(
+                      SolarIconsOutline.addCircle,
+                      size: 22,
+                      color: t.muted,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, box) {
+              final width = (box.maxWidth - 8 * 2) / 3;
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final f in kBuiltinFonts)
+                    _FontTile(
+                      width: width,
+                      name: f.name,
+                      family: f.family,
+                      active: current == f.family,
+                      onTap: () => settings.setFontFamily(f.family),
+                    ),
+                  for (final f in userFonts)
+                    _FontTile(
+                      key: ValueKey(f.id),
+                      width: width,
+                      name: f.name,
+                      family: f.family,
+                      active: current == f.family,
+                      onTap: () => settings.setFontFamily(f.family),
+                      onDelete: () =>
+                          ref.read(userFontsProvider.notifier).remove(f.id),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Выбор файлов шрифта и тосты по итогу — те же, что у десктопного
+/// `addFiles`. Фильтр по расширению не ставим: у .ttf/.otf на Android часто
+/// нет своего MIME, и системный выбор их просто не показал бы. Проверка — в
+/// сторе.
+Future<void> _addFonts(BuildContext context, WidgetRef ref) async {
+  final List<PlatformFile> picked;
+  try {
+    picked = await FilePicker.pickFiles();
+  } catch (e) {
+    if (context.mounted) {
+      showToast(context, context.l.apFontReadErr, kind: ToastKind.error);
+    }
+    return;
+  }
+  if (picked.isEmpty) return;
+  final res = await ref.read(userFontsProvider.notifier).addFiles([
+    for (final p in picked)
+      (name: p.name, size: p.lengthSync(), read: p.readAsBytes),
+  ]);
+  if (!context.mounted) return;
+  final l = context.l;
+  if (res.added > 1) showToast(context, l.apFontAdded(res.added));
+  if (res.errors.contains(FontAddError.format)) {
+    showToast(context, l.apFontBadFormat, kind: ToastKind.warn);
+  }
+  if (res.errors.contains(FontAddError.size)) {
+    showToast(
+      context,
+      l.apFontTooBig(kMaxFontBytes ~/ (1024 * 1024)),
+      kind: ToastKind.warn,
+    );
+  }
+  if (res.errors.contains(FontAddError.read)) {
+    showToast(context, l.apFontReadErr, kind: ToastKind.error);
+  }
+}
+
+/// Плитка шрифта — `.s-font-item`: плёнка 4 %, у выбранной 12 %, скругление
+/// `radius*0.7`, «Aa» 22 жирным и подпись 10 приглушённым.
+class _FontTile extends StatefulWidget {
+  const _FontTile({
+    super.key,
+    required this.width,
+    required this.name,
+    required this.family,
+    required this.active,
+    required this.onTap,
+    this.onDelete,
+  });
+
+  final double width;
+  final String name;
+  final String family;
+  final bool active;
+  final VoidCallback onTap;
+
+  /// Крестик — только у своих шрифтов.
+  final VoidCallback? onDelete;
+
+  @override
+  State<_FontTile> createState() => _FontTileState();
+}
+
+class _FontTileState extends State<_FontTile> {
+  bool _armed = false;
+
+  void _delete() {
+    if (!_armed) {
+      setState(() => _armed = true);
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) setState(() => _armed = false);
+      });
+      return;
+    }
+    setState(() => _armed = false);
+    widget.onDelete!();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final ovl = t.text;
+    final font = TextStyle(
+      fontFamily: widget.family,
+      fontFamilyFallback: const [kDefaultFont],
+    );
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: Container(
+        width: widget.width,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 14),
+        decoration: BoxDecoration(
+          color: ovl.withValues(alpha: widget.active ? 0.12 : 0.04),
+          borderRadius: BorderRadius.circular(t.radius * 0.7),
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Aa',
+                  textAlign: TextAlign.center,
+                  style: font.copyWith(
+                    fontSize: 22,
+                    height: 1,
+                    fontWeight: FontWeight.w700,
+                    fontVariations: const [FontVariation('wght', 700)],
+                    color: t.text,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  widget.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: font.copyWith(fontSize: 10, color: t.muted),
+                ),
+              ],
+            ),
+            if (widget.onDelete != null)
+              Positioned(
+                top: -10,
+                right: -2,
+                child: Semantics(
+                  button: true,
+                  label: context.l.apFontRemove,
+                  child: GestureDetector(
+                    onTap: _delete,
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(
+                        _armed
+                            ? SolarIconsBold.trashBinMinimalistic
+                            : SolarIconsOutline.closeCircle,
+                        size: 14,
+                        color: _armed ? t.danger : t.text2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

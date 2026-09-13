@@ -41,6 +41,10 @@ const int kYearWindowToDay = 31;
 /// День месяца, в который напоминаем про итоги прошедшего месяца.
 const int kMonthWindowDay = 1;
 
+/// Последний день «недели напоминания»: пока идут первые семь чисел, карточка
+/// статистики чередует своё число с надписью «Итоги месяца».
+const int kMonthHintToDay = 7;
+
 /// Порядок «значимости»: где показаны оба, год идёт первым.
 const List<PeriodKind> kPeriodOrder = [PeriodKind.year, PeriodKind.month];
 
@@ -85,6 +89,11 @@ bool inYearWindow(DateTime now, {bool force = false}) =>
     (now.month == DateTime.december &&
         now.day >= kYearWindowFromDay &&
         now.day <= kYearWindowToDay);
+
+/// Идёт ли «неделя напоминания» (1–7 число). В отличие от подмены карточки,
+/// она не зависит от просмотра: это подсказка, что итоги никуда не делись.
+bool inMonthHintWindow(DateTime now, {bool force = false}) =>
+    force || (now.day >= kMonthWindowDay && now.day <= kMonthHintToDay);
 
 /// О каких итогах «сегодня» уместно НАПОМНИТЬ уведомлением.
 ///

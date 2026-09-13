@@ -185,13 +185,7 @@ class PlayerSettingsScreen extends ConsumerWidget {
           rows: [
             SettingsValueRow(
               title: l.pvLyricsRow,
-              value: _summary([
-                _modeLabel(l, lyrics.mode),
-                _fillLabel(l, lyrics.fill),
-                _fxLabel(l, lyrics.fx),
-              ]),
-              // Строка настраивает три вещи разом — значок общий, про
-              // оформление.
+              value: _modeLabel(l, lyrics.mode),
               glyph: const Icon(SolarIconsOutline.magicStick),
               onTap: () => _openLyrics(context),
             ),
@@ -1369,9 +1363,8 @@ String _sliderLabel(AppLocalizations l, SliderStyle style) => switch (style) {
   SliderStyle.wave => l.pvSliderWave,
 };
 
-/// Шторка оформления текста песни: вид, заливка и эффект — порт десктопной
-/// карточки `settings.view.lyricsStyle` (там таких три, по одной на
-/// поверхность; у нас поверхность одна — полноэкранный плеер).
+/// Шторка оформления текста песни: только вид. Заливку и эффект с ПК
+/// (`settings.view.lyricsStyle`) убрали — активная строка горит целиком.
 Future<void> _openLyrics(BuildContext context) {
   final l = context.l;
   return showBloomSheetChild<void>(
@@ -1405,28 +1398,6 @@ Future<void> _openLyrics(BuildContext context) {
                     ),
                   ],
                 ],
-              ),
-            ),
-            _Section(
-              icon: SolarIconsOutline.text,
-              title: l.pvLyricsFill,
-              subtitle: l.pvLyricsFillSub,
-              // Заливка и эффект — по четыре варианта: в один ряд на телефоне
-              // они не встают, поэтому идут плиткой 2×2.
-              child: _Chips(
-                labels: [for (final v in LyricsFill.values) _fillLabel(l, v)],
-                index: LyricsFill.values.indexOf(style.fill),
-                onTap: (i) => ctrl.setFill(LyricsFill.values[i]),
-              ),
-            ),
-            _Section(
-              icon: SolarIconsOutline.magicStick,
-              title: l.pvLyricsFx,
-              subtitle: l.pvLyricsFxSub,
-              child: _Chips(
-                labels: [for (final v in LyricsFx.values) _fxLabel(l, v)],
-                index: LyricsFx.values.indexOf(style.fx),
-                onTap: (i) => ctrl.setFx(LyricsFx.values[i]),
               ),
             ),
           ],
@@ -1491,20 +1462,6 @@ String _modeLabel(AppLocalizations l, LyricsMode mode) => switch (mode) {
   LyricsMode.replace => l.pvLyricsModeReplace,
 };
 
-String _fillLabel(AppLocalizations l, LyricsFill fill) => switch (fill) {
-  LyricsFill.line => l.pvLyricsFillLine,
-  LyricsFill.word => l.pvLyricsFillWord,
-  LyricsFill.letter => l.pvLyricsFillLetter,
-  LyricsFill.wipe => l.pvLyricsFillWipe,
-};
-
-String _fxLabel(AppLocalizations l, LyricsFx fx) => switch (fx) {
-  LyricsFx.none => l.pvLyricsFxNone,
-  LyricsFx.fade => l.pvLyricsFxFade,
-  LyricsFx.glow => l.pvLyricsFxGlow,
-  LyricsFx.spring => l.pvLyricsFxSpring,
-};
-
 /// Подзаголовок строки настройки — значок с подписью.
 ///
 /// [strong] — блок в шторке: там эта подпись главная в блоке, а не мелкая
@@ -1529,43 +1486,6 @@ class _Sub extends StatelessWidget {
         const SizedBox(width: 6),
         Text(title, style: strong ? theme.titleMedium : theme.bodySmall),
       ],
-    );
-  }
-}
-
-/// Ряд из четырёх вариантов плиткой 2×2.
-class _Chips extends StatelessWidget {
-  const _Chips({
-    required this.labels,
-    required this.index,
-    required this.onTap,
-  });
-
-  final List<String> labels;
-  final int index;
-  final void Function(int) onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, box) {
-        final width = (box.maxWidth - 8) / 2;
-        return Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (var i = 0; i < labels.length; i++)
-              SizedBox(
-                width: width,
-                child: _Choice(
-                  label: labels[i],
-                  active: i == index,
-                  onTap: () => onTap(i),
-                ),
-              ),
-          ],
-        );
-      },
     );
   }
 }

@@ -6,7 +6,8 @@
 /// bluetooth) — экрана для этого приложению не положено.
 ///
 /// Здесь — «Запуск»: что делать с прошлой сессией, когда приложение открыли
-/// заново. Десктопная `settings.system.autoplay` живёт на ПК в «Системе», но на
+/// заново, и «Очередь» с «Авто похожими» (порт группы из `AudioSection.tsx`,
+/// 3.1). Десктопная `settings.system.autoplay` живёт на ПК в «Системе», но на
 /// телефоне пользователь выбрал ей место тут, рядом со звуком; вторая строка —
 /// «Восстановление очереди» — мобильная и новая (на ПК её ещё нет).
 library;
@@ -61,6 +62,21 @@ class AudioSettingsScreen extends ConsumerWidget {
                 value: settings.autoplay,
                 onChanged: controller.setAutoplay,
               ),
+          ],
+        ),
+        const SizedBox(height: 22),
+        SettingsCaption(l.audQueue.toUpperCase()),
+        const SizedBox(height: 10),
+        SettingsGroupCard(
+          dividerInset: 52,
+          rows: [
+            SettingsToggleRow(
+              icon: SolarIconsOutline.skipNext,
+              title: l.audAutoSimilarTitle,
+              subtitle: l.audAutoSimilarSub,
+              value: settings.autoSimilar,
+              onChanged: controller.setAutoSimilar,
+            ),
           ],
         ),
       ],

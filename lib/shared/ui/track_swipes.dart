@@ -15,6 +15,7 @@ import 'package:solar_icons/solar_icons.dart';
 
 import '../../core/entities/entities.dart';
 import '../../core/l10n/l10n.dart';
+import '../../core/store/history_store.dart';
 import '../../core/store/library_store.dart';
 import '../../features/library/local_tracks.dart';
 import '../../features/offline/offline_actions.dart';
@@ -180,6 +181,20 @@ void removeTrackFromList(
   String listId,
   Track track,
 ) {
+  if (listId == 'history') {
+    // Из «Истории» строка не удаляется, а прячется: прослушивания остаются в
+    // журнале, статистика и «Итоги» их не теряют. Поэтому и отмена — свои
+    // отметки скрытия, а не снимок библиотеки, которую это не трогало.
+    final hide = ref.read(historyHideProvider.notifier);
+    final was = ref.read(historyHideProvider);
+    hide.hide([track.id]);
+    messenger.toast(
+      l.swRemoved,
+      action: ToastAction(fn: () => hide.restore(was)),
+    );
+    return;
+  }
+
   final lib = ref.read(libraryProvider.notifier);
   final state = ref.read(libraryProvider);
   final before = lib.snapshot();
@@ -191,11 +206,6 @@ void removeTrackFromList(
       lib.setFavTracks([
         for (final t in state.favTracks)
           if (t.id != track.id) t.id,
-      ]);
-    case 'history':
-      lib.setHistoryTracks([
-        for (final h in state.history)
-          if (h.trackId != track.id) h.trackId,
       ]);
     default:
       lib.removeTrackFromPlaylist(listId, track.id);

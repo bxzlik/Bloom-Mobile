@@ -1,17 +1,21 @@
-/// Источники кандидатов SoundCloud — порт `src/wave/sources.ts`.
+/// Похожие треки SoundCloud с очередью и кэшем — порт `src/wave/sources.ts`
+/// (и его переезда в `soundcloud.rs` на ПК в 3.0).
 ///
 /// Поверх [sc.stationTracks] / [sc.relatedTracks] здесь три вещи, без которых
-/// подбор упирается в 429: последовательная очередь с паузой между запросами,
-/// кэш ответов на время сеанса и одна повторная попытка после отлупа.
+/// частые запросы упираются в 429: последовательная очередь с паузой между
+/// запросами, кэш ответов на время сеанса и одна повторная попытка после
+/// отлупа. Живёт в слое площадки, а не в волне: теми же источниками пользуются
+/// и витрины главной («Для вас», «Похожие на»), а очередь у них обязана быть
+/// общей — иначе волна и витрина вместе снова получат 429.
 ///
-/// Пустой список вместо исключения — сознательно: волна опрашивает сиды
-/// пачкой, и один упавший запрос не должен рушить весь подбор.
+/// Пустой список вместо исключения — сознательно: и волна, и витрины опрашивают
+/// сиды пачкой, и один упавший запрос не должен рушить весь подбор.
 library;
 
 import 'dart:async';
 
-import '../../providers/soundcloud/models.dart';
-import '../../providers/soundcloud/soundcloud.dart' as sc;
+import 'models.dart';
+import 'soundcloud.dart' as sc;
 
 const Duration _stationTtl = Duration(minutes: 5);
 const Duration _relatedTtl = Duration(minutes: 10);
@@ -21,6 +25,10 @@ const Duration _minGap = Duration(milliseconds: 150);
 
 /// Отступ перед повтором, когда SoundCloud ответил «слишком часто».
 const Duration _retryDelay = Duration(seconds: 2);
+
+/// Сколько похожих считаем достаточным, чтобы не добирать станцией
+/// (десктопный `SIMILAR_ENOUGH`).
+const int _similarEnough = 12;
 
 class _CacheEntry {
   _CacheEntry(this.at, this.data);
@@ -104,6 +112,28 @@ Future<List<ScRawTrack>> waveRelated(String scTrackId) => _cached(
   _relatedTtl,
   () => sc.relatedTracks(scTrackId),
 );
+
+/// Похожие на трек для витрин главной — порт `similar_tracks` из
+/// `soundcloud.rs`. Сеть та же, что у волны, со всеми её кэшами и паузами.
+///
+/// Станция подмешивается, только когда одних related мало: related — это
+/// именно «похожие», а станция ближе к радио и разбавляет подборку. Сид и
+/// повторы из выдачи убраны: сид и так стоит в топе того, для кого подборка.
+Future<List<ScRawTrack>> similarTracks(String scTrackId) async {
+  final seed = int.tryParse(scTrackId) ?? 0;
+  final seen = <int>{};
+  final out = <ScRawTrack>[];
+  void take(List<ScRawTrack> raw) {
+    for (final t in raw) {
+      if (t.id == 0 || t.id == seed || !seen.add(t.id)) continue;
+      out.add(t);
+    }
+  }
+
+  take(await waveRelated(scTrackId));
+  if (out.length < _similarEnough) take(await waveStation(scTrackId));
+  return out;
+}
 
 /// Сбросить кэш — перед стартом новой волны, чтобы она не собралась из тех же
 /// ответов, что предыдущая.

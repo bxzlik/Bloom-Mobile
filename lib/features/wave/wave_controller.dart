@@ -18,7 +18,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/entities/entities.dart';
 import '../../core/l10n/l10n.dart';
+import '../../core/store/history_store.dart';
 import '../../core/store/library_store.dart';
+import '../../core/store/play_stats.dart';
 import '../../providers/yandex/models.dart' show YmException;
 import '../../providers/yandex/ym_provider.dart' show ymNumericId;
 import '../../providers/yandex/yandex.dart' as ym;
@@ -26,7 +28,7 @@ import '../player/play_source.dart';
 import '../player/player_controller.dart';
 import 'wave_engine.dart';
 import 'wave_seeds.dart';
-import 'wave_sources.dart';
+import '../../providers/soundcloud/sc_sources.dart';
 import 'wave_store.dart';
 import 'wave_types.dart';
 import 'wave_yandex.dart';
@@ -137,6 +139,8 @@ class WaveController extends Notifier<WaveRunState> {
   WaveLibrary _view({Iterable<Track> extras = const []}) => WaveLibrary(
     lib: ref.read(libraryProvider),
     disliked: ref.read(waveStoreProvider).dislikes.keys.toSet(),
+    stats: ref.read(playStatsProvider),
+    recent: [for (final row in ref.read(historyRowsProvider)) row.id],
     extras: extras,
     random: _rnd,
   );
@@ -437,6 +441,7 @@ class WaveController extends Notifier<WaveRunState> {
       view: view,
       store: _store,
       queueIds: {for (final t in queue.queue) t.id},
+      queueTracks: queue.queue,
       currentId: queue.track?.id,
       random: _rnd,
     );
@@ -484,6 +489,103 @@ class WaveController extends Notifier<WaveRunState> {
     _rotor.end();
     _store.saveSession(null);
     state = state.copyWith(clearMode: true);
+  }
+
+  // ── «Авто похожие» ──────────────────────────────────────────────────────
+
+  /// Очередь доиграла (или вот-вот) — дописать похожие в её хвост, не трогая
+  /// уже стоящее (кнопка «Похожие на очередь», наоборот, заменяет). Порт
+  /// `waveContinueQueue` с ПК.
+  ///
+  /// Площадку выбираем по последнему треку, у которого вообще есть похожие:
+  /// Яндекс — станция `track:<id>`, SoundCloud — свой движок с сидами из
+  /// очереди. YouTube Music и свои файлы сидами не служат. Тихо, без тостов:
+  /// это фон, а не нажатая кнопка. [isValid] — пока ждали сеть, человек мог
+  /// уйти на другой источник: тогда в его очередь не пишем.
+  Future<bool> continueQueue({required bool Function() isValid}) async {
+    if (_starting) return false;
+    final queue = _queue.queue;
+    for (var i = queue.length - 1; i >= 0; i--) {
+      final track = queue[i];
+      if (track.source == MusicSource.yandex) {
+        final id = ymNumericId(track.id);
+        if (id.isEmpty) continue;
+        if (ym.activeToken() == null) return false;
+        return _continueRotor(YandexRotor.trackStation(id), isValid);
+      }
+      if (scIdOf(track) != null) return _continueEngine(queue, isValid);
+    }
+    return false;
+  }
+
+  Future<bool> _continueRotor(String station, bool Function() isValid) async {
+    _session = null;
+    try {
+      final tracks = await _rotor.start(station);
+      if (tracks.isEmpty || !isValid() || !_continueWith(tracks)) {
+        _rotor.end();
+        return false;
+      }
+      return true;
+    } on Object {
+      _rotor.end();
+      return false;
+    }
+  }
+
+  Future<bool> _continueEngine(
+    List<Track> queue,
+    bool Function() isValid,
+  ) async {
+    final view = _view(extras: queue);
+    final seeds = pickQueueSeeds([for (final t in queue) t.id], view);
+    if (seeds.isEmpty) return false;
+    _rotor.end();
+    resetWaveSourceCache();
+    final session = WaveSession(
+      mode: WaveMode.queue,
+      seeds: seeds,
+      startedAt: DateTime.now().millisecondsSinceEpoch,
+    );
+    try {
+      final batch = await WaveEngine(
+        view: view,
+        store: _store,
+        // Уже стоящие в очереди треки в пачку не попадают — ни тем же id, ни
+        // перезаливом от другого загрузчика.
+        queueIds: {for (final t in queue) t.id},
+        queueTracks: queue,
+        currentId: _queue.track?.id,
+        random: _rnd,
+      ).buildBatch(mode: WaveMode.queue, seeds: seeds, session: session);
+      if (batch.isEmpty || !isValid()) return false;
+      _session = session;
+      if (!_continueWith(tracksOf(batch))) {
+        _session = null;
+        return false;
+      }
+      _store.markShown([
+        for (final c in batch)
+          if (!c.isLibrary) c.id,
+      ]);
+      return true;
+    } on Object {
+      return false;
+    }
+  }
+
+  /// Дописать продолжение в очередь плеера; дальше она идёт как волна «похожие
+  /// на очередь» и догружается сама.
+  bool _continueWith(List<Track> tracks) {
+    const mode = WaveMode.queue;
+    final ok = _playback.continueAsWave(
+      tracks,
+      WaveSource(label: waveLabel(mode), mode: mode),
+    );
+    if (!ok) return false;
+    state = state.copyWith(mode: mode);
+    _store.saveSession(_session);
+    return true;
   }
 
   /// Подхватить сеанс, восстановленный карточкой «Продолжить»: очередь вернул

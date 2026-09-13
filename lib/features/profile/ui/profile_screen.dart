@@ -143,7 +143,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 ///
 /// Над ними в декабре встаёт плашка «Итоги года», а сама карточка статистики
 /// раз в месяц ПОДМЕНЯЕТСЯ входом в итоги месяца — ровно до первого просмотра
-/// (см. `wrapped_entries.dart`).
+/// (см. `wrapped_entries.dart`). А всю первую неделю месяца уже вернувшаяся
+/// карточка чередует своё число с надписью «Итоги месяца» (`monthHint`).
 class _SheetButtons extends ConsumerWidget {
   const _SheetButtons();
 
@@ -190,11 +191,15 @@ class _StatsCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
     final s = ref.watch(profileStatsProvider);
+    final hint = ref.watch(wrappedEntriesProvider.select((e) => e.monthHint));
 
     return ProfileEntryCard(
       value: '${s.totalPlays}',
       icon: SolarIconsOutline.musicNote,
       side: _time(context, s.listenSec),
+      // Первую неделю месяца число чередуется с «Итогами месяца». Цель нажатия
+      // при этом не меняется — сами итоги открывает кнопка внизу шторки.
+      alt: hint ? context.l.wrMonth : null,
       // Обложки самых слушаемых треков — тот же коллаж, что у списков без
       // своей картинки.
       tile: Cover(

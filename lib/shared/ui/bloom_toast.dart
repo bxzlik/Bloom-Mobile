@@ -300,92 +300,73 @@ class BloomToastCard extends StatelessWidget {
         alignment: Alignment.center,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),
-          child: DecoratedBox(
-            // Тень отдельным слоем ПОД капсулой: `GlassBox` обрезает себя по
-            // форме, внутри неё тени было бы не видно.
-            decoration: const ShapeDecoration(
-              shape: StadiumBorder(),
-              shadows: [
-                BoxShadow(
-                  color: Color(0x59000000),
-                  blurRadius: 28,
-                  offset: Offset(0, 10),
-                ),
-                BoxShadow(
-                  color: Color(0x40000000),
-                  blurRadius: 8,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            // Своя группа: тост всплывает поверх страницы и её баров, к их
-            // снимку подложки ему присоединяться нельзя (см. `glass.dart`).
-            child: GlassGroup(
-              child: GlassBox(
-                // Поверхность всплывающая — стекло берём то же, что у шторок и
-                // меню, а не то, что у блоков страницы.
-                overlay: true,
-                // `pill`, а не `card`: на тёмной теме `card` — это цвет фона,
-                // и капсула читалась бы только по рамке.
-                color: t.pill,
-                shape: StadiumBorder(
-                  side: BorderSide(color: t.ovlLine2, width: 1),
-                ),
-                child: Stack(
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        8,
-                        8,
-                        action ? 8 : 18,
-                        // Место под полосу прогресса — только когда она есть.
-                        progress == null ? 8 : 12,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _Badge(
-                            color: color,
-                            kind: kind,
-                            busy: busy,
-                            duration: barDuration,
-                          ),
-                          const SizedBox(width: 11),
-                          Flexible(
-                            child: Text(
-                              text,
-                              style: bloomText(
-                                size: 13.5,
-                                weight: 500,
-                                color: t.text,
-                                height: 1.3,
-                              ),
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (action) ...[
-                            const SizedBox(width: 10),
-                            _ActionPill(
-                              label: label,
-                              color: t.accent,
-                              onTap: onAction!,
-                            ),
-                          ],
-                        ],
-                      ),
+          // Своя группа: тост всплывает поверх страницы и её баров, к их
+          // снимку подложки ему присоединяться нельзя (см. `glass.dart`).
+          child: GlassGroup(
+            child: GlassBox(
+              // Поверхность всплывающая — стекло берём то же, что у шторок и
+              // меню, а не то, что у блоков страницы.
+              overlay: true,
+              // `pill`, а не `card`: на тёмной теме `card` — это цвет фона,
+              // и капсула читалась бы только по рамке.
+              color: t.pill,
+              shape: StadiumBorder(
+                side: BorderSide(color: t.ovlLine2, width: 1),
+              ),
+              child: Stack(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      8,
+                      8,
+                      action ? 8 : 18,
+                      // Место под полосу прогресса — только когда она есть.
+                      progress == null ? 8 : 12,
                     ),
-                    if (progress != null)
-                      Positioned(
-                        // Отступы по краям обязательны: у капсулы низ сужен
-                        // скруглением, полоса во всю ширину обрезалась бы.
-                        left: 18,
-                        right: 18,
-                        bottom: 5,
-                        child: _Bar(color: color, progress: progress!),
-                      ),
-                  ],
-                ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _Badge(
+                          color: color,
+                          kind: kind,
+                          busy: busy,
+                          duration: barDuration,
+                        ),
+                        const SizedBox(width: 11),
+                        Flexible(
+                          child: Text(
+                            text,
+                            style: bloomText(
+                              size: 13.5,
+                              weight: 500,
+                              color: t.text,
+                              height: 1.3,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (action) ...[
+                          const SizedBox(width: 10),
+                          _ActionPill(
+                            label: label,
+                            color: t.accent,
+                            onTap: onAction!,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (progress != null)
+                    Positioned(
+                      // Отступы по краям обязательны: у капсулы низ сужен
+                      // скруглением, полоса во всю ширину обрезалась бы.
+                      left: 18,
+                      right: 18,
+                      bottom: 5,
+                      child: _Bar(color: color, progress: progress!),
+                    ),
+                ],
               ),
             ),
           ),

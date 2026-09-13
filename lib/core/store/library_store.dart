@@ -1,15 +1,18 @@
-/// Библиотека: треки, любимые, история, плейлисты, подписки.
+/// Библиотека: треки, любимые, плейлисты, подписки.
 ///
 /// Раскладка повторяет десктопную: лайки и подписки — ОТДЕЛЬНЫЕ наборы id, а не
 /// флаги на самом треке (у смешанных источников флаг некуда положить), плейлист
 /// хранит только id треков, сами треки лежат общим словарём.
 ///
 /// Словарь `tracks` — это ХРАНИЛИЩЕ, а не раздел «Все треки»: там лежит всё, на
-/// что кто-то ссылается (лайк, плейлист, история), иначе от лайкнутого трека
-/// остался бы один id и заиграть его было бы нечем. Членство в библиотеке —
-/// отдельный набор [LibraryState.inLib], как на десктопе: туда трек попадает
-/// только явным действием (пункт «В библиотеку», лайк, плейлист, импорт).
-/// Прослушивание в библиотеку НЕ кладёт — только в историю.
+/// что кто-то ссылается (лайк, плейлист), иначе от лайкнутого трека остался бы
+/// один id и заиграть его было бы нечем. Членство в библиотеке — отдельный
+/// набор [LibraryState.inLib], как на десктопе: туда трек попадает только явным
+/// действием (пункт «В библиотеку», лайк, плейлист, импорт).
+///
+/// «Истории» здесь нет: с 3.0 она выводится из журнала прослушиваний
+/// (`history_store.dart`), и трек для её строки, которого нет в хранилище,
+/// собирается из снимка журнала.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,9 +20,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../entities/entities.dart';
 import '../l10n/l10n.dart';
 import 'json_store.dart';
-
-/// Сколько записей держим в истории.
-const int kHistoryLimit = 200;
 
 /// Источник «Обновить треки»: привязанная к плейлисту внешняя коллекция —
 /// плейлист, альбом или профиль (лайки) любой площадки. Их может быть сколько
@@ -154,31 +154,6 @@ class FollowedArtist {
   }
 }
 
-class HistoryEntry {
-  final String trackId;
-  final int at;
-
-  /// Сколько раз трек слушали — счётчик статистики профиля (десктопный
-  /// `HistoryEntry.count`). У записей, сделанных до появления счётчика, он
-  /// равен единице.
-  final int count;
-
-  const HistoryEntry(this.trackId, this.at, {this.count = 1});
-
-  Map<String, dynamic> toJson() => {'id': trackId, 'at': at, 'n': count};
-
-  static HistoryEntry? fromJson(Object? json) {
-    if (json is! Map) return null;
-    final id = json['id'];
-    if (id is! String) return null;
-    return HistoryEntry(
-      id,
-      (json['at'] as num?)?.toInt() ?? 0,
-      count: (json['n'] as num?)?.toInt() ?? 1,
-    );
-  }
-}
-
 class LibraryState {
   /// Хранилище: все треки, на которые кто-то ссылается. id → трек.
   final Map<String, Track> tracks;
@@ -189,8 +164,6 @@ class LibraryState {
   /// id → время лайка. Порядок «Любимого» — по нему, свежие сверху.
   final Map<String, int> favs;
 
-  /// Свежие сверху.
-  final List<HistoryEntry> history;
   final List<UserPlaylist> playlists;
   final List<FollowedArtist> follows;
 
@@ -198,7 +171,6 @@ class LibraryState {
     this.tracks = const {},
     this.inLib = const {},
     this.favs = const {},
-    this.history = const [],
     this.playlists = const [],
     this.follows = const [],
   });
@@ -221,15 +193,6 @@ class LibraryState {
     return entries.map((e) => tracks[e.key]).whereType<Track>().toList();
   }
 
-  List<Track> get historyTracks =>
-      history.map((h) => tracks[h.trackId]).whereType<Track>().toList();
-
-  /// Запись истории по id трека — экрану «Истории» нужен не только сам трек, но
-  /// и когда его слушали и сколько раз.
-  Map<String, HistoryEntry> get historyById => {
-    for (final h in history) h.trackId: h,
-  };
-
   List<Track> tracksOf(UserPlaylist pl) =>
       pl.trackIds.map((id) => tracks[id]).whereType<Track>().toList();
 
@@ -237,14 +200,12 @@ class LibraryState {
     Map<String, Track>? tracks,
     Map<String, int>? inLib,
     Map<String, int>? favs,
-    List<HistoryEntry>? history,
     List<UserPlaylist>? playlists,
     List<FollowedArtist>? follows,
   }) => LibraryState(
     tracks: tracks ?? this.tracks,
     inLib: inLib ?? this.inLib,
     favs: favs ?? this.favs,
-    history: history ?? this.history,
     playlists: playlists ?? this.playlists,
     follows: follows ?? this.follows,
   );
@@ -295,11 +256,6 @@ class LibraryController extends Notifier<LibraryState> {
       tracks: tracks,
       inLib: inLib,
       favs: favs,
-      history: store
-          .readList('history')
-          .map(HistoryEntry.fromJson)
-          .whereType<HistoryEntry>()
-          .toList(),
       playlists: store
           .readList('playlists')
           .map(UserPlaylist.fromJson)
@@ -319,8 +275,6 @@ class LibraryController extends Notifier<LibraryState> {
   );
   void _saveLib() => _store.write('lib', state.inLib);
   void _saveFavs() => _store.write('favs', state.favs);
-  void _saveHistory() =>
-      _store.write('history', state.history.map((h) => h.toJson()).toList());
   void _savePlaylists() => _store.write(
     'playlists',
     state.playlists.map((p) => p.toJson()).toList(),
@@ -343,13 +297,14 @@ class LibraryController extends Notifier<LibraryState> {
   /// иначе прослушанное копилось бы вечно, оставаясь невидимым.
   ///
   /// Единственный выход из `tracks`: удаление трека ссылки только снимает
-  /// ([deleteTrack], [setLibraryTracks]), а уйдёт ли сам трек, решается здесь —
-  /// оставшаяся запись истории держит его так же, как лайк или плейлист.
+  /// ([deleteTrack], [setLibraryTracks]), а уйдёт ли сам трек, решается здесь.
+  ///
+  /// «История» трек больше не держит: её строка без трека в хранилище берёт
+  /// снимок из журнала прослушиваний.
   void _prune() {
     final keep = <String>{
       ...state.inLib.keys,
       ...state.favs.keys,
-      ...state.history.map((h) => h.trackId),
       for (final p in state.playlists) ...p.trackIds,
     };
     if (keep.length == state.tracks.length) return;
@@ -395,11 +350,9 @@ class LibraryController extends Notifier<LibraryState> {
   /// счётчиком без строки.
   ///
   /// Кроме истории. Она не ссылка на библиотеку, а журнал: «этот трек тогда-то
-  /// играл» — правда, которую удаление трека не отменяет. Чистится только сама
-  /// ([setHistoryTracks], [clearHistory]) — в отличие от десктопа, где каскад
-  /// сносил и её. Поэтому и сам трек убираем не отсюда, а [_prune]: запись
-  /// истории — такая же ссылка на хранилище, и пока она есть, трек должен
-  /// оставаться, иначе строка молча исчезнет из «Истории».
+  /// играл» — правда, которую удаление трека не отменяет, и живёт она вовсе не
+  /// здесь (`history_store.dart`). Строка удалённого трека остаётся на снимке
+  /// из журнала.
   void deleteTrack(String trackId) {
     state = state.copyWith(
       inLib: Map<String, int>.from(state.inLib)..remove(trackId),
@@ -424,10 +377,8 @@ class LibraryController extends Notifier<LibraryState> {
   ///
   /// У новой версии другой id, поэтому ремапим ВСЕ ссылки: «Все треки» (вместе
   /// со временем добавления — иначе трек прыгнет в начало списка), лайки (с их
-  /// временем), состав плейлистов (на том же месте) и историю. Историю на
-  /// десктопе не трогают — там висячий id просто пропускается при отрисовке; у
-  /// нас это означало бы, что запись из «Истории» молча пропала, поэтому
-  /// переносим и её.
+  /// временем) и состав плейлистов (на том же месте). Прослушивания живут в
+  /// журнале — их переносит вызывающий (`switch_platform.dart`).
   ///
   /// Сам трек кладём в хранилище всегда: он может быть не в библиотеке (пришёл
   /// из поиска), а ссылка на него уже есть — например, из плейлиста.
@@ -449,13 +400,6 @@ class LibraryController extends Notifier<LibraryState> {
       tracks: tracks,
       inLib: remapTimes(state.inLib),
       favs: remapTimes(state.favs),
-      history: [
-        for (final h in state.history)
-          if (h.trackId == oldId)
-            HistoryEntry(next.id, h.at, count: h.count)
-          else
-            h,
-      ],
       playlists: [
         for (final pl in state.playlists)
           if (pl.trackIds.contains(oldId))
@@ -472,7 +416,6 @@ class LibraryController extends Notifier<LibraryState> {
     _saveTracks();
     _saveLib();
     _saveFavs();
-    _saveHistory();
     _savePlaylists();
   }
 
@@ -488,7 +431,6 @@ class LibraryController extends Notifier<LibraryState> {
     _saveTracks();
     _saveLib();
     _saveFavs();
-    _saveHistory();
     _savePlaylists();
     _saveFollows();
   }
@@ -557,51 +499,6 @@ class LibraryController extends Notifier<LibraryState> {
       favs: {for (var i = 0; i < ids.length; i++) ids[i]: now - i},
     );
     _saveFavs();
-    _prune();
-  }
-
-  // ── История ─────────────────────────────────────────────────────────────
-
-  /// Отметить прослушивание: трек уезжает наверх истории без дублей. В
-  /// библиотеку он при этом НЕ попадает (как и на десктопе) — только в
-  /// хранилище, чтобы историю было чем показать и заиграть.
-  ///
-  /// Зовётся из плеера, когда прослушивание засчитано (90% трека либо конец), а
-  /// не когда трек выбрали: иначе перелистывание очереди засорило бы историю
-  /// всем подряд.
-  void pushHistory(Track track) {
-    // Счётчик прослушиваний переезжает вместе с записью наверх: он и есть
-    // основа статистики профиля, потерять его при подъёме нельзя.
-    final was = state.history.where((h) => h.trackId == track.id).firstOrNull;
-    final history = [
-      HistoryEntry(
-        track.id,
-        DateTime.now().millisecondsSinceEpoch,
-        count: (was?.count ?? 0) + 1,
-      ),
-      ...state.history.where((h) => h.trackId != track.id),
-    ];
-    if (history.length > kHistoryLimit) {
-      history.removeRange(kHistoryLimit, history.length);
-    }
-    _remember([track]);
-    state = state.copyWith(history: history);
-    _saveHistory();
-    _prune();
-  }
-
-  /// Правка «Истории» целиком: [ids] — что осталось и в каком порядке. Время
-  /// прослушивания у уцелевших записей сохраняется: это их единственный смысл.
-  void setHistoryTracks(List<String> ids) {
-    final byId = {for (final h in state.history) h.trackId: h};
-    state = state.copyWith(history: [for (final id in ids) ?byId[id]]);
-    _saveHistory();
-    _prune();
-  }
-
-  void clearHistory() {
-    state = state.copyWith(history: const []);
-    _saveHistory();
     _prune();
   }
 

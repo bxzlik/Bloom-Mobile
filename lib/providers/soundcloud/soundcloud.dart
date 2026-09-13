@@ -892,7 +892,7 @@ Future<ScRawTrack?> trackById(int id) async {
 ///
 /// Сбой пробрасывается, а не превращается в пустоту: пустой ответ значит
 /// «станция кончилась» и двигает курсор, и путать его с обрывом сети нельзя.
-/// Гасит ошибки слой выше (`wave_sources`), там же и повтор.
+/// Гасит ошибки слой выше (`sc_sources.dart`), там же и повтор.
 Future<List<ScRawTrack>> stationTracks(Object scTrackId, {int offset = 0}) =>
     _waveTracks(
       'https://api-v2.soundcloud.com/stations/'

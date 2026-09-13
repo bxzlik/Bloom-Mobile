@@ -106,9 +106,9 @@ Future<T?> showBloomSheetChild<T>({
 /// ограничены сильнее (см. [showBloomSheet]).
 const double _kSheetMaxFraction = 0.85;
 
-/// Отступ содержимого меню сущности от краёв шторки: на нём стоят и блоки
-/// пунктов, и шапки. Шторки со своим содержимым (списки, настройки) живут на
-/// прежних 12 — их вид не пересматривали.
+/// Отступ содержимого шторки от её краёв: на нём стоят шапки, блоки пунктов
+/// меню сущности, [SheetPanel] и [SheetField] — на любой шторке, с обложкой и
+/// без.
 const double kSheetEdge = 20;
 
 /// Скругление в меню сущности — своё, крупнее общего `t.radius` (14): плашки
@@ -465,14 +465,21 @@ class SheetPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
+    // Скругление и край — те же, что у блока меню сущности ([_SheetGroup]), на
+    // любой шторке. Над обложкой отличие одно: без заливки и с рамкой.
+    final cover = _SheetSkinScope.of(context) == _SheetSkin.cover;
     return Padding(
-      padding: EdgeInsets.fromLTRB(12, gap, 12, gap),
+      padding: EdgeInsets.fromLTRB(kSheetEdge, gap, kSheetEdge, gap),
       child: Material(
         // Без своего размытия: размыт фон шторки, а блок лежит поверх него
         // ровной панелью.
-        color: sheetPanelColor(context),
-        borderRadius: BorderRadius.circular(t.radius),
+        color: cover ? Colors.transparent : sheetPanelColor(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(kSheetPanelRadius),
+          side: cover
+              ? BorderSide(color: sheetPanelLineColor(context))
+              : BorderSide.none,
+        ),
         clipBehavior: Clip.antiAlias,
         child: Column(mainAxisSize: MainAxisSize.min, children: children),
       ),
@@ -482,11 +489,15 @@ class SheetPanel extends StatelessWidget {
 
 /// Разделитель внутри [SheetPanel]. Начинается там же, где текст: под иконками
 /// сплошная линия режет колонку глифов пополам.
-Widget sheetDivider() => Builder(
+///
+/// [indent] — где в строках блока начинается текст. 54 — у строки с иконкой
+/// (16 + 22 + 16); у строк с обложкой или без иконки своё число, иначе линия
+/// заходит под картинку или отстаёт от текста.
+Widget sheetDivider({double indent = 54}) => Builder(
   builder: (context) => Divider(
     height: 1,
     thickness: 1,
-    indent: 54,
+    indent: indent,
     color: sheetLineColor(context),
   ),
 );
@@ -755,9 +766,13 @@ class SheetField extends StatelessWidget {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
     final filled = controller.text.trim().isNotEmpty;
+    // Скругление и край — как у [SheetPanel]; над обложкой без заливки и с
+    // рамкой.
+    final cover = _SheetSkinScope.of(context) == _SheetSkin.cover;
+    final radius = BorderRadius.circular(kSheetPanelRadius);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
+      padding: const EdgeInsets.fromLTRB(kSheetEdge, 4, kSheetEdge, 6),
       child: Row(
         children: [
           Expanded(
@@ -765,8 +780,11 @@ class SheetField extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
                 // Как и блоки шторки — по тому же скину.
-                color: sheetPanelColor(context),
-                borderRadius: BorderRadius.circular(t.radius),
+                color: cover ? Colors.transparent : sheetPanelColor(context),
+                borderRadius: radius,
+                border: cover
+                    ? Border.all(color: sheetPanelLineColor(context))
+                    : null,
               ),
               child: Row(
                 children: [
@@ -808,7 +826,11 @@ class SheetField extends StatelessWidget {
             child: filled
                 ? Padding(
                     padding: const EdgeInsets.only(left: 10),
-                    child: _ConfirmButton(busy: busy, onTap: onSubmit),
+                    child: _ConfirmButton(
+                      busy: busy,
+                      radius: radius,
+                      onTap: onSubmit,
+                    ),
                   )
                 : const SizedBox(height: 54),
           ),
@@ -819,9 +841,16 @@ class SheetField extends StatelessWidget {
 }
 
 class _ConfirmButton extends StatelessWidget {
-  const _ConfirmButton({required this.busy, required this.onTap});
+  const _ConfirmButton({
+    required this.busy,
+    required this.radius,
+    required this.onTap,
+  });
 
   final bool busy;
+
+  /// Скругление поля рядом — кнопка повторяет его, чтобы пара не спорила.
+  final BorderRadius radius;
   final VoidCallback onTap;
 
   @override
@@ -829,7 +858,7 @@ class _ConfirmButton extends StatelessWidget {
     final t = context.bloom;
     return Material(
       color: t.accent,
-      borderRadius: BorderRadius.circular(t.radius),
+      borderRadius: radius,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: busy ? null : onTap,

@@ -29,7 +29,7 @@ import '../features/settings/about_store.dart';
 import '../features/settings/update_notes_store.dart';
 import '../features/settings/ui/update_notes_sheet.dart';
 import '../features/wrapped/periods.dart';
-import '../features/wrapped/play_log.dart';
+import '../core/store/play_log.dart';
 import '../features/wrapped/ui/wrapped_sheet.dart';
 import '../features/wrapped/wrapped_format.dart';
 import '../features/wrapped/wrapped_store.dart';

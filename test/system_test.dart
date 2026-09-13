@@ -567,6 +567,13 @@ void main() {
       expect(again.restoreQueue, isTrue);
     });
 
+    test('«Авто похожие» выключены по умолчанию и переживают перезапуск', () {
+      final store = JsonStore.memory();
+      expect(_container(store).read(settingsProvider).autoSimilar, isFalse);
+      _container(store).read(settingsProvider.notifier).setAutoSimilar(true);
+      expect(_container(store).read(settingsProvider).autoSimilar, isTrue);
+    });
+
     test('сброс настроек чистит их ключи и не трогает библиотеку', () {
       final store = JsonStore.memory();
       final c = _container(store);
@@ -590,6 +597,7 @@ void main() {
         'lib',
         'favs',
         'history',
+        'historyHidden',
         'playlists',
         'profile',
         'stats',

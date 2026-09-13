@@ -5,8 +5,8 @@
 ///   поведение, пресеты кастомизации. Библиотека, история, профиль и
 ///   авторизации остаются (тот же список, что `SETTINGS_KEYS` на ПК).
 /// - [hardReset] стирает ВСЁ: `bloom.json` целиком (кроме флага онбординга —
-///   мастер и на десктопе показывается один раз), журнал «Итогов» в своём
-///   `plays.json` и файлы на диске: офлайн-копии, кеш текстов, свои обложки и
+///   мастер и на десктопе показывается один раз), журнал прослушиваний в
+///   своём `plays.json` и файлы на диске: офлайн-копии, кеш текстов, свои обложки и
 ///   скопированные внутрь треки.
 ///
 /// Отличие от десктопа в том, ЧЕМ заканчивается сброс. Там `location.reload()`
@@ -23,12 +23,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/log/bloom_log.dart';
 import '../../core/store/app_dirs.dart';
+import '../../core/store/history_store.dart';
 import '../../core/store/library_store.dart';
+import '../../core/store/play_log.dart';
+import '../../core/store/play_stats.dart';
 import '../../core/store/settings_store.dart';
 import '../../core/store/stats_store.dart';
 import '../../features/customization/custom_store.dart';
 import '../../features/customization/media_store.dart';
 import '../../features/customization/presets_store.dart';
+import '../../features/home/for_you.dart';
+import '../../features/home/similar_to.dart';
 import '../../features/lastfm/lastfm_store.dart';
 import '../../features/library/lib_order_store.dart';
 import '../../features/library/local_tracks.dart';
@@ -53,11 +58,11 @@ import '../../features/profile/profile_store.dart';
 import '../../features/search/recent_store.dart';
 import '../../features/wave/wave_controller.dart';
 import '../../features/wave/wave_store.dart';
-import '../../features/wrapped/play_log.dart';
 import '../../features/wrapped/wrapped_store.dart';
 import '../../providers/yandex/ym_auth.dart';
 import 'swipe_store.dart';
 import 'transparency_store.dart';
+import 'user_fonts.dart';
 
 /// Ключи `bloom.json`, которые считаются НАСТРОЙКАМИ. Порядок и состав — с ПК
 /// (`SETTINGS_KEYS`), с поправкой на телефонные хранилища: у нас свои ключи
@@ -142,11 +147,21 @@ Future<void> hardReset(WidgetRef ref) async {
 
   // Каталоги сносим целиком и заводим заново: по одному индексу их содержимое
   // уже не обойти — сам индекс мы только что стёрли.
-  await _wipeDirs(['offline', 'lyrics', 'covers', 'tracks']);
+  // `fonts` — свои шрифты: на ПК полный сброс тоже сносит `bloom_fonts`, а
+  // сброс настроек их не трогает.
+  await _wipeDirs(['offline', 'lyrics', 'covers', 'tracks', 'fonts']);
+  ref.invalidate(userFontsProvider);
 
   ref.invalidate(playbackProvider);
   ref.invalidate(resumeProvider);
   ref.invalidate(libraryProvider);
+  // Старая история и отметки скрытия лежат в том же `bloom.json` — ключи уже
+  // стёрты, гасим сторы.
+  ref.invalidate(legacyHistoryProvider);
+  ref.invalidate(historyHideProvider);
+  // Витрины главной — их кэш лежал там же и собран по стёртому топу.
+  ref.invalidate(forYouProvider);
+  ref.invalidate(similarToProvider);
   ref.invalidate(statsProvider);
   ref.invalidate(achievementsProvider);
   ref.invalidate(profileProvider);
@@ -166,9 +181,9 @@ Future<void> hardReset(WidgetRef ref) async {
   ref.invalidate(ymAuthProvider);
   ref.invalidate(lyricsProvider);
   await ref.read(lyricsCacheProvider).clear();
-  // Журнал «Итогов» живёт в своём `plays.json` — `store.removeAll` выше до него
-  // не достаёт, и без этого после «сбросить всё» на главной оставались карточки
-  // «Итоги года» и «Итоги недели» по стёртым трекам. Тумблеры и отметки
+  // Журнал прослушиваний живёт в своём `plays.json` — `store.removeAll` выше до
+  // него не достаёт, и без этого после «сбросить всё» оставались «История» и
+  // карточки «Итогов» по стёртым трекам. Тумблеры и отметки
   // просмотра лежат в `bloom.json` под ключом `wrapped`: сам ключ уже стёрт,
   // гасим стор, чтобы он не висел в памяти до перезапуска.
   ref.read(playLogProvider.notifier).clear();

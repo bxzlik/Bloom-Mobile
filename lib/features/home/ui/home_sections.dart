@@ -10,42 +10,76 @@ import 'package:solar_icons/solar_icons.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
+import '../../../core/store/history_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
-import '../../../shared/ui/platform_logo.dart';
-import '../../library/ui/create_playlist_sheet.dart';
+import '../../library/lib_order_store.dart';
 import '../../player/play_source.dart';
 import '../discover_store.dart';
+import 'chart_card.dart';
+import 'chart_screen.dart';
+import 'release_card.dart';
+import 'releases_screen.dart';
 
-/// Заголовок секции с местом под значок площадки справа от текста.
+/// Заголовок секции главной.
 class HomeSectionHeader extends StatelessWidget {
-  const HomeSectionHeader(this.title, {super.key, this.trailing});
+  const HomeSectionHeader(this.title, {super.key, this.onTap, this.inset = 16});
 
   final String title;
-  final Widget? trailing;
+
+  /// Отступ от краёв по горизонтали. В паре «Недавно слушали / Плейлисты» он
+  /// 0: там поле уже задано самим рядом.
+  final double inset;
+
+  /// Заголовок-ссылка «Чарт ›»: ведёт на полную страницу раздела. Стрелка
+  /// приглушена — это подсказка, а не кнопка рядом с заголовком.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 10),
-      child: Row(
-        children: [
-          Flexible(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleLarge,
+    final row = Row(
+      children: [
+        Flexible(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ),
+        if (onTap != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 2, top: 2),
+            child: Icon(
+              SolarIconsOutline.altArrowRight,
+              size: 22,
+              color: context.bloom.text.withValues(alpha: 0.55),
             ),
           ),
-          if (trailing != null) ...[const SizedBox(width: 8), trailing!],
-        ],
-      ),
+      ],
+    );
+    return Padding(
+      padding: EdgeInsets.fromLTRB(inset, 18, inset, 10),
+      child: onTap == null
+          ? row
+          : GestureDetector(
+              onTap: onTap,
+              behavior: HitTestBehavior.opaque,
+              child: row,
+            ),
     );
   }
 }
+
+/// Сколько мест чарта на главной: площадка отдаёт весь чарт, полный список —
+/// на странице «Чарт».
+const int _homeChartMax = 15;
+
+/// Сколько релизов на главной: карточка широкая, остальное — сеткой на
+/// странице «Релизы».
+const int _homeReleasesMax = 10;
 
 /// Блок витрины. Пока данных нет — на экране ничего: ни скелетона, ни ошибки
 /// (см. `discover_store`).
@@ -59,20 +93,51 @@ class DiscoverSection extends ConsumerWidget {
     final result = ref.watch(discoverProvider(mode)).value;
     if (result == null) return const SizedBox.shrink();
     final block = result.block;
+    final charts = mode == DiscoverMode.charts;
+    final title = charts ? context.l.homeCharts : context.l.homeNewReleases;
+    final source = PlainSource(
+      id: 'discover:${mode.name}',
+      label: title,
+      icon: PlainSourceIcon.chart,
+    );
+    // Заголовок ведёт на полную страницу: чарт — списком, релизы — сеткой.
+    // У SoundCloud новинки приходят треками — сетки для них нет, и заголовок
+    // остаётся обычным, как на ПК.
+    final Widget? page = charts
+        ? const ChartScreen()
+        : block is DiscoverAlbums
+        ? const ReleasesScreen()
+        : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         HomeSectionHeader(
-          mode == DiscoverMode.charts
-              ? context.l.homeCharts
-              : context.l.homeNewReleases,
-          // Вместо десктопного попапа «доступно только для Яндекс Музыки» —
-          // сам логотип площадки: строчку текста он заменяет полностью, а
-          // кнопка внутри заголовка на телефоне только мешала бы.
-          trailing: PlatformLogo(result.source, size: 15),
+          title,
+          // Значка площадки у заголовка нет — как на ПК.
+          onTap: page == null
+              ? null
+              : () => Navigator.of(
+                  context,
+                ).push(detailPageRoute<void>((_) => page)),
         ),
         switch (block) {
+          DiscoverTracks(:final tracks) when charts => EntityCarousel(
+            height: kChartCardHeight + 6,
+            padding: 16,
+            itemCount: tracks.length.clamp(0, _homeChartMax),
+            builder: (i) => ChartCard(
+              track: tracks[i],
+              pos: tracks[i].chartPos ?? i + 1,
+              source: source,
+            ),
+          ),
+          DiscoverAlbums(:final albums) => EntityCarousel(
+            height: kReleaseCardHeight + 6,
+            padding: 16,
+            itemCount: albums.length.clamp(0, _homeReleasesMax),
+            builder: (i) => ReleaseCard(album: albums[i]),
+          ),
           DiscoverTracks(:final tracks) => EntityCarousel(
             height: 194,
             padding: 16,
@@ -81,20 +146,8 @@ class DiscoverSection extends ConsumerWidget {
               track: tracks[i],
               queue: tracks,
               index: i,
-              source: PlainSource(
-                id: 'discover:${mode.name}',
-                label: mode == DiscoverMode.charts
-                    ? context.l.homeCharts
-                    : context.l.homeNewReleases,
-                icon: PlainSourceIcon.chart,
-              ),
+              source: source,
             ),
-          ),
-          DiscoverAlbums(:final albums) => EntityCarousel(
-            height: 194,
-            padding: 16,
-            itemCount: albums.length,
-            builder: (i) => SetCard(set: albums[i]),
           ),
         },
       ],
@@ -102,30 +155,71 @@ class DiscoverSection extends ConsumerWidget {
   }
 }
 
-/// «Недавно слушали» — до 12 последних треков истории без повторов.
-class RecentSection extends ConsumerWidget {
-  const RecentSection({super.key});
+/// «Недавно слушали» и «Плейлисты» в один ряд, по половине — как `.home-duo`
+/// на ПК. Зазор тот же, что между плашками «Любимые / История», поэтому
+/// половины стоят ровно под ними. Одна секция пуста — вторая встаёт на всю
+/// ширину, обе пусты — ряда нет.
+class RecentAndPlaylists extends ConsumerWidget {
+  const RecentAndPlaylists({super.key});
 
-  /// Сколько карточек показываем. Столько же, сколько на десктопе.
-  static const int limit = 12;
+  /// Сколько карточек в «Недавно слушали». Столько же, сколько на десктопе.
+  static const int recentLimit = 12;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final lib = ref.watch(libraryProvider);
-    final recent = recentTracks(lib, limit);
-    if (recent.isEmpty) return const SizedBox.shrink();
+    final recent = recentTracks(ref.watch(historyProvider), recentLimit);
+    // Порядок — тот же, что у плиток библиотеки: её сортировка, ручной порядок
+    // и закреплённые сверху. Фильтр чипов сюда не относится.
+    final playlists = ref
+        .watch(libOrderProvider)
+        .arrange(
+          ref.watch(libraryProvider).playlists,
+          key: (p) => libKeyOfPlaylist(p.id),
+          name: (p) => p.name,
+          rank: (_) => kLibRankPlaylist,
+        );
 
+    if (recent.isEmpty && playlists.isEmpty) return const SizedBox.shrink();
+    if (playlists.isEmpty) return _RecentSection(tracks: recent, inset: 16);
+    if (recent.isEmpty) {
+      return _PlaylistsSection(playlists: playlists, inset: 16);
+    }
+    // В паре ленты режутся по полю страницы, а не у края экрана: у каждой
+    // половины своя прокрутка, как на ПК.
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: _RecentSection(tracks: recent, inset: 0)),
+          const SizedBox(width: 12),
+          Expanded(child: _PlaylistsSection(playlists: playlists, inset: 0)),
+        ],
+      ),
+    );
+  }
+}
+
+/// «Недавно слушали» — до 12 последних треков истории без повторов.
+class _RecentSection extends StatelessWidget {
+  const _RecentSection({required this.tracks, required this.inset});
+
+  final List<Track> tracks;
+  final double inset;
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        HomeSectionHeader(context.l.homeRecent),
+        HomeSectionHeader(context.l.homeRecent, inset: inset),
         EntityCarousel(
           height: 194,
-          padding: 16,
-          itemCount: recent.length,
+          padding: inset,
+          itemCount: tracks.length,
           builder: (i) => TrackCard(
-            track: recent[i],
-            queue: recent,
+            track: tracks[i],
+            queue: tracks,
             index: i,
             source: PlainSource(
               id: 'recent',
@@ -139,42 +233,32 @@ class RecentSection extends ConsumerWidget {
   }
 }
 
-/// Последние [limit] треков истории без повторов — один трек, прослушанный
-/// пять раз подряд, занимает в ленте одну карточку, а не пять.
-List<Track> recentTracks(LibraryState lib, int limit) {
-  final out = <Track>[];
-  final seen = <String>{};
-  for (final entry in lib.history) {
-    if (!seen.add(entry.trackId)) continue;
-    final track = lib.tracks[entry.trackId];
-    if (track != null) out.add(track);
-    if (out.length >= limit) break;
-  }
-  return out;
-}
+/// Последние [limit] треков «Истории». Повторов в ней нет — строка одна на
+/// трек, — так что трек, прослушанный пять раз подряд, занимает в ленте одну
+/// карточку. Спрятанное из «Истории» не показывается и здесь.
+List<Track> recentTracks(List<HistoryItem> history, int limit) => [
+  for (final item in history.take(limit)) item.track,
+];
 
-/// «Плейлисты» — свои списки лентой, в конце плитка «Новый».
-class PlaylistsSection extends ConsumerWidget {
-  const PlaylistsSection({super.key});
+/// «Плейлисты» — свои списки лентой. Кнопки «Новый» тут нет, как на ПК:
+/// плейлисты создаются в библиотеке.
+class _PlaylistsSection extends StatelessWidget {
+  const _PlaylistsSection({required this.playlists, required this.inset});
+
+  final List<UserPlaylist> playlists;
+  final double inset;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final lib = ref.watch(libraryProvider);
-    final playlists = lib.playlists;
-
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        HomeSectionHeader(context.l.commonPlaylists),
+        HomeSectionHeader(context.l.commonPlaylists, inset: inset),
         EntityCarousel(
           height: 194,
-          padding: 16,
-          // Плитка «Новый» стоит последней и есть всегда: с неё же начинается
-          // главная на пустой библиотеке.
-          itemCount: playlists.length + 1,
-          builder: (i) => i == playlists.length
-              ? const _NewPlaylistCard()
-              : _PlaylistCard(playlist: playlists[i]),
+          padding: inset,
+          itemCount: playlists.length,
+          builder: (i) => _PlaylistCard(playlist: playlists[i]),
         ),
       ],
     );
@@ -237,50 +321,6 @@ class _PlaylistCardState extends ConsumerState<_PlaylistCard> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.bodySmall,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Плитка «Новый плейлист» — та же шторка создания, что в библиотеке.
-class _NewPlaylistCard extends ConsumerWidget {
-  const _NewPlaylistCard();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-
-    return GestureDetector(
-      onTap: () => showCreatePlaylistSheet(context, ref),
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: _PlaylistCardState._size,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: _PlaylistCardState._size,
-              height: _PlaylistCardState._size,
-              decoration: BoxDecoration(
-                color: t.coverEmpty,
-                borderRadius: BorderRadius.circular(t.radius * 0.72),
-              ),
-              child: Icon(
-                SolarIconsOutline.addSquare,
-                size: 28,
-                color: t.text2,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              context.l.commonNewPlaylist,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.titleSmall,
             ),
           ],
         ),

@@ -1,10 +1,13 @@
-/// Главная — витрина из секций, порядок как на десктопе (`app/pages/HomePage`):
-/// «Моя волна» → «Продолжить» → «Любимые»/«История» → «Новинки» → «Чарты» →
-/// «Недавно слушали» → «Плейлисты».
+/// Главная — витрина из секций, порядок как на десктопе 3.0 (`app/pages/HomePage`):
+/// «Моя волна» → «Продолжить» → «Любимые»/«История» → «Недавно слушали» и
+/// «Плейлисты» в один ряд → «Для вас» → «Похожие на» → «Новинки» → «Чарты».
+/// Витрины про самого слушателя идут впереди площадочных: те общие для всех.
 ///
-/// Секции сами решают, показываться ли им: пустая история и пустая витрина
-/// схлопываются в ничто, поэтому на свежей установке остаются только карточки
-/// разделов и плитка «Новый плейлист».
+/// Скрыть секцию нельзя и не нужно — у мобилки нет настроек видимости главной.
+///
+/// Секции сами решают, показываться ли им: пустая история, пустой список
+/// плейлистов и пустая витрина схлопываются в ничто, поэтому на свежей
+/// установке остаются только карточки разделов.
 library;
 
 import 'package:flutter/material.dart';
@@ -25,8 +28,10 @@ import '../../profile/ui/profile_avatar.dart';
 import '../../wave/ui/wave_card.dart';
 import '../discover_store.dart';
 import 'continue_card.dart';
+import 'for_you_section.dart';
 import 'home_sections.dart';
 import 'quick_cards.dart';
+import 'similar_to_section.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -48,10 +53,11 @@ class HomeScreen extends StatelessWidget {
                 WaveCard(),
                 ContinueCard(),
                 QuickCards(),
+                RecentAndPlaylists(),
+                ForYouSection(),
+                SimilarToSection(),
                 DiscoverSection(mode: DiscoverMode.newReleases),
                 DiscoverSection(mode: DiscoverMode.charts),
-                RecentSection(),
-                PlaylistsSection(),
               ],
             ),
           ),

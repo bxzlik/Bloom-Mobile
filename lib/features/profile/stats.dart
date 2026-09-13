@@ -1,8 +1,12 @@
 /// Расчёт статистики профиля — порт вычислений из десктопного `StatsSection`.
 ///
-/// Источники ровно те же: история (сколько раз слушали каждый трек), дневной
-/// журнал и время в приложении. Ничего своего не персистится — всё считается
-/// на лету из [LibraryState] и [StatsState].
+/// Источники: журнал прослушиваний ([PlayStats] — сколько раз и когда слушали
+/// каждый трек), дневной журнал и время в приложении. Ничего своего не
+/// персистится — всё считается на лету.
+///
+/// С 3.0 прослушивания берутся из журнала, а не из истории: та упиралась в 200
+/// уникальных треков, всё вытесненное пропадало из сумм и из топа артистов, а
+/// цифры расходились с «Итогами», которые считались по полному журналу.
 ///
 /// Разбивка по площадкам берётся из ПРЕФИКСА id, а не из поля трека: треки
 /// площадок живут в памяти, и после перезапуска половина записей истории уже не
@@ -15,7 +19,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/l10n/l10n.dart';
 
 import '../../core/entities/entities.dart';
+import '../../core/store/history_store.dart';
 import '../../core/store/library_store.dart';
+import '../../core/store/play_stats.dart';
 import '../../core/store/stats_store.dart';
 import '../../shared/util/artists.dart';
 
@@ -110,7 +116,11 @@ class ProfileStats {
 
   String? get favArtist => topArtists.isEmpty ? null : topArtists.first.name;
 
-  static ProfileStats build(LibraryState lib, StatsState stats) {
+  static ProfileStats build(
+    LibraryState lib,
+    StatsState stats,
+    PlayStats journal,
+  ) {
     var totalPlays = 0;
     var listenSec = 0;
     final artists =
@@ -124,29 +134,31 @@ class ProfileStats {
     var firstTs = DateTime.now().millisecondsSinceEpoch;
     var lastTs = firstTs;
 
-    for (final entry in lib.history) {
-      final plays = entry.count;
+    final played = journal.allPlayed();
+    for (final entry in played) {
+      final plays = entry.plays;
       totalPlays += plays;
 
-      final source = MusicSource.fromId(entry.trackId);
-      final track = lib.tracks[entry.trackId];
-      final seconds = track == null ? 0 : track.duration.inSeconds * plays;
+      final source = MusicSource.fromId(entry.id);
+      // Трек — из библиотеки, а если его там уже нет, из снимка журнала: иначе
+      // всё, что человек слушал, но не сохранил, выпало бы из топов.
+      final track = resolveHistoryTrack(entry.id, lib, journal);
+      final perPlay =
+          track?.duration.inSeconds ?? journal.meta[entry.id]?.seconds ?? 0;
+      final seconds = perPlay * plays;
       final was = sources[source] ?? (plays: 0, seconds: 0);
       sources[source] = (
         plays: was.plays + plays,
         seconds: was.seconds + seconds,
       );
-
-      if (entry.at > 0) {
-        if (entry.at < firstTs) firstTs = entry.at;
-        if (entry.at > lastTs) lastTs = entry.at;
-      }
-
-      // Дальше нужен сам трек: без него нечего показать в топах и нечего
-      // складывать во время прослушивания.
-      if (track == null) continue;
       listenSec += seconds;
-      if (plays > 0) rows.add(TrackPlays(track, plays));
+
+      if (entry.firstTs > 0 && entry.firstTs < firstTs) firstTs = entry.firstTs;
+      if (entry.lastTs > lastTs) lastTs = entry.lastTs;
+
+      // Дальше нужен сам трек: без него нечего показать в топах.
+      if (track == null) continue;
+      rows.add(TrackPlays(track, plays));
 
       // Строка артиста бывает мультиартистной («reidenshi, Øneheart») —
       // считаем каждого отдельно, иначе в топе стоит склеенное имя, по
@@ -212,7 +224,7 @@ class ProfileStats {
       libraryTracks: lib.inLib.length,
       totalPlays: totalPlays,
       listenSec: listenSec,
-      uniqueTracks: lib.history.length,
+      uniqueTracks: played.length,
       uniqueArtists: artists.length,
       avgSec: totalPlays > 0 ? (listenSec / totalPlays).round() : 0,
       daySpan: span < 1 ? 1 : span,
@@ -265,6 +277,7 @@ final profileStatsProvider = Provider<ProfileStats>((ref) {
   return ProfileStats.build(
     ref.watch(libraryProvider),
     ref.watch(statsProvider),
+    ref.watch(playStatsProvider),
   );
 });
 

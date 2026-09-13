@@ -1,11 +1,13 @@
-/// Журнал прослушиваний для «Итогов» — порт десктопного
-/// `features/wrapped/model/playLog.ts`.
+/// Журнал прослушиваний — единственное честное хранилище «что и когда
+/// слушали». Порт десктопного `db/playLog.ts`.
 ///
-/// Зачем отдельное хранилище. `LibraryState.history` держит ОДНУ запись на трек
-/// (`{trackId, at, count}`, `at` = последнее прослушивание), а `StatsState`
-/// знает только «сколько треков за день», без id. Из них нельзя получить «топ
-/// треков за прошлую неделю»: у трека нет истории по датам. Поэтому здесь
-/// копится сырой поток событий «трек X сыгран в момент T».
+/// Писался под «Итоги», но с 3.0 на нём стоит всё, что считает прослушивания:
+/// список «История», статистика профиля, сиды волны (читают через
+/// `play_stats.dart`). Прежняя история держала ОДНУ запись на трек с лимитом
+/// 200, а `StatsState` знает только «сколько треков за день» — из них не
+/// получить ни «топ за неделю», ни честное «сколько раз». Поэтому здесь копится
+/// сырой поток событий «трек X сыгран в момент T», и лежит он в `core/store`,
+/// а не в фиче «Итогов».
 ///
 /// **Свой файл, а не ключ в `bloom.json`.** На ПК это IndexedDB; у нас
 /// `bloom.json` переписывается ЦЕЛИКОМ на каждую правку библиотеки, и десятки
@@ -26,8 +28,8 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/entities/entities.dart';
-import '../../core/store/json_store.dart';
+import '../entities/entities.dart';
+import 'json_store.dart';
 
 /// Потолок журнала. ~15–20к событий = год очень плотного слушания; 60к с
 /// запасом покрывают несколько лет. При переполнении режем самые старые
@@ -68,6 +70,13 @@ class PlayMeta {
     required this.cover,
     required this.seconds,
   });
+
+  factory PlayMeta.of(Track track) => PlayMeta(
+    name: track.name,
+    artist: track.artist,
+    cover: track.cover,
+    seconds: track.duration.inSeconds,
+  );
 
   final String name;
   final String artist;
@@ -142,16 +151,44 @@ class PlayLogController extends Notifier<PlayLog> {
     if (track.id.isEmpty) return;
     final ts = ref.read(playLogClockProvider)().millisecondsSinceEpoch;
     final events = [...state.events, PlayEvent(ts, track.id)];
-    final meta = {
-      ...state.meta,
-      track.id: PlayMeta(
-        name: track.name,
-        artist: track.artist,
-        cover: track.cover,
-        seconds: track.duration.inSeconds,
-      ),
-    };
+    final meta = {...state.meta, track.id: PlayMeta.of(track)};
     state = _trim(PlayLog(events: events, meta: meta));
+    _save();
+  }
+
+  /// Добавить снимки треков, у которых их ещё нет — без событий. Нужен
+  /// переходу со старой истории (`adoptLegacySnapshots`): у треков, игранных до
+  /// журнала, снимка нет, а показывать строку чем-то надо. Уже лежащие снимки
+  /// не трогаем — они записаны в момент прослушивания.
+  ///
+  /// Такой снимок без событий переживёт всё, кроме переполнения журнала:
+  /// [_trim] считает его осиротевшим. При 60 тысячах событий это годы.
+  void adoptMeta(Map<String, PlayMeta> snapshots) {
+    final fresh = {
+      for (final e in snapshots.entries)
+        if (!state.meta.containsKey(e.key)) e.key: e.value,
+    };
+    if (fresh.isEmpty) return;
+    state = PlayLog(events: state.events, meta: {...state.meta, ...fresh});
+    _save();
+  }
+
+  /// Смена площадки трека: его прослушивания переезжают на новый id. Трек тот
+  /// же — иначе «сменить площадку» обнулило бы ему счётчик, выкинуло бы из
+  /// «Истории» и расщепило бы в «Итогах» на два.
+  void renameTrack(String oldId, String newId) {
+    if (oldId == newId) return;
+    if (!state.events.any((e) => e.id == oldId)) return;
+    final meta = {...state.meta};
+    final snap = meta.remove(oldId);
+    if (snap != null) meta.putIfAbsent(newId, () => snap);
+    state = PlayLog(
+      events: [
+        for (final e in state.events)
+          e.id == oldId ? PlayEvent(e.ts, newId) : e,
+      ],
+      meta: meta,
+    );
     _save();
   }
 

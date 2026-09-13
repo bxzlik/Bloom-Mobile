@@ -140,6 +140,10 @@ class ArtistPageData {
   final String? tracksCursor;
   final String? repostsCursor;
 
+  /// Сколько всего треков у артиста по данным площадки — счётчик в шапке, пока
+  /// догружено не всё. `null` — площадка не знает, считаем по загруженным.
+  final int? tracksTotal;
+
   const ArtistPageData({
     required this.artist,
     this.topTracks = const [],
@@ -150,6 +154,7 @@ class ArtistPageData {
     this.similarArtists = const [],
     this.tracksCursor,
     this.repostsCursor,
+    this.tracksTotal,
   });
 }
 
@@ -252,6 +257,14 @@ abstract class MusicProvider {
   Future<List<Track>?> getCharts() async => null;
 
   Future<NewReleases?> getNewReleases() async => null;
+
+  /// Похожие на трек — витрины «Для вас» и «Похожие на» на главной. Сид —
+  /// сквозной id трека: он приходит из журнала прослушиваний, и резолвить его
+  /// в [Track] ради одного запроса не из чего.
+  ///
+  /// `null` — площадка похожих не отдаёт. Чужой или не-трековый id — пустой
+  /// список, без похода в сеть.
+  Future<List<Track>?> getSimilarTracks(String seedId) async => null;
 
   /// Играбельный URL трека этой площадки.
   Future<PlayableStream?> resolveStream(Track track) async => null;

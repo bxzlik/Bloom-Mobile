@@ -12,8 +12,11 @@ import 'app/theme/bloom_theme.dart';
 import 'core/l10n/l10n.dart';
 import 'core/log/bloom_log.dart';
 import 'core/store/cover_store.dart';
+import 'core/store/history_store.dart';
 import 'core/store/json_store.dart';
 import 'core/store/library_store.dart';
+import 'core/store/play_log.dart';
+import 'core/store/play_stats.dart';
 import 'core/store/settings_store.dart';
 import 'core/store/stats_store.dart';
 import 'features/customization/ui/app_background.dart';
@@ -27,7 +30,7 @@ import 'features/player/audio_handler.dart';
 import 'features/player/player_controller.dart';
 import 'features/player/resume_store.dart';
 import 'features/settings/auto_accent.dart';
-import 'features/wrapped/play_log.dart';
+import 'features/settings/user_fonts.dart';
 import 'providers/yandex/ym_auth.dart';
 import 'shared/ui/bloom_toast.dart';
 
@@ -47,13 +50,15 @@ Future<void> main() async {
   // Хранилище читаем ДО первого кадра: иначе библиотека и тема моргнут
   // пустыми, а экраны придётся городить с состояниями загрузки.
   final store = await _step('bloom.json', JsonStore.open);
-  // Журнал прослушиваний «Итогов» — СВОЙ файл: `bloom.json` переписывается
+  // Журнал прослушиваний — СВОЙ файл: `bloom.json` переписывается
   // целиком, и десятки тысяч событий гонялись бы через кодировщик на каждый
   // лайк (см. шапку `play_log.dart`).
   final plays = await _step(
     'plays.json',
     () => JsonStore.open(name: 'plays.json'),
   );
+  // Свои шрифты — до первого кадра: иначе выбранный мелькнёт Inter.
+  await _step('шрифты', () => initUserFonts(store));
   await _step('обложки', initCoverStore);
   await _step('офлайн', initOfflineStore);
   await _step('свои треки', initLocalTracks);
@@ -94,6 +99,14 @@ Future<void> main() async {
     ],
   );
   container.read(playbackProvider);
+  // Переход со старой истории на журнал: снимки для её записей, пока треки ещё
+  // лежат в хранилище библиотеки — история их больше не держит, и первая же
+  // чистка хранилища их выбросит. Повторный запуск ничего не добавляет.
+  adoptLegacySnapshots(
+    legacy: container.read(legacyHistoryProvider),
+    lib: container.read(libraryProvider),
+    log: container.read(playLogProvider.notifier),
+  );
   // Пройден ли онбординг — ДО первого маршрута: `redirect` роутера смотрит на
   // флаг, который выставляет этот провайдер, и опоздание показало бы главную
   // на долю секунды раньше мастера.
@@ -229,7 +242,8 @@ void _restoreSession(ProviderContainer container) {
   final settings = container.read(settingsProvider);
   if (!settings.restoreQueue) return;
   final data = container.read(resumeProvider);
-  if (data == null) return;
+  // Очередь очистили — в плеер её не поднимаем, «Продолжить» остаётся.
+  if (data == null || data.cleared) return;
   logInfo(
     'player',
     'восстанавливаю сессию: ${data.track.name} '
@@ -280,7 +294,11 @@ class BloomApp extends ConsumerWidget {
       // Свой ключ мессенджера: тосты бывают и без экрана — авто-обновление
       // плейлистов ходит по таймеру.
       scaffoldMessengerKey: bloomMessengerKey,
-      theme: buildBloomTheme(tokens, transparentPages: bgOn),
+      theme: buildBloomTheme(
+        tokens,
+        transparentPages: bgOn,
+        fontFamily: ref.watch(uiFontProvider),
+      ),
       // Фон — под навигатором: он один на всё приложение и не должен ни
       // перерисовываться на каждом переходе, ни ехать вместе со страницей.
       builder: (_, child) => AppBackground(child: child ?? const SizedBox()),

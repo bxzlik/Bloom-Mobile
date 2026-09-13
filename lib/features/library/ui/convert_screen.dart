@@ -464,7 +464,8 @@ class _ItemRow extends StatelessWidget {
               SheetPanel(
                 children: [
                   for (var i = 0; i < item.cands.length; i++) ...[
-                    if (i > 0) sheetDivider(),
+                    // Текст строки: 12 + обложка 40 + 12.
+                    if (i > 0) sheetDivider(indent: 64),
                     _CandidateRow(
                       match: item.cands[i],
                       picked: switch (decision) {

@@ -5,12 +5,13 @@
 /// `iconFg`, как в десктопном Bloom.
 library;
 
-import 'dart:math' show cos, max, min, pi;
+import 'dart:math' show max, min;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../app/theme/tokens.dart';
@@ -440,12 +441,14 @@ class CircleSvgButton extends StatelessWidget {
   }
 }
 
-/// Эквалайзер играющего трека — порт десктопного `.bars`: три полоски шириной
-/// 3 с зазором 2, высоты 8/12/6, каждая следующая со сдвигом фазы на 0.2s.
+/// Эквалайзер играющего трека — порт десктопного `.bars` (library.css) и кадров
+/// `npBar1..3` (animations.css): три полоски-пилюли шириной 3 с зазором 2 в
+/// контейнере высотой 17, растут от нижнего края.
 ///
-/// Одна анимация на все три полоски, фаза берётся сдвигом по косинусу — цикл
-/// замкнут, «отката» в начале нет. На паузе полоски замирают там, где стояли, и
-/// гаснут вполовину (десктопное `body.audio-paused`).
+/// У каждой полоски свой цикл и своя длительность (1.7 / 1.35 / 2 с) со стартом
+/// с середины цикла, поэтому группа не синхронизируется. Кадры начинаются и
+/// заканчиваются одним значением — петля бесшовная. На паузе полоски просто
+/// замирают, без затухания (десктопное `body.audio-paused`).
 class EqualizerBars extends StatefulWidget {
   const EqualizerBars({
     super.key,
@@ -466,20 +469,36 @@ class EqualizerBars extends StatefulWidget {
 
 class _EqualizerBarsState extends State<EqualizerBars>
     with SingleTickerProviderStateMixin {
-  static const List<double> _heights = [8, 12, 6];
+  static const double _barW = 3;
+  static const double _gap = 2;
+  static const double _height = 17;
 
-  /// Сдвиги фазы: 0 / 0.2s / 0.4s от цикла в 1.6s.
-  static const List<double> _phases = [0, 0.125, 0.25];
+  /// Кадры `npBar1..3`: (доля цикла, высота в долях контейнера).
+  static const List<List<(double, double)>> _frames = [
+    [(0, .44), (.24, .80), (.48, .52), (.72, .90), (.88, .62), (1, .44)],
+    [(0, .76), (.20, .46), (.42, .86), (.64, .54), (.82, .72), (1, .76)],
+    [(0, .56), (.26, .92), (.52, .42), (.74, .78), (.90, .50), (1, .56)],
+  ];
 
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1600),
-  );
+  /// Длительность цикла и отрицательный delay каждой полоски, мс.
+  static const List<int> _durations = [1700, 1350, 2000];
+  static const List<int> _delays = [0, 500, 1100];
+
+  /// Заводится в [initState], а не лениво: у неигравших полосок первое
+  /// обращение пришлось бы на `dispose`, где искать предков уже нельзя.
+  late final Ticker _ticker;
+
+  /// Время, наигранное до последней паузы, и время текущего отрезка.
+  Duration _before = Duration.zero;
+  Duration _elapsed = Duration.zero;
+
+  void _tick(Duration d) => setState(() => _elapsed = _before + d);
 
   @override
   void initState() {
     super.initState();
-    if (widget.playing) _c.repeat();
+    _ticker = createTicker(_tick);
+    if (widget.playing) _ticker.start();
   }
 
   @override
@@ -487,51 +506,57 @@ class _EqualizerBarsState extends State<EqualizerBars>
     super.didUpdateWidget(old);
     if (widget.playing == old.playing) return;
     if (widget.playing) {
-      _c.repeat();
+      _ticker.start();
     } else {
-      _c.stop();
+      _ticker.stop();
+      _before = _elapsed;
     }
   }
 
   @override
   void dispose() {
-    _c.dispose();
+    _ticker.dispose();
     super.dispose();
+  }
+
+  /// Высота полоски [i] в долях контейнера: кадры с ease-in-out на каждом
+  /// отрезке — так CSS применяет `animation-timing-function`.
+  double _level(int i) {
+    final ms = _elapsed.inMicroseconds / 1000 + _delays[i];
+    final p = (ms % _durations[i]) / _durations[i];
+    final frames = _frames[i];
+    for (var f = 1; f < frames.length; f++) {
+      final (t1, v1) = frames[f];
+      if (p > t1) continue;
+      final (t0, v0) = frames[f - 1];
+      final local = Curves.easeInOut.transform((p - t0) / (t1 - t0));
+      return v0 + (v1 - v0) * local;
+    }
+    return frames.last.$2;
   }
 
   @override
   Widget build(BuildContext context) {
     final color = widget.color ?? context.bloom.accent;
     final k = widget.scale;
-    return Opacity(
-      opacity: widget.playing ? 1 : 0.5,
-      child: SizedBox(
-        height: 14 * k,
-        child: AnimatedBuilder(
-          animation: _c,
-          builder: (context, _) => Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              for (var i = 0; i < _heights.length; i++) ...[
-                if (i > 0) SizedBox(width: 2 * k),
-                Container(
-                  width: 3 * k,
-                  // scaleY .3 → 1 по косинусу: то же ease-in-out alternate.
-                  height:
-                      _heights[i] *
-                      k *
-                      (0.3 +
-                          0.35 * (1 - cos(2 * pi * (_c.value + _phases[i])))),
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(2 * k),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
+    return SizedBox(
+      height: _height * k,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (var i = 0; i < _frames.length; i++) ...[
+            if (i > 0) SizedBox(width: _gap * k),
+            Container(
+              width: _barW * k,
+              height: _height * k * _level(i),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

@@ -28,6 +28,7 @@ import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
+import '../../../core/store/history_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
@@ -380,27 +381,28 @@ class _DragCellState extends State<_DragCell> {
 }
 
 /// Три встроенных раздела лентой — как на десктопе.
-class _SystemTiles extends StatelessWidget {
+class _SystemTiles extends ConsumerWidget {
   const _SystemTiles({required this.lib});
 
   final LibraryState lib;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
     return SizedBox(
-      height: 122,
+      height: 152,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
         children: [
           // Иконки — те же, что в десктопном сайдбаре: нота, сердце, часы.
+          // Заливка — чистый цвет раздела, без смешивания с поверхностью: так
+          // плитки читаются издалека, а белый значок на них не теряется.
           _SystemTile(
             title: context.l.commonAllTracks,
             count: lib.inLib.length,
             icon: SolarIconsOutline.musicNote,
-            tint: t.sysAllTint,
-            color: t.sysAllIco,
+            color: t.sysAllTint.withValues(alpha: 1),
             onTap: () => context.go('/library/list/all'),
           ),
           const SizedBox(width: 12),
@@ -408,18 +410,16 @@ class _SystemTiles extends StatelessWidget {
             title: context.l.commonFavorites,
             count: lib.favs.length,
             icon: SolarIconsBold.heart,
-            tint: t.sysFavTint,
             color: t.sysFavIco,
             onTap: () => context.go('/library/list/fav'),
           ),
           const SizedBox(width: 12),
           _SystemTile(
             title: context.l.commonHistory,
-            // Без счётчика: история упирается в [kHistoryLimit], и число под
-            // названием намертво встало бы на 200 — оно бы не значило ничего.
-            count: null,
+            // С 3.0 лимита в 200 нет — счётчик снова что-то значит (на ПК
+            // подпись «Истории» в сайдбаре вернули по той же причине).
+            count: ref.watch(historyProvider).length,
             icon: SolarIconsOutline.clockCircle,
-            tint: t.sysHistTint,
             color: t.sysHistIco,
             onTap: () => context.go('/library/list/history'),
           ),
@@ -434,7 +434,6 @@ class _SystemTile extends StatelessWidget {
     required this.title,
     required this.count,
     required this.icon,
-    required this.tint,
     required this.color,
     required this.onTap,
   });
@@ -444,7 +443,8 @@ class _SystemTile extends StatelessWidget {
   /// Сколько треков в разделе; `null` — не показывать (см. «Историю»).
   final int? count;
   final IconData icon;
-  final Color tint;
+
+  /// Сплошной цвет раздела. Значок и текст на нём — белые.
   final Color color;
   final VoidCallback onTap;
 
@@ -453,18 +453,21 @@ class _SystemTile extends StatelessWidget {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
     // Плитка ВСЕГДА своего цвета и всегда сплошная — ни фон, ни стекло сквозь
-    // неё не идут (его слово). Цвет — тот же тинт раздела, но уже смешанный с
-    // поверхностью темы, а не плёнка поверх страницы: над картинкой-фоном
-    // плёнка показывала обои. К правому краю цвет слегка приглушается — плитка
-    // остаётся одноцветной, но не выглядит плоской заливкой.
-    final base = Color.alphaBlend(tint, t.blockColor);
+    // неё не идут (его слово). К правому краю цвет слегка темнеет — плитка
+    // остаётся одноцветной, но не выглядит плоской заливкой. Чистый цвет
+    // раздела на тёмной теме слепил («слишком ярко») — берём его глубокий
+    // тёмный оттенок.
+    final base = Color.alphaBlend(Colors.black.withValues(alpha: 0.55), color);
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
-          colors: [base, Color.alphaBlend(t.bg.withValues(alpha: 0.45), base)],
-          stops: const [0.35, 1],
+          colors: [
+            base,
+            Color.alphaBlend(Colors.black.withValues(alpha: 0.3), base),
+          ],
+          stops: const [0.3, 1],
         ),
         borderRadius: BorderRadius.circular(t.radius),
       ),
@@ -474,14 +477,14 @@ class _SystemTile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Container(
-            width: 208,
-            padding: const EdgeInsets.all(16),
+            width: 300,
+            padding: const EdgeInsets.all(18),
             alignment: Alignment.bottomLeft,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(icon, size: 27, color: color),
+                Icon(icon, size: 34, color: Colors.white),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -489,7 +492,10 @@ class _SystemTile extends StatelessWidget {
                     // и `titleMedium` на ней теряется.
                     Text(
                       title,
-                      style: theme.titleMedium?.copyWith(fontSize: 17),
+                      style: theme.titleMedium?.copyWith(
+                        fontSize: 19,
+                        color: Colors.white,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     // Строку держим пустой, а не выбрасываем: плитки стоят в
@@ -497,7 +503,10 @@ class _SystemTile extends StatelessWidget {
                     // соседей.
                     Text(
                       count == null ? '' : context.l.tracksCount(count!),
-                      style: theme.bodySmall,
+                      style: theme.bodySmall?.copyWith(
+                        fontSize: 13,
+                        color: Colors.white.withValues(alpha: 0.8),
+                      ),
                     ),
                   ],
                 ),

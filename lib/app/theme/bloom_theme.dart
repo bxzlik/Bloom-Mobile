@@ -3,13 +3,16 @@
 /// Inter подключён вариативным файлом, поэтому вес задаётся ДВАЖДЫ:
 /// `fontWeight` (для fallback-синтеза) и `fontVariations` с осью `wght` —
 /// без второго вариативный шрифт рисуется одним начертанием.
+///
+/// Семейства в [bloomText] нет намеренно: шрифт выбирается в настройках, и
+/// стиль наследует его из темы. Явное `fontFamily` здесь перебило бы выбор —
+/// `ThemeData` вписывает свой шрифт только в стили, где семейство не задано.
 library;
 
 import 'package:flutter/material.dart';
 
+import 'fonts.dart';
 import 'tokens.dart';
-
-const String kFontFamily = 'Inter';
 
 TextStyle bloomText({
   required double size,
@@ -18,7 +21,6 @@ TextStyle bloomText({
   double? height,
   double? letterSpacing,
 }) => TextStyle(
-  fontFamily: kFontFamily,
   fontSize: size,
   color: color,
   height: height,
@@ -31,7 +33,15 @@ TextStyle bloomText({
 /// её пропускать, поэтому заливки самих поверхностей и фона перехода между
 /// страницами гасим (иначе фон был бы виден только сквозь щели по краям, а на
 /// время перехода и вовсе закрывался бы сплошным).
-ThemeData buildBloomTheme(BloomTokens t, {bool transparentPages = false}) {
+///
+/// [fontFamily] — шрифт интерфейса из настроек (см. `fonts.dart`). Запасной
+/// всегда Inter: у Minecraft Rus и у своих файлов бывает не весь алфавит, и
+/// недостающие символы рисуются им, а не системным шрифтом.
+ThemeData buildBloomTheme(
+  BloomTokens t, {
+  bool transparentPages = false,
+  String fontFamily = kDefaultFont,
+}) {
   final pageBg = transparentPages ? Colors.transparent : t.bg;
   final scheme = ColorScheme(
     brightness: t.isLight ? Brightness.light : Brightness.dark,
@@ -44,7 +54,7 @@ ThemeData buildBloomTheme(BloomTokens t, {bool transparentPages = false}) {
     surfaceContainerHighest: t.card,
     onSurfaceVariant: t.text2,
     outline: t.border,
-    error: const Color(0xFFFF5578),
+    error: kBloomDanger,
     onError: Colors.white,
   );
 
@@ -54,7 +64,8 @@ ThemeData buildBloomTheme(BloomTokens t, {bool transparentPages = false}) {
     colorScheme: scheme,
     scaffoldBackgroundColor: pageBg,
     canvasColor: pageBg,
-    fontFamily: kFontFamily,
+    fontFamily: fontFamily,
+    fontFamilyFallback: const [kDefaultFont],
     // Переход между страницами. Дефолт Android — предиктивный: пока тянешь
     // системный жест «назад», страница сжимается в карточку и в щель видно
     // предыдущий экран. Ставим сдвиг с растворением (переход Android U):

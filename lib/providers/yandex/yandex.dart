@@ -276,6 +276,8 @@ YmRawAlbum? parseAlbum(Object? node) {
   if (node is! Map) return null;
   final id = idStr(node['id']);
   if (id == null) return null;
+  final artists = node['artists'];
+  final first = (artists is List && artists.isNotEmpty) ? artists.first : null;
   return YmRawAlbum(
     id: id,
     title: node['title'] as String? ?? kYmDash,
@@ -284,7 +286,19 @@ YmRawAlbum? parseAlbum(Object? node) {
     year: (node['year'] as num?)?.toInt().toString() ?? '',
     releaseDate: _releaseDate(node),
     trackCount: (node['trackCount'] as num?)?.toInt() ?? 0,
+    artistId: (first is Map ? idStr(first['id']) : null) ?? '',
+    artistCover: _artistPhoto(first),
+    albumType: node['type'] as String? ?? '',
   );
+}
+
+/// Фото артиста 1000×1000 — для крупного круга карточки релиза (порт
+/// `artist_cover` из `yandex.rs`).
+String _artistPhoto(Object? artist) {
+  final cover = artist is Map ? artist['cover'] : null;
+  final uri = cover is Map ? cover['uri'] : null;
+  if (uri is! String || uri.isEmpty) return '';
+  return 'https://${uri.replaceAll('%%', '1000x1000')}';
 }
 
 YmRawPlaylist? parsePlaylist(Object? node) {
@@ -394,15 +408,42 @@ Future<YmEntity> album(String id) async {
   );
 }
 
-/// Вся дискография артиста (секция «Треки») — `/artists/{id}/tracks`, первая
-/// страница (page-size=50). Полные объекты-треки, [parseTrack] работает.
-Future<List<YmRawTrack>> artistTracks(String id) async {
+/// Размер страницы «Треков» артиста — и первая порция, и каждая догрузка.
+const int kYmArtistTracksPage = 50;
+
+/// Страница дискографии артиста (секция «Треки») — `/artists/{id}/tracks`.
+/// Первую берёт [artist], остальные догружаются по «Загрузить ещё» (порт
+/// `artist_tracks` из `yandex.rs`, 3.0).
+Future<YmTracksPage> artistTracksPage(String id, int page) async {
   final v = await apiGet('/artists/$id/tracks', {
-    'page': '0',
-    'page-size': '50',
+    'page': '$page',
+    'page-size': '$kYmArtistTracksPage',
   });
-  final r = v['result'];
-  return r is Map ? _parseAll(r['tracks'], parseTrack, 50) : const [];
+  return parseArtistTracksPage(v['result'], page);
+}
+
+/// Разбор страницы «Треков» — отдельно от сети, ради тестов. Есть ли ещё —
+/// по `pager` (`total`/`perPage`), если Яндекс его отдал; без него полная
+/// страница значит «возможно, есть»: пустая следующая просто закончит список.
+YmTracksPage parseArtistTracksPage(Object? result, int page) {
+  final r = result is Map ? result : const {};
+  final raw = r['tracks'];
+  final rawLen = raw is List ? raw.length : 0;
+  final pager = r['pager'];
+  final total = pager is Map ? (pager['total'] as num?)?.toInt() : null;
+  final perPage =
+      (pager is Map ? (pager['perPage'] as num?)?.toInt() : null) ??
+      kYmArtistTracksPage;
+  final hasMore =
+      rawLen > 0 &&
+      (total != null
+          ? page * perPage + rawLen < total
+          : rawLen >= kYmArtistTracksPage);
+  return YmTracksPage(
+    tracks: _parseAll(raw, parseTrack, rawLen),
+    nextPage: hasMore ? page + 1 : null,
+    total: total,
+  );
 }
 
 Future<YmEntity> artist(String id) async {
@@ -425,15 +466,21 @@ Future<YmEntity> artist(String id) async {
     if (full.isNotEmpty) popularTracks = full;
   }
 
-  // Полная дискография (секция «Треки», как на SoundCloud). Best-effort — если
-  // эндпоинт не отдал, остаются хотя бы «Популярные».
-  final tracks = await artistTracks(id).catchError((_) => <YmRawTrack>[]);
+  // Первая страница дискографии (секция «Треки», как на SoundCloud); дальше —
+  // догрузка по номеру страницы. Best-effort — если эндпоинт не отдал,
+  // остаются хотя бы «Популярные».
+  final first = await artistTracksPage(
+    id,
+    0,
+  ).catchError((_) => const YmTracksPage());
 
   return YmEntity(
     title: (a is Map ? a['name'] as String? : null) ?? 'Артист',
     subtitle: 'Артист',
     cover: coverFrom(a),
-    tracks: tracks,
+    tracks: first.tracks,
+    tracksNextPage: first.nextPage,
+    tracksTotal: first.total,
     popularTracks: popularTracks,
     albums: _parseAll(r['albums'], parseAlbum, 18),
     // Похожие исполнители — brief-info отдаёт готовые объекты артистов.
@@ -526,30 +573,74 @@ Future<YmResolved> resolve(String url) async {
   throw const YmException('ym.err.badUrl');
 }
 
+// ======================= Похожие (витрины главной) =======================
+
+/// Похожие на трек для «Для вас» и «Похожие на» — `/tracks/{id}/similar`, порт
+/// `similar_tracks` из `yandex.rs`. У нишевых треков similar бывает пуст, и
+/// тогда фолбэк — первый батч станции по этому треку: пустая полоса на главной
+/// хуже слегка размытой подборки. Сид из выдачи станции убираем — он и так
+/// стоит в топе того, для кого подборка.
+Future<List<YmRawTrack>> similarTracks(String trackId) async {
+  final v = await apiGet('/tracks/$trackId/similar');
+  final result = v['result'];
+  final raw = result is Map ? result['similarTracks'] : null;
+  if (raw is List) {
+    final tracks = _parseAll(raw, parseTrack, raw.length);
+    if (tracks.isNotEmpty) return tracks;
+  }
+  final wave = await waveTracks('track:$trackId');
+  return [
+    for (final t in wave.tracks)
+      if (t.id != trackId) t,
+  ];
+}
+
 // ======================= Чарты и новинки (главная) =======================
 
-/// Общий чарт Яндекс.Музыки (топ треков) для витрины на главной.
-/// `/landing3/chart` → `result.chart.tracks[]`, где каждый элемент несёт
-/// `.track` (иногда элемент уже сам трек — обрабатываем оба случая).
-Future<List<YmRawTrack>> chart() async {
-  final v = await apiGet('/landing3/chart');
-  final result = v['result'];
+/// Общий чарт Яндекс.Музыки — витрина на главной и страница «Чарт». Отдаём
+/// весь чарт (у Яндекса это ~100 позиций): главная режет до 15 сама, странице
+/// нужен полный список.
+Future<List<YmRawTrack>> chart() async =>
+    parseChart((await apiGet('/landing3/chart'))['result']);
+
+/// Разбор `/landing3/chart` — отдельно от сети, ради тестов. Элемент
+/// `result.chart.tracks[]` несёт `.track` (иногда сам уже трек) и обёртку
+/// `.chart` с местом и динамикой. У «голого» трека обёртки нет — место тогда
+/// берётся из порядка, а динамика считается неизвестной.
+List<YmRawTrack> parseChart(Object? result) {
   final chartNode = result is Map ? result['chart'] : null;
   final arr = chartNode is Map ? chartNode['tracks'] : null;
   if (arr is! List) return const [];
-  return _parseAll(
-    [
-      for (final it in arr)
-        (it is Map && it['track'] != null) ? it['track'] : it,
-    ],
-    parseTrack,
-    30,
-  );
+  final out = <YmRawTrack>[];
+  for (var i = 0; i < arr.length; i++) {
+    final it = arr[i];
+    final track = parseTrack(
+      (it is Map && it['track'] != null) ? it['track'] : it,
+    );
+    if (track == null) continue;
+    final c = it is Map ? it['chart'] : null;
+    out.add(
+      track.withChart(
+        pos: (c is Map ? (c['position'] as num?)?.toInt() : null) ?? i + 1,
+        shift: (c is Map ? (c['shift'] as num?)?.toInt() : null) ?? 0,
+        // progress: new | up | down | same. Стрелку рисуем по shift, от
+        // progress нужен только признак новичка.
+        isNew: c is Map && c['progress'] == 'new',
+      ),
+    );
+  }
+  return out;
 }
 
-/// Новинки (свежие альбомы) для витрины на главной. Основной путь —
-/// `landing3?blocks=new-releases` (полные альбомы в `entities[].data`).
-/// Фолбэк — `/landing3/new-releases` (id-шники) с добором через `/albums`.
+/// Сколько релизов отдаём. Витрина на главной берёт первые 10, остальное
+/// показывает страница «Релизы» сеткой. Реально площадка отдаёт ~80 (число
+/// плавает по дням), так что это потолок с запасом, а не ограничение.
+const int _newReleasesMax = 100;
+
+/// Новинки (свежие альбомы) — витрина на главной и страница «Релизы».
+/// Основной путь — `landing3?blocks=new-releases` (полные альбомы в
+/// `entities[].data`), но блок лендинга это карусель и коротким бывает почти
+/// всегда — поэтому список добирается id-шниками из `/landing3/new-releases`.
 Future<List<YmRawAlbum>> newReleases() async {
   final v = await apiGet('/landing3', {'blocks': 'new-releases'});
   final out = <YmRawAlbum>[];
@@ -560,34 +651,67 @@ Future<List<YmRawAlbum>> newReleases() async {
       final entities = b is Map ? b['entities'] : null;
       if (entities is! List) continue;
       for (final e in entities) {
+        if (out.length >= _newReleasesMax) break;
         // entity.data — полный альбом; иногда сам entity уже альбом.
         final data = (e is Map && e['data'] is Map) ? e['data'] : e;
         final parsed = parseAlbum(data);
-        if (parsed != null) {
-          out.add(parsed);
-          if (out.length >= 24) return out;
-        }
+        if (parsed != null) out.add(parsed);
       }
     }
   }
-  if (out.isEmpty) {
-    return await _newReleasesByIds().catchError((_) => <YmRawAlbum>[]);
+  if (out.length < _newReleasesMax) {
+    try {
+      // Дубли по id отсеиваем: id-список пересекается с каруселью лендинга.
+      for (final a in await _newReleasesByIds()) {
+        if (out.length >= _newReleasesMax) break;
+        if (!out.any((x) => x.id == a.id)) out.add(a);
+      }
+    } on Object {
+      // Добор не вышел — остаёмся на том, что дал лендинг.
+    }
+  }
+  if (out.isEmpty) return const [];
+  // Сущности лендинга бывают «худыми»: без фото артиста и даты выхода, а
+  // карточке релиза нужно и то и другое. Добираем полные альбомы; не вышло —
+  // остаёмся на лендинге.
+  if (out.any((a) => a.artistCover.isEmpty || a.releaseDate.isEmpty)) {
+    try {
+      final full = {
+        for (final a in await _albumsByIds([for (final a in out) a.id]))
+          a.id: a,
+      };
+      for (var i = 0; i < out.length; i++) {
+        out[i] = full[out[i].id] ?? out[i];
+      }
+    } on Object {
+      // см. выше
+    }
   }
   return out;
 }
 
-/// Фолбэк новинок: `/landing3/new-releases` отдаёт `newReleases[]` = id
-/// альбомов, добираем полные объекты одним запросом `/albums?album-ids=...`.
+/// `/landing3/new-releases` отдаёт `newReleases[]` — id альбомов.
 Future<List<YmRawAlbum>> _newReleasesByIds() async {
   final v = await apiGet('/landing3/new-releases');
   final result = v['result'];
   final raw = result is Map ? result['newReleases'] : null;
   final ids = raw is List
-      ? [for (final item in raw.take(24)) ?idStr(item)]
+      ? [for (final item in raw.take(_newReleasesMax)) ?idStr(item)]
       : const <String>[];
-  if (ids.isEmpty) return const [];
-  final av = await apiGet('/albums', {'album-ids': ids.join(',')});
-  return _parseAll(av['result'], parseAlbum, ids.length);
+  return _albumsByIds(ids);
+}
+
+/// Полные альбомы по id через `/albums?album-ids=…`, пачками по 50: id уходят в
+/// строку запроса, и на шестидесяти URL уже неприлично длинный. Порядок
+/// ответа — порядок новинок.
+Future<List<YmRawAlbum>> _albumsByIds(List<String> ids) async {
+  final out = <YmRawAlbum>[];
+  for (var i = 0; i < ids.length; i += 50) {
+    final chunk = ids.sublist(i, i + 50 < ids.length ? i + 50 : ids.length);
+    final av = await apiGet('/albums', {'album-ids': chunk.join(',')});
+    out.addAll(_parseAll(av['result'], parseAlbum, chunk.length));
+  }
+  return out;
 }
 
 // ============================ Моя волна (rotor) ============================

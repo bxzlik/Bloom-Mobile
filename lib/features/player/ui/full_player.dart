@@ -1,5 +1,5 @@
 /// Полноэкранный плеер. Раскладка — по референсу: шапка (свернуть / «Играет
-/// из» / меню), большая обложка с ♡ и ⊕ поверх неё, название и артист по
+/// из» / меню), большая обложка, название и артист по
 /// центру, прогресс, транспорт отдельным блоком, под ним ряд инструментов.
 ///
 /// Вид (цвета, плёнки, радиус) — токены десктопного Bloom.
@@ -365,7 +365,6 @@ class _Cover extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final track = state.track!;
-    final isFav = ref.watch(libraryProvider).isFav(track.id);
     final anim = ref.watch(trackAnimProvider).of(TrackAnimSurface.player);
     // Пластинка (`playerStyle: 'vinyl'` с ПК): круглая обложка, вращение и
     // тёмная этикетка по центру.
@@ -386,8 +385,7 @@ class _Cover extends ConsumerWidget {
           children: [
             // Слои смены трека клипует сама рамка обложки, а картинки внутри
             // идут БЕЗ своего радиуса: иначе уезжающая показывала бы
-            // скруглённый угол посреди кадра. Кнопки стоят рядом со слоями, а
-            // не внутри, — ♡ и ⊕ никуда не едут (на ПК у них свой z-index).
+            // скруглённый угол посреди кадра.
             SizedBox(
               width: side,
               height: side,
@@ -422,8 +420,8 @@ class _Cover extends ConsumerWidget {
               ),
             ),
             // Этикетка — порт `.ps-cover.vinyl-mode::after`. Стоит НАД
-            // обложкой, но под панелью текста и кнопками (на ПК у неё
-            // z-index 3, у них 4) и, само собой, не крутится вместе с диском.
+            // обложкой, но под панелью текста (на ПК у неё z-index 3) и, само
+            // собой, не крутится вместе с диском.
             if (vinyl)
               Positioned(
                 left: 0,
@@ -435,8 +433,7 @@ class _Cover extends ConsumerWidget {
             // Панель текста поверх обложки — порт `.lyrics-panel` с ПК: та же
             // подложка (цвет блока, 96%) и то же появление (прозрачность плюс
             // лёгкий наплыв). Рисуется ВСЕГДА, видимость даёт прозрачность:
-            // иначе анимации не из чего играть. Кнопки ♡ и ⊕ стоят ПОСЛЕ неё —
-            // остаются нажимаемыми поверх текста, как на ПК.
+            // иначе анимации не из чего играть.
             Positioned(
               left: 0,
               top: 0,
@@ -472,66 +469,9 @@ class _Cover extends ConsumerWidget {
                 ),
               ),
             ),
-            Positioned(
-              left: 10,
-              bottom: 10,
-              child: _CoverButton(
-                icon: isFav ? SolarIconsBold.heart : SolarIconsOutline.heart,
-                color: isFav ? const Color(0xFFFF5578) : Colors.white,
-                onTap: () =>
-                    ref.read(libraryProvider.notifier).toggleFav(track),
-              ),
-            ),
-            // Именно addCircle, а не plus: в solar_icons 0.1.0 `plus` и `minus`
-            // сидят на одном коде 0xec4a и рисуются знаком «±» из
-            // калькуляторной группы. В референсе тут и так ⊕.
-            Positioned(
-              right: 10,
-              bottom: 10,
-              child: _CoverButton(
-                icon: SolarIconsOutline.addCircle,
-                iconSize: 24,
-                onTap: () => showAddToPlaylistSheet(context, ref, track),
-              ),
-            ),
           ],
         );
       },
-    );
-  }
-}
-
-/// Кнопка НА ОБЛОЖКЕ: подложка честно чёрная, штрих белый — под ней всегда
-/// картинка, а не поверхность темы. Тонкая светлая рамка нужна, чтобы кружок
-/// читался и на почти чёрной обложке, где одной заливки не видно.
-class _CoverButton extends StatelessWidget {
-  const _CoverButton({
-    required this.icon,
-    this.iconSize = 22,
-    this.color,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final double iconSize;
-  final Color? color;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-      ),
-      child: CircleIconButton(
-        icon: icon,
-        iconSize: iconSize,
-        size: 48,
-        background: Colors.black.withValues(alpha: 0.45),
-        color: color ?? Colors.white,
-        onTap: onTap,
-      ),
     );
   }
 }
@@ -571,7 +511,7 @@ class _TitleBlock extends ConsumerWidget {
       // Крупнее общей подписи (13): в плеере под названием стоит одна
       // строка, и она должна читаться с руки.
       style: theme.bodyMedium?.copyWith(
-        fontSize: 16,
+        fontSize: 18,
         color: state.error != null ? t.danger : null,
       ),
     );
@@ -613,7 +553,7 @@ class _TitleBlock extends ConsumerWidget {
                 child: MarqueeText(
                   track.name,
                   align: align.text,
-                  style: theme.headlineSmall,
+                  style: theme.headlineSmall?.copyWith(fontSize: 25),
                 ),
               ),
             ),
@@ -864,16 +804,15 @@ class _NextUpPill extends ConsumerWidget {
 
 /// Блок-контейнер: плёнка + рамка + радиус темы.
 class _Block extends StatelessWidget {
-  const _Block({required this.child, this.padding});
+  const _Block({required this.child});
 
   final Widget child;
-  final EdgeInsets? padding;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
     return Container(
-      padding: padding ?? const EdgeInsets.symmetric(vertical: 18),
+      padding: const EdgeInsets.symmetric(vertical: 18),
       decoration: BoxDecoration(
         color: t.ovlBg,
         border: Border.all(color: t.ovlLine),
@@ -946,6 +885,9 @@ class _Transport extends ConsumerWidget {
             size: 24,
             active: state.shuffle,
             onTap: ctrl.toggleShuffle,
+            mark: state.smartShuffle
+                ? Icon(SolarIconsBold.stars, size: 9, color: t.accentText)
+                : null,
           ),
         ],
       ),
@@ -974,7 +916,7 @@ class _SleepButton extends ConsumerWidget {
         icon: sleep.mode == SleepMode.endOfTrack
             ? SolarIconsBold.moonSleep
             : SolarIconsOutline.moonSleep,
-        size: 26,
+        size: 25,
         label: sleep.mode == SleepMode.timer
             ? sleepLabel(sleep.remaining)
             : null,
@@ -993,12 +935,16 @@ class _FlatIcon extends StatelessWidget {
     this.active = false,
     this.mark,
     this.label,
+    this.color,
   });
 
   final IconData icon;
   final VoidCallback? onTap;
   final double size;
   final bool active;
+
+  /// Свой цвет иконки вместо обычного — у ♡ в избранном он красный.
+  final Color? color;
 
   /// Мини-бейдж в кружке акцента поверх иконки (перенос .cc-badge с ПК): им
   /// различаем режимы кнопки, чтобы не подменять саму иконку.
@@ -1016,7 +962,7 @@ class _FlatIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final color = active ? t.accent : t.iconFg;
+    final color = this.color ?? (active ? t.accent : t.iconFg);
     return InkResponse(
       onTap: onTap,
       radius: 26,
@@ -1074,13 +1020,21 @@ class _FlatIcon extends StatelessWidget {
   }
 }
 
-/// Ряд инструментов. Кнопки очереди тут нет: очередь открывает пилюля источника
-/// в шапке (тап), а долгое нажатие на ней уводит на сам источник.
+/// Ряд инструментов — две пилюли по краям: слева то, что про сам трек (♡, ⊕ и
+/// текст), справа то, что про прослушивание (скорость и сон). Кнопки очереди
+/// тут нет: очередь открывает пилюля источника в шапке (тап), а долгое нажатие
+/// на ней уводит на сам источник.
 class _Tools extends ConsumerWidget {
   const _Tools();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.bloom;
+    final track = ref.watch(playbackProvider.select((s) => s.track));
+    if (track == null) return const SizedBox.shrink();
+    final isFav = ref.watch(
+      libraryProvider.select((lib) => lib.isFav(track.id)),
+    );
     // Скорость: пока она 1×, кнопка — обычный спидометр; иначе на её месте
     // само значение, как `cc-cap` в десктопном транспорте.
     final rate = ref.watch(speedProvider).rate;
@@ -1090,30 +1044,70 @@ class _Tools extends ConsumerWidget {
     // случае: иначе её было бы нечем закрыть.
     final lyricsFound = ref.watch(lyricsProvider).status == LyricsStatus.ready;
 
-    return _Block(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          if (lyricsFound || lyricsOpen)
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _ToolPill(
+          children: [
             _FlatIcon(
-              icon: SolarIconsOutline.text,
-              size: 26,
-              active: lyricsOpen,
-              onTap: () =>
-                  ref.read(lyricsOpenProvider.notifier).state = !lyricsOpen,
+              icon: isFav ? SolarIconsBold.heart : SolarIconsOutline.heart,
+              size: 25,
+              color: isFav ? t.sysFavIco : null,
+              onTap: () => ref.read(libraryProvider.notifier).toggleFav(track),
             ),
-          const _FlatIcon(icon: SolarIconsOutline.tuning, size: 26),
-          const _SleepButton(),
-          _FlatIcon(
-            icon: SolarIconsOutline.speedometerMiddle,
-            size: 26,
-            label: rate == 1 ? null : speedLabel(rate),
-            active: rate != 1,
-            onTap: () => showSpeedSheet(context),
-          ),
-        ],
+            // Именно addCircle, а не plus: в solar_icons 0.1.0 `plus` и `minus`
+            // сидят на одном коде 0xec4a и рисуются знаком «±» из
+            // калькуляторной группы.
+            _FlatIcon(
+              icon: SolarIconsOutline.addCircle,
+              size: 25,
+              onTap: () => showAddToPlaylistSheet(context, ref, track),
+            ),
+            if (lyricsFound || lyricsOpen)
+              _FlatIcon(
+                icon: SolarIconsOutline.text,
+                size: 25,
+                active: lyricsOpen,
+                onTap: () =>
+                    ref.read(lyricsOpenProvider.notifier).state = !lyricsOpen,
+              ),
+          ],
+        ),
+        _ToolPill(
+          children: [
+            _FlatIcon(
+              icon: SolarIconsOutline.speedometerMiddle,
+              size: 25,
+              label: rate == 1 ? null : speedLabel(rate),
+              active: rate != 1,
+              onTap: () => showSpeedSheet(context),
+            ),
+            const _SleepButton(),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Пилюля ряда инструментов: та же плёнка, рамка и радиус, что у блока
+/// транспорта, но по ширине содержимого.
+class _ToolPill extends StatelessWidget {
+  const _ToolPill({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: t.ovlBg,
+        border: Border.all(color: t.ovlLine),
+        borderRadius: BorderRadius.circular(t.radius * 1.8),
       ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: children),
     );
   }
 }

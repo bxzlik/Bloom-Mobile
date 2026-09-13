@@ -8,6 +8,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/theme/fonts.dart';
 import '../../app/theme/tokens.dart';
 import '../../providers/soundcloud/soundcloud.dart' as sc;
 import 'library_store.dart' show jsonStoreProvider;
@@ -357,6 +358,12 @@ class SettingsState {
   /// фирменных цветах площадок (то же поведение и дефолт, что на десктопе).
   final bool accentBadges;
 
+  /// Шрифт интерфейса — семейство, как оно сохранено (десктопный
+  /// `fontFamily`). Сырое значение: свои шрифты живут в своём сторе, и
+  /// проверять выбор против них здесь нечем — это делает `normalizeFont` там,
+  /// где собирается тема.
+  final String fontFamily;
+
   /// Вид таб-бара, см. [NavBarStyle].
   final NavBarStyle navStyle;
 
@@ -401,6 +408,11 @@ class SettingsState {
   /// не восстанавливает, поэтому без него не показывается и не действует.
   final bool autoplay;
 
+  /// «Авто похожие» (десктопный `audioStore.autoSimilar`): доигравшая очередь
+  /// продолжается похожими треками, дописанными в её хвост. Кнопка «Похожие на
+  /// очередь» в шторке — другое: она заменяет очередь волной сразу.
+  final bool autoSimilar;
+
   /// Свои темы — в порядке создания, после встроенных.
   final List<ThemePreset> customThemes;
 
@@ -413,6 +425,7 @@ class SettingsState {
     this.autoSurface,
     this.scClientId,
     this.accentBadges = false,
+    this.fontFamily = kDefaultFont,
     this.navStyle = NavBarStyle.bar,
     this.navTabs = kDefaultNavTabs,
     this.navOrder = kDefaultNavOrder,
@@ -423,6 +436,7 @@ class SettingsState {
     this.localImport = LocalImportMode.inPlace,
     this.restoreQueue = false,
     this.autoplay = false,
+    this.autoSimilar = false,
     this.customThemes = const [],
   });
 
@@ -473,6 +487,7 @@ class SettingsState {
     String? scClientId,
     bool clearClientId = false,
     bool? accentBadges,
+    String? fontFamily,
     NavBarStyle? navStyle,
     Set<NavTab>? navTabs,
     List<NavTab>? navOrder,
@@ -483,6 +498,7 @@ class SettingsState {
     LocalImportMode? localImport,
     bool? restoreQueue,
     bool? autoplay,
+    bool? autoSimilar,
     List<ThemePreset>? customThemes,
   }) => SettingsState(
     themeId: themeId ?? this.themeId,
@@ -493,6 +509,7 @@ class SettingsState {
     autoSurface: autoSurface ?? this.autoSurface,
     scClientId: clearClientId ? null : (scClientId ?? this.scClientId),
     accentBadges: accentBadges ?? this.accentBadges,
+    fontFamily: fontFamily ?? this.fontFamily,
     navStyle: navStyle ?? this.navStyle,
     navTabs: navTabs ?? this.navTabs,
     navOrder: navOrder ?? this.navOrder,
@@ -503,6 +520,7 @@ class SettingsState {
     localImport: localImport ?? this.localImport,
     restoreQueue: restoreQueue ?? this.restoreQueue,
     autoplay: autoplay ?? this.autoplay,
+    autoSimilar: autoSimilar ?? this.autoSimilar,
     customThemes: customThemes ?? this.customThemes,
   );
 }
@@ -529,6 +547,7 @@ class SettingsController extends Notifier<SettingsState> {
       autoSurface: autoSurface is num ? Color(autoSurface.toInt()) : null,
       scClientId: clientId is String && clientId.isNotEmpty ? clientId : null,
       accentBadges: raw['accentBadges'] as bool? ?? false,
+      fontFamily: raw['fontFamily'] as String? ?? kDefaultFont,
       navStyle: readNavStyle(raw['navStyle']),
       navTabs: readNavTabs(raw['navTabs']),
       navOrder: readNavOrder(raw['navOrder']),
@@ -539,6 +558,7 @@ class SettingsController extends Notifier<SettingsState> {
       localImport: readLocalImportMode(raw['localImport']),
       restoreQueue: raw['restoreQueue'] as bool? ?? false,
       autoplay: raw['autoplay'] as bool? ?? false,
+      autoSimilar: raw['autoSimilar'] as bool? ?? false,
       customThemes: [
         for (final item in (raw['customThemes'] as List?) ?? const [])
           ?ThemePreset.fromJson(item),
@@ -561,6 +581,7 @@ class SettingsController extends Notifier<SettingsState> {
         'autoSurface': state.autoSurface!.toARGB32(),
       if (state.scClientId != null) 'scClientId': state.scClientId,
       'accentBadges': state.accentBadges,
+      'fontFamily': state.fontFamily,
       'navStyle': state.navStyle.name,
       'navTabs': [for (final tab in state.navBarTabs) tab.name],
       'navOrder': [for (final tab in state.navOrder) tab.name],
@@ -571,6 +592,7 @@ class SettingsController extends Notifier<SettingsState> {
       'localImport': state.localImport.name,
       'restoreQueue': state.restoreQueue,
       'autoplay': state.autoplay,
+      'autoSimilar': state.autoSimilar,
       'customThemes': [for (final t in state.customThemes) t.toJson()],
     });
   }
@@ -695,6 +717,12 @@ class SettingsController extends Notifier<SettingsState> {
     _save();
   }
 
+  void setFontFamily(String family) {
+    if (state.fontFamily == family) return;
+    state = state.copyWith(fontFamily: family);
+    _save();
+  }
+
   void setNavStyle(NavBarStyle style) {
     state = state.copyWith(navStyle: style);
     _save();
@@ -774,6 +802,11 @@ class SettingsController extends Notifier<SettingsState> {
   /// сразу продолжить» им не распоряжается.
   void setAutoplay(bool value) {
     state = state.copyWith(autoplay: value);
+    _save();
+  }
+
+  void setAutoSimilar(bool value) {
+    state = state.copyWith(autoSimilar: value);
     _save();
   }
 

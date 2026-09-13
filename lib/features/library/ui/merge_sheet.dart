@@ -199,7 +199,8 @@ class _MergeBodyState extends ConsumerState<_MergeBody> {
         SheetPanel(
           children: [
             for (var i = 0; i < others.length; i++) ...[
-              if (i > 0) sheetDivider(),
+              // Текст строки: 12 + обложка 40 + 12.
+              if (i > 0) sheetDivider(indent: 64),
               _PlaylistRow(
                 playlist: others[i],
                 tracks: lib.tracksOf(others[i]).length,

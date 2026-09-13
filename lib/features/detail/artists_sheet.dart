@@ -128,7 +128,8 @@ class _ArtistPickerState extends ConsumerState<_ArtistPicker> {
     return SheetPanel(
       children: [
         for (final (i, name) in widget.names.indexed) ...[
-          if (i > 0) sheetDivider(),
+          // Текст строки: 14 + аватар 44 + 14.
+          if (i > 0) sheetDivider(indent: 72),
           _row(name),
         ],
       ],

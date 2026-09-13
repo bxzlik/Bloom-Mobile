@@ -8,6 +8,7 @@ library;
 import '../../core/entities/entities.dart';
 import '../../core/providers/music_provider.dart';
 import 'models.dart';
+import 'sc_sources.dart' show similarTracks;
 import 'soundcloud.dart' as sc;
 
 /// Сквозные id: числовой id SoundCloud с префиксом источника.
@@ -209,6 +210,16 @@ class SoundCloudProvider extends MusicProvider {
   Future<Track?> resolveTrackById(String id) async {
     final raw = await sc.trackById(scNumericId(id));
     return raw == null ? null : trackFromSc(raw);
+  }
+
+  /// Похожие для витрин главной: related, а если их мало — станция трека. Через
+  /// общую с волной очередь и кэш (`sc_sources.dart`), иначе вместе они
+  /// упрутся в 429.
+  @override
+  Future<List<Track>?> getSimilarTracks(String seedId) async {
+    final m = RegExp(r'^sc_(\d+)$').firstMatch(seedId);
+    if (m == null) return const [];
+    return (await similarTracks(m.group(1)!)).map(trackFromSc).toList();
   }
 
   @override

@@ -4,17 +4,17 @@
 /// определяется тем, что человек слушал и лайкал, — и проверять это удобнее
 /// списком, а не на живом сторе.
 ///
-/// Отличие от десктопа: число прослушиваний берётся ТОЛЬКО из истории. На ПК к
-/// нему прибавляется `track.playCount`, но там это локальный счётчик, а у нас
-/// в этом поле лежит глобальный счётчик площадки (`playback_count` у
-/// SoundCloud) — сложив их, мы бы ранжировали библиотеку по чужим
-/// прослушиваниям, а не по своим.
+/// Число прослушиваний — СВОЁ, из журнала ([PlayStats]), как и на ПК с 3.0.
+/// В `track.playCount` у нас лежит глобальный счётчик площадки
+/// (`playback_count` у SoundCloud): по нему библиотека ранжировалась бы чужими
+/// прослушиваниями, а не своими.
 library;
 
 import 'dart:math';
 
 import '../../core/entities/entities.dart';
 import '../../core/store/library_store.dart';
+import '../../core/store/play_stats.dart';
 
 /// Числовой SoundCloud-id трека — по нему и ходит подбор похожих. `null` у
 /// всего, что не с SoundCloud: своего движка подбора у остальных площадок нет.
@@ -33,12 +33,22 @@ class WaveLibrary {
   WaveLibrary({
     required this.lib,
     required this.disliked,
+    PlayStats? stats,
+    this.recent = const [],
     Iterable<Track> extras = const [],
     Random? random,
-  }) : _extras = {for (final t in extras) t.id: t},
+  }) : stats = stats ?? PlayStats.empty,
+       _extras = {for (final t in extras) t.id: t},
        _rnd = random ?? Random();
 
   final LibraryState lib;
+
+  /// Сколько раз и когда слушали — журнал прослушиваний целиком, а не 200
+  /// последних треков, как было до 3.0.
+  final PlayStats stats;
+
+  /// id из «Истории», свежие сверху.
+  final List<String> recent;
 
   /// id дизлайкнутых треков — в сиды и в подмешивание они не попадают.
   final Set<String> disliked;
@@ -56,17 +66,12 @@ class WaveLibrary {
       if (!disliked.contains(t.id)) t,
   ];
 
-  late final Map<String, HistoryEntry> _history = lib.historyById;
-
-  /// Сколько раз трек слушали — из истории, см. заметку в шапке файла.
-  int playCount(String trackId) => _history[trackId]?.count ?? 0;
+  /// Сколько раз трек слушали — из журнала, см. заметку в шапке файла.
+  int playCount(String trackId) => stats.playCount(trackId);
 
   /// Слушали ли трек за последние [days] дней.
-  bool recentlyPlayed(String trackId, int days) {
-    final at = _history[trackId]?.at;
-    if (at == null) return false;
-    return DateTime.now().millisecondsSinceEpoch - at < days * 24 * 3600 * 1000;
-  }
+  bool recentlyPlayed(String trackId, int days) =>
+      stats.recentlyPlayed(trackId, days);
 
   Track? byId(String trackId) => _extras[trackId] ?? lib.tracks[trackId];
 }
@@ -112,7 +117,7 @@ List<String> pickQueueSeeds(List<String> trackIds, WaveLibrary view) {
 }
 
 /// «Моя волна»: 3–5 сидов из библиотеки — топ по прослушиваниям, свежие лайки
-/// и один трек из любимого жанра.
+/// и ещё один из них же.
 ///
 /// [rotation] сдвигает выбор на каждом запуске: без него волна вечно упиралась
 /// бы в одни и те же два трека из топа и два последних лайка.
@@ -138,19 +143,17 @@ List<String> pickPersonalSeeds(WaveLibrary view, int rotation) {
     seeds.add(favs[(rotation * 2 + 1) % favs.length].id);
   }
 
-  // 3) Случайный трек из любимого жанра — он и даёт волне ширину.
-  final genre = _topGenre(view, lib, rotation);
-  if (genre != null) {
-    final candidates = [
-      for (final t in lib)
-        if (!seeds.contains(t.id) &&
-            !view.recentlyPlayed(t.id, 2) &&
-            t.genres.any((g) => g.toLowerCase() == genre))
-          t,
-    ];
-    if (candidates.isNotEmpty) {
-      seeds.add(candidates[view._rnd.nextInt(candidates.length)].id);
-    }
+  // 3) Ещё один: следующий из топа, а если его нет или он уже взят — следующий
+  // лайк. Раньше здесь был случайный трек «любимого жанра», но жанр на
+  // SoundCloud — свободный текст загрузчика вперемешку с тегами («rap»,
+  // «Hip-hop & Rap», «type beat»), и такой сид был по сути случайным треком
+  // библиотеки; десктоп 3.0 убрал его по той же причине.
+  final nextTop = byPlays.isEmpty
+      ? null
+      : byPlays[(rotation * 2 + 2) % byPlays.length];
+  final nextFav = favs.isEmpty ? null : favs[(rotation * 2 + 2) % favs.length];
+  for (final t in [nextTop, nextFav]) {
+    if (t != null && seeds.add(t.id)) break;
   }
 
   // Слушать ещё нечего — берём самое свежее в библиотеке.
@@ -198,9 +201,9 @@ List<String> pickDisplaySeeds(
   for (final t in favs) {
     push(t.id);
   }
-  for (final h in view.lib.history) {
-    if (view.disliked.contains(h.trackId)) continue;
-    push(h.trackId);
+  for (final id in view.recent) {
+    if (view.disliked.contains(id)) continue;
+    push(id);
   }
   for (final t in lib) {
     push(t.id);
@@ -239,25 +242,6 @@ List<Track> _byFav(WaveLibrary view, List<Track> lib) {
       if (view.lib.isFav(t.id)) (t, view.lib.favs[t.id] ?? 0),
   ]..sort((a, b) => b.$2.compareTo(a.$2));
   return [for (final x in favs) x.$1];
-}
-
-/// Жанр, который человек слушает больше прочих. Вес жанра — сумма
-/// прослушиваний его треков.
-String? _topGenre(WaveLibrary view, List<Track> lib, int rotation) {
-  final score = <String, int>{};
-  for (final t in lib) {
-    final plays = view.playCount(t.id);
-    if (plays <= 0) continue;
-    for (final g in t.genres) {
-      if (g.isEmpty) continue;
-      score.update(g.toLowerCase(), (v) => v + plays, ifAbsent: () => plays);
-    }
-  }
-  if (score.isEmpty) return null;
-  final top = score.entries.toList()
-    ..sort((a, b) => b.value.compareTo(a.value));
-  final pool = top.take(5).toList();
-  return pool[(rotation + view._rnd.nextInt(2)) % pool.length].key;
 }
 
 /// Список, прокрученный на [by] позиций.

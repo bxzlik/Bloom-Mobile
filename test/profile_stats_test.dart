@@ -1,11 +1,13 @@
 /// Статистика профиля и достижения: те же правила, что в десктопном
-/// `StatsSection`/`achievements.ts`. Считается всё из истории и дневного
-/// журнала, поэтому хранилище тут в памяти.
+/// `StatsSection`/`achievements.ts`. Считается всё из журнала прослушиваний,
+/// старой истории и дневного журнала, поэтому хранилища тут в памяти.
 library;
 
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/store/json_store.dart';
 import 'package:bloom/core/store/library_store.dart';
+import 'package:bloom/core/store/play_log.dart';
+import 'package:bloom/core/store/play_stats.dart';
 import 'package:bloom/core/store/stats_store.dart';
 import 'package:bloom/features/profile/achievements.dart';
 import 'package:bloom/features/profile/stats.dart';
@@ -26,37 +28,48 @@ Track _track(
 );
 
 ProviderContainer _container([Map<String, dynamic>? seed]) {
+  // Часы идут вперёд на минуту за обращение: у каждого прослушивания свой
+  // момент, как в жизни.
+  var now = DateTime(2026, 9, 1).millisecondsSinceEpoch;
   final c = ProviderContainer(
-    overrides: [jsonStoreProvider.overrideWithValue(JsonStore.memory(seed))],
+    overrides: [
+      jsonStoreProvider.overrideWithValue(JsonStore.memory(seed)),
+      playLogStoreProvider.overrideWithValue(JsonStore.memory()),
+      playLogClockProvider.overrideWithValue(
+        () => DateTime.fromMillisecondsSinceEpoch(now += 60000),
+      ),
+    ],
   );
   addTearDown(c.dispose);
   return c;
 }
 
+/// Засчитать прослушивание — то же, что делает плеер.
+void _listen(ProviderContainer c, Track track) =>
+    c.read(playLogProvider.notifier).log(track);
+
 void main() {
   test('повторное прослушивание растит счётчик, а не плодит записи', () {
     final c = _container();
-    final lib = c.read(libraryProvider.notifier);
     final track = _track('sc_1');
 
-    lib.pushHistory(track);
-    lib.pushHistory(_track('sc_2'));
-    lib.pushHistory(track);
+    _listen(c, track);
+    _listen(c, _track('sc_2'));
+    _listen(c, track);
 
-    final history = c.read(libraryProvider).history;
-    expect(history.length, 2);
+    final rows = c.read(playStatsProvider).historyRows();
+    expect(rows.length, 2);
     // Трек поднялся наверх и унёс счётчик с собой.
-    expect(history.first.trackId, 'sc_1');
-    expect(history.first.count, 2);
+    expect(rows.first.id, 'sc_1');
+    expect(rows.first.count, 2);
     expect(c.read(profileStatsProvider).totalPlays, 3);
   });
 
   test('время прослушивания и средняя длина считаются по счётчику', () {
     final c = _container();
-    final lib = c.read(libraryProvider.notifier);
-    lib.pushHistory(_track('sc_1', seconds: 200));
-    lib.pushHistory(_track('sc_1', seconds: 200));
-    lib.pushHistory(_track('sc_2', seconds: 100));
+    _listen(c, _track('sc_1', seconds: 200));
+    _listen(c, _track('sc_1', seconds: 200));
+    _listen(c, _track('sc_2', seconds: 100));
 
     final stats = c.read(profileStatsProvider);
     expect(stats.listenSec, 500);
@@ -64,9 +77,21 @@ void main() {
     expect(stats.uniqueTracks, 2);
   });
 
+  test('трек, которого нет в библиотеке, в топе остаётся — по снимку', () {
+    final c = _container();
+    _listen(c, _track('sc_1', artist: 'A'));
+    _listen(c, _track('sc_1', artist: 'A'));
+
+    // Библиотека пуста: трек только слушали, но не сохраняли.
+    final stats = c.read(profileStatsProvider);
+    expect(stats.topTracks.single.track.id, 'sc_1');
+    expect(stats.topTracks.single.plays, 2);
+    expect(stats.favArtist, 'A');
+  });
+
   test('площадка берётся из префикса id — даже без самого трека', () {
     final c = _container({
-      // История из прошлого запуска: треков площадок в хранилище уже нет.
+      // Старая история: треков площадок и снимков журнала для них нет.
       'history': [
         {'id': 'ytm_1', 'at': 1, 'n': 3},
         {'id': 'sc_1', 'at': 2, 'n': 1},
@@ -84,10 +109,9 @@ void main() {
 
   test('топ артистов сортируется по прослушиваниям, любимый — первый', () {
     final c = _container();
-    final lib = c.read(libraryProvider.notifier);
-    lib.pushHistory(_track('sc_1', artist: 'A'));
-    lib.pushHistory(_track('sc_2', artist: 'B'));
-    lib.pushHistory(_track('sc_2', artist: 'B'));
+    _listen(c, _track('sc_1', artist: 'A'));
+    _listen(c, _track('sc_2', artist: 'B'));
+    _listen(c, _track('sc_2', artist: 'B'));
 
     final stats = c.read(profileStatsProvider);
     expect(stats.favArtist, 'B');
@@ -97,10 +121,9 @@ void main() {
 
   test('мультиартистный трек идёт в зачёт каждому участнику', () {
     final c = _container();
-    final lib = c.read(libraryProvider.notifier);
-    lib.pushHistory(_track('sc_1', artist: 'reidenshi, Øneheart'));
-    lib.pushHistory(_track('sc_2', artist: 'Øneheart'));
-    lib.pushHistory(_track('sc_2', artist: 'Øneheart'));
+    _listen(c, _track('sc_1', artist: 'reidenshi, Øneheart'));
+    _listen(c, _track('sc_2', artist: 'Øneheart'));
+    _listen(c, _track('sc_2', artist: 'Øneheart'));
 
     final stats = c.read(profileStatsProvider);
     // Склеенного имени в топе нет — по нему не нашлись бы ни аватар, ни
@@ -173,7 +196,6 @@ void main() {
     );
 
     // Дошли до серебра — вот это уже новость.
-    c.read(libraryProvider.notifier).setHistoryTracks(const []);
     final grown = [
       for (final a in c.read(achievementsProvider))
         if (a.def.id == 'listener')
@@ -186,7 +208,7 @@ void main() {
     expect(fresh.single.tier, AchTier.silver);
   });
 
-  test('очистка статистики обнуляет журнал и достижения', () {
+  test('очистка статистики обнуляет журналы и достижения', () {
     final c = _container({
       'stats': {
         'activity': {dayKey(DateTime.now()): 5},
@@ -196,13 +218,16 @@ void main() {
         {'id': 'sc_1', 'at': 1, 'n': 150},
       ],
     });
+    _listen(c, _track('sc_2'));
     c
         .read(unlockedAchievementsProvider.notifier)
         .sync(c.read(achievementsProvider));
 
-    c.read(libraryProvider.notifier).clearHistory();
+    // Ровно то, что делает «Очистить» в шторке статистики.
     c.read(statsProvider.notifier).clear();
     c.read(unlockedAchievementsProvider.notifier).clear();
+    c.read(playLogProvider.notifier).clear();
+    c.read(legacyHistoryProvider.notifier).clear();
 
     final stats = c.read(profileStatsProvider);
     expect(stats.totalPlays, 0);

@@ -7,7 +7,8 @@
 /// откатывать их этим ✕ было бы нечем — они применяются сразу.
 ///
 /// Что значит «убрать» — зависит от списка: из плейлиста трек просто уходит, из
-/// «Любимых» снимается лайк, из «Истории» пропадает запись, а из «Всех треков»
+/// «Любимых» снимается лайк, из «Истории» строка прячется (прослушивания в
+/// журнале остаются), а из «Всех треков»
 /// он удаляется НАСКВОЗЬ (как пункт «Удалить трек»), поэтому там перед записью
 /// ещё и переспрашиваем.
 library;
@@ -23,6 +24,7 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
+import '../../../core/store/history_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../features/offline/offline_store.dart';
 import '../../../shared/ui/atoms.dart';
@@ -289,7 +291,9 @@ class _ListEditorState extends ConsumerState<ListEditor> {
       case 'fav':
         lib.setFavTracks(_ids);
       case 'history':
-        lib.setHistoryTracks(_ids);
+        // Порядок в «Истории» не свой — его задаёт время, — поэтому пишем
+        // только убранное.
+        ref.read(historyHideProvider.notifier).hide(gone);
       default:
         final pl = _playlist;
         if (pl != null) {
@@ -931,7 +935,7 @@ class _EditBar extends StatelessWidget {
             if (canFav)
               _BarIcon(
                 icon: favOn ? SolarIconsBold.heart : SolarIconsOutline.heart,
-                color: favOn ? t.accent : null,
+                color: favOn ? t.sysFavIco : null,
                 onTap: onFav,
               ),
             const SizedBox(width: 4),

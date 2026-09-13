@@ -19,7 +19,7 @@ import '../../core/store/library_store.dart' show jsonStoreProvider;
 import '../../core/store/json_store.dart';
 import '../../core/store/stats_store.dart' show dayKey;
 import 'periods.dart';
-import 'play_log.dart';
+import '../../core/store/play_log.dart';
 import 'wrapped_data.dart';
 
 @immutable
@@ -159,6 +159,7 @@ class WrappedEntries {
     this.month,
     this.year,
     this.monthUnseen = false,
+    this.monthHint = false,
     this.yearUnseen = false,
   });
 
@@ -171,6 +172,11 @@ class WrappedEntries {
   /// Месяц ещё не смотрели: карточка статистики в профиле подменяется входом в
   /// итоги. После просмотра она возвращается на место до следующего месяца.
   final bool monthUnseen;
+
+  /// Первая неделя месяца: карточка статистики чередует своё число с надписью
+  /// «Итоги месяца». Работает и ПОСЛЕ просмотра — это подсказка, а не вход:
+  /// нажатие по карточке всё так же открывает статистику.
+  final bool monthHint;
 
   /// Год ещё не смотрели — метка «Новое» на плашке.
   final bool yearUnseen;
@@ -213,6 +219,7 @@ final wrappedEntriesProvider = Provider<WrappedEntries>((ref) {
     month: month,
     year: year,
     monthUnseen: unseen(month),
+    monthHint: month != null && inMonthHintWindow(now, force: force),
     yearUnseen: unseen(year),
   );
 });

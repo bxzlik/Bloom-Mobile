@@ -115,31 +115,6 @@ void main() {
     });
   });
 
-  group('lrcUnits', () {
-    test('по словам: смещения по границам слов, время делится по длине', () {
-      final u = lrcUnits('ab cd', byLetter: false, from: 0, to: 10);
-      expect(u.offsets, [0, 3, 5]);
-      // Слова равной длины — вторая половина интервала достаётся второму.
-      expect(u.starts, [0.0, 5.0]);
-    });
-
-    test('время делится ПРОПОРЦИОНАЛЬНО длине, а не поровну', () {
-      final u = lrcUnits('a bbb', byLetter: false, from: 0, to: 8);
-      expect(u.starts, [0.0, 2.0]);
-    });
-
-    test('по буквам: единица — символ, пробелы не в счёт', () {
-      final u = lrcUnits('ab c', byLetter: true, from: 0, to: 3);
-      expect(u.offsets, [0, 1, 3, 4]);
-      expect(u.starts, [0.0, 1.0, 2.0]);
-    });
-
-    test('несколько пробелов подряд не создают пустых единиц', () {
-      final u = lrcUnits('a   b', byLetter: false, from: 0, to: 2);
-      expect(u.starts.length, 2);
-    });
-  });
-
   group('normalizeForSearch', () {
     test('срезает (feat. …)', () {
       expect(normalizeForSearch('Song (feat. Someone)'), 'Song');
@@ -321,12 +296,9 @@ void main() {
   });
 
   group('LyricsStyleController', () {
-    test('умолчания — как на ПК: поверх обложки, по словам, без эффекта', () {
+    test('умолчание — поверх обложки', () {
       final c = _container(answer: () async => const LyricsResult.notFound());
-      final style = c.read(lyricsStyleProvider);
-      expect(style.mode, LyricsMode.overlay);
-      expect(style.fill, LyricsFill.word);
-      expect(style.fx, LyricsFx.none);
+      expect(c.read(lyricsStyleProvider).mode, LyricsMode.overlay);
     });
 
     test('выбор сохраняется и читается обратно', () {
@@ -336,17 +308,12 @@ void main() {
         store: store,
       );
       first.read(lyricsStyleProvider.notifier).setMode(LyricsMode.replace);
-      first.read(lyricsStyleProvider.notifier).setFill(LyricsFill.wipe);
-      first.read(lyricsStyleProvider.notifier).setFx(LyricsFx.glow);
 
       final second = _container(
         answer: () async => const LyricsResult.notFound(),
         store: store,
       );
-      final style = second.read(lyricsStyleProvider);
-      expect(style.mode, LyricsMode.replace);
-      expect(style.fill, LyricsFill.wipe);
-      expect(style.fx, LyricsFx.glow);
+      expect(second.read(lyricsStyleProvider).mode, LyricsMode.replace);
     });
 
     test('незнакомое значение в файле заменяется умолчанием', () {

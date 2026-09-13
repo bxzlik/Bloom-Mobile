@@ -3,16 +3,17 @@
 ///
 /// Порядок ровно десктопный: кандидаты от каждого сида → подмешивание знакомых
 /// (только «Моя волна») → фильтры → скоринг → чередование → разрядка по
-/// артистам и жанрам → срез до размера пачки.
+/// артистам и жанрам → отсев перезаливов → срез до размера пачки.
 library;
 
 import 'dart:math';
 
 import '../../core/entities/entities.dart';
 import '../../providers/soundcloud/models.dart';
+import '../../shared/util/track_dedup.dart';
 import 'wave_scoring.dart';
 import 'wave_seeds.dart';
-import 'wave_sources.dart';
+import '../../providers/soundcloud/sc_sources.dart';
 import 'wave_store.dart';
 import 'wave_types.dart';
 
@@ -33,6 +34,7 @@ class WaveEngine {
     required this.view,
     required this.store,
     required this.queueIds,
+    this.queueTracks = const [],
     this.currentId,
     Random? random,
   }) : _rnd = random ?? Random();
@@ -42,6 +44,11 @@ class WaveEngine {
 
   /// Что уже стоит в очереди — дублей не подбираем.
   final Set<String> queueIds;
+
+  /// Сами треки очереди — для отсева перезаливов по содержимому: тот же трек
+  /// другого загрузчика id не совпадёт, а в очереди он уже есть (пришёл с
+  /// прошлой пачкой). Пусто при старте волны — очередь тогда заменяется.
+  final List<Track> queueTracks;
   final String? currentId;
   final Random _rnd;
 
@@ -102,7 +109,12 @@ class WaveEngine {
     var ordered = [for (final x in scored) x.$1];
 
     if (mode == WaveMode.personal) ordered = interleaveFamiliar(ordered);
-    return antiClumpByArtist(ordered).take(takeCount).toList();
+    // Перезаливы режем ДО среза: иначе пачка ушла бы неполной — дубли выпали бы
+    // уже после нарезки.
+    return dedupCandidates(
+      antiClumpByArtist(ordered),
+      already: queueTracks,
+    ).take(takeCount).toList();
   }
 
   /// Опросить станцию и похожие у каждого сида. Курсор станции двигаем только
@@ -149,6 +161,28 @@ class WaveEngine {
       for (final g in view.byId(id)?.genres ?? const <String>[])
         if (g.isNotEmpty) g.toLowerCase(),
   };
+}
+
+/// Убрать из ранжированного списка повторы одного и того же трека — порт
+/// `dedupCandidates` + сверки в `enqueueBatch` с ПК (3.1).
+///
+/// Дедуп не по id: на SoundCloud один трек часто залит несколькими
+/// пользователями, id у них разные, и в очереди оказывалось по 2-3 одинаковых
+/// трека подряд. Сверяем по содержимому (`shared/util/track_dedup.dart`), и не
+/// только внутри пачки, но и против [already] — очереди: дубль мог прийти с
+/// прошлой пачкой. Порядок сохраняется, выше по рангу — тот, что остаётся.
+List<WaveCandidate> dedupCandidates(
+  List<WaveCandidate> list, {
+  Iterable<Track> already = const [],
+}) {
+  final guard = DupGuard();
+  for (final t in already) {
+    guard.add(t);
+  }
+  return [
+    for (final c in list)
+      if (guard.accept(c.track)) c,
+  ];
 }
 
 /// Треки из кандидатов — то, что и уедет в очередь плеера.

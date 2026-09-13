@@ -3,9 +3,10 @@
 ///
 /// Порт десктопного `switchTrackPlatform` + `replaceLibTrack`: ищем на целевой
 /// площадке по «название + артист», берём лучшее совпадение общего матчера и
-/// переставляем на него ВСЕ ссылки — библиотеку, лайки, плейлисты, историю и
-/// очередь. Плейлисты и порядок при этом не шевелятся: меняется только то, чем
-/// трек играется.
+/// переставляем на него ВСЕ ссылки — библиотеку, лайки, плейлисты, очередь и
+/// прослушивания в журнале (а с ними «Историю», статистику и «Итоги»).
+/// Плейлисты и порядок при этом не шевелятся: меняется только то, чем трек
+/// играется.
 ///
 /// Отличие от ПК одно и оно про офлайн: там скачанная копия остаётся висеть под
 /// старым id — файл на диске есть, а трека с таким id уже нет, и убрать его
@@ -22,7 +23,10 @@ import '../../core/l10n/l10n.dart';
 import '../../core/l10n/source_label.dart';
 import '../../core/log/bloom_log.dart';
 import '../../core/providers/match.dart';
+import '../../core/store/history_store.dart';
 import '../../core/store/library_store.dart';
+import '../../core/store/play_log.dart';
+import '../../core/store/play_stats.dart';
 import '../../shared/ui/bloom_toast.dart';
 import '../offline/offline_store.dart';
 import '../player/player_controller.dart';
@@ -94,7 +98,15 @@ Future<void> switchTrackPlatform(
     return;
   }
 
+  final newId = best.track.id;
   ref.read(libraryProvider.notifier).replaceTrack(track.id, best.track);
+  // Прослушивания живут не в библиотеке, а в журнале: трек тот же, и счётчик,
+  // строка «Истории» и «Итоги» обязаны переехать вместе с ним. Иначе
+  // прослушивания делятся между двумя id: счётчик новой версии с нуля, в
+  // «Итогах» два трека, а строка «Истории» играет старую площадку.
+  ref.read(playLogProvider.notifier).renameTrack(track.id, newId);
+  ref.read(legacyHistoryProvider.notifier).renameTrack(track.id, newId);
+  ref.read(historyHideProvider.notifier).renameTrack(track.id, newId);
   ref.read(playbackProvider.notifier).replaceInQueue(track.id, best.track);
   // Скачанная копия осталась от прежней площадки: она играет не тот файл, что
   // теперь стоит за треком, и сослаться на неё уже некому.

@@ -22,7 +22,9 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
+import '../../../core/store/history_store.dart';
 import '../../../core/store/library_store.dart';
+import '../../../core/store/play_stats.dart';
 import '../../../core/store/text_files.dart';
 import '../../../features/offline/file_download.dart';
 import '../../../features/offline/offline_actions.dart';
@@ -179,10 +181,19 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
       }
     }
 
+    // «История» — не состав, а представление над журналом прослушиваний: и
+    // строки, и их треки выводятся из него (`history_store.dart`).
+    final historyItems = widget.listId == 'history'
+        ? ref.watch(historyProvider)
+        : null;
+
     final (String title, List<Track> source) = switch (widget.listId) {
       'all' => (context.l.commonAllTracks, lib.allTracks),
       'fav' => (context.l.commonFavorites, lib.favTracks),
-      'history' => (context.l.commonHistory, lib.historyTracks),
+      'history' => (
+        context.l.commonHistory,
+        [for (final item in historyItems!) item.track],
+      ),
       _ => (
         playlist?.name ?? context.l.commonPlaylist,
         playlist == null ? <Track>[] : lib.tracksOf(playlist),
@@ -207,7 +218,15 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
     final offline = _sort == TrackSort.downloaded
         ? ref.watch(offlineProvider)
         : null;
-    final tracks = _apply(source, lib, offline);
+    final historyRows = historyItems == null
+        ? null
+        : {for (final item in historyItems) item.row.id: item.row};
+    // Статистику — тоже только когда она на экран влияет: она пересчитывается
+    // на каждое засчитанное прослушивание.
+    final stats = _sort == TrackSort.plays
+        ? ref.watch(playStatsProvider)
+        : null;
+    final tracks = _apply(source, lib, offline, historyRows, stats);
     // Ключи нужны не только перетаскиванию: строку можно смахнуть, а список
     // тут не анимированный — без ключа состояние жеста досталось бы соседу,
     // который встал на освободившееся место.
@@ -215,9 +234,9 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
     final width = MediaQuery.of(context).size.width;
     // «История» — не просто список треков: строки разложены по дням, и у каждой
     // видно время прослушивания и счётчик повторов (десктопный `histFlat`).
-    final history = widget.listId == 'history'
-        ? _historyItems(context, tracks, lib.historyById)
-        : null;
+    final history = historyRows == null
+        ? null
+        : _historyItems(context, tracks, historyRows);
 
     // Геометрия для пилюли «Сейчас играет»: сколько от верха списка закрыто
     // прилипшей шапкой и где в координатах прокрутки лежит его первая строка.
@@ -262,6 +281,9 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
               // Летим только на свою обложку: коллаж 2×2 собирается из чужих
               // картинок, и обложке плитки в нём места нет.
               flight: playlist?.cover == null ? null : widget.flight,
+              listened: historyItems == null
+                  ? null
+                  : historyTotals(historyItems).listened,
               height: width * 0.62 + 76,
               sort: _sort,
               desc: _desc,
@@ -472,7 +494,7 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
   List<_HistItem> _historyItems(
     BuildContext context,
     List<Track> tracks,
-    Map<String, HistoryEntry> byId,
+    Map<String, HistoryRow> byId,
   ) {
     final out = <_HistItem>[];
     var lastLabel = '';
@@ -499,11 +521,15 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
   /// Поиск, отбор и сортировка применяются к копии: исходный порядок плейлиста
   /// трогать нельзя, «По порядку» должен уметь вернуть его как было.
   ///
-  /// [offline] приходит только в режиме «Скачанные» — остальным он не нужен.
+  /// [offline] приходит только в режиме «Скачанные», [stats] — только в «По
+  /// прослушиваниям»: остальным они не нужны. [history] — строки «Истории»,
+  /// когда на экране она.
   List<Track> _apply(
     List<Track> source,
     LibraryState lib,
     OfflineState? offline,
+    Map<String, HistoryRow>? history,
+    PlayStats? stats,
   ) {
     final q = _query.trim().toLowerCase();
     final list = q.isEmpty
@@ -530,18 +556,14 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
 
     // Время добавления берём из того раздела, который на экране: в «Любимых»
     // это время лайка, в «Истории» — время прослушивания (на ПК то же деление
-    // по `libMode`). Записи истории считаем один раз: геттер собирает карту
-    // заново на каждый вызов, а из компаратора его дёргали бы n·log n раз.
-    final hist = (_sort == TrackSort.plays || widget.listId == 'history')
-        ? lib.historyById
-        : const <String, HistoryEntry>{};
+    // по `libMode`).
     int addedAt(Track t) => switch (widget.listId) {
       'fav' => lib.favs[t.id] ?? 0,
-      'history' => hist[t.id]?.at ?? 0,
+      'history' => history?[t.id]?.at ?? 0,
       _ => lib.inLib[t.id] ?? 0,
     };
 
-    // Прослушивания — СВОИ, из истории: в `track.playCount` лежит глобальный
+    // Прослушивания — СВОИ, из журнала: в `track.playCount` лежит глобальный
     // счётчик площадки (см. заметку в `wave_seeds.dart`), и по нему список
     // ранжировался бы чужими прослушиваниями.
     final int dir = _desc ? -1 : 1;
@@ -556,8 +578,8 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
         ),
         TrackSort.duration => a.duration.compareTo(b.duration),
         TrackSort.date => addedAt(a).compareTo(addedAt(b)),
-        TrackSort.plays => (hist[a.id]?.count ?? 0).compareTo(
-          hist[b.id]?.count ?? 0,
+        TrackSort.plays => (stats?.playCount(a.id) ?? 0).compareTo(
+          stats?.playCount(b.id) ?? 0,
         ),
         TrackSort.manual || TrackSort.downloaded => 0,
       };
@@ -631,6 +653,7 @@ class _Hero extends ConsumerWidget {
     required this.tracks,
     required this.visible,
     required this.flight,
+    required this.listened,
     required this.height,
     required this.sort,
     required this.desc,
@@ -654,6 +677,9 @@ class _Hero extends ConsumerWidget {
 
   /// Обложка плитки, с которой пришли, — цель перелёта.
   final CoverFlight? flight;
+
+  /// Наслушанное время «Истории» — оно в подписи вместо суммы длин.
+  final Duration? listened;
 
   /// Полная высота шапки — вместе с полосой названия и ряда действий под
   /// обложкой. Считается снаружи: по ней пилюля «Сейчас играет» знает, с какого
@@ -745,14 +771,13 @@ class _Hero extends ConsumerWidget {
             style: theme.headlineSmall?.copyWith(fontSize: 30),
           ),
           const SizedBox(height: 4),
-          // Счётчик, офлайн-тег и общее время: в «Истории» из них не остаётся
-          // ничего (см. [ListMeta]), но строка держит высоту сама.
+          // Счётчик, офлайн-тег и общее время. У «Истории» с 3.0 счётчик снова
+          // осмыслен — лимита в 200 больше нет, — а время в ней наслушанное.
           ListMeta(
             tracks: tracks,
             style: theme.bodyMedium,
-            showCount: listId != 'history',
             showOffline: playlist != null,
-            showDuration: listId != 'history',
+            listened: listened,
           ),
           const SizedBox(height: 14),
           _Actions(

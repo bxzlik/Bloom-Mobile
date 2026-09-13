@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.5+1
+version: 1.1.0+1
 
 environment:
   sdk: ^3.11.5
@@ -54,6 +54,7 @@ dependencies:
   path_provider: ^2.1.6
   image_picker: ^1.2.3
   audio_service: ^0.18.19
+  file_picker: ^12.3.0
 
 dev_dependencies:
   flutter_test:
@@ -88,6 +89,12 @@ flutter:
     - family: Inter
       fonts:
         - asset: assets/fonts/Inter.ttf
+    # Minecraft Rus v1.1 — второй встроенный шрифт ПК, тот же файл. Одно
+    # начертание 400: жирный Flutter дорисовывает сам, недостающие символы
+    # (№, тире, стрелки) берутся из Inter — см. fontFamilyFallback темы.
+    - family: Minecraft Rus
+      fonts:
+        - asset: assets/fonts/MinecraftRus.ttf
 
   assets:
     # Знак bloom (та же звезда, что в иконке приложения) — шапка, пустые

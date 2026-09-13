@@ -33,7 +33,19 @@ class ResumeData {
     required this.savedAt,
     this.paused = true,
     this.source,
+    this.cleared = false,
+    this.fullQueue,
   });
+
+  /// Очередь очистили целиком (удалили последний трек): при запуске в плеер
+  /// снимок не поднимаем, но карточка «Продолжить» остаётся. Снимается
+  /// следующей записью — она пишет снимок заново, без флага.
+  final bool cleared;
+
+  /// Очередь в том виде, какой она была до очистки, — её поднимает карточка
+  /// «Продолжить»: очищают обычно чтобы убрать лишнее из плеера, а не чтобы
+  /// забыть, что слушали. `null` — очередь не очищали.
+  final List<Track>? fullQueue;
 
   /// Треки очереди снимками. Пустой быть не может — иначе снимка нет вовсе.
   final List<Track> queue;
@@ -56,30 +68,76 @@ class ResumeData {
 
   Track get track => queue[index];
 
+  /// Окно очереди в [kResumeQueueLimit] треков: обрезка с [index], чтобы
+  /// текущий трек всегда попал в кадр. Возвращает окно и номер в нём.
+  static (List<Track>, int) _window(List<Track> queue, int index) {
+    final from = queue.length <= kResumeQueueLimit
+        ? 0
+        : (index + kResumeQueueLimit <= queue.length
+              ? index
+              : queue.length - kResumeQueueLimit);
+    return (
+      queue.sublist(from, (from + kResumeQueueLimit).clamp(0, queue.length)),
+      index - from,
+    );
+  }
+
   /// Снимок очереди: обрезка с текущего трека, чтобы он всегда попал в кадр.
+  /// [fullQueue] — очередь до очистки, режется тем же окном вокруг текущего.
   static ResumeData capture({
     required List<Track> queue,
     required int index,
     required Duration position,
     required bool paused,
     PlaySource? source,
+    List<Track>? fullQueue,
     DateTime? at,
   }) {
-    final from = queue.length <= kResumeQueueLimit
-        ? 0
-        : (index + kResumeQueueLimit <= queue.length
-              ? index
-              : queue.length - kResumeQueueLimit);
+    final (window, at_) = _window(queue, index);
     return ResumeData(
-      queue: queue.sublist(
-        from,
-        (from + kResumeQueueLimit).clamp(0, queue.length),
-      ),
-      index: index - from,
+      queue: window,
+      index: at_,
       position: position,
       paused: paused,
       source: source,
       savedAt: at ?? DateTime.now(),
+      fullQueue: _windowAround(fullQueue, queue[index]),
+    );
+  }
+
+  static List<Track>? _windowAround(List<Track>? full, Track current) {
+    if (full == null || full.isEmpty) return null;
+    final at = full.indexWhere((t) => t.id == current.id);
+    return _window(full, at < 0 ? 0 : at).$1;
+  }
+
+  /// Тот же снимок с пометкой «очередь очистили» и очередью до очистки.
+  ResumeData markedCleared(List<Track>? full) => ResumeData(
+    queue: queue,
+    index: index,
+    position: position,
+    savedAt: savedAt,
+    paused: paused,
+    source: source,
+    cleared: true,
+    fullQueue: _windowAround(full, track) ?? fullQueue,
+  );
+
+  /// Снимок для карточки «Продолжить»: очередь целиком, какой она была до
+  /// очистки. Номер ищем по треку — он относится к урезанной очереди. Трека в
+  /// полной очереди не нашлось — играем её с начала и без позиции: позиция была
+  /// у другого трека.
+  ResumeData forContinue() {
+    final full = fullQueue;
+    if (full == null || full.isEmpty) return this;
+    final at = full.indexWhere((t) => t.id == track.id);
+    return ResumeData(
+      queue: full,
+      index: at < 0 ? 0 : at,
+      position: at < 0 ? Duration.zero : position,
+      savedAt: savedAt,
+      paused: paused,
+      source: source,
     );
   }
 
@@ -90,6 +148,9 @@ class ResumeData {
     'savedAt': savedAt.millisecondsSinceEpoch,
     'paused': paused,
     if (source != null) 'source': source!.toJson(),
+    if (cleared) 'cleared': true,
+    if (fullQueue != null)
+      'fullQueue': fullQueue!.map((t) => t.toJson()).toList(),
   };
 
   static ResumeData? fromJson(Object? json) {
@@ -111,6 +172,11 @@ class ResumeData {
       ),
       paused: json['paused'] as bool? ?? true,
       source: PlaySource.fromJson(json['source']),
+      cleared: json['cleared'] == true,
+      fullQueue: switch (json['fullQueue']) {
+        final List raw => [for (final t in raw) ?Track.fromJson(t)],
+        _ => null,
+      },
     );
   }
 }
@@ -143,5 +209,14 @@ class ResumeController extends Notifier<ResumeData?> {
   void clear() {
     state = null;
     _store.write(kResumeKey, null);
+  }
+
+  /// Очередь очистили целиком. Запись при пустой очереди ничего не пишет, так
+  /// что снимок помечаем явно — иначе удалённый трек возвращался после
+  /// перезапуска. Сам снимок не стираем: из него рисуется «Продолжить».
+  void markCleared({List<Track>? fullQueue}) {
+    final data = state;
+    if (data == null) return;
+    save(data.markedCleared(fullQueue));
   }
 }

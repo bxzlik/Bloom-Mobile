@@ -119,8 +119,8 @@ class SourceBadge extends ConsumerWidget {
     final accentBadges = ref.watch(
       settingsProvider.select((s) => s.accentBadges),
     );
-    // Плёнка обводки: белая на тёмных темах, чёрная на светлых (`--ovl-rgb`).
-    final ovl = t.isLight ? Colors.black : Colors.white;
+    // Обводки нет — как на десктопе с 3.0. Десктопное расширение кружка на 2
+    // сверх номинала не переносим: на телефоне бейдж так читается крупнее.
 
     return ClipOval(
       child: BackdropFilter(
@@ -133,7 +133,6 @@ class SourceBadge extends ConsumerWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.black.withValues(alpha: 0.38),
-            border: Border.all(color: ovl.withValues(alpha: 0.14)),
           ),
           child: PlatformLogo(
             source,

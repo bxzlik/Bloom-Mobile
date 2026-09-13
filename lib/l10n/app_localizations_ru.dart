@@ -214,10 +214,53 @@ class AppLocalizationsRu extends AppLocalizations {
   String get homeRecent => 'Недавно слушали';
 
   @override
-  String get homeCharts => 'Чарты';
+  String get homeCharts => 'Чарт';
 
   @override
-  String get homeNewReleases => 'Новинки';
+  String get homeNewReleases => 'Релизы';
+
+  @override
+  String chartUp(int n) {
+    return 'Поднялся на $n';
+  }
+
+  @override
+  String chartDown(int n) {
+    return 'Опустился на $n';
+  }
+
+  @override
+  String get chartSame => 'Без изменений';
+
+  @override
+  String get chartNew => 'Новичок чарта';
+
+  @override
+  String get chartNewShort => 'нов.';
+
+  @override
+  String get relAlbum => 'альбом';
+
+  @override
+  String get relSingle => 'сингл';
+
+  @override
+  String get relCompilation => 'сборник';
+
+  @override
+  String get relPodcast => 'подкаст';
+
+  @override
+  String get homeForYou => 'Для вас';
+
+  @override
+  String get homeForYouAll => 'Вся подборка';
+
+  @override
+  String get homeSimilarTo => 'Похожие на';
+
+  @override
+  String get homeSimilarArtist => 'Артист';
 
   @override
   String get playerQueue => 'Очередь';
@@ -1060,6 +1103,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get tiReleased => 'Дата релиза';
 
   @override
+  String get setRelease => 'Релиз';
+
+  @override
   String get tiDuration => 'Длительность';
 
   @override
@@ -1684,43 +1730,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pvLyricsModeReplace => 'Вместо обложки';
-
-  @override
-  String get pvLyricsFill => 'Заливка';
-
-  @override
-  String get pvLyricsFillSub =>
-      'чем меряется прогресс по строке; дробные варианты нужны синхронному тексту';
-
-  @override
-  String get pvLyricsFillLine => 'По строкам';
-
-  @override
-  String get pvLyricsFillWord => 'По словам';
-
-  @override
-  String get pvLyricsFillLetter => 'По буквам';
-
-  @override
-  String get pvLyricsFillWipe => 'Плавная';
-
-  @override
-  String get pvLyricsFx => 'Эффект';
-
-  @override
-  String get pvLyricsFxSub => 'как загорается то, что поётся сейчас';
-
-  @override
-  String get pvLyricsFxNone => 'Нет';
-
-  @override
-  String get pvLyricsFxFade => 'Мягко';
-
-  @override
-  String get pvLyricsFxGlow => 'Свечение';
-
-  @override
-  String get pvLyricsFxSpring => 'Пружина';
 
   @override
   String get pvGroupQueue => 'Очередь';
@@ -3166,6 +3175,16 @@ class AppLocalizationsRu extends AppLocalizations {
       'Возвращать при запуске трек, очередь и позицию — на паузе';
 
   @override
+  String get audQueue => 'Очередь';
+
+  @override
+  String get audAutoSimilarTitle => 'Авто похожие';
+
+  @override
+  String get audAutoSimilarSub =>
+      'Автоматически догружать похожие треки, когда следующего нет';
+
+  @override
   String get audAutoplayTitle => 'Автовоспроизведение';
 
   @override
@@ -3378,4 +3397,35 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get errYtmNetwork => 'YouTube не отвечает';
+
+  @override
+  String get apFontCat => 'ШРИФТ';
+
+  @override
+  String get apFontTitle => 'Шрифт интерфейса';
+
+  @override
+  String get apFontDesc => 'Выберите шрифт для всего приложения';
+
+  @override
+  String get apFontAdd => 'Загрузить свой шрифт';
+
+  @override
+  String get apFontRemove => 'Удалить шрифт';
+
+  @override
+  String apFontAdded(int n) {
+    return 'Шрифтов добавлено: $n';
+  }
+
+  @override
+  String get apFontBadFormat => 'Подходят только .ttf и .otf';
+
+  @override
+  String apFontTooBig(int mb) {
+    return 'Файл шрифта больше $mb МБ';
+  }
+
+  @override
+  String get apFontReadErr => 'Не удалось прочитать файл шрифта';
 }

@@ -6,8 +6,10 @@ import 'package:bloom/app/providers.dart';
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/providers/music_provider.dart';
 import 'package:bloom/core/providers/registry.dart';
+import 'package:bloom/core/store/history_store.dart';
 import 'package:bloom/core/store/json_store.dart';
 import 'package:bloom/core/store/library_store.dart';
+import 'package:bloom/core/store/play_stats.dart';
 import 'package:bloom/features/home/discover_store.dart';
 import 'package:bloom/features/home/ui/home_sections.dart';
 import 'package:bloom/features/player/play_source.dart';
@@ -168,30 +170,63 @@ void main() {
     });
   });
 
-  group('недавно слушали', () {
-    test('повторы схлопываются, лимит соблюдается', () {
-      final tracks = {
-        for (final id in ['a', 'b', 'c']) 'sc_$id': _track(id),
-      };
-      final lib = LibraryState(
-        tracks: tracks,
-        history: const [
-          HistoryEntry('sc_a', 5),
-          HistoryEntry('sc_a', 4),
-          HistoryEntry('sc_b', 3),
-          HistoryEntry('sc_c', 2),
-        ],
-      );
-      expect(recentTracks(lib, 12).map((t) => t.id), ['sc_a', 'sc_b', 'sc_c']);
-      expect(recentTracks(lib, 2).map((t) => t.id), ['sc_a', 'sc_b']);
+  group('очищенная очередь', () {
+    test('снимок помнит пометку и очередь до очистки после перезапуска', () {
+      final full = [_track('a'), _track('b'), _track('c')];
+      final data = ResumeData.capture(
+        queue: [_track('b')],
+        index: 0,
+        position: const Duration(seconds: 30),
+        paused: true,
+        fullQueue: full,
+      ).markedCleared(null);
+
+      final back = ResumeData.fromJson(data.toJson())!;
+      expect(back.cleared, isTrue);
+      expect(back.fullQueue?.map((t) => t.id), ['sc_a', 'sc_b', 'sc_c']);
     });
 
-    test('трека нет в хранилище — строка просто пропускается', () {
-      final lib = LibraryState(
-        tracks: {'sc_b': _track('b')},
-        history: const [HistoryEntry('sc_a', 2), HistoryEntry('sc_b', 1)],
+    test('«Продолжить» поднимает полную очередь на том же треке', () {
+      final data = ResumeData.capture(
+        queue: [_track('b')],
+        index: 0,
+        position: const Duration(seconds: 30),
+        paused: true,
+        fullQueue: [_track('a'), _track('b'), _track('c')],
       );
-      expect(recentTracks(lib, 12).map((t) => t.id), ['sc_b']);
+      final cont = data.forContinue();
+      expect(cont.queue.length, 3);
+      expect(cont.track.id, 'sc_b');
+      expect(cont.position, const Duration(seconds: 30));
+      // Развёрнутый снимок — обычная очередь, без пометок.
+      expect(cont.cleared, isFalse);
+      expect(cont.fullQueue, isNull);
+    });
+
+    test('без очистки снимок для «Продолжить» не меняется', () {
+      final data = ResumeData.capture(
+        queue: [_track('a'), _track('b')],
+        index: 1,
+        position: Duration.zero,
+        paused: false,
+      );
+      expect(identical(data.forContinue(), data), isTrue);
+      expect(data.toJson().containsKey('fullQueue'), isFalse);
+    });
+  });
+
+  group('недавно слушали', () {
+    test('идут в порядке «Истории», лимит соблюдается', () {
+      final history = [
+        for (final (i, id) in ['a', 'b', 'c'].indexed)
+          HistoryItem(HistoryRow('sc_$id', 10 - i, 1), _track(id)),
+      ];
+      expect(recentTracks(history, 12).map((t) => t.id), [
+        'sc_a',
+        'sc_b',
+        'sc_c',
+      ]);
+      expect(recentTracks(history, 2).map((t) => t.id), ['sc_a', 'sc_b']);
     });
   });
 

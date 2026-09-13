@@ -25,6 +25,7 @@ class ListMeta extends ConsumerWidget {
     this.showCount = true,
     this.showOffline = true,
     this.showDuration = true,
+    this.listened,
   });
 
   /// Состав списка: по нему считаются и офлайн-тег, и общее время.
@@ -38,17 +39,18 @@ class ListMeta extends ConsumerWidget {
   /// подпись мельче, а в шторке она поверх обложки и своего цвета.
   final TextStyle? style;
 
-  /// В «Истории» счётчика нет: список упирается в лимит, и число всегда
-  /// показывало бы 200.
   final bool showCount;
 
   /// Сколько из списка уже на устройстве. Только у своих плейлистов: у «Всех
   /// треков» / «Любимых» / «Истории» на десктопе этого тега нет.
   final bool showOffline;
 
-  /// Общее время. В «Истории» его нет: там не состав списка, а последние
-  /// проигранные — сумма по ним ничего не значит.
   final bool showDuration;
+
+  /// Время вместо суммы длин. У «Истории» это НАСЛУШАННОЕ — длина на число
+  /// прослушиваний (`historyTotals`): сумма длин последних проигранных не
+  /// значила бы ничего.
+  final Duration? listened;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -70,9 +72,13 @@ class ListMeta extends ConsumerWidget {
         ? l.commonOfflineBadge
         : '${status.cached}/${status.total}';
 
-    final sum = showDuration
-        ? tracks.fold(Duration.zero, (acc, x) => acc + x.duration)
-        : Duration.zero;
+    final sum = !showDuration
+        ? Duration.zero
+        : listened ??
+              tracks.fold<Duration>(
+                Duration.zero,
+                (acc, x) => acc + x.duration,
+              );
     final duration = sum > Duration.zero ? totalDur(l, sum) : null;
 
     final iconSize = style?.fontSize ?? 13;
@@ -142,8 +148,7 @@ class ListMeta extends ConsumerWidget {
           parts.add(Text(duration, style: style));
         }
 
-        // Показывать нечего («История» без счётчика и времени) — строка всё
-        // равно занимает свою высоту: в шапке списка она задана снаружи, и
+        // Показывать нечего — строка всё равно занимает свою высоту: в шапке списка она задана снаружи, и
         // выброшенная подпись растянула бы отступ до ряда действий.
         if (parts.isEmpty) return Text(' ', style: style);
         return Row(mainAxisSize: MainAxisSize.min, children: parts);

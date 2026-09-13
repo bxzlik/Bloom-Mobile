@@ -26,16 +26,19 @@ import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/l10n/source_label.dart';
 import '../../../core/providers/artist_lookup.dart';
-import '../../../core/store/library_store.dart';
+import '../../../core/store/history_store.dart';
+import '../../../core/store/play_log.dart';
+import '../../../core/store/play_stats.dart';
 import '../../../core/store/stats_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../detail/detail_nav.dart';
+import '../../home/for_you.dart';
+import '../../home/similar_to.dart';
 import '../../player/player_controller.dart';
 import '../../wrapped/periods.dart';
-import '../../wrapped/play_log.dart';
 import '../../wrapped/ui/wrapped_sheet.dart';
 import '../../wrapped/wrapped_store.dart';
 import '../achievements.dart';
@@ -118,12 +121,19 @@ class _StatsSheetState extends ConsumerState<StatsSheet> {
       return;
     }
     setState(() => _confirmClear = false);
-    ref.read(libraryProvider.notifier).clearHistory();
     ref.read(statsProvider.notifier).clear();
     ref.read(unlockedAchievementsProvider.notifier).clear();
-    // Журнал «Итогов» — часть той же статистики (на ПК `clearPlayLog` зовётся
-    // отсюда же): оставить его значило бы показать итоги по «очищенному».
+    // Журнал прослушиваний и есть статистика: из него же «История» и «Итоги»
+    // (на ПК `clearPlayLog` + `resetPlayStats` зовутся отсюда же). Старую
+    // историю — следом, иначе запасной источник отвечал бы за стёртое; отметки
+    // скрытия после пустого журнала прятать нечего.
     ref.read(playLogProvider.notifier).clear();
+    ref.read(legacyHistoryProvider.notifier).clear();
+    ref.read(historyHideProvider.notifier).reset();
+    // Витрины главной собраны по сидам из стёртого топа — пересобираем сразу
+    // (на ПК `clearForYouCache` + `clearSimilarToCache` зовутся отсюда же).
+    ref.read(forYouProvider.notifier).reset();
+    ref.read(similarToProvider.notifier).reset();
     showToast(context, context.l.statsCleared);
   }
 

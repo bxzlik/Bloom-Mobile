@@ -8,6 +8,7 @@ library;
 import 'dart:math';
 
 import 'package:bloom/core/entities/entities.dart';
+import 'package:bloom/core/store/play_stats.dart';
 import 'package:bloom/features/player/player_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -56,5 +57,40 @@ void main() {
     expect(a, isNot(b));
     expect(a.first, 't0'); // но голова на месте в обоих
     expect(b.first, 't0');
+  });
+
+  group('умная перемешка', () {
+    test('играющий первым, состав не меняется', () {
+      final out = weightedShuffledQueue(queue, 2, (_) => 1, Random(3));
+      expect(out.first.id, 'c');
+      expect(_ids(out).toSet(), _ids(queue).toSet());
+      expect(out.length, queue.length);
+    });
+
+    test('тяжёлые треки в среднем встают в начало', () {
+      // 40 «горячих» из 400 — расклад из комментария на ПК: ~9 из 10 первых.
+      final long = [for (var i = 0; i < 400; i++) _track('t$i')];
+      final rnd = Random(11);
+      var hot = 0;
+      for (var run = 0; run < 50; run++) {
+        final out = weightedShuffledQueue(
+          long,
+          -1,
+          (t) => int.parse(t.id.substring(1)) < 40 ? 70.5 : 0.5,
+          rnd,
+        );
+        hot += out
+            .take(10)
+            .where((t) => int.parse(t.id.substring(1)) < 40)
+            .length;
+      }
+      expect(hot / 500, greaterThan(0.8));
+    });
+
+    test('вес без истории — база 0.5, нулевой вес не ломает тасовку', () {
+      expect(smartShuffleWeight(PlayStats.empty, 'x'), 0.5);
+      final out = weightedShuffledQueue(queue, -1, (_) => 0, Random(1));
+      expect(_ids(out).toSet(), _ids(queue).toSet());
+    });
   });
 }

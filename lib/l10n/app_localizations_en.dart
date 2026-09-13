@@ -208,10 +208,53 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeRecent => 'Recently played';
 
   @override
-  String get homeCharts => 'Charts';
+  String get homeCharts => 'Chart';
 
   @override
-  String get homeNewReleases => 'New releases';
+  String get homeNewReleases => 'Releases';
+
+  @override
+  String chartUp(int n) {
+    return 'Up $n';
+  }
+
+  @override
+  String chartDown(int n) {
+    return 'Down $n';
+  }
+
+  @override
+  String get chartSame => 'No change';
+
+  @override
+  String get chartNew => 'New entry';
+
+  @override
+  String get chartNewShort => 'new';
+
+  @override
+  String get relAlbum => 'album';
+
+  @override
+  String get relSingle => 'single';
+
+  @override
+  String get relCompilation => 'compilation';
+
+  @override
+  String get relPodcast => 'podcast';
+
+  @override
+  String get homeForYou => 'For you';
+
+  @override
+  String get homeForYouAll => 'All picks';
+
+  @override
+  String get homeSimilarTo => 'Similar to';
+
+  @override
+  String get homeSimilarArtist => 'Artist';
 
   @override
   String get playerQueue => 'Queue';
@@ -1036,6 +1079,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tiReleased => 'Release date';
 
   @override
+  String get setRelease => 'Release';
+
+  @override
   String get tiDuration => 'Duration';
 
   @override
@@ -1658,43 +1704,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pvLyricsModeReplace => 'Instead of the cover';
-
-  @override
-  String get pvLyricsFill => 'Fill';
-
-  @override
-  String get pvLyricsFillSub =>
-      'what measures progress along the line; granular fills need synced lyrics';
-
-  @override
-  String get pvLyricsFillLine => 'By line';
-
-  @override
-  String get pvLyricsFillWord => 'By word';
-
-  @override
-  String get pvLyricsFillLetter => 'By letter';
-
-  @override
-  String get pvLyricsFillWipe => 'Smooth';
-
-  @override
-  String get pvLyricsFx => 'Effect';
-
-  @override
-  String get pvLyricsFxSub => 'how the part being sung lights up';
-
-  @override
-  String get pvLyricsFxNone => 'None';
-
-  @override
-  String get pvLyricsFxFade => 'Soft';
-
-  @override
-  String get pvLyricsFxGlow => 'Glow';
-
-  @override
-  String get pvLyricsFxSpring => 'Spring';
 
   @override
   String get pvGroupQueue => 'Queue';
@@ -3102,6 +3111,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Bring the track, queue and position back on launch — paused';
 
   @override
+  String get audQueue => 'Queue';
+
+  @override
+  String get audAutoSimilarTitle => 'Autoplay similar';
+
+  @override
+  String get audAutoSimilarSub =>
+      'Automatically load similar tracks when there is no next one';
+
+  @override
   String get audAutoplayTitle => 'Autoplay';
 
   @override
@@ -3312,4 +3331,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errYtmNetwork => 'YouTube is not responding';
+
+  @override
+  String get apFontCat => 'FONT';
+
+  @override
+  String get apFontTitle => 'Interface font';
+
+  @override
+  String get apFontDesc => 'Choose a font for the whole app';
+
+  @override
+  String get apFontAdd => 'Upload your own font';
+
+  @override
+  String get apFontRemove => 'Remove font';
+
+  @override
+  String apFontAdded(int n) {
+    return 'Fonts added: $n';
+  }
+
+  @override
+  String get apFontBadFormat => 'Only .ttf and .otf are supported';
+
+  @override
+  String apFontTooBig(int mb) {
+    return 'Font file is larger than $mb MB';
+  }
+
+  @override
+  String get apFontReadErr => 'Could not read the font file';
 }
