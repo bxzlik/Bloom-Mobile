@@ -123,6 +123,7 @@
 
   "@_home": {},
   "homeRecent": "Recently played",
+  "homeYourPlaylists": "Your playlists",
   "homeCharts": "Chart",
   "homeNewReleases": "Releases",
   "chartUp": "Up {n}",
@@ -254,8 +255,10 @@
   "tlSortDate": "By date added",
   "tlSortPlays": "By plays",
   "tlSortDownloaded": "Downloaded only",
+  "tlSortNotDownloaded": "Not downloaded only",
   "tlNothingFound": "Nothing found",
   "tlNothingDownloaded": "Nothing downloaded here",
+  "tlNothingNotDownloaded": "Everything here is downloaded",
   "tlEmptyFav": "Nothing liked yet",
   "tlEmptyHistory": "History is empty",
   "histToday": "Today",
@@ -458,6 +461,8 @@
   "fdNeedPermission": "Storage access is required — allow it and try again",
   "fdSaveFailed": "Couldn’t save the file",
   "fdDownloadFile": "Download as a file",
+  "fdDownloadCover": "Download cover",
+  "fdDownloadingCover": "Downloading cover…",
 
   "@_convert": {},
   "tlConvert": "Transfer to source…",

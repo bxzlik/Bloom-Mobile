@@ -40,11 +40,54 @@ object MediaStoreSaver {
         title: String?,
         artist: String?,
     ): String {
+        // Обложка («Скачать обложку») идёт тем же путём, но в «Изображения»:
+        // в «Музыке» галерея её не покажет.
+        if (mime.startsWith("image/")) {
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                saveImageViaMediaStore(context, source, filename, mime)
+            } else {
+                saveViaPublicDir(context, source, filename, Environment.DIRECTORY_PICTURES)
+            }
+        }
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             saveViaMediaStore(context, source, filename, mime, title, artist)
         } else {
-            saveViaPublicDir(context, source, filename)
+            saveViaPublicDir(context, source, filename, Environment.DIRECTORY_MUSIC)
         }
+    }
+
+    private fun saveImageViaMediaStore(
+        context: Context,
+        source: File,
+        filename: String,
+        mime: String,
+    ): String {
+        val resolver = context.contentResolver
+        val relative = Environment.DIRECTORY_PICTURES + File.separator + FOLDER
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+            put(MediaStore.Images.Media.MIME_TYPE, mime)
+            put(MediaStore.Images.Media.RELATIVE_PATH, relative)
+            put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
+        val collection = MediaStore.Images.Media.getContentUri(
+            MediaStore.VOLUME_EXTERNAL_PRIMARY,
+        )
+        val uri = resolver.insert(collection, values)
+            ?: throw IllegalStateException("медиатека отказала в записи")
+        try {
+            resolver.openOutputStream(uri).use { out ->
+                out ?: throw IllegalStateException("не открылся поток записи")
+                source.inputStream().use { it.copyTo(out) }
+            }
+        } catch (e: Exception) {
+            resolver.delete(uri, null, null)
+            throw e
+        }
+        values.clear()
+        values.put(MediaStore.Images.Media.IS_PENDING, 0)
+        resolver.update(uri, values, null, null)
+        return relative + File.separator + filename
     }
 
     private fun saveViaMediaStore(
@@ -95,9 +138,10 @@ object MediaStoreSaver {
         context: Context,
         source: File,
         filename: String,
+        publicDir: String,
     ): String {
         val dir = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC),
+            Environment.getExternalStoragePublicDirectory(publicDir),
             FOLDER,
         )
         if (!dir.exists() && !dir.mkdirs()) {

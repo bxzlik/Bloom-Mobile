@@ -80,10 +80,19 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
   /// Что именно догружается сейчас — чтобы не жать кнопку дважды.
   String? _loadingMore;
 
+  /// Прокрутка всей страницы: в неё зона треков отдаёт перелёт за свой край.
+  final ScrollController _scroll = ScrollController();
+
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -219,6 +228,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
           ? Colors.transparent
           : t.bg,
       body: CustomScrollView(
+        controller: _scroll,
         slivers: [
           DetailHero(
             image: artist?.avatar,
@@ -356,15 +366,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
       ],
       if (_tracks.isNotEmpty) ...[
         SectionTitle(context.l.commonTracks),
-        for (var i = 0; i < _tracks.length; i++)
-          TrackRow(
-            track: _tracks[i],
-            queue: _tracks,
-            index: i,
-            source: _source,
-          ),
-        if (_tracksCursor != null)
-          _MoreButton(busy: _loadingMore == 'tracks', onTap: _moreTracks),
+        _tracksZone(),
       ],
       if (top.isEmpty && albums.isEmpty && _reposts.isEmpty && _tracks.isEmpty)
         Padding(
@@ -380,6 +382,53 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         ),
     ];
   }
+
+  /// «Треки» листаются в своей зоне, а не растягивают страницу: у артиста их
+  /// бывают сотни. Зона не выше [_tracksZoneShare] экрана; короткий список
+  /// занимает ровно свою высоту. Упёрлись в край зоны — докручиваем страницу,
+  /// иначе палец на зоне, закрывшей экран, не сдвинул бы её никуда.
+  Widget _tracksZone() {
+    final more = _tracksCursor != null;
+    final count = _tracks.length + (more ? 1 : 0);
+    final full =
+        _tracks.length * kTrackRowHeight + (more ? _moreButtonHeight : 0);
+    final cap = MediaQuery.sizeOf(context).height * _tracksZoneShare;
+    return SizedBox(
+      height: full < cap ? full : cap,
+      child: NotificationListener<OverscrollNotification>(
+        onNotification: (n) {
+          if (n.dragDetails == null || !_scroll.hasClients) return false;
+          final outer = _scroll.position;
+          final to = (outer.pixels + n.overscroll).clamp(
+            outer.minScrollExtent,
+            outer.maxScrollExtent,
+          );
+          if (to != outer.pixels) outer.jumpTo(to);
+          return true;
+        },
+        child: ListView.builder(
+          padding: EdgeInsets.zero,
+          physics: const ClampingScrollPhysics(),
+          itemCount: count,
+          itemBuilder: (context, i) => i < _tracks.length
+              ? TrackRow(
+                  track: _tracks[i],
+                  queue: _tracks,
+                  index: i,
+                  source: _source,
+                )
+              : _MoreButton(busy: _loadingMore == 'tracks', onTap: _moreTracks),
+        ),
+      ),
+    );
+  }
+
+  /// Доля высоты экрана, выше которой зона треков не растёт.
+  static const double _tracksZoneShare = 0.6;
+
+  /// Высота «Загрузить ещё» с её полями — чтобы короткий список с кнопкой
+  /// не обрезался.
+  static const double _moreButtonHeight = 64;
 
   Future<void> _menu(Artist artist) async {
     final queue = _playQueue;

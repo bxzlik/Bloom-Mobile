@@ -440,6 +440,12 @@ abstract class AppLocalizations {
   /// **'Recently played'**
   String get homeRecent;
 
+  /// No description provided for @homeYourPlaylists.
+  ///
+  /// In en, this message translates to:
+  /// **'Your playlists'**
+  String get homeYourPlaylists;
+
   /// No description provided for @homeCharts.
   ///
   /// In en, this message translates to:
@@ -878,6 +884,12 @@ abstract class AppLocalizations {
   /// **'Downloaded only'**
   String get tlSortDownloaded;
 
+  /// No description provided for @tlSortNotDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Not downloaded only'**
+  String get tlSortNotDownloaded;
+
   /// No description provided for @tlNothingFound.
   ///
   /// In en, this message translates to:
@@ -889,6 +901,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Nothing downloaded here'**
   String get tlNothingDownloaded;
+
+  /// No description provided for @tlNothingNotDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything here is downloaded'**
+  String get tlNothingNotDownloaded;
 
   /// No description provided for @tlEmptyFav.
   ///
@@ -1555,6 +1573,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Download as a file'**
   String get fdDownloadFile;
+
+  /// No description provided for @fdDownloadCover.
+  ///
+  /// In en, this message translates to:
+  /// **'Download cover'**
+  String get fdDownloadCover;
+
+  /// No description provided for @fdDownloadingCover.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading cover…'**
+  String get fdDownloadingCover;
 
   /// desktop: lib.plmenu.convert
   ///

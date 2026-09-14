@@ -66,21 +66,26 @@ const double kHistoryHeaderHeight = 33;
 
 /// Сортировка трек-листа — все режимы десктопного `TrackSortMode` и вдобавок
 /// «Скачанные»: этот не сортирует, а оставляет в списке только то, что уже
-/// лежит на устройстве (на ПК такого нет).
+/// лежит на устройстве. Повторный тап выворачивает отбор — остаются как раз НЕ
+/// скачанные (этого на ПК нет).
+///
+/// Порядок значений — порядок пунктов в шторке, как в десктопном `SortPage`:
+/// сперва сортировки, под чертой «По умолчанию» и «Скачанные».
 enum TrackSort {
-  manual(SolarIconsOutline.playlistMinimalistic),
   name(SolarIconsOutline.sortByAlphabet),
   artist(SolarIconsOutline.userRounded),
-  album(SolarIconsOutline.album),
   duration(SolarIconsOutline.sortByTime),
   date(SolarIconsOutline.calendar),
   plays(SolarIconsOutline.play),
+  album(SolarIconsOutline.album),
+  manual(SolarIconsOutline.playlistMinimalistic),
   downloaded(SolarIconsOutline.diskette);
 
   const TrackSort(this.icon);
   final IconData icon;
 
-  String label(AppLocalizations l) => switch (this) {
+  /// [desc] у «Скачанных» значит вывернутый отбор — «Не скачанные».
+  String label(AppLocalizations l, {bool desc = false}) => switch (this) {
     TrackSort.manual => l.tlSortManual,
     TrackSort.name => l.tlSortName,
     TrackSort.artist => l.tlSortArtist,
@@ -88,7 +93,7 @@ enum TrackSort {
     TrackSort.duration => l.tlSortDuration,
     TrackSort.date => l.tlSortDate,
     TrackSort.plays => l.tlSortPlays,
-    TrackSort.downloaded => l.tlSortDownloaded,
+    TrackSort.downloaded => desc ? l.tlSortNotDownloaded : l.tlSortDownloaded,
   };
 
   /// Порядок разворачивается повторным тапом — кроме тех режимов, где своего
@@ -96,6 +101,10 @@ enum TrackSort {
   /// отсеивают лишнее.
   bool get directional =>
       this != TrackSort.manual && this != TrackSort.downloaded;
+
+  /// Что-то меняет повторный тап: у направленных режимов — порядок, у
+  /// «Скачанных» — сам отбор (скачанные ↔ не скачанные).
+  bool get flips => directional || this == TrackSort.downloaded;
 
   /// С какого конца режим начинается: у даты и прослушиваний сверху свежее и
   /// частое — как `defaultDir` в десктопном сторе.
@@ -325,7 +334,9 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
                           // отбором: об этом и говорим, иначе «Плейлист пуст»
                           // на полном плейлисте выглядит поломкой.
                           : _sort == TrackSort.downloaded
-                          ? context.l.tlNothingDownloaded
+                          ? (_desc
+                                ? context.l.tlNothingNotDownloaded
+                                : context.l.tlNothingDownloaded)
                           : switch (widget.listId) {
                               'fav' => context.l.tlEmptyFav,
                               'history' => context.l.tlEmptyHistory,
@@ -441,7 +452,7 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
   /// ↑/↓ и переключает их.
   void _pickSort(TrackSort next) {
     setState(() {
-      if (next == _sort && next.directional) {
+      if (next == _sort && next.flips) {
         _desc = !_desc;
       } else {
         _sort = next;
@@ -547,9 +558,13 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
       // нет. Качающиеся сейчас треки не в счёт: файла ещё нет, играть нечего.
       // Свои треки — файлы с телефона, и в офлайн-индексе их нет (качать
       // нечего): без них список «скачанного» врал бы про свою же музыку.
-      list.removeWhere(
-        (t) => t.source != MusicSource.local && offline?.has(t.id) != true,
-      );
+      // Вывернутый отбор ([_desc]) оставляет ровно остальное — то, что без
+      // сети не заиграет, включая качающееся сейчас.
+      list.removeWhere((t) {
+        final onDevice =
+            t.source == MusicSource.local || offline?.has(t.id) == true;
+        return _desc ? onDevice : !onDevice;
+      });
       return list;
     }
     if (!_sort.directional) return list;
@@ -893,27 +908,36 @@ Future<void> showSortSheet(
   ValueChanged<TrackSort> onSort,
 ) {
   final t = context.bloom;
+  SheetAction item(TrackSort s) => SheetAction(
+    icon: s.icon,
+    label: s.label(context.l, desc: s == sort && desc),
+    onTap: () => onSort(s),
+    trailing: s != sort
+        ? null
+        : Icon(
+            switch (s) {
+              _ when s.directional =>
+                desc ? SolarIconsBold.altArrowDown : SolarIconsBold.altArrowUp,
+              // Вывернутый отбор «Скачанных» — «Не скачанные»: галочка тут
+              // читалась бы как «скачано», поэтому крестик.
+              TrackSort.downloaded when desc => SolarIconsBold.closeCircle,
+              _ => SolarIconsBold.checkCircle,
+            },
+            size: 18,
+            color: t.accent,
+          ),
+  );
+  // Черта отделяет сортировки от «По умолчанию» и отбора — как `cx-sep` на ПК.
   return showBloomSheet(
     context: context,
     groups: [
       [
         for (final s in TrackSort.values)
-          SheetAction(
-            icon: s.icon,
-            label: s.label(context.l),
-            onTap: () => onSort(s),
-            trailing: s != sort
-                ? null
-                : Icon(
-                    s.directional
-                        ? (desc
-                              ? SolarIconsBold.altArrowDown
-                              : SolarIconsBold.altArrowUp)
-                        : SolarIconsBold.checkCircle,
-                    size: 18,
-                    color: t.accent,
-                  ),
-          ),
+          if (s.directional) item(s),
+      ],
+      [
+        for (final s in TrackSort.values)
+          if (!s.directional) item(s),
       ],
     ],
   );

@@ -115,6 +115,28 @@ Future<void> saveTrackFile(
   }
 }
 
+/// «Скачать обложку». В центр уведомлений не пишем: заголовки там про треки, а
+/// картинку ищут в галерее, а не в истории.
+Future<void> saveCoverFile(
+  ScaffoldMessengerState messenger,
+  AppLocalizations l,
+  Track track,
+) async {
+  final toast = messenger.busyToast(l.fdDownloadingCover);
+  try {
+    final path = await saveCoverAsFile(track);
+    toast.finish(
+      l.ofSaved(path ?? saveTargetLabel(l)),
+      kind: ToastKind.success,
+    );
+  } catch (e) {
+    toast.finish(
+      describeSaveError(l, readableSaveError(e)),
+      kind: ToastKind.error,
+    );
+  }
+}
+
 /// Сохранить файлами весь список.
 Future<void> saveListFiles(
   ScaffoldMessengerState messenger,

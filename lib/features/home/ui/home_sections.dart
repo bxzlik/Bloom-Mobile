@@ -1,4 +1,4 @@
-/// Ленты главной: витрина «Новинки»/«Чарты», «Недавно слушали» и «Плейлисты».
+/// Ленты главной: витрина «Новинки»/«Чарты», «Недавно слушали» и «Ваши плейлисты».
 /// Порт секций десктопной `HomePage` и `DiscoverSections`.
 library;
 
@@ -29,8 +29,7 @@ class HomeSectionHeader extends StatelessWidget {
 
   final String title;
 
-  /// Отступ от краёв по горизонтали. В паре «Недавно слушали / Плейлисты» он
-  /// 0: там поле уже задано самим рядом.
+  /// Отступ от краёв по горизонтали.
   final double inset;
 
   /// Заголовок-ссылка «Чарт ›»: ведёт на полную страницу раздела. Стрелка
@@ -155,67 +154,25 @@ class DiscoverSection extends ConsumerWidget {
   }
 }
 
-/// «Недавно слушали» и «Плейлисты» в один ряд, по половине — как `.home-duo`
-/// на ПК. Зазор тот же, что между плашками «Любимые / История», поэтому
-/// половины стоят ровно под ними. Одна секция пуста — вторая встаёт на всю
-/// ширину, обе пусты — ряда нет.
-class RecentAndPlaylists extends ConsumerWidget {
-  const RecentAndPlaylists({super.key});
+/// «Недавно слушали» — до 12 последних треков истории без повторов, лентой на
+/// всю ширину. Пустая история — секции нет.
+class RecentSection extends ConsumerWidget {
+  const RecentSection({super.key});
 
   /// Сколько карточек в «Недавно слушали». Столько же, сколько на десктопе.
   static const int recentLimit = 12;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final recent = recentTracks(ref.watch(historyProvider), recentLimit);
-    // Порядок — тот же, что у плиток библиотеки: её сортировка, ручной порядок
-    // и закреплённые сверху. Фильтр чипов сюда не относится.
-    final playlists = ref
-        .watch(libOrderProvider)
-        .arrange(
-          ref.watch(libraryProvider).playlists,
-          key: (p) => libKeyOfPlaylist(p.id),
-          name: (p) => p.name,
-          rank: (_) => kLibRankPlaylist,
-        );
-
-    if (recent.isEmpty && playlists.isEmpty) return const SizedBox.shrink();
-    if (playlists.isEmpty) return _RecentSection(tracks: recent, inset: 16);
-    if (recent.isEmpty) {
-      return _PlaylistsSection(playlists: playlists, inset: 16);
-    }
-    // В паре ленты режутся по полю страницы, а не у края экрана: у каждой
-    // половины своя прокрутка, как на ПК.
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: _RecentSection(tracks: recent, inset: 0)),
-          const SizedBox(width: 12),
-          Expanded(child: _PlaylistsSection(playlists: playlists, inset: 0)),
-        ],
-      ),
-    );
-  }
-}
-
-/// «Недавно слушали» — до 12 последних треков истории без повторов.
-class _RecentSection extends StatelessWidget {
-  const _RecentSection({required this.tracks, required this.inset});
-
-  final List<Track> tracks;
-  final double inset;
-
-  @override
-  Widget build(BuildContext context) {
+    final tracks = recentTracks(ref.watch(historyProvider), recentLimit);
+    if (tracks.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        HomeSectionHeader(context.l.homeRecent, inset: inset),
+        HomeSectionHeader(context.l.homeRecent),
         EntityCarousel(
           height: 194,
-          padding: inset,
+          padding: 16,
           itemCount: tracks.length,
           builder: (i) => TrackCard(
             track: tracks[i],
@@ -240,23 +197,31 @@ List<Track> recentTracks(List<HistoryItem> history, int limit) => [
   for (final item in history.take(limit)) item.track,
 ];
 
-/// «Плейлисты» — свои списки лентой. Кнопки «Новый» тут нет, как на ПК:
-/// плейлисты создаются в библиотеке.
-class _PlaylistsSection extends StatelessWidget {
-  const _PlaylistsSection({required this.playlists, required this.inset});
-
-  final List<UserPlaylist> playlists;
-  final double inset;
+/// «Ваши плейлисты» — свои списки лентой на всю ширину. Кнопки «Новый» тут
+/// нет, как на ПК: плейлисты создаются в библиотеке. Списков нет — секции нет.
+class PlaylistsSection extends ConsumerWidget {
+  const PlaylistsSection({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Порядок — тот же, что у плиток библиотеки: её сортировка, ручной порядок
+    // и закреплённые сверху. Фильтр чипов сюда не относится.
+    final playlists = ref
+        .watch(libOrderProvider)
+        .arrange(
+          ref.watch(libraryProvider).playlists,
+          key: (p) => libKeyOfPlaylist(p.id),
+          name: (p) => p.name,
+          rank: (_) => kLibRankPlaylist,
+        );
+    if (playlists.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        HomeSectionHeader(context.l.commonPlaylists, inset: inset),
+        HomeSectionHeader(context.l.homeYourPlaylists),
         EntityCarousel(
           height: 194,
-          padding: inset,
+          padding: 16,
           itemCount: playlists.length,
           builder: (i) => _PlaylistCard(playlist: playlists[i]),
         ),

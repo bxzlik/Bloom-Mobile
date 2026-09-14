@@ -214,6 +214,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get homeRecent => 'Недавно слушали';
 
   @override
+  String get homeYourPlaylists => 'Ваши плейлисты';
+
+  @override
   String get homeCharts => 'Чарт';
 
   @override
@@ -451,10 +454,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get tlSortDownloaded => 'Только скачанные';
 
   @override
+  String get tlSortNotDownloaded => 'Только не скачанные';
+
+  @override
   String get tlNothingFound => 'Ничего не нашлось';
 
   @override
   String get tlNothingDownloaded => 'Скачанных треков тут нет';
+
+  @override
+  String get tlNothingNotDownloaded => 'Тут уже всё скачано';
 
   @override
   String get tlEmptyFav => 'Пока ничего не залайкано';
@@ -872,6 +881,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get fdDownloadFile => 'Скачать файлом';
+
+  @override
+  String get fdDownloadCover => 'Скачать обложку';
+
+  @override
+  String get fdDownloadingCover => 'Скачиваю обложку…';
 
   @override
   String get tlConvert => 'Перенести на площадку…';

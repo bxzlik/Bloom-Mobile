@@ -208,6 +208,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeRecent => 'Recently played';
 
   @override
+  String get homeYourPlaylists => 'Your playlists';
+
+  @override
   String get homeCharts => 'Chart';
 
   @override
@@ -445,10 +448,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tlSortDownloaded => 'Downloaded only';
 
   @override
+  String get tlSortNotDownloaded => 'Not downloaded only';
+
+  @override
   String get tlNothingFound => 'Nothing found';
 
   @override
   String get tlNothingDownloaded => 'Nothing downloaded here';
+
+  @override
+  String get tlNothingNotDownloaded => 'Everything here is downloaded';
 
   @override
   String get tlEmptyFav => 'Nothing liked yet';
@@ -862,6 +871,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fdDownloadFile => 'Download as a file';
+
+  @override
+  String get fdDownloadCover => 'Download cover';
+
+  @override
+  String get fdDownloadingCover => 'Downloading cover…';
 
   @override
   String get tlConvert => 'Transfer to source…';

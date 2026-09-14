@@ -20,13 +20,16 @@ library;
 
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 import '../../app/providers.dart';
 import '../../core/entities/entities.dart';
 import '../../core/store/app_dirs.dart';
+import '../../core/store/cover_store.dart';
 import '../../core/l10n/l10n.dart';
 import 'offline_store.dart';
 
@@ -98,6 +101,106 @@ Future<String?> saveTrackAsFile(
     'deleteSource': deleteSource,
   });
   return saved;
+}
+
+/// «Скачать обложку» — порт десктопного `cover_download`. Ложится рядом с
+/// треками: на Android — «Изображения/Bloom» (в «Музыке» галерея картинку не
+/// покажет), на iOS — та же папка приложения в «Файлах». Возвращает путь так же,
+/// как [saveTrackAsFile].
+///
+/// В треке обложка хранится уменьшенной (под строку списка), поэтому сначала
+/// просим крупную версию той же картинки, а не вышло — берём как есть.
+Future<String?> saveCoverAsFile(Track track) async {
+  final cover = track.cover;
+  if (cover == null || cover.isEmpty) {
+    throw const DownloadFailure(DownloadFailureKind.notDownloadable);
+  }
+
+  final Uint8List bytes;
+  final localPath = localCoverPath(cover);
+  if (localPath != null) {
+    bytes = await File(localPath).readAsBytes();
+  } else if (isLocalCover(cover)) {
+    throw const DownloadFailure(DownloadFailureKind.notDownloadable);
+  } else if (cover.startsWith('data:')) {
+    final decoded = decodeDataUrl(cover);
+    if (decoded == null) {
+      throw const DownloadFailure(DownloadFailureKind.notDownloadable);
+    }
+    bytes = decoded.bytes;
+  } else {
+    bytes = await _fetchCover(cover);
+  }
+
+  final ext = _imageExt(bytes);
+  final filename = '${trackFileBase(track)}.$ext';
+  final tmp = File('${(await getTemporaryDirectory()).path}/$filename');
+  await tmp.writeAsBytes(bytes, flush: true);
+
+  if (Platform.isIOS) return _saveToVisibleDir(tmp, filename, true);
+  return _channel.invokeMethod<String>('save', {
+    'sourcePath': tmp.path,
+    'filename': filename,
+    'mime': switch (ext) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'image/jpeg',
+    },
+    'deleteSource': true,
+  });
+}
+
+/// Крупная версия сетевой обложки, при отказе — исходная ссылка.
+Future<Uint8List> _fetchCover(String url) async {
+  // Referer — как на ПК: CDN SoundCloud без него иногда отвечает 403.
+  const headers = {'Referer': 'https://soundcloud.com/'};
+  final big = largeCoverUrl(url);
+  if (big != url) {
+    try {
+      final r = await http
+          .get(Uri.parse(big), headers: headers)
+          .timeout(const Duration(seconds: 15));
+      if (r.statusCode == 200 && r.bodyBytes.isNotEmpty) return r.bodyBytes;
+    } catch (_) {
+      // Крупной нет — ниже возьмём ту, что показывали.
+    }
+  }
+  final r = await http
+      .get(Uri.parse(url), headers: headers)
+      .timeout(const Duration(seconds: 15));
+  if (r.statusCode != 200 || r.bodyBytes.isEmpty) {
+    throw DownloadFailure(DownloadFailureKind.unknown, 'HTTP ${r.statusCode}');
+  }
+  return r.bodyBytes;
+}
+
+/// Ссылка на ту же обложку крупнее. Размер у всех трёх площадок сидит прямо в
+/// URL: Яндекс — `/400x400`, SoundCloud — `-t500x500`, YouTube — `=w544-h544`.
+@visibleForTesting
+String largeCoverUrl(String url) {
+  if (url.contains('avatars.yandex.net')) {
+    return url.replaceFirst(RegExp(r'/\d+x\d+$'), '/1000x1000');
+  }
+  if (url.contains('sndcdn.com')) {
+    return url.replaceFirst(RegExp(r'-(t\d+x\d+|large|crop)\.'), '-original.');
+  }
+  if (url.contains('googleusercontent.com') || url.contains('ggpht.com')) {
+    return url.replaceFirst(RegExp(r'=w\d+-h\d+'), '=w1200-h1200');
+  }
+  return url;
+}
+
+/// Расширение по сигнатуре байтов — как `ext` в десктопном `download_cover`.
+String _imageExt(Uint8List b) {
+  if (b.length >= 4 && b[0] == 0x89 && b[1] == 0x50) return 'png';
+  if (b.length >= 12 &&
+      b[0] == 0x52 &&
+      b[1] == 0x49 &&
+      b[8] == 0x57 &&
+      b[9] == 0x45) {
+    return 'webp';
+  }
+  return 'jpg';
 }
 
 /// iOS: кладём файл в `Documents` приложения — ту самую папку, которую система

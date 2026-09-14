@@ -62,6 +62,7 @@
   "sourceYandex": "Яндекс.Музыка",
 
   "homeRecent": "Недавно слушали",
+  "homeYourPlaylists": "Ваши плейлисты",
   "homeCharts": "Чарт",
   "homeNewReleases": "Релизы",
   "chartUp": "Поднялся на {n}",
@@ -140,8 +141,10 @@
   "tlSortDate": "По дате добавления",
   "tlSortPlays": "По прослушиваниям",
   "tlSortDownloaded": "Только скачанные",
+  "tlSortNotDownloaded": "Только не скачанные",
   "tlNothingFound": "Ничего не нашлось",
   "tlNothingDownloaded": "Скачанных треков тут нет",
+  "tlNothingNotDownloaded": "Тут уже всё скачано",
   "tlEmptyFav": "Пока ничего не залайкано",
   "tlEmptyHistory": "История пуста",
   "histToday": "Сегодня",
@@ -261,6 +264,8 @@
   "fdNeedPermission": "Нужен доступ к памяти телефона — разрешите и повторите",
   "fdSaveFailed": "Не удалось сохранить файл",
   "fdDownloadFile": "Скачать файлом",
+  "fdDownloadCover": "Скачать обложку",
+  "fdDownloadingCover": "Скачиваю обложку…",
 
   "tlConvert": "Перенести на площадку…",
   "cvTitle": "Перенос на площадку",

@@ -56,6 +56,7 @@ Future<void> showTrackActions(
   final isOffline = offline.has(track.id);
   // Пункт показываем, только если площадка вообще отдаёт трек файлом.
   final canOffline = ref.read(offlineProvider.notifier).canDownload(track);
+  final hasCover = track.cover?.isNotEmpty ?? false;
   final isDisliked = ref.read(waveStoreProvider).isDisliked(track.id);
   // Позиция в очереди: из самой очереди её передают явно (один трек может
   // стоять там дважды, и по id их не различить), из остальных мест ищем по id —
@@ -122,14 +123,17 @@ Future<void> showTrackActions(
         // Скачиваний два (копия внутри приложения — чтобы играло без сети, и
         // файл наружу), и оба уехали в свою шторку — как флайаут «Скачать» на
         // десктопе: в общем списке они читались одинаково и путались.
-        if (canOffline)
+        // У своего трека скачивать нечего, кроме обложки из тегов — шторка
+        // открывается и ради неё одной.
+        if (canOffline || (canSaveFiles && hasCover))
           SheetAction(
             icon: isOffline
                 ? SolarIconsBold.checkCircle
                 : SolarIconsOutline.download,
             label: context.l.taDownload,
             chevron: true,
-            onTap: () => _showDownloadSheet(context, ref, track),
+            onTap: () =>
+                _showDownloadSheet(context, ref, track, canOffline: canOffline),
           ),
       ],
       [
@@ -241,11 +245,57 @@ void _deleteTrack(
 Future<void> _showDownloadSheet(
   BuildContext context,
   WidgetRef ref,
-  Track track,
-) async {
+  Track track, {
+  required bool canOffline,
+}) async {
   final isOffline = ref.read(offlineProvider).has(track.id);
+  final hasCover = track.cover?.isNotEmpty ?? false;
   final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l;
+
+  // Порядок как в десктопном флайауте: трек, обложка, офлайн.
+  final rows = <Widget>[
+    if (canOffline && canSaveFiles)
+      Builder(
+        builder: (sheetContext) => _SimpleRow(
+          icon: SolarIconsOutline.downloadMinimalistic,
+          label: l10n.fdDownloadFile,
+          color: context.bloom.text,
+          onTap: () {
+            Navigator.of(sheetContext).pop();
+            unawaited(saveTrackFile(messenger, l10n, ref, track));
+          },
+        ),
+      ),
+    if (canSaveFiles && hasCover)
+      Builder(
+        builder: (sheetContext) => _SimpleRow(
+          icon: SolarIconsOutline.gallery,
+          label: l10n.fdDownloadCover,
+          color: context.bloom.text,
+          onTap: () {
+            Navigator.of(sheetContext).pop();
+            unawaited(saveCoverFile(messenger, l10n, track));
+          },
+        ),
+      ),
+    if (canOffline)
+      Builder(
+        builder: (sheetContext) => _SimpleRow(
+          // Дискета у офлайна и галочка у скачанного — те же значки, что на
+          // ПК (голой галочки у Solar нет, поэтому в кружке).
+          icon: isOffline
+              ? SolarIconsBold.checkCircle
+              : SolarIconsOutline.diskette,
+          label: isOffline ? l10n.taRemoveOffline : l10n.taListenOffline,
+          color: isOffline ? context.bloom.accent : context.bloom.text,
+          onTap: () {
+            Navigator.of(sheetContext).pop();
+            unawaited(toggleTrackOffline(messenger, l10n, ref, track));
+          },
+        ),
+      ),
+  ];
 
   await showBloomSheetChild<void>(
     context: context,
@@ -258,30 +308,9 @@ Future<void> _showDownloadSheet(
     child: Builder(
       builder: (sheetContext) => SheetPanel(
         children: [
-          _SimpleRow(
-            // Дискета у офлайна и галочка у скачанного — те же значки, что на
-            // ПК (голой галочки у Solar нет, поэтому в кружке).
-            icon: isOffline
-                ? SolarIconsBold.checkCircle
-                : SolarIconsOutline.diskette,
-            label: isOffline ? l10n.taRemoveOffline : l10n.taListenOffline,
-            color: isOffline ? context.bloom.accent : context.bloom.text,
-            onTap: () {
-              Navigator.of(sheetContext).pop();
-              unawaited(toggleTrackOffline(messenger, l10n, ref, track));
-            },
-          ),
-          if (canSaveFiles) ...[
-            sheetDivider(),
-            _SimpleRow(
-              icon: SolarIconsOutline.downloadMinimalistic,
-              label: l10n.fdDownloadFile,
-              color: context.bloom.text,
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                unawaited(saveTrackFile(messenger, l10n, ref, track));
-              },
-            ),
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0) sheetDivider(),
+            rows[i],
           ],
         ],
       ),

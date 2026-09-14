@@ -1,4 +1,17 @@
 {
+  "1.1.1": {
+    "title": { "ru": "Что нового в 1.1.1", "en": "What's new in 1.1.1" },
+    "date": "2026-09-14",
+    "pages": [
+      {
+        "title": { "ru": "Мелкие улучшения", "en": "Minor improvements" },
+        "body": {
+          "ru": "- Мелкие улучшения и исправления багов",
+          "en": "- Minor improvements and bug fixes"
+        }
+      }
+    ]
+  },
   "1.1.0": {
     "title": { "ru": "Что нового в 1.1.0", "en": "What's new in 1.1.0" },
     "date": "2026-09-13",

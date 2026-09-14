@@ -221,9 +221,6 @@ Future<void> _openAnim(BuildContext context, TrackAnimSurface surface) {
           children: [
             for (final target in TrackAnimTarget.values)
               _Section(
-                icon: target == TrackAnimTarget.cover
-                    ? SolarIconsOutline.gallery
-                    : SolarIconsOutline.text,
                 title: _targetLabel(l, target),
                 child: _KindRow(
                   surface: surface,
@@ -534,10 +531,10 @@ class _QueueViewCards extends ConsumerWidget {
         for (final view in QueueView.values) ...[
           if (view != QueueView.values.first) const SizedBox(width: 12),
           Expanded(
-            child: _QueueViewCard(
-              view: view,
+            child: _OptionCard(
               label: view.isExtended ? l.pvQueueExtended : l.pvQueueNormal,
               selected: view == current,
+              glyph: _QueueViewGlyph(extended: view.isExtended),
               onTap: () => ref.read(queueViewProvider.notifier).set(view),
             ),
           ),
@@ -547,16 +544,21 @@ class _QueueViewCards extends ConsumerWidget {
   }
 }
 
-class _QueueViewCard extends StatelessWidget {
-  const _QueueViewCard({
-    required this.view,
+/// Карточка варианта: значок над подписью. Одна на вид очереди и на кнопки в
+/// шторках (переходы, вид текста) — выбор «одно из нескольких» на странице
+/// плеера должен читаться одинаково, где бы он ни стоял.
+class _OptionCard extends StatelessWidget {
+  const _OptionCard({
     required this.label,
+    required this.glyph,
     required this.selected,
     required this.onTap,
   });
 
-  final QueueView view;
   final String label;
+
+  /// Значок красится через [IconTheme]: акцентом у выбранной карточки.
+  final Widget glyph;
   final bool selected;
   final VoidCallback onTap;
 
@@ -586,9 +588,9 @@ class _QueueViewCard extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _QueueViewGlyph(
-                    extended: view.isExtended,
-                    color: selected ? t.accent : t.iconFg,
+                  IconTheme(
+                    data: IconThemeData(color: selected ? t.accent : t.iconFg),
+                    child: glyph,
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -614,15 +616,17 @@ class _QueueViewCard extends StatelessWidget {
 /// Рисуем сами — в Solar есть только общий «список», и двумя одинаковыми
 /// значками разницу между вариантами не показать.
 class _QueueViewGlyph extends StatelessWidget {
-  const _QueueViewGlyph({required this.extended, required this.color});
+  const _QueueViewGlyph({required this.extended});
 
   final bool extended;
-  final Color color;
 
   @override
   Widget build(BuildContext context) => CustomPaint(
     size: const Size(26, 20),
-    painter: _QueueGlyphPainter(extended: extended, color: color),
+    painter: _QueueGlyphPainter(
+      extended: extended,
+      color: IconTheme.of(context).color ?? context.bloom.iconFg,
+    ),
   );
 }
 
@@ -1213,10 +1217,9 @@ class _SliderTile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Container(
-            // Выше строки выравнивания заголовка (там 14 при двух строках
-            // текста): здесь строка одна, и на её высоте кнопка выходила
-            // приплюснутой.
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            // Размеры — как у строк шторки кнопки воспроизведения
+            // ([_PlayShapeTile]): соседние шторки должны выглядеть одинаково.
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(t.radius),
               border: Border.all(
@@ -1232,12 +1235,12 @@ class _SliderTile extends StatelessWidget {
                     _sliderLabel(context.l, style),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.titleMedium?.copyWith(fontSize: 16),
+                    style: theme.titleMedium,
                   ),
                 ),
                 const SizedBox(width: 12),
                 if (selected)
-                  Icon(SolarIconsBold.checkCircle, size: 22, color: t.accent),
+                  Icon(SolarIconsBold.checkCircle, size: 20, color: t.accent),
               ],
             ),
           ),
@@ -1266,11 +1269,11 @@ class _SliderTileGlyph extends StatelessWidget {
     // высокий её элемент, и значок без заданной высоты (а это высота самой
     // картинки, 6 px) делал невыбранные строки ниже выбранной.
     if (!selected) {
-      return SizedBox(width: 44, height: 44, child: Center(child: glyph));
+      return SizedBox(width: 38, height: 38, child: Center(child: glyph));
     }
     return Container(
-      width: 44,
-      height: 44,
+      width: 38,
+      height: 38,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.10),
@@ -1369,7 +1372,6 @@ Future<void> _openLyrics(BuildContext context) {
   final l = context.l;
   return showBloomSheetChild<void>(
     context: context,
-    header: settingsSheetHeader(context, l.pvGroupLyrics),
     child: Consumer(
       builder: (context, ref, _) {
         final style = ref.watch(lyricsStyleProvider);
@@ -1378,7 +1380,6 @@ Future<void> _openLyrics(BuildContext context) {
           mainAxisSize: MainAxisSize.min,
           children: [
             _Section(
-              icon: SolarIconsOutline.gallery,
               title: l.pvLyricsMode,
               subtitle: l.pvLyricsModeSub,
               // Вид — две крупные кнопки со своими значками: разница между ними
@@ -1389,9 +1390,9 @@ Future<void> _openLyrics(BuildContext context) {
                     if (mode != LyricsMode.values.first)
                       const SizedBox(width: 8),
                     Expanded(
-                      child: _Choice(
+                      child: _OptionCard(
                         label: _modeLabel(l, mode),
-                        active: style.mode == mode,
+                        selected: style.mode == mode,
                         glyph: _ModeGlyph(mode: mode),
                         onTap: () => ctrl.setMode(mode),
                       ),
@@ -1407,42 +1408,33 @@ Future<void> _openLyrics(BuildContext context) {
   );
 }
 
-/// Одна настройка в шторке: блок с названием, пояснением и кнопками. Блок —
-/// [SheetPanel], а не своя коробка: у шторки своя заливка, и токен-плёнка
-/// страницы в ней смотрится дырой.
+/// Одна настройка в шторке: название, пояснение и кнопки. Без подложки и без
+/// значка у названия — кнопки сами стоят карточками, и коробка вокруг них
+/// давала рамку в рамке.
 class _Section extends StatelessWidget {
-  const _Section({
-    required this.icon,
-    required this.title,
-    required this.child,
-    this.subtitle,
-  });
+  const _Section({required this.title, required this.child, this.subtitle});
 
-  final IconData icon;
   final String title;
   final String? subtitle;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return SheetPanel(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _Sub(icon: icon, title: title, strong: true),
-              if (subtitle case final text?) ...[
-                const SizedBox(height: 3),
-                Text(text, style: Theme.of(context).textTheme.bodySmall),
-              ],
-              const SizedBox(height: 10),
-              child,
-            ],
-          ),
-        ),
-      ],
+    final theme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(kSheetEdge, 8, kSheetEdge, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: theme.titleMedium),
+          if (subtitle case final text?) ...[
+            const SizedBox(height: 3),
+            Text(text, style: theme.bodySmall),
+          ],
+          const SizedBox(height: 10),
+          child,
+        ],
+      ),
     );
   }
 }
@@ -1461,92 +1453,6 @@ String _modeLabel(AppLocalizations l, LyricsMode mode) => switch (mode) {
   LyricsMode.overlay => l.pvLyricsModeOverlay,
   LyricsMode.replace => l.pvLyricsModeReplace,
 };
-
-/// Подзаголовок строки настройки — значок с подписью.
-///
-/// [strong] — блок в шторке: там эта подпись главная в блоке, а не мелкая
-/// метка под названием карточки.
-class _Sub extends StatelessWidget {
-  const _Sub({required this.icon, required this.title, this.strong = false});
-
-  final IconData icon;
-  final String title;
-  final bool strong;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context).textTheme;
-    return Row(
-      children: [
-        Icon(
-          icon,
-          size: strong ? 16 : 14,
-          color: strong ? context.bloom.text : context.bloom.muted,
-        ),
-        const SizedBox(width: 6),
-        Text(title, style: strong ? theme.titleMedium : theme.bodySmall),
-      ],
-    );
-  }
-}
-
-/// Кнопка варианта: та же плёнка, рамка и акцент, что у выбора анимации.
-class _Choice extends StatelessWidget {
-  const _Choice({
-    required this.label,
-    required this.active,
-    required this.onTap,
-    this.glyph,
-  });
-
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  /// Картинка над подписью. `null` — вариант объясняется одной подписью.
-  final Widget? glyph;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final color = active ? t.accent : t.iconFg;
-    return Material(
-      color: active ? t.accent.withValues(alpha: 0.14) : t.ovlBg,
-      borderRadius: BorderRadius.circular(t.radius * 0.8),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: glyph == null ? 10 : 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: active ? t.accent : t.ovlLine),
-            borderRadius: BorderRadius.circular(t.radius * 0.8),
-          ),
-          child: Column(
-            children: [
-              if (glyph != null) ...[
-                IconTheme(
-                  data: IconThemeData(color: color),
-                  child: glyph!,
-                ),
-                const SizedBox(height: 6),
-              ],
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: color),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 /// Значок стиля плеера — те же два SVG, что в десктопном `ViewSection`: две
 /// плитки рядом у обычного, круг в круге у пластинки.
@@ -1713,9 +1619,10 @@ class _KindRow extends ConsumerWidget {
         for (final kind in TrackAnimKind.values) ...[
           if (kind != TrackAnimKind.values.first) const SizedBox(width: 8),
           Expanded(
-            child: _KindButton(
-              kind: kind,
-              active: kind == value,
+            child: _OptionCard(
+              label: _kindLabel(context.l, kind),
+              selected: kind == value,
+              glyph: _KindGlyphBox(kind: kind),
               onTap: () => ref
                   .read(trackAnimProvider.notifier)
                   .setKind(surface, target, kind),
@@ -1727,54 +1634,20 @@ class _KindRow extends ConsumerWidget {
   }
 }
 
-class _KindButton extends StatelessWidget {
-  const _KindButton({
-    required this.kind,
-    required this.active,
-    required this.onTap,
-  });
+/// [_KindGlyph] цветом [IconTheme] — его задаёт [_OptionCard].
+class _KindGlyphBox extends StatelessWidget {
+  const _KindGlyphBox({required this.kind});
 
   final TrackAnimKind kind;
-  final bool active;
-  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final color = active ? t.accent : t.iconFg;
-    return Material(
-      color: active ? t.accent.withValues(alpha: 0.14) : t.ovlBg,
-      borderRadius: BorderRadius.circular(t.radius * 0.8),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: active ? t.accent : t.ovlLine),
-            borderRadius: BorderRadius.circular(t.radius * 0.8),
-          ),
-          child: Column(
-            children: [
-              CustomPaint(
-                size: const Size(24, 24),
-                painter: _KindGlyph(kind: kind, color: color),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                _kindLabel(context.l, kind),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: color),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => CustomPaint(
+    size: const Size(24, 24),
+    painter: _KindGlyph(
+      kind: kind,
+      color: IconTheme.of(context).color ?? context.bloom.iconFg,
+    ),
+  );
 }
 
 /// Значок варианта — те же три картинки, что в десктопной строке выбора.
