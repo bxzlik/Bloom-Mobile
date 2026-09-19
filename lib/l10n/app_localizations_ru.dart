@@ -1208,23 +1208,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get shareProfileSub => 'делится профилем';
 
   @override
-  String shareProfilePlays(int count) {
-    final intl.NumberFormat countNumberFormat =
-        intl.NumberFormat.decimalPattern(localeName);
-    final String countString = countNumberFormat.format(count);
-
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$countString прослушиваний',
-      many: '$countString прослушиваний',
-      few: '$countString прослушивания',
-      one: '$countString прослушивание',
-    );
-    return '$_temp0';
-  }
-
-  @override
   String get shareFail => 'Не удалось отправить карточку';
 
   @override
@@ -1732,7 +1715,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pvGroupLyrics => 'Текст песни';
 
   @override
-  String get pvLyricsRow => 'Оформление';
+  String get pvLyricsRow => 'Вид';
 
   @override
   String get pvLyricsMode => 'Вид';

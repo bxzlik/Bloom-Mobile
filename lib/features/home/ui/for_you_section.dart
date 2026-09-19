@@ -17,8 +17,9 @@ import 'cover_fan.dart';
 import 'home_sections.dart';
 
 /// Геометрия стопки — десктопные ручки `--fy-*`, ужатые под наши карточки:
-/// обложка ленты у нас 132, а не 140.
-const double _k = 132 / 140;
+/// верхняя обложка стопки ровно с обложкой соседней карточки (132), а не
+/// крупнее её, как на ПК, — на телефоне стопка иначе съедает пол-ленты.
+const double _k = 132 / 158;
 const double _fyWidth = 272 * _k;
 const double _fyHeight = 158 * _k;
 const double _fyFront = 158 * _k;

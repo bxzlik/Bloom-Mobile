@@ -22,6 +22,7 @@ import '../../../shared/share/share_link.dart';
 import '../../../shared/share/share_sheet.dart' show ShareActionButton;
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
+import '../../settings/cover_accent.dart';
 import '../profile_store.dart';
 import '../stats.dart';
 import 'profile_share_card.dart';
@@ -50,6 +51,9 @@ class _ProfileShareBodyState extends ConsumerState<_ProfileShareBody> {
 
   ImageProvider? _avatar;
   ImageProvider? _logo;
+
+  /// Тон фона карточки: по аватару, а без него — по обложке профиля.
+  Color _tone = kShareToneFallback;
 
   /// Картинки долетели (или их нет вовсе) — снимок можно снимать.
   bool _ready = false;
@@ -104,6 +108,7 @@ class _ProfileShareBodyState extends ConsumerState<_ProfileShareBody> {
                   stats: _stats(context),
                   avatar: _avatar,
                   logo: _logo,
+                  tone: _tone,
                 ),
               ),
             ),
@@ -150,9 +155,21 @@ class _ProfileShareBodyState extends ConsumerState<_ProfileShareBody> {
   /// отрисовано, и недогруженная картинка стала бы дыркой в карточке.
   Future<void> _resolve() async {
     await _load(const AssetImage('assets/brand/bloom_mark.png'), asLogo: true);
-    final avatar = coverImage(ref.read(profileProvider).avatar);
-    if (avatar != null) await _load(avatar);
-    if (mounted) setState(() => _ready = true);
+    final profile = ref.read(profileProvider);
+    final avatar = coverImage(profile.avatar);
+    final loaded = avatar != null && await _load(avatar);
+    // Тон: по аватару, а если его нет (или не дошёл) — по обложке профиля,
+    // тем же цветом, каким рисуется кружок с буквой.
+    final hsl = loaded ? await extractProviderHsl(avatar) : null;
+    final tone = hsl != null
+        ? shareToneFromHsl(hsl)
+        : shareToneFromColor(profile.bannerColor);
+    if (mounted) {
+      setState(() {
+        _tone = tone;
+        _ready = true;
+      });
+    }
   }
 
   /// Промах не роняет шторку: карточка переживёт и пустой аватар (на его месте

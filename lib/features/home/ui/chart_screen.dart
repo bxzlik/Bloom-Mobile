@@ -60,16 +60,17 @@ class ChartScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  GlassIconButton(
+                  // Те же кружки поверхности, что и «назад» слева: под ними не
+                  // обложка, а фон страницы, и светлое стекло `GlassIconButton`
+                  // читалось на нём парой заплаток рядом с шапкой.
+                  CircleIconButton(
                     icon: SolarIconsBold.play,
-                    background: t.accent,
-                    color: t.accentText,
                     onTap: tracks.isEmpty
                         ? null
                         : () => playback.playQueue(tracks, 0, source: source),
                   ),
                   const SizedBox(width: 8),
-                  GlassIconButton(
+                  CircleIconButton(
                     icon: SolarIconsOutline.shuffle,
                     onTap: tracks.isEmpty
                         ? null

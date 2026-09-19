@@ -15,6 +15,7 @@ import 'package:solar_icons/solar_icons.dart';
 import '../../app/theme/tokens.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/store/cover_store.dart';
+import '../../features/settings/cover_accent.dart';
 import '../ui/bloom_sheet.dart';
 import '../ui/bloom_toast.dart';
 import 'share_card.dart';
@@ -59,6 +60,10 @@ class _ShareBodyState extends State<_ShareBody> {
 
   ImageProvider? _cover;
   ImageProvider? _logo;
+
+  /// Тон фона карточки: считается по той обложке, что в неё попала. Пока её
+  /// нет — нейтральный, иначе карточка моргнула бы цветом.
+  Color _tone = kShareToneFallback;
 
   /// Картинки долетели (или их нет вовсе) — снимок можно снимать.
   bool _ready = false;
@@ -112,6 +117,7 @@ class _ShareBodyState extends State<_ShareBody> {
                   artist: widget.target.artist,
                   cover: _cover,
                   logo: _logo,
+                  tone: _tone,
                 ),
               ),
             ),
@@ -150,10 +156,20 @@ class _ShareBodyState extends State<_ShareBody> {
     final raw = widget.target.cover;
     if (raw != null && raw.isNotEmpty) {
       for (final image in _candidates(raw)) {
-        if (await _load(image)) break;
+        if (await _load(image)) {
+          await _applyTone(image);
+          break;
+        }
       }
     }
     if (mounted) setState(() => _ready = true);
+  }
+
+  /// Тон фона по обложке. Промах не беда: останется нейтральный.
+  Future<void> _applyTone(ImageProvider image) async {
+    final hsl = await extractProviderHsl(image);
+    if (hsl == null || !mounted) return;
+    setState(() => _tone = shareToneFromHsl(hsl));
   }
 
   /// Что пробуем как обложку: сперва крупный размер, потом исходный. Своя

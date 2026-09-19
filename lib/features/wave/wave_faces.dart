@@ -26,6 +26,7 @@ import '../../core/store/history_store.dart';
 import '../../core/store/library_store.dart';
 import '../../core/store/play_stats.dart';
 import '../../providers/soundcloud/sc_provider.dart' show trackFromSc;
+import '../../providers/yandex/models.dart' show YmRawTrack;
 import '../../providers/yandex/ym_provider.dart' show trackFromYm;
 import '../../providers/yandex/yandex.dart' as ym;
 import 'wave_seeds.dart';
@@ -183,16 +184,37 @@ class _Seen {
 
 // ── Яндекс ──────────────────────────────────────────────────────────────────
 
+/// Потолок батчей на одно кольцо. Rotor отдаёт ~5 треков за раз, а после отсева
+/// по обложке (у треков одного релиза она общая) на плитки остаётся и того
+/// меньше — одного батча не хватает, часть плиток оставалась пустой. Цепочку
+/// продолжаем `queue=<последний id>`: тот же GET, которым драйвер волны тянет
+/// следующую пачку, только без фидбека — станцию витрина не учит.
+const int _kYmBatches = 4;
+
 Future<List<Track>> _yandexFaces(int limit) async {
   if (ym.activeToken() == null) return const [];
-  final batch = await ym.waveTracks(ym.kWaveStation);
   final out = <Track>[];
   final seen = _Seen();
-  for (final raw in batch.tracks) {
-    final track = trackFromYm(raw);
-    if (!seen.add(track)) continue;
-    out.add(track);
-    if (out.length >= limit) break;
+  var lastId = '';
+  for (var b = 0; b < _kYmBatches && out.length < limit; b++) {
+    // Упавший дозапрос не роняет уже собранное: кольцо добьётся библиотекой.
+    final List<YmRawTrack> raws;
+    try {
+      raws = (await ym.waveTracks(ym.kWaveStation, lastId: lastId)).tracks;
+    } catch (_) {
+      break;
+    }
+    if (raws.isEmpty) break;
+    final before = out.length;
+    for (final raw in raws) {
+      final track = trackFromYm(raw);
+      if (!seen.add(track)) continue;
+      out.add(track);
+      if (out.length >= limit) break;
+    }
+    // Станция пошла по кругу — дальше будут те же треки.
+    if (out.length == before) break;
+    lastId = raws.last.id;
   }
   return out;
 }

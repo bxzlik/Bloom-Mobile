@@ -19,6 +19,7 @@ import '../../core/entities/entities.dart';
 import '../../core/store/json_store.dart';
 import '../../core/store/library_store.dart' show jsonStoreProvider;
 import 'play_source.dart';
+import 'player_controller.dart' show PlayerRepeat;
 
 /// Сколько треков очереди уносим в снимок. Длинная очередь режется с ТЕКУЩЕГО
 /// трека (см. [ResumeData.capture]): продолжают слушать вперёд, а не назад.
@@ -35,6 +36,9 @@ class ResumeData {
     this.source,
     this.cleared = false,
     this.fullQueue,
+    this.shuffle = false,
+    this.smartShuffle = false,
+    this.repeat = PlayerRepeat.off,
   });
 
   /// Очередь очистили целиком (удалили последний трек): при запуске в плеер
@@ -66,6 +70,20 @@ class ResumeData {
   /// тот же список, что и до убийства процесса.
   final PlaySource? source;
 
+  /// Режимы плеера на момент снимка.
+  ///
+  /// Без них очередь возвращалась перемешанной (порядок-то сохранён — она и
+  /// записана уже в тасованном виде), а флаг — сброшенным: значок перемешки
+  /// погас, повтор слетел, и плеер вёл себя не так, как показывал.
+  ///
+  /// Исходный порядок до перемешки (`_origQueue`) намеренно НЕ храним — это
+  /// вторая копия очереди в файле ради действия, которое после перезапуска
+  /// совершают единицы. Выключение перемешки без него просто снимает флаг,
+  /// оставляя порядок как есть, — `toggleShuffle` этот случай уже держит.
+  final bool shuffle;
+  final bool smartShuffle;
+  final PlayerRepeat repeat;
+
   Track get track => queue[index];
 
   /// Окно очереди в [kResumeQueueLimit] треков: обрезка с [index], чтобы
@@ -92,6 +110,9 @@ class ResumeData {
     PlaySource? source,
     List<Track>? fullQueue,
     DateTime? at,
+    bool shuffle = false,
+    bool smartShuffle = false,
+    PlayerRepeat repeat = PlayerRepeat.off,
   }) {
     final (window, at_) = _window(queue, index);
     return ResumeData(
@@ -102,6 +123,9 @@ class ResumeData {
       source: source,
       savedAt: at ?? DateTime.now(),
       fullQueue: _windowAround(fullQueue, queue[index]),
+      shuffle: shuffle,
+      smartShuffle: smartShuffle,
+      repeat: repeat,
     );
   }
 
@@ -121,6 +145,9 @@ class ResumeData {
     source: source,
     cleared: true,
     fullQueue: _windowAround(full, track) ?? fullQueue,
+    shuffle: shuffle,
+    smartShuffle: smartShuffle,
+    repeat: repeat,
   );
 
   /// Снимок для карточки «Продолжить»: очередь целиком, какой она была до
@@ -138,6 +165,9 @@ class ResumeData {
       savedAt: savedAt,
       paused: paused,
       source: source,
+      shuffle: shuffle,
+      smartShuffle: smartShuffle,
+      repeat: repeat,
     );
   }
 
@@ -151,6 +181,9 @@ class ResumeData {
     if (cleared) 'cleared': true,
     if (fullQueue != null)
       'fullQueue': fullQueue!.map((t) => t.toJson()).toList(),
+    if (shuffle) 'shuffle': true,
+    if (smartShuffle) 'smartShuffle': true,
+    if (repeat != PlayerRepeat.off) 'repeat': repeat.name,
   };
 
   static ResumeData? fromJson(Object? json) {
@@ -177,6 +210,14 @@ class ResumeData {
         final List raw => [for (final t in raw) ?Track.fromJson(t)],
         _ => null,
       },
+      shuffle: json['shuffle'] == true,
+      // Умная перемешка — подвид обычной и без неё не живёт (см. `copyWith`).
+      smartShuffle: json['shuffle'] == true && json['smartShuffle'] == true,
+      repeat:
+          PlayerRepeat.values
+              .where((m) => m.name == json['repeat'])
+              .firstOrNull ??
+          PlayerRepeat.off,
     );
   }
 }

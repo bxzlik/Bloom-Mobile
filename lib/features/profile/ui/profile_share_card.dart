@@ -6,18 +6,23 @@
 /// аватар у виджетов уже есть.
 ///
 /// Раскладка считается в том же дизайн-боксе 380, что и у трековой карточки,
-/// и все числа взяты с ПК один в один: шапка Bloom, ряд «аватар + ник/био»,
-/// сетка 2×2 со статистикой и футер с числом прослушиваний.
+/// и все числа взяты с ПК один в один: шапка Bloom, ряд «аватар + ник/био» и
+/// сетка 2×2 со статистикой. Футера (линейка, число прослушиваний, белый
+/// кружок со стрелкой) и разделителя под шапкой больше нет — владелец убрал их
+/// 2026-09-19.
 ///
-/// Карточка ЧЁРНАЯ в любой теме приложения — это картинка, которая уедет в
-/// чужой мессенджер, а не поверхность интерфейса.
+/// Карточка не зависит от темы приложения — это картинка, которая уедет в чужой
+/// мессенджер. Фон общий с трековой ([ShareCardShell]) и строится из тона
+/// аватара, а без аватара — из цвета обложки профиля. Серые плашки под цифрами
+/// убраны вслед за ПК: на цветном фоне они выглядели дёшево, вместо них две
+/// линейки крестом.
 library;
 
 import 'package:flutter/material.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../core/l10n/l10n.dart';
-import '../../../shared/share/share_card.dart' show kShareCardW;
+import '../../../shared/share/share_card.dart'
+    show ShareCardShell, kShareBold, kShareCardW, kShareRuleAlpha;
 import '../profile_store.dart';
 
 const double _pad = 20;
@@ -27,22 +32,22 @@ const double _headerPb = 18;
 const double _headerMb = 18;
 
 const double _profAva = 64;
-const double _profMb = 16;
+const double _profMb = 20;
 
-const double _gridGap = 10;
+/// Зазор между колонками; по его середине идёт вертикальная линейка.
+const double _gridGap = 20;
 const double _colW = (kShareCardW - _pad * 2 - _gridGap) / 2;
-const double _cellPadH = 8;
-const double _cellValFs = 20;
-const double _cellValMin = 11;
-const double _cellValMb = 6;
-const double _cellLblFs = 8;
-const double _cellPadV = 12;
+const double _cellValFs = 24;
+const double _cellValMin = 13;
+const double _cellValMb = 8;
+const double _cellLblFs = 9;
+const double _cellPadV = 14;
 const double _cellH =
     _cellPadV + _cellValFs + _cellValMb + _cellLblFs + _cellPadV;
 
-const double _gridMb = 12;
-const double _footerPt = 18;
-const double _footerBtn = 40;
+/// Насколько линейка между колонками короче сетки сверху и снизу.
+const double _ruleInset = _cellPadV * 0.4;
+
 const double _bottomPad = 22;
 
 /// Числа для сетки — считаются снаружи, из `profileStatsProvider`.
@@ -73,6 +78,7 @@ class ProfileShareCard extends StatelessWidget {
     required this.stats,
     required this.avatar,
     required this.logo,
+    required this.tone,
   });
 
   final UserProfile profile;
@@ -86,198 +92,183 @@ class ProfileShareCard extends StatelessWidget {
   /// Знак Bloom в шапке — тоже готовым провайдером и по той же причине.
   final ImageProvider? logo;
 
+  /// Тон фона: по аватару, а без него — по обложке профиля.
+  final Color tone;
+
   @override
   Widget build(BuildContext context) {
     final l = context.l;
     final name = profile.displayName(l);
     final bio = profile.bio.trim();
 
+    return ShareCardShell(
+      tone: tone,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── Шапка: знак Bloom и две строки рядом ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(_pad, _pad, _pad, _headerPb),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: _logoSz,
+                  height: _logoSz,
+                  child: logo == null
+                      ? null
+                      : Image(image: logo!, fit: BoxFit.contain),
+                ),
+                const SizedBox(width: _metaGap),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Bloom',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          height: 1.15,
+                          fontWeight: kShareBold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        l.shareProfileSub,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.55),
+                          fontSize: 11,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Разделителя под шапкой нет (владелец убрал 2026-09-19).
+          const SizedBox(height: _headerMb),
+          // ── Профиль: аватар и ник с био ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: _pad),
+            child: Row(
+              children: [
+                _CardAvatar(profile: profile, image: avatar, name: name),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          height: 1.2,
+                          fontWeight: kShareBold,
+                        ),
+                      ),
+                      if (bio.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          bio,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            fontSize: 12,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: _profMb),
+          // ── Сетка 2×2 на линейках ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: _pad),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    _Cell(value: '${stats.tracks}', label: l.statsTracks),
+                    const _VRule(insetTop: _ruleInset),
+                    _Cell(value: '${stats.plays}', label: l.statsPlays),
+                  ],
+                ),
+                const _HRule(),
+                Row(
+                  children: [
+                    _Cell(value: stats.time, label: l.statsTime),
+                    const _VRule(insetBottom: _ruleInset),
+                    _Cell(
+                      value: stats.favArtist ?? '—',
+                      label: l.statsFavArtist,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // Футера (линейка, число прослушиваний, белый кружок со стрелкой)
+          // нет — владелец убрал его 2026-09-19, карточка кончается сеткой.
+          const SizedBox(height: _bottomPad),
+        ],
+      ),
+    );
+  }
+}
+
+/// Линейка между колонками сетки. Живёт в зазоре между ячейками, поэтому обе
+/// половины сетки остаются ровно по [_colW].
+class _VRule extends StatelessWidget {
+  const _VRule({this.insetTop = 0, this.insetBottom = 0});
+
+  final double insetTop;
+  final double insetBottom;
+
+  @override
+  Widget build(BuildContext context) {
     return SizedBox(
-      width: kShareCardW,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.black,
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ── Шапка: знак Bloom и две строки рядом ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(_pad, _pad, _pad, _headerPb),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: _logoSz,
-                    height: _logoSz,
-                    child: logo == null
-                        ? null
-                        : Image(image: logo!, fit: BoxFit.contain),
-                  ),
-                  const SizedBox(width: _metaGap),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Bloom',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            height: 1.15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          l.shareProfileSub,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.35),
-                            fontSize: 11,
-                            height: 1.2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+      width: _gridGap,
+      height: _cellH,
+      child: Padding(
+        padding: EdgeInsets.only(top: insetTop, bottom: insetBottom),
+        child: Center(
+          child: SizedBox(
+            width: 1,
+            height: double.infinity,
+            child: ColoredBox(
+              color: Colors.white.withValues(alpha: kShareRuleAlpha),
             ),
-            const _Line(),
-            const SizedBox(height: _headerMb),
-            // ── Профиль: аватар и ник с био ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: _pad),
-              child: Row(
-                children: [
-                  _CardAvatar(profile: profile, image: avatar, name: name),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            height: 1.2,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        if (bio.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            bio,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.36),
-                              fontSize: 12,
-                              height: 1.3,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: _profMb),
-            // ── Сетка 2×2 ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: _pad),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      _Cell(value: '${stats.tracks}', label: l.statsTracks),
-                      const SizedBox(width: _gridGap),
-                      _Cell(value: '${stats.plays}', label: l.statsPlays),
-                    ],
-                  ),
-                  const SizedBox(height: _gridGap),
-                  Row(
-                    children: [
-                      _Cell(value: stats.time, label: l.statsTime),
-                      const SizedBox(width: _gridGap),
-                      _Cell(
-                        value: stats.favArtist ?? '—',
-                        label: l.statsFavArtist,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            // ── Футер ──
-            const SizedBox(height: _gridMb + _footerPt / 2),
-            const _Line(),
-            const SizedBox(height: _footerPt / 2),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: _pad),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      l.shareProfilePlays(stats.plays),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.26),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  // Белый кружок со стрелкой — «открыть в Bloom». Он нарисован,
-                  // а не нажимается: карточка уедет картинкой.
-                  Container(
-                    width: _footerBtn,
-                    height: _footerBtn,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      SolarIconsOutline.arrowRight,
-                      size: 21,
-                      color: Colors.black,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: _bottomPad),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// Тонкая линия шапки и футера — десктопные `rgba(255,255,255,.07)`.
-class _Line extends StatelessWidget {
-  const _Line();
+/// Линейка между рядами сетки.
+class _HRule extends StatelessWidget {
+  const _HRule();
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: _pad),
-      child: Divider(
-        height: 1,
-        thickness: 1,
-        color: Colors.white.withValues(alpha: 0.07),
-      ),
+    return SizedBox(
+      height: 1,
+      width: double.infinity,
+      child: ColoredBox(color: Colors.white.withValues(alpha: kShareRuleAlpha)),
     );
   }
 }
@@ -315,9 +306,9 @@ class _CardAvatar extends StatelessWidget {
                   child: Text(
                     name.characters.firstOrNull?.toUpperCase() ?? 'U',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.4),
+                      color: Colors.white.withValues(alpha: 0.5),
                       fontSize: _profAva * 0.4,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: kShareBold,
                     ),
                   ),
                 ),
@@ -337,50 +328,46 @@ class _Cell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fs = _fitFontSize(value);
-    return Container(
+    return SizedBox(
       width: _colW,
       height: _cellH,
-      padding: const EdgeInsets.symmetric(
-        horizontal: _cellPadH,
-        vertical: _cellPadV,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: _cellValFs,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: fs,
-                  height: 1,
-                  fontWeight: FontWeight.w800,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: _cellPadV),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: _cellValFs,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: fs,
+                    height: 1,
+                    fontWeight: kShareBold,
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: _cellValMb),
-          Text(
-            label.toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.35),
-              fontSize: _cellLblFs,
-              height: 1,
-              fontWeight: FontWeight.w700,
+            const SizedBox(height: _cellValMb),
+            Text(
+              label.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: _cellLblFs,
+                height: 1,
+                letterSpacing: 0.9,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -391,14 +378,15 @@ class _Cell extends StatelessWidget {
 /// `FittedBox`: тому нижнего предела не задать, и «Nine Inch Nails» стал бы
 /// нечитаемой строчкой в 4 пункта.
 double _fitFontSize(String value) {
-  const maxW = _colW - _cellPadH * 2;
+  // Ячейки больше не в плашках, но от линейки значение всё равно отступает.
+  const maxW = _colW - 4;
   final painter = TextPainter(
     text: TextSpan(
       text: value,
       style: const TextStyle(
         fontSize: _cellValFs,
         height: 1,
-        fontWeight: FontWeight.w800,
+        fontWeight: kShareBold,
       ),
     ),
     textDirection: TextDirection.ltr,

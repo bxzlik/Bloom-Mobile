@@ -15,6 +15,8 @@ import 'package:bloom/core/store/json_store.dart';
 import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/core/store/play_log.dart' show playLogStoreProvider;
 import 'package:bloom/features/profile/profile_store.dart';
+import 'package:bloom/features/settings/cover_accent.dart'
+    show kShareToneFallback;
 import 'package:bloom/features/profile/ui/profile_share_card.dart';
 import 'package:bloom/features/profile/ui/profile_share_sheet.dart';
 import 'package:bloom/shared/share/share_card.dart';
@@ -47,7 +49,13 @@ Future<void> _pumpCard(
   await tester.pumpWidget(
     MaterialApp(
       home: Center(
-        child: ShareCard(title: title, artist: artist, cover: null, logo: null),
+        child: ShareCard(
+          title: title,
+          artist: artist,
+          cover: null,
+          logo: null,
+          tone: kShareToneFallback,
+        ),
       ),
     ),
   );
@@ -140,8 +148,8 @@ void main() {
       await _pumpCard(tester, title: 'Glory Box', artist: 'Portishead');
       final size = tester.getSize(find.byType(ShareCard));
       expect(size.width, kShareCardW);
-      // 20 + 38 + 18 + 1 + 18 + 340 + 16 + 26.84 + 6 + 16.9 + 42
-      expect(size.height, closeTo(542.7, 1));
+      // 20 + 38 + 18 + 18 + 340 + 20 + 27.72 + 7 + 16.9 + 42
+      expect(size.height, closeTo(547.6, 1));
       expect(find.text('Portishead'), findsOneWidget);
       expect(find.text('Bloom'), findsOneWidget);
     });
@@ -157,13 +165,20 @@ void main() {
       expect(withArtist - without, closeTo(16.9, 0.5));
     });
 
-    testWidgets('длинное название режется, а не ломает бокс', (tester) async {
+    testWidgets('длинное название: вторая строка и эллипсис', (tester) async {
+      await _pumpCard(tester, title: 'Glory Box', artist: 'Portishead');
+      final oneLine = tester.getSize(find.byType(ShareCard)).height;
+
       await _pumpCard(
         tester,
         title: 'Glory Box (Original Mix) — Live at the Roseland Ballroom, NYC',
         artist: 'Portishead',
       );
-      expect(tester.getSize(find.byType(ShareCard)).width, kShareCardW);
+      final size = tester.getSize(find.byType(ShareCard));
+      expect(size.width, kShareCardW);
+      // Ровно одна лишняя строка (22 × 1.26): дальше название режется
+      // эллипсисом, как на ПК, а не растит карточку до бесконечности.
+      expect(size.height - oneLine, closeTo(27.72, 0.5));
       expect(tester.takeException(), isNull);
     });
   });
@@ -216,17 +231,18 @@ void main() {
       await _pumpProfileCard(tester);
       final size = tester.getSize(find.byType(ProfileShareCard));
       expect(size.width, kShareCardW);
-      // 20 + 38 + 18 + 1 + 18 + 64 + 16 + 126 + 21 + 1 + 9 + 40 + 22
-      expect(size.height, closeTo(394, 1));
+      // 20 + 38 + 18 + 18 + 64 + 20 + 139 + 22
+      expect(size.height, closeTo(339, 1));
 
       expect(find.text('Bloom'), findsOneWidget);
       expect(find.text('bxzlik'), findsOneWidget);
       // Подписи ячеек — капсом, как `stats.card.*` на ПК.
       expect(find.text('ТРЕКОВ'), findsOneWidget);
       expect(find.text('ЛЮБИМЫЙ ИСПОЛНИТЕЛЬ'), findsOneWidget);
-      // Число прослушиваний в футере — с разрядами (у русского разделитель
-      // НЕРАЗРЫВНЫЙ пробел) и в нужной форме множественного числа.
-      expect(find.text('1 240 прослушиваний'), findsOneWidget);
+      // Футера у карточки нет: ни строки с числом прослушиваний, ни белого
+      // кружка со стрелкой — она кончается сеткой.
+      expect(find.text('1 240 прослушиваний'), findsNothing);
+      expect(find.byType(Icon), findsNothing);
     });
 
     testWidgets('без аватара — буква ника на градиенте', (tester) async {
@@ -234,17 +250,17 @@ void main() {
       expect(find.text('B'), findsOneWidget);
     });
 
-    testWidgets('длинное значение ужимается, но не мельче 11', (tester) async {
+    testWidgets('длинное значение ужимается, но не мельче 13', (tester) async {
       await _pumpProfileCard(tester, favArtist: 'Godspeed You! Black Emperor');
       final value = tester.widget<Text>(
         find.text('Godspeed You! Black Emperor'),
       );
-      expect(value.style?.fontSize, lessThan(20));
-      expect(value.style?.fontSize, greaterThanOrEqualTo(11));
+      expect(value.style?.fontSize, lessThan(24));
+      expect(value.style?.fontSize, greaterThanOrEqualTo(13));
       // Ячейка от этого не растёт: высота карточки прежняя.
       expect(
         tester.getSize(find.byType(ProfileShareCard)).height,
-        closeTo(394, 1),
+        closeTo(339, 1),
       );
     });
 
@@ -349,6 +365,7 @@ Future<void> _pumpProfileCard(
           ),
           avatar: null,
           logo: null,
+          tone: kShareToneFallback,
         ),
       ),
     ),

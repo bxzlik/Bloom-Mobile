@@ -34,9 +34,16 @@ class CoverHsl {
 }
 
 /// Доминантный HSL обложки; `null` — обложки нет или картинка не загрузилась.
-Future<CoverHsl?> extractCoverHsl(String? cover) async {
+Future<CoverHsl?> extractCoverHsl(String? cover) {
   final provider = coverImage(cover);
-  if (provider == null) return null;
+  if (provider == null) return Future.value();
+  return extractProviderHsl(provider);
+}
+
+/// То же по УЖЕ ВЫБРАННОМУ провайдеру. Нужно там, где картинка не сводится к
+/// ссылке из стора: карточки «Поделиться» берут обложку покрупнее и с откатом
+/// на исходный размер, и тон должен считаться ровно по той, что нарисована.
+Future<CoverHsl?> extractProviderHsl(ImageProvider provider) async {
   // Скан идёт по 32×32: сеть и декодер отдают полноразмерную картинку, а нам
   // нужен доминант — сжатие и быстрее, и заодно усредняет шум.
   final image = await _load(
@@ -162,6 +169,34 @@ Color playerBgFromHsl(CoverHsl hsl) => HSLColor.fromAHSL(
   (hsl.s * 0.85).clamp(0.0, 0.72),
   (hsl.l * 0.62).clamp(0.16, 0.34),
 ).toColor();
+
+/// Коридор насыщенности и светлота тона карточек «Поделиться» — десктопные
+/// `TONE_SAT_MIN` / `TONE_SAT_MAX` / `TONE_LIGHT` из `shared/lib/cardKit.ts`.
+const double _shareToneSMin = 0.34;
+const double _shareToneSMax = 0.72;
+const double _shareToneL = 0.42;
+
+/// Тон карточки «Поделиться», когда обложки нет или её не удалось прочитать.
+const Color kShareToneFallback = Color(0xFF3A3A40);
+
+/// Доминантный HSL → тон карточки «Поделиться».
+///
+/// От обложки остаётся только оттенок: насыщенность зажата в коридор, светлота
+/// фиксирована. Без этого тёмная обложка дала бы грязно-серый фон, а кислотная —
+/// светлый, на котором не видно белых подписей карточки.
+Color shareToneFromHsl(CoverHsl hsl) => HSLColor.fromAHSL(
+  1,
+  hsl.h % 360,
+  // Почти серый источник оставляем серым: у ч/б обложки оттенок — шум JPEG.
+  hsl.s < 0.04 ? 0.05 : hsl.s.clamp(_shareToneSMin, _shareToneSMax),
+  _shareToneL,
+).toColor();
+
+/// Тон карточки из готового цвета (обложка профиля, когда аватара нет).
+Color shareToneFromColor(Color color) {
+  final hsl = HSLColor.fromColor(color);
+  return shareToneFromHsl(CoverHsl(hsl.hue, hsl.saturation, hsl.lightness));
+}
 
 /// Картинка провайдера в виде `ui.Image`; `null` — сеть/файл не отдали.
 Future<ui.Image?> _load(ImageProvider provider) {

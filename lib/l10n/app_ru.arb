@@ -350,7 +350,6 @@
   "sharePlaylist": "Поделиться плейлистом",
   "shareProfile": "Поделиться профилем",
   "shareProfileSub": "делится профилем",
-  "shareProfilePlays": "{count, plural, one{{count} прослушивание} few{{count} прослушивания} many{{count} прослушиваний} other{{count} прослушиваний}}",
   "shareFail": "Не удалось отправить карточку",
 
   "searchTabAll": "Всё",
@@ -516,7 +515,7 @@
   "pvAnimFade": "Затухание",
 
   "pvGroupLyrics": "Текст песни",
-  "pvLyricsRow": "Оформление",
+  "pvLyricsRow": "Вид",
   "pvLyricsMode": "Вид",
   "pvLyricsModeSub": "куда девается обложка, когда включён текст",
   "pvLyricsModeOverlay": "Поверх обложки",

@@ -2048,12 +2048,6 @@ abstract class AppLocalizations {
   /// **'shares their profile'**
   String get shareProfileSub;
 
-  /// desktop: stats.card.playsFooter — the number carries thousands separators there (toLocaleString)
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, one{{count} play} other{{count} plays}}'**
-  String shareProfilePlays(int count);
-
   /// desktop: share.toast.saveFail — the card could not be handed to the system
   ///
   /// In en, this message translates to:
@@ -2975,7 +2969,7 @@ abstract class AppLocalizations {
   /// settings row that opens the lyrics style sheet
   ///
   /// In en, this message translates to:
-  /// **'Style'**
+  /// **'View'**
   String get pvLyricsRow;
 
   /// No description provided for @pvLyricsMode.

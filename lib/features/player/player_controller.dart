@@ -465,6 +465,9 @@ class PlaybackController extends Notifier<PlaybackState>
             paused: !_player.playing,
             source: state.source,
             fullQueue: _preClearQueue,
+            shuffle: state.shuffle,
+            smartShuffle: state.smartShuffle,
+            repeat: state.repeat,
           ),
         );
   }
@@ -671,16 +674,30 @@ class PlaybackController extends Notifier<PlaybackState>
     return _resume(data, autoplay: autoplay);
   }
 
-  Future<void> _resume(ResumeData data, {bool autoplay = true}) => _start(
-    data.queue,
-    data.index,
-    source: data.source,
-    orig: null,
-    // Первые пару секунд перематывать некуда — начинаем с начала трека.
-    startAt: data.position > const Duration(seconds: 2) ? data.position : null,
-    autoplay: autoplay,
-    preClear: data.fullQueue,
-  );
+  Future<void> _resume(ResumeData data, {bool autoplay = true}) {
+    // Режимы ставим ДО очереди: `_start` их не трогает, а `_load` уже смотрит
+    // на повтор. Порядок очереди в снимке — тот самый, тасованный, так что
+    // перемешку возвращаем флагом, не перетасовывая заново.
+    state = state.copyWith(
+      shuffle: data.shuffle,
+      smartShuffle: data.smartShuffle,
+      repeat: data.repeat,
+    );
+    // Исходного порядка до перемешки в снимке нет (см. `ResumeData.shuffle`) —
+    // `_origQueue` остаётся пустым, и выключение перемешки просто снимет флаг.
+    return _start(
+      data.queue,
+      data.index,
+      source: data.source,
+      orig: null,
+      // Первые пару секунд перематывать некуда — начинаем с начала трека.
+      startAt: data.position > const Duration(seconds: 2)
+          ? data.position
+          : null,
+      autoplay: autoplay,
+      preClear: data.fullQueue,
+    );
+  }
 
   /// Трек, который загрузили, но играть не начали (восстановление на паузе).
   ///

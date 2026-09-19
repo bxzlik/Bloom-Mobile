@@ -1185,21 +1185,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareProfileSub => 'shares their profile';
 
   @override
-  String shareProfilePlays(int count) {
-    final intl.NumberFormat countNumberFormat =
-        intl.NumberFormat.decimalPattern(localeName);
-    final String countString = countNumberFormat.format(count);
-
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$countString plays',
-      one: '$countString play',
-    );
-    return '$_temp0';
-  }
-
-  @override
   String get shareFail => 'Couldn’t share the card';
 
   @override
@@ -1706,7 +1691,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pvGroupLyrics => 'Lyrics';
 
   @override
-  String get pvLyricsRow => 'Style';
+  String get pvLyricsRow => 'View';
 
   @override
   String get pvLyricsMode => 'View';

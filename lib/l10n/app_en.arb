@@ -598,8 +598,6 @@
   "@shareProfile": { "description": "desktop: profile.shareTitle" },
   "shareProfileSub": "shares their profile",
   "@shareProfileSub": { "description": "the line under “Bloom” in the head of the profile card — desktop draws it in English only" },
-  "shareProfilePlays": "{count, plural, one{{count} play} other{{count} plays}}",
-  "@shareProfilePlays": { "description": "desktop: stats.card.playsFooter — the number carries thousands separators there (toLocaleString)", "placeholders": { "count": { "type": "int", "format": "decimalPattern" } } },
   "shareFail": "Couldn’t share the card",
   "@shareFail": { "description": "desktop: share.toast.saveFail — the card could not be handed to the system" },
 
@@ -857,7 +855,7 @@
 
   "pvGroupLyrics": "Lyrics",
   "@pvGroupLyrics": { "description": "desktop: settings.view.lyrics" },
-  "pvLyricsRow": "Style",
+  "pvLyricsRow": "View",
   "@pvLyricsRow": { "description": "settings row that opens the lyrics style sheet" },
   "pvLyricsMode": "View",
   "pvLyricsModeSub": "where the cover goes once lyrics are on",
