@@ -8,7 +8,7 @@
 
 Мобильный плеер: локальная медиатека, Yandex Music, SoundCloud и YouTube Music в одном приложении
 
-[**📦 Релизы**](https://github.com/bxzlik/Bloom-Mobile/releases) · [**🖥 Десктоп**](https://github.com/bxzlik/Bloom) · [**🌐 Сайт**](https://bloom-site-x.vercel.app/)
+[**📦 Релизы**](https://github.com/bxzlik/Bloom-releases/releases) · [**🖥 Десктоп**](https://github.com/bxzlik/Bloom)
 
 [English](README.md) · **Русский**
 
@@ -36,7 +36,3 @@ flutter build ios --release   # ios, нужен macOS
 ```
 
 Требуется [Flutter](https://docs.flutter.dev/get-started/install) 3.41+.
-
-## 📄 License
-
-[MIT](LICENSE)

@@ -426,7 +426,7 @@ void main() {
       final c = _container(
         JsonStore.memory(),
         fetch: (_) async =>
-            '{"tag_name":"v1.4.0","html_url":"https://example/1.4.0"}',
+            '[{"tag_name":"mobile-v1.4.0","html_url":"https://example/1.4.0"}]',
       );
       final about = c.read(aboutProvider.notifier);
       // Версию платформа в тестах не отдаёт — подставляем сами через проверку
@@ -441,12 +441,27 @@ void main() {
     test('та же версия — «установлена последняя»', () async {
       final c = _container(
         JsonStore.memory(),
-        fetch: (_) async => '{"tag_name":"v1.3.0"}',
+        fetch: (_) async => '[{"tag_name":"mobile-v1.3.0"}]',
       );
       final about = c.read(aboutProvider.notifier);
       about.state = const AboutState(version: '1.3.0');
       await about.check();
       expect(c.read(aboutProvider).phase, UpdatePhase.uptodate);
+    });
+
+    // Релизы ПК и мобилки лежат в одном репозитории, а версии у них независимые:
+    // без фильтра по префиксу десктопная 9.0.0 выглядела бы как обновление.
+    test('десктопный релиз не принимаем за мобильный', () async {
+      final c = _container(
+        JsonStore.memory(),
+        fetch: (_) async =>
+            '[{"tag_name":"desktop-v9.0.0"},{"tag_name":"mobile-v1.3.0"}]',
+      );
+      final about = c.read(aboutProvider.notifier);
+      about.state = const AboutState(version: '1.3.0');
+      await about.check();
+      expect(c.read(aboutProvider).phase, UpdatePhase.uptodate);
+      expect(c.read(aboutProvider).latest, '1.3.0');
     });
 
     test('сеть отвалилась — ошибка, а не падение', () async {
@@ -469,7 +484,7 @@ void main() {
       expect(ru.pages.single.body, '- раз\n- два');
       expect(
         ru.pages.single.image,
-        'https://raw.githubusercontent.com/$kUpdateRepo/main/update-notes/assets/start.png',
+        'https://raw.githubusercontent.com/$kUpdateRepo/main/update-notes/mobile/assets/start.png',
       );
 
       final en = await c.read(updateNotesProvider).note('1.0.0', 'en');

@@ -8,7 +8,7 @@
 
 A mobile player: local library, Yandex Music, SoundCloud, and YouTube Music in a single app
 
-[**📦 Releases**](https://github.com/bxzlik/Bloom-Mobile/releases) · [**🖥 Desktop**](https://github.com/bxzlik/Bloom) · [**🌐 Website**](https://bloom-site-x.vercel.app/)
+[**📦 Releases**](https://github.com/bxzlik/Bloom-releases/releases) · [**🖥 Desktop**](https://github.com/bxzlik/Bloom)
 
 **English** · [Русский](README.ru.md)
 
@@ -36,7 +36,3 @@ flutter build ios --release   # ios, needs macOS
 ```
 
 Requires [Flutter](https://docs.flutter.dev/get-started/install) 3.41+.
-
-## 📄 License
-
-[MIT](LICENSE)

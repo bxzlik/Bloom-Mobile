@@ -20,12 +20,20 @@ import 'package:http/http.dart' as http;
 import '../../core/log/bloom_log.dart';
 import '../../core/store/text_files.dart';
 
-/// Репозиторий мобильного Bloom — тот же, куда `.github/workflows/release.yml`
-/// кладёт APK. Теги там вида `v1.2.3`.
-const String kUpdateRepo = 'bxzlik/Bloom-Mobile';
+/// Публичный репозиторий с релизами обеих платформ, куда
+/// `.github/workflows/release.yml` кладёт APK. Код мобилки лежит в приватном
+/// `bxzlik/Bloom-Mobile`, а из приватного репозитория без токена не скачать —
+/// отсюда и прокладка. Он же источник заметок в `update_notes_store.dart`.
+const String kUpdateRepo = 'bxzlik/Bloom-releases';
 
-Uri get _latestReleaseUrl =>
-    Uri.parse('https://api.github.com/repos/$kUpdateRepo/releases/latest');
+/// Префикс тега мобильных релизов: `mobile-v1.2.3`. У десктопных — `desktop-v`,
+/// и путать их нельзя: версии платформ нумеруются независимо, так что чужой
+/// релиз здесь выглядел бы как обновление. Задаётся в release.yml.
+const String kTagPrefix = 'mobile-v';
+
+Uri get _releasesUrl => Uri.parse(
+  'https://api.github.com/repos/$kUpdateRepo/releases?per_page=30',
+);
 
 /// Что показывает блок «О приложении».
 enum UpdatePhase { idle, checking, uptodate, available, error }
@@ -103,16 +111,27 @@ class AboutController extends Notifier<AboutState> {
     if (state.phase == UpdatePhase.checking) return;
     state = state.copyWith(phase: UpdatePhase.checking);
     try {
-      final body = await ref.read(releaseFetchProvider)(_latestReleaseUrl);
+      final body = await ref.read(releaseFetchProvider)(_releasesUrl);
       final json = jsonDecode(body);
-      if (json is! Map) throw const FormatException('не JSON-объект');
-      final tag = json['tag_name'];
-      if (tag is! String || tag.isEmpty) {
-        throw const FormatException('в ответе нет tag_name');
+      if (json is! List) throw const FormatException('не JSON-массив');
+      // Список приходит от новых к старым — берём первый мобильный. Черновики и
+      // пререлизы пропускаем: так же вёл себя прежний /releases/latest.
+      final rel = json.firstWhere(
+        (r) =>
+            r is Map &&
+            r['draft'] != true &&
+            r['prerelease'] != true &&
+            (r['tag_name'] is String) &&
+            (r['tag_name'] as String).startsWith(kTagPrefix),
+        orElse: () => null,
+      );
+      if (rel == null) {
+        throw const FormatException('в репозитории нет мобильных релизов');
       }
-      final latest = normalizeVersion(tag);
+      final tag = rel['tag_name'] as String;
+      final latest = normalizeVersion(tag.substring(kTagPrefix.length));
       final url =
-          json['html_url'] as String? ??
+          rel['html_url'] as String? ??
           'https://github.com/$kUpdateRepo/releases';
       // Версия неизвестна (платформа не ответила) — сравнивать не с чем, и
       // честнее показать «есть релиз N», чем соврать «установлена последняя».

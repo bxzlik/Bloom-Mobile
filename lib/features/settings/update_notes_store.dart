@@ -3,10 +3,11 @@
 /// отдельно, в `about_store.dart`).
 ///
 /// Манифест — тот же формат, что на ПК: `{"<версия>": {title, date, pages[]}}`,
-/// где `title`/`body` могут быть либо строкой, либо парой `{ru, en}`. Лежит он
-/// в ЭТОМ же репозитории (`update-notes/update-notes.json`) и тянется по
-/// `raw.githubusercontent`: так текст правится и новые версии добавляются без
-/// пересборки APK.
+/// где `title`/`body` могут быть либо строкой, либо парой `{ru, en}`. Правится
+/// он здесь, в `update-notes/`, а release.yml заливает папку в публичный
+/// репозиторий релизов (`update-notes/mobile/`, рядом с десктопной `desktop/`),
+/// откуда она и тянется по `raw.githubusercontent` — так текст правится и новые
+/// версии добавляются без пересборки APK.
 ///
 /// Разобранный манифест кладём в `bloom.json`. Сеть нужна ровно один раз: без
 /// неё «История обновлений» открывается из кэша, а не пустым списком.
@@ -24,7 +25,7 @@ import '../../core/store/library_store.dart' show jsonStoreProvider;
 import 'about_store.dart' show compareVersions, kUpdateRepo;
 
 const String _rawBase =
-    'https://raw.githubusercontent.com/$kUpdateRepo/main/update-notes/';
+    'https://raw.githubusercontent.com/$kUpdateRepo/main/update-notes/mobile/';
 
 Uri get _manifestUrl => Uri.parse('${_rawBase}update-notes.json');
 
