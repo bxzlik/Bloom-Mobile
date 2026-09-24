@@ -20,7 +20,6 @@ import '../../../core/store/cover_store.dart';
 import '../../customization/custom_store.dart';
 import '../../customization/ui/app_background.dart';
 import '../player_bg_store.dart';
-import '../player_controller.dart';
 
 /// Размытие фоновой обложки, σ. Крупное: узнаваться должна не картинка, а её
 /// цветовые пятна — иначе за подписями и кнопками остаётся каша из деталей.
@@ -64,9 +63,7 @@ const Duration kPlayerBgFade = Duration(milliseconds: 620);
 
 /// Обложка, от которой считается фон: своя из «Кастомизации» важнее обложки
 /// трека — тот же порядок, что у самой обложки в плеере (`coverOverride`).
-String? playerBgCover(WidgetRef ref) =>
-    ref.watch(customSrcProvider(CustomCtx.cover)) ??
-    ref.watch(playbackProvider.select((s) => s.track?.cover));
+String? playerBgCover(WidgetRef ref) => ref.watch(playerCoverProvider);
 
 /// Цвета градиента режима «Цвет» сверху вниз.
 ///

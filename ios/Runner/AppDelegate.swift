@@ -1,5 +1,6 @@
 import AVFoundation
 import Flutter
+import MediaPlayer
 import UIKit
 import UniformTypeIdentifiers
 
@@ -14,6 +15,7 @@ import UniformTypeIdentifiers
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     Nightcore.install()
+    NowPlayingLike.install()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
@@ -25,6 +27,95 @@ import UniformTypeIdentifiers
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "BloomNightcore") {
       Nightcore.register(registrar: registrar)
     }
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "BloomLike") {
+      NowPlayingLike.register(registrar: registrar)
+    }
+  }
+}
+
+/// Звёздочка «в любимые» на экране блокировки — канал `bloom/like`.
+///
+/// Своих кнопок iOS в плеер на экране блокировки не пускает, есть только
+/// системный `likeCommand`: слева от «назад» он рисуется звёздочкой, `isActive`
+/// её заливает. Нарисовать там сердце нельзя — значок выбирает система.
+///
+/// audio_service своего API для него не даёт и, хуже того, при каждом
+/// включении пульта (`activateCommandCenter`, первый play и play после stop)
+/// выключает его сам. Поэтому подменяем этот метод: даём плагину отработать и
+/// включаем звёздочку обратно.
+///
+/// Опора на устройство плагина (0.18.19): если метод переименуют, подмена
+/// молча не встанет и звёздочки просто не будет — падать тут нечему.
+///
+/// ВНИМАНИЕ: живьём не гонялось — Mac'а у проекта нет, собирает только CI.
+enum NowPlayingLike {
+  /// В любимых ли играющий трек и как подписать кнопку — последнее из Dart.
+  static var active = false
+  static var title = "Like"
+  private static var channel: FlutterMethodChannel?
+  private static var installed = false
+
+  static func install() {
+    guard !installed else { return }
+    installed = true
+    if let cls = NSClassFromString("AudioServicePlugin"),
+      let original = class_getInstanceMethod(cls, NSSelectorFromString("activateCommandCenter")),
+      let ours = class_getInstanceMethod(
+        NSObject.self,
+        #selector(NSObject.bloom_activateCommandCenter)
+      ),
+      // Кладём свой метод в сам класс плагина и меняем местами уже там: иначе
+      // обмен задел бы реализацию на NSObject.
+      class_addMethod(
+        cls,
+        #selector(NSObject.bloom_activateCommandCenter),
+        method_getImplementation(ours),
+        method_getTypeEncoding(ours)
+      ),
+      let added = class_getInstanceMethod(cls, #selector(NSObject.bloom_activateCommandCenter))
+    {
+      method_exchangeImplementations(original, added)
+    }
+    // Цель вешаем один раз: плагин с `likeCommand` целей не снимает.
+    MPRemoteCommandCenter.shared().likeCommand.addTarget { _ in
+      channel?.invokeMethod("toggle", arguments: nil)
+      return .success
+    }
+  }
+
+  static func register(registrar: FlutterPluginRegistrar) {
+    let channel = FlutterMethodChannel(
+      name: "bloom/like",
+      binaryMessenger: registrar.messenger()
+    )
+    channel.setMethodCallHandler { call, result in
+      guard call.method == "set", let args = call.arguments as? [String: Any] else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      active = args["active"] as? Bool ?? false
+      title = args["title"] as? String ?? title
+      apply()
+      result(nil)
+    }
+    self.channel = channel
+  }
+
+  static func apply() {
+    let command = MPRemoteCommandCenter.shared().likeCommand
+    command.isEnabled = true
+    command.isActive = active
+    command.localizedTitle = title
+    command.localizedShortTitle = title
+  }
+}
+
+extension NSObject {
+  /// После обмена реализаций вызов `bloom_…` внутри — это исходный метод
+  /// плагина.
+  @objc dynamic func bloom_activateCommandCenter() {
+    bloom_activateCommandCenter()
+    NowPlayingLike.apply()
   }
 }
 

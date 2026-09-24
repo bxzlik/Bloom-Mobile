@@ -1,35 +1,37 @@
-/// Общее для страниц кастомизации: каркас с кнопками внизу, широкая кнопка,
-/// поле в шторке и подпись пустого списка.
+/// Общее для «Кастомизации»: каркас страницы, значки контекстов, поля и
+/// форма добавления в шторке, подпись пустого списка.
 ///
-/// Своё, а не [SubPage]: там всё содержимое едет одним списком, а здесь снизу
-/// стоят прибитые кнопки («Добавить по URL» / «Загрузить», «Создать пресет» /
-/// «Импорт») — так их показал пользователь на макете.
+/// Каркас свой, а не [SubPage]: там всё содержимое едет одним списком, а здесь
+/// листается только сетка вкладки — плитки и вкладки над ней стоят на месте.
 library;
 
 import 'package:flutter/material.dart';
+import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
-import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
-import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/subpage_header.dart';
+import '../custom_store.dart';
 
-/// Страница раздела: шапка сверху, содержимое посередине, кнопки снизу.
+/// Значок контекста — один на плитки страницы и строки шторки картинки.
+IconData customCtxIcon(CustomCtx ctx) => switch (ctx) {
+  CustomCtx.bg => SolarIconsOutline.smartphone,
+  CustomCtx.cover => SolarIconsOutline.vinyl,
+  CustomCtx.slider => SolarIconsOutline.tuning,
+};
+
+/// Страница раздела: шапка сверху, содержимое под ней.
 class CustomizationPage extends StatelessWidget {
   const CustomizationPage({
     super.key,
     required this.title,
     required this.onBack,
     required this.child,
-    this.actions = const [],
   });
 
   final String title;
   final VoidCallback onBack;
   final Widget child;
-
-  /// Кнопки, прибитые к низу экрана — над барами каркаса.
-  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -43,78 +45,7 @@ class CustomizationPage extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Expanded(child: child),
-          if (actions.isNotEmpty)
-            Padding(
-              // Снизу — запас под миниплеер и таб-бар: они плавают поверх
-              // содержимого, и кнопка под ними была бы недоступна.
-              padding: EdgeInsets.fromLTRB(
-                16,
-                8,
-                16,
-                12 + bottomBarsInset(context),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var i = 0; i < actions.length; i++) ...[
-                    if (i > 0) const SizedBox(height: 8),
-                    actions[i],
-                  ],
-                ],
-              ),
-            ),
         ],
-      ),
-    );
-  }
-}
-
-/// Широкая кнопка внизу страницы: значок и подпись по центру.
-class WideButton extends StatelessWidget {
-  const WideButton({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.danger = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  /// Опасное действие — красная подпись и красноватая плашка, как в шторках.
-  final bool danger;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final color = danger ? t.danger : t.text;
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: GlassBox(
-        // Опасная кнопка красная и в стекле: её цвет — сигнал, а не
-        // поверхность темы, поэтому прозрачной она не становится.
-        color: danger ? t.dangerTint : null,
-        enabled: !danger,
-        child: Container(
-          height: 52,
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 18, color: color),
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(color: color),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -185,4 +116,71 @@ class _SheetTextFieldState extends State<SheetTextField> {
     onChanged: (_) => setState(() {}),
     onSubmit: _submit,
   );
+}
+
+/// Шторка под плюсиком «Кастомизации»: поле ввода ([SheetTextField]) и под
+/// ним второй способ добавить — «Приложить фото» у библиотеки, «Импорт» у
+/// пресетов.
+///
+/// Закрывается введённой строкой или `true`, если выбрали пункт под полем.
+class SheetAddForm extends StatelessWidget {
+  const SheetAddForm({
+    super.key,
+    required this.hint,
+    required this.icon,
+    required this.label,
+    this.maxLength,
+  });
+
+  final String hint;
+  final int? maxLength;
+
+  /// Пункт под полем.
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      SheetTextField(hint: hint, maxLength: maxLength),
+      SheetPickRow(icon: icon, label: label),
+    ],
+  );
+}
+
+/// Пункт под полем шторки добавления: закрывает её с `true`.
+class SheetPickRow extends StatelessWidget {
+  const SheetPickRow({super.key, required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return SheetPanel(
+      children: [
+        InkWell(
+          onTap: () => Navigator.of(context).pop(true),
+          child: Padding(
+            // Тот же ряд, что у пунктов меню шторки.
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+            child: Row(
+              children: [
+                Icon(icon, size: 22, color: t.text),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

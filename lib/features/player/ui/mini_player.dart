@@ -137,9 +137,7 @@ Color? miniCardTint(WidgetRef ref, MiniStyle style, {Track? neighbor}) {
 /// Обложка, которую карточка показывает на самом деле: своя из «Кастомизации»
 /// важнее обложки трека — десктопный `coverOverride`. Она же идёт в фон
 /// карточки и в цвет заливки: считать надо с той картинки, которую видно.
-String? miniCardCover(WidgetRef ref) =>
-    ref.watch(customSrcProvider(CustomCtx.cover)) ??
-    ref.watch(playbackProvider.select((s) => s.track?.cover));
+String? miniCardCover(WidgetRef ref) => ref.watch(playerCoverProvider);
 
 /// Место карточки в нижних барах каркаса.
 ///

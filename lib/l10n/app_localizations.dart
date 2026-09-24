@@ -4232,18 +4232,6 @@ abstract class AppLocalizations {
   /// **'Presets'**
   String get custPresets;
 
-  /// No description provided for @custAddUrl.
-  ///
-  /// In en, this message translates to:
-  /// **'Add by URL'**
-  String get custAddUrl;
-
-  /// No description provided for @custUpload.
-  ///
-  /// In en, this message translates to:
-  /// **'Upload'**
-  String get custUpload;
-
   /// No description provided for @custLibraryEmpty.
   ///
   /// In en, this message translates to:
@@ -4304,17 +4292,101 @@ abstract class AppLocalizations {
   /// **'Image unavailable'**
   String get custImageGone;
 
-  /// No description provided for @custOnlyForBg.
+  /// No description provided for @custPresetAlsoSave.
   ///
   /// In en, this message translates to:
-  /// **'Background only'**
-  String get custOnlyForBg;
+  /// **'Also save to preset'**
+  String get custPresetAlsoSave;
 
-  /// No description provided for @custPresetCreate.
+  /// No description provided for @custPresetTheme.
   ///
   /// In en, this message translates to:
-  /// **'Create preset'**
-  String get custPresetCreate;
+  /// **'Theme'**
+  String get custPresetTheme;
+
+  /// No description provided for @custPresetTransparency.
+  ///
+  /// In en, this message translates to:
+  /// **'Transparency'**
+  String get custPresetTransparency;
+
+  /// No description provided for @custPresetFont.
+  ///
+  /// In en, this message translates to:
+  /// **'Font'**
+  String get custPresetFont;
+
+  /// No description provided for @custAttachPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from device'**
+  String get custAttachPhoto;
+
+  /// No description provided for @custBgUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Background updated!'**
+  String get custBgUpdated;
+
+  /// No description provided for @custCoverUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover updated!'**
+  String get custCoverUpdated;
+
+  /// No description provided for @custSliderUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Slider photo updated!'**
+  String get custSliderUpdated;
+
+  /// No description provided for @custBgRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Background removed'**
+  String get custBgRemoved;
+
+  /// No description provided for @custCoverRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover reset'**
+  String get custCoverRemoved;
+
+  /// No description provided for @custSliderRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Slider photo removed'**
+  String get custSliderRemoved;
+
+  /// No description provided for @custApplyTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply to'**
+  String get custApplyTo;
+
+  /// No description provided for @custEffects.
+  ///
+  /// In en, this message translates to:
+  /// **'Effects'**
+  String get custEffects;
+
+  /// No description provided for @custCoverMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get custCoverMode;
+
+  /// No description provided for @custCoverModeAlways.
+  ///
+  /// In en, this message translates to:
+  /// **'Always'**
+  String get custCoverModeAlways;
+
+  /// No description provided for @custCoverModeFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'If no cover'**
+  String get custCoverModeFallback;
 
   /// No description provided for @custImport.
   ///

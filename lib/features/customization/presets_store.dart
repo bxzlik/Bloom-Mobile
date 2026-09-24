@@ -1,7 +1,11 @@
 /// Пресеты кастомизации — порт десктопного `presetsStore.ts`.
 ///
 /// Пресет это снимок контекстов: какая картинка стояла фоном, какая обложкой,
-/// какая ползунком. Поля хранят `id` картинки библиотеки, а не саму картинку —
+/// какая ползунком, — с размытием и затемнением фона и режимом обложки на
+/// момент сохранения. По желанию (тумблеры при создании) в него же ложатся
+/// тема, прозрачность и шрифт
+///
+/// Картинки хранятся как `id` картинки библиотеки, а не сама картинка —
 /// как на ПК, и по той же причине: копия данных раздула бы хранилище и
 /// пережила бы удаление картинки из библиотеки (см. [purgeImage]).
 ///
@@ -14,11 +18,14 @@ library;
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' show Color;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/store/cover_store.dart';
 import '../../core/store/library_store.dart' show jsonStoreProvider;
+import '../../core/store/settings_store.dart';
+import '../settings/transparency_store.dart';
 import 'custom_store.dart';
 import 'media_store.dart';
 
@@ -35,6 +42,12 @@ class Preset {
     this.bg,
     this.cover,
     this.slider,
+    this.blur,
+    this.dim,
+    this.coverMode,
+    this.theme,
+    this.transparency,
+    this.font,
     this.ts = 0,
   });
 
@@ -45,25 +58,56 @@ class Preset {
   final String? bg;
   final String? cover;
   final String? slider;
+
+  /// Размытие и затемнение фона на момент сохранения. Живут они в самой
+  /// картинке ([MediaItem.blur]), и без снимка пресет брал бы то, что у неё
+  /// сейчас. `null` — пресет старый (снимка не было): применение не трогает
+  /// то, что стоит у картинки.
+  final double? blur;
+  final double? dim;
+
+  /// Режим обложки на момент сохранения — только если обложка в пресете есть.
+  final CoverMode? coverMode;
+
+  /// Тема, прозрачность и шрифт — по желанию, тумблерами при создании. На ПК
+  /// в пресете их нет: это наше расширение, десктоп эти поля файла пропустит.
+  final ThemePreset? theme;
+  final Transparency? transparency;
+  final String? font;
+
   final int ts;
 
   CustomTargets get targets =>
       CustomTargets(bg: bg, cover: cover, slider: slider);
 
-  /// Пресет без единой картинки — такой не сохраняем и не импортируем.
-  bool get isEmpty => bg == null && cover == null && slider == null;
+  bool get hasImages => bg != null || cover != null || slider != null;
+
+  /// Пресет, в котором не осталось ничего, — такой не сохраняем, не
+  /// импортируем и удаляем, когда из него ушла последняя картинка.
+  bool get isEmpty =>
+      !hasImages && theme == null && transparency == null && font == null;
 
   /// id всех картинок пресета, в порядке карточек на странице картинки.
   List<String> get imageIds => [?bg, ?cover, ?slider];
 
-  Preset scrub(String imageId) => Preset(
-    id: id,
-    name: name,
-    bg: bg == imageId ? null : bg,
-    cover: cover == imageId ? null : cover,
-    slider: slider == imageId ? null : slider,
-    ts: ts,
-  );
+  Preset scrub(String imageId) {
+    final keepBg = bg != imageId;
+    final keepCover = cover != imageId;
+    return Preset(
+      id: id,
+      name: name,
+      bg: keepBg ? bg : null,
+      cover: keepCover ? cover : null,
+      slider: slider == imageId ? null : slider,
+      blur: keepBg ? blur : null,
+      dim: keepBg ? dim : null,
+      coverMode: keepCover ? coverMode : null,
+      theme: theme,
+      transparency: transparency,
+      font: font,
+      ts: ts,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -71,7 +115,32 @@ class Preset {
     if (bg != null) 'bg': bg,
     if (cover != null) 'cover': cover,
     if (slider != null) 'slider': slider,
+    ...extrasToJson(),
     'ts': ts,
+  };
+
+  /// Всё, кроме картинок, — общее для хранилища и файла экспорта.
+  Map<String, dynamic> extrasToJson() => {
+    if (blur != null) 'blur': blur,
+    if (dim != null) 'dim': dim,
+    if (coverMode != null) 'coverMode': coverMode!.name,
+    // Формат общий с ПК: цвета строками `#rrggbb`, режим прозрачности и как
+    // `on`, и как десктопный `trMode`.
+    if (theme != null)
+      'theme': {
+        'id': theme!.id,
+        'name': theme!.name,
+        'bg': _hex(theme!.bg),
+        'blockColor': _hex(theme!.blockColor),
+        'accent': _hex(theme!.accent),
+        'custom': theme!.custom,
+      },
+    if (transparency != null)
+      'transparency': {
+        ...transparency!.toJson(),
+        'trMode': transparency!.on ? 'on' : 'off',
+      },
+    if (font != null) 'font': font,
   };
 
   static Preset? fromJson(Object? raw) {
@@ -85,17 +154,96 @@ class Preset {
 
     final name = raw['name'];
     final ts = raw['ts'];
+    final extras = PresetExtras.fromJson(raw);
     final preset = Preset(
       id: id,
       name: name is String ? name : '',
       bg: field('bg'),
       cover: field('cover'),
       slider: field('slider'),
+      blur: extras.blur,
+      dim: extras.dim,
+      coverMode: extras.coverMode,
+      theme: extras.theme,
+      transparency: extras.transparency,
+      font: extras.font,
       ts: ts is num ? ts.toInt() : 0,
     );
     return preset.isEmpty ? null : preset;
   }
 }
+
+/// Поля пресета помимо картинок, разобранные из хранилища или файла. Битое
+/// поле молча выпадает — пресет от этого не ломается.
+class PresetExtras {
+  const PresetExtras({
+    this.blur,
+    this.dim,
+    this.coverMode,
+    this.theme,
+    this.transparency,
+    this.font,
+  });
+
+  final double? blur;
+  final double? dim;
+  final CoverMode? coverMode;
+  final ThemePreset? theme;
+  final Transparency? transparency;
+  final String? font;
+
+  static PresetExtras fromJson(Map<dynamic, dynamic> raw) {
+    final blur = raw['blur'];
+    final dim = raw['dim'];
+    final mode = raw['coverMode'];
+    final tr = raw['transparency'];
+    final font = raw['font'];
+    return PresetExtras(
+      blur: blur is num ? blur.toDouble().clamp(0, kBgBlurMax) : null,
+      dim: dim is num ? dim.toDouble().clamp(0, kBgDimMax) : null,
+      coverMode: switch (mode) {
+        'always' => CoverMode.always,
+        'fallback' => CoverMode.fallback,
+        _ => null,
+      },
+      theme: _themeFromJson(raw['theme']),
+      transparency: tr is Map ? Transparency.fromJson(tr) : null,
+      font: font is String && font.isNotEmpty ? font : null,
+    );
+  }
+}
+
+/// Тема из снимка. Цвета — `#rrggbb` (так их пишут обе стороны) или число
+/// ARGB (так их хранит `ThemePreset`); встроенную тему от своей отличает флаг
+/// `custom`.
+ThemePreset? _themeFromJson(Object? raw) {
+  if (raw is! Map) return null;
+  final id = raw['id'];
+  final name = raw['name'];
+  final bg = _color(raw['bg']);
+  final blockColor = _color(raw['blockColor']);
+  final accent = _color(raw['accent']);
+  if (id is! String || id.isEmpty) return null;
+  if (bg == null || blockColor == null || accent == null) return null;
+  return ThemePreset(
+    id: id,
+    name: name is String ? name : '',
+    bg: bg,
+    blockColor: blockColor,
+    accent: accent,
+    custom: raw['custom'] != false,
+  );
+}
+
+Color? _color(Object? raw) {
+  if (raw is num) return Color(raw.toInt());
+  if (raw is! String) return null;
+  final hex = RegExp(r'^#([0-9a-fA-F]{6})$').firstMatch(raw)?.group(1);
+  return hex == null ? null : Color(0xFF000000 | int.parse(hex, radix: 16));
+}
+
+String _hex(Color c) =>
+    '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
 
 final presetsProvider = NotifierProvider<PresetsController, List<Preset>>(
   PresetsController.new,
@@ -110,28 +258,60 @@ class PresetsController extends Notifier<List<Preset>> {
       ?Preset.fromJson(raw),
   ];
 
-  /// Снимок текущих контекстов. `null` — сохранять нечего (ни одного
-  /// применённого контекста) или упёрлись в лимит.
-  Preset? save(String name) {
+  /// Снимок текущего вида: картинки контекстов с размытием, затемнением и
+  /// режимом обложки, а по флагам — тема, прозрачность и шрифт. `null` —
+  /// сохранять нечего или упёрлись в лимит.
+  Preset? save(
+    String name, {
+    bool theme = false,
+    bool transparency = false,
+    bool font = false,
+  }) {
+    if (state.length >= kPresetsLimit) return null;
     final targets = ref.read(customProvider);
-    if (targets.isEmpty || state.length >= kPresetsLimit) return null;
+    final bgItem = ref.read(customItemProvider(CustomCtx.bg));
+    final settings = ref.read(settingsProvider);
     final preset = Preset(
       id: 'pr${DateTime.now().millisecondsSinceEpoch}_${_seq++}',
       name: name.trim(),
       bg: targets.bg,
       cover: targets.cover,
       slider: targets.slider,
+      blur: bgItem?.blur,
+      dim: bgItem?.dim,
+      coverMode: targets.cover == null ? null : ref.read(coverModeProvider),
+      theme: theme ? settings.preset : null,
+      transparency: transparency ? ref.read(transparencyProvider) : null,
+      font: font ? settings.fontFamily : null,
       ts: DateTime.now().millisecondsSinceEpoch,
     );
+    if (preset.isEmpty) return null;
     state = [...state, preset];
     _save();
     return preset;
   }
 
+  /// Применить: заданные контексты ставим, пустые НЕ трогаем — как
+  /// `applyPreset` на десктопе. Остальное из снимка возвращаем, только если
+  /// оно в пресете есть.
   void apply(String id) {
     final preset = byId(id);
     if (preset == null) return;
     ref.read(customProvider.notifier).applyTargets(preset.targets);
+    final lib = ref.read(mediaLibProvider.notifier);
+    if (preset.bg case final bg?) {
+      if (preset.blur case final blur?) lib.setBlur(bg, blur);
+      if (preset.dim case final dim?) lib.setDim(bg, dim);
+    }
+    if (preset.coverMode case final mode?) {
+      ref.read(coverModeProvider.notifier).set(mode);
+    }
+    final settings = ref.read(settingsProvider.notifier);
+    if (preset.theme case final theme?) settings.restoreTheme(theme);
+    if (preset.transparency case final tr?) {
+      ref.read(transparencyProvider.notifier).restore(tr);
+    }
+    if (preset.font case final font?) settings.setFontFamily(font);
   }
 
   void delete(String id) {
@@ -150,7 +330,8 @@ class PresetsController extends Notifier<List<Preset>> {
   }
 
   /// Каскад при удалении картинки: убрать ссылки на неё, опустевшие пресеты
-  /// удалить (десктопный `purgeImage`).
+  /// удалить (десктопный `purgeImage`). Пресет с темой, прозрачностью или
+  /// шрифтом без картинок не пуст — он остаётся.
   void purgeImage(String imageId) {
     final next = <Preset>[];
     var changed = false;
@@ -221,15 +402,25 @@ Future<String> encodePresets(List<Preset> presets, List<MediaItem> lib) async {
       'bg': await data(preset.bg),
       'cover': await data(preset.cover),
       'slider': await data(preset.slider),
-      'blur': _numOf(byId[preset.bg]?.blur),
-      'dim': _numOf(byId[preset.bg]?.dim),
+      // Размытие и затемнение — ключи десктопного файла; у старого пресета
+      // снимка нет, и берём то, что стоит у картинки.
+      'blur': _numOf(preset.blur ?? byId[preset.bg]?.blur),
+      'dim': _numOf(preset.dim ?? byId[preset.bg]?.dim),
     }..removeWhere((_, value) => value == null);
-    if (entry['bg'] == null &&
-        entry['cover'] == null &&
-        entry['slider'] == null) {
-      continue;
+    final hasImages =
+        entry['bg'] != null ||
+        entry['cover'] != null ||
+        entry['slider'] != null;
+    // Режим обложки, тема, прозрачность и шрифт — наши поля: ПК их пропустит.
+    final extras = preset.extrasToJson()
+      ..remove('blur')
+      ..remove('dim');
+    if (!hasImages) {
+      // Без картинок у пресета остаётся только вид — без него он пуст.
+      extras.remove('coverMode');
+      if (extras.isEmpty) continue;
     }
-    out.add(entry);
+    out.add({...entry, ...extras});
   }
   return const JsonEncoder.withIndent('  ').convert({
     'kind': kPresetsKind,
@@ -277,17 +468,22 @@ Future<int> importPresets(ReadProvider read, String content) async {
     final slider = entry.slider == null
         ? null
         : await lib.ensureImage(entry.slider!, name: name);
-    if (bg == null && cover == null && slider == null) continue;
-    out.add(
-      Preset(
-        id: 'pr${DateTime.now().millisecondsSinceEpoch}_${_seq++}',
-        name: entry.name,
-        bg: bg,
-        cover: cover,
-        slider: slider,
-        ts: DateTime.now().millisecondsSinceEpoch,
-      ),
+    final extras = entry.extras;
+    final preset = Preset(
+      id: 'pr${DateTime.now().millisecondsSinceEpoch}_${_seq++}',
+      name: entry.name,
+      bg: bg,
+      cover: cover,
+      slider: slider,
+      blur: bg == null ? null : entry.blur,
+      dim: bg == null ? null : entry.dim,
+      coverMode: cover == null ? null : extras.coverMode,
+      theme: extras.theme,
+      transparency: extras.transparency,
+      font: extras.font,
+      ts: DateTime.now().millisecondsSinceEpoch,
     );
+    if (!preset.isEmpty) out.add(preset);
   }
   return read(presetsProvider.notifier).addAll(out);
 }
@@ -301,6 +497,7 @@ class ImportedPreset {
     this.slider,
     this.blur = 0,
     this.dim = 0,
+    this.extras = const PresetExtras(),
   });
 
   final String name;
@@ -312,7 +509,16 @@ class ImportedPreset {
   final double blur;
   final double dim;
 
-  bool get isEmpty => bg == null && cover == null && slider == null;
+  /// Режим обложки, тема, прозрачность, шрифт — наши поля файла.
+  final PresetExtras extras;
+
+  bool get isEmpty =>
+      bg == null &&
+      cover == null &&
+      slider == null &&
+      extras.theme == null &&
+      extras.transparency == null &&
+      extras.font == null;
 }
 
 /// Разобрать файл. Пустой список — файл не наш или в нём нет пресетов
@@ -348,6 +554,7 @@ List<ImportedPreset> decodePresets(String content) {
       slider: image('slider'),
       blur: blur is num ? blur.toDouble().clamp(0, kBgBlurMax) : 0,
       dim: dim is num ? dim.toDouble().clamp(0, kBgDimMax) : 0,
+      extras: PresetExtras.fromJson(entry),
     );
     if (!preset.isEmpty) out.add(preset);
   }

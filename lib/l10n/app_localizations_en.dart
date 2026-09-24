@@ -2377,12 +2377,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get custPresets => 'Presets';
 
   @override
-  String get custAddUrl => 'Add by URL';
-
-  @override
-  String get custUpload => 'Upload';
-
-  @override
   String get custLibraryEmpty => 'Library is empty — add a photo or GIF';
 
   @override
@@ -2421,10 +2415,52 @@ class AppLocalizationsEn extends AppLocalizations {
   String get custImageGone => 'Image unavailable';
 
   @override
-  String get custOnlyForBg => 'Background only';
+  String get custPresetAlsoSave => 'Also save to preset';
 
   @override
-  String get custPresetCreate => 'Create preset';
+  String get custPresetTheme => 'Theme';
+
+  @override
+  String get custPresetTransparency => 'Transparency';
+
+  @override
+  String get custPresetFont => 'Font';
+
+  @override
+  String get custAttachPhoto => 'Choose from device';
+
+  @override
+  String get custBgUpdated => 'Background updated!';
+
+  @override
+  String get custCoverUpdated => 'Cover updated!';
+
+  @override
+  String get custSliderUpdated => 'Slider photo updated!';
+
+  @override
+  String get custBgRemoved => 'Background removed';
+
+  @override
+  String get custCoverRemoved => 'Cover reset';
+
+  @override
+  String get custSliderRemoved => 'Slider photo removed';
+
+  @override
+  String get custApplyTo => 'Apply to';
+
+  @override
+  String get custEffects => 'Effects';
+
+  @override
+  String get custCoverMode => 'Mode';
+
+  @override
+  String get custCoverModeAlways => 'Always';
+
+  @override
+  String get custCoverModeFallback => 'If no cover';
 
   @override
   String get custImport => 'Import';

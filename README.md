@@ -8,7 +8,7 @@
 
 A mobile player: local library, Yandex Music, SoundCloud, and YouTube Music in a single app
 
-[**📦 Releases**](https://github.com/bxzlik/Bloom-releases/releases) · [**🖥 Desktop**](https://github.com/bxzlik/Bloom)
+[**📦 Releases**](https://github.com/bxzlik/Bloom/releases) · [**🖥 Desktop**](https://github.com/bxzlik/Bloom-PC)
 
 **English** · [Русский](README.ru.md)
 

@@ -22,7 +22,11 @@
 
     Держать иконку тут — стандартный для Android способ сказать «этот ресурс
     нужен, хотя ссылок на него не видно».
+
+    С сердечками в шторке (`ic_notif_heart*`) та же история: имя едет из Dart
+    строкой (`audio_handler.dart`). Без них релиз не падает, но кнопка лайка
+    осталась бы без иконки.
 -->
 <resources
     xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@drawable/ic_stat_bloom" />
+    tools:keep="@drawable/ic_stat_bloom,@drawable/ic_notif_heart,@drawable/ic_notif_heart_filled" />

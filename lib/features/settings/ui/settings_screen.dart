@@ -27,6 +27,8 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
+import '../../../providers/yandex/ym_auth.dart';
+import '../../lastfm/lastfm_store.dart';
 import '../../onboarding/onboarding_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
@@ -105,41 +107,12 @@ class SettingsScreen extends StatelessWidget {
               ),
               SettingsRow(
                 icon: SolarIconsOutline.gallery,
-                title: context.l.custLibrary,
-                onTap: () => context.go('/settings/media'),
-              ),
-              SettingsRow(
-                icon: SolarIconsOutline.box,
-                title: context.l.custPresets,
-                onTap: () => context.go('/settings/presets'),
+                title: context.l.stCustom,
+                onTap: () => context.go('/settings/customization'),
               ),
             ],
           ),
-          SettingsGroup(
-            title: context.l.setGroupIntegrations,
-            rows: [
-              SettingsRow(
-                title: 'SoundCloud',
-                leading: const PlatformLogo(MusicSource.soundcloud, size: 20),
-                onTap: () => context.go('/settings/soundcloud'),
-              ),
-              SettingsRow(
-                title: context.l.sourceYandex,
-                leading: const PlatformLogo(MusicSource.yandex, size: 20),
-                onTap: () => context.go('/settings/yandex'),
-              ),
-              SettingsRow(
-                title: 'YouTube Music',
-                leading: const PlatformLogo(MusicSource.ytmusic, size: 20),
-                onTap: () => context.go('/settings/ytmusic'),
-              ),
-              SettingsRow(
-                title: 'Last.fm',
-                leading: const ServiceLogo(Service.lastfm, size: 20),
-                onTap: () => context.go('/settings/lastfm'),
-              ),
-            ],
-          ),
+          const _IntegrationsGroup(),
           // Повтор онбординга — только в отладочной сборке, как `showOnboarding()`
           // в консоли на ПК: в релизе мастер показывается один раз за установку.
           if (kDebugMode)
@@ -160,6 +133,56 @@ class SettingsScreen extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// «Интеграции»: знак в фирменных цветах, только если интеграция готова к
+/// работе, иначе он серый — статус видно, не заходя в раздел.
+///
+/// SoundCloud и YouTube Music работают без входа (ключ SoundCloud подбирается
+/// сам), поэтому они всегда цветные. Яндекс.Музыка — по сохранённому токену,
+/// Last.fm — по ключу сессии.
+class _IntegrationsGroup extends ConsumerWidget {
+  const _IntegrationsGroup();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final off = context.bloom.muted;
+    final ymOn = ref.watch(ymAuthProvider.select((s) => s.authed));
+    final lfmOn = ref.watch(lastfmProvider.select((s) => s.connected));
+    return SettingsGroup(
+      title: context.l.setGroupIntegrations,
+      rows: [
+        SettingsRow(
+          title: 'SoundCloud',
+          leading: const PlatformLogo(MusicSource.soundcloud, size: 20),
+          onTap: () => context.go('/settings/soundcloud'),
+        ),
+        SettingsRow(
+          title: context.l.sourceYandex,
+          leading: PlatformLogo(
+            MusicSource.yandex,
+            size: 20,
+            color: ymOn ? null : off,
+          ),
+          onTap: () => context.go('/settings/yandex'),
+        ),
+        SettingsRow(
+          title: 'YouTube Music',
+          leading: const PlatformLogo(MusicSource.ytmusic, size: 20),
+          onTap: () => context.go('/settings/ytmusic'),
+        ),
+        SettingsRow(
+          title: 'Last.fm',
+          leading: ServiceLogo(
+            Service.lastfm,
+            size: 20,
+            color: lfmOn ? null : off,
+          ),
+          onTap: () => context.go('/settings/lastfm'),
+        ),
+      ],
     );
   }
 }

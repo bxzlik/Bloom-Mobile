@@ -20,7 +20,7 @@ env:
   # приватном, а из приватного без токена не скачать. Там же десктопные релизы,
   # поэтому платформы разведены префиксом тега (mobile-v / desktop-v) и
   # подпапками в update-notes/. См. kUpdateRepo в about_store.dart.
-  RELEASES_REPO: bxzlik/Bloom-releases
+  RELEASES_REPO: bxzlik/Bloom
 
 jobs:
   android:
@@ -150,10 +150,10 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [android, ios]
     runs-on: ubuntu-latest
-    # Релиз уезжает в RELEASES_REPO по своему токену — от текущего репозитория
-    # нужно только чтение.
+    # Рабочий релиз уезжает в RELEASES_REPO по своему токену, но копия кладётся
+    # и сюда — для неё нужна запись в текущий репозиторий.
     permissions:
-      contents: read
+      contents: write
     steps:
       # Нужен ради update-notes/: артефакты сборки исходников не содержат.
       - uses: actions/checkout@v4
@@ -193,5 +193,17 @@ jobs:
         run: |
           gh release create "mobile-$GITHUB_REF_NAME" dist/*/* \
             --repo "$RELEASES_REPO" \
-            --title "Bloom $GITHUB_REF_NAME (мобильный)" \
+            --title "Bloom $GITHUB_REF_NAME (Mobile)" \
             --notes "Мобильный релиз Bloom. APK и .ipa во вложениях ниже."
+
+      # Копия рядом с кодом, из которого собрана: чтобы к любому тегу можно было
+      # поднять точный APK. Приложение сюда не ходит — оно знает только
+      # RELEASES_REPO, так что тег здесь без префикса, как в git.
+      - name: Копия релиза в этом репозитории
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/*/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Bloom $GITHUB_REF_NAME (Mobile)" \
+            --generate-notes

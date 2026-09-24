@@ -24,16 +24,15 @@ import '../../core/store/text_files.dart';
 /// `.github/workflows/release.yml` кладёт APK. Код мобилки лежит в приватном
 /// `bxzlik/Bloom-Mobile`, а из приватного репозитория без токена не скачать —
 /// отсюда и прокладка. Он же источник заметок в `update_notes_store.dart`.
-const String kUpdateRepo = 'bxzlik/Bloom-releases';
+const String kUpdateRepo = 'bxzlik/Bloom';
 
 /// Префикс тега мобильных релизов: `mobile-v1.2.3`. У десктопных — `desktop-v`,
 /// и путать их нельзя: версии платформ нумеруются независимо, так что чужой
 /// релиз здесь выглядел бы как обновление. Задаётся в release.yml.
 const String kTagPrefix = 'mobile-v';
 
-Uri get _releasesUrl => Uri.parse(
-  'https://api.github.com/repos/$kUpdateRepo/releases?per_page=30',
-);
+Uri get _releasesUrl =>
+    Uri.parse('https://api.github.com/repos/$kUpdateRepo/releases?per_page=30');
 
 /// Что показывает блок «О приложении».
 enum UpdatePhase { idle, checking, uptodate, available, error }

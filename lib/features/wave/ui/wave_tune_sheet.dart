@@ -58,7 +58,14 @@ class _TuneSheet extends ConsumerWidget {
               // Плитки лежат прямо на шторке, без подложки и подписи: их и так
               // двое, и что это выбор площадки, видно по самим логотипам.
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+                // Боковой край — как у блока «Дизлайки» ниже, иначе плитки
+                // вылезают за его границы.
+                padding: const EdgeInsets.fromLTRB(
+                  kSheetEdge,
+                  12,
+                  kSheetEdge,
+                  10,
+                ),
                 child: Row(
                   children: [
                     Expanded(

@@ -88,6 +88,7 @@ Future<T?> showBloomSheetChild<T>({
   required BuildContext context,
   String? backdrop,
   Widget? header,
+  Widget? footer,
   double maxFraction = _kSheetMaxFraction,
   required Widget child,
 }) {
@@ -96,6 +97,7 @@ Future<T?> showBloomSheetChild<T>({
     builder: (_) => _SheetShell(
       backdrop: backdrop,
       header: header,
+      footer: footer,
       maxFraction: maxFraction,
       child: child,
     ),
@@ -271,12 +273,17 @@ class _SheetShell extends ConsumerWidget {
   const _SheetShell({
     required this.backdrop,
     required this.header,
+    required this.footer,
     required this.maxFraction,
     required this.child,
   });
 
   final String? backdrop;
   final Widget? header;
+
+  /// Прибитое к низу шторки (кнопка «Удалить» у картинки библиотеки): не
+  /// листается вместе с пунктами.
+  final Widget? footer;
 
   /// Доля экрана, выше которой шторка не растёт.
   final double maxFraction;
@@ -338,6 +345,7 @@ class _SheetShell extends ConsumerWidget {
                             ),
                           ),
                         ),
+                        ?footer,
                       ],
                     ),
                   ),

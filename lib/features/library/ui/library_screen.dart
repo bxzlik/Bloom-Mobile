@@ -390,7 +390,7 @@ class _SystemTiles extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
     return SizedBox(
-      height: 152,
+      height: 130,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -478,13 +478,13 @@ class _SystemTile extends StatelessWidget {
           onTap: onTap,
           child: Container(
             width: 300,
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             alignment: Alignment.bottomLeft,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(icon, size: 34, color: Colors.white),
+                Icon(icon, size: 28, color: Colors.white),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -505,7 +505,7 @@ class _SystemTile extends StatelessWidget {
                       count == null ? '' : context.l.tracksCount(count!),
                       style: theme.bodySmall?.copyWith(
                         fontSize: 13,
-                        color: Colors.white.withValues(alpha: 0.8),
+                        color: Colors.white,
                       ),
                     ),
                   ],
@@ -585,6 +585,7 @@ class _Chips extends ConsumerWidget {
               // Стекло, как у чипов: своя заливка тут — поверхность ряда, а не
               // состояние кнопки, и настройка прозрачности на неё действует.
               glass: true,
+              color: t.text,
               borderColor: line,
               tooltip: context.l.commonCreatePlaylist,
               onTap: () => showCreatePlaylistSheet(context, ref),
@@ -599,7 +600,7 @@ class _Chips extends ConsumerWidget {
               tooltip: context.l.libAutoRefreshTooltip,
               background: autoAccent ? t.accent : fill,
               glass: !autoAccent,
-              color: autoAccent ? t.accentText : null,
+              color: autoAccent ? t.accentText : t.text,
               borderColor: line,
               onTap: () => showPlAutoSheet(context, ref),
             ),
@@ -613,7 +614,7 @@ class _Chips extends ConsumerWidget {
               tooltip: context.l.commonSort,
               background: sortAccent ? t.accent : fill,
               glass: !sortAccent,
-              color: sortAccent ? t.accentText : null,
+              color: sortAccent ? t.accentText : t.text,
               borderColor: line,
               onTap: () => _showSortSheet(context, ref),
             ),
@@ -718,7 +719,7 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final fg = active ? t.accentText : t.text2;
+    final fg = active ? t.accentText : t.text;
     return Center(
       child: SizedBox(
         height: _kLibChipHeight,

@@ -656,6 +656,26 @@ class SettingsController extends Notifier<SettingsState> {
     _save();
   }
 
+  /// Вернуть тему из снимка (пресет кастомизации). Есть такая — просто
+  /// выбираем; своей темы из снимка у нас нет (удалили, пресет с другого
+  /// телефона) — заводим её заново под тем же id, чтобы повторное применение не
+  /// плодило копий.
+  void restoreTheme(ThemePreset theme) {
+    final known =
+        theme.id == kAutoThemeId ||
+        state.allThemes.any((t) => t.id == theme.id);
+    if (known || !theme.custom) {
+      setTheme(known ? theme.id : kThemePresets.first.id);
+      return;
+    }
+    state = state.copyWith(
+      customThemes: [...state.customThemes, theme],
+      themeId: theme.id,
+      clearAccent: state.autoTheme,
+    );
+    _save();
+  }
+
   /// Выбрать язык интерфейса; `null` — вернуться к системному.
   void setLocale(Locale? locale) {
     state = locale == null

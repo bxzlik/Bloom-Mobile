@@ -14,9 +14,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/store/settings_store.dart';
 import '../features/customization/ui/app_background.dart';
-import '../features/customization/ui/media_item_screen.dart';
-import '../features/customization/ui/media_library_screen.dart';
-import '../features/customization/ui/presets_screen.dart';
+import '../features/customization/ui/customization_screen.dart';
 import '../features/home/ui/home_screen.dart';
 import '../features/library/ui/library_screen.dart';
 import '../features/library/ui/tracklist_screen.dart';
@@ -290,20 +288,8 @@ final GoRouter bloomRouter = GoRouter(
                   builder: (_, _) => const _Page(VersionScreen()),
                 ),
                 GoRoute(
-                  path: 'media',
-                  builder: (_, _) => const _Page(MediaLibraryScreen()),
-                  routes: [
-                    GoRoute(
-                      path: ':id',
-                      builder: (_, state) => _Page(
-                        MediaItemScreen(id: state.pathParameters['id'] ?? ''),
-                      ),
-                    ),
-                  ],
-                ),
-                GoRoute(
-                  path: 'presets',
-                  builder: (_, _) => const _Page(PresetsScreen()),
+                  path: 'customization',
+                  builder: (_, _) => const _Page(CustomizationScreen()),
                 ),
               ],
             ),

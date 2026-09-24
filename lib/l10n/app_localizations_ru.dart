@@ -2404,12 +2404,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get custPresets => 'Пресеты';
 
   @override
-  String get custAddUrl => 'Добавить по URL';
-
-  @override
-  String get custUpload => 'Загрузить';
-
-  @override
   String get custLibraryEmpty => 'Библиотека пуста — добавьте фото или GIF';
 
   @override
@@ -2450,10 +2444,52 @@ class AppLocalizationsRu extends AppLocalizations {
   String get custImageGone => 'Картинка недоступна';
 
   @override
-  String get custOnlyForBg => 'Только для фона';
+  String get custPresetAlsoSave => 'Добавить в пресет';
 
   @override
-  String get custPresetCreate => 'Создать пресет';
+  String get custPresetTheme => 'Тема';
+
+  @override
+  String get custPresetTransparency => 'Прозрачность';
+
+  @override
+  String get custPresetFont => 'Шрифт';
+
+  @override
+  String get custAttachPhoto => 'Выбрать с устройства';
+
+  @override
+  String get custBgUpdated => 'Фон обновлён!';
+
+  @override
+  String get custCoverUpdated => 'Обложка обновлена!';
+
+  @override
+  String get custSliderUpdated => 'Фото слайдера обновлено!';
+
+  @override
+  String get custBgRemoved => 'Фон удалён';
+
+  @override
+  String get custCoverRemoved => 'Обложка сброшена';
+
+  @override
+  String get custSliderRemoved => 'Фото слайдера удалено';
+
+  @override
+  String get custApplyTo => 'Применить к';
+
+  @override
+  String get custEffects => 'Эффекты';
+
+  @override
+  String get custCoverMode => 'Режим';
+
+  @override
+  String get custCoverModeAlways => 'Всегда';
+
+  @override
+  String get custCoverModeFallback => 'Если нет обложки';
 
   @override
   String get custImport => 'Импорт';

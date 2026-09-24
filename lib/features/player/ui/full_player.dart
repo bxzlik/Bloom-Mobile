@@ -408,10 +408,8 @@ class _Cover extends ConsumerWidget {
                     kind: anim.cover,
                     child: Cover(
                       // Своя обложка из «Кастомизации» важнее обложки трека —
-                      // десктопный `coverOverride`.
-                      url:
-                          ref.watch(customSrcProvider(CustomCtx.cover)) ??
-                          track.cover,
+                      // десктопный `coverOverride` (с учётом режима).
+                      url: ref.watch(playerCoverProvider),
                       size: side,
                       radius: 0,
                     ),

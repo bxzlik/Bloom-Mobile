@@ -14,6 +14,8 @@ import 'package:bloom/features/customization/custom_store.dart';
 import 'package:bloom/features/customization/media_store.dart';
 import 'package:bloom/features/customization/presets_file.dart';
 import 'package:bloom/features/customization/presets_store.dart';
+import 'package:bloom/features/settings/transparency_store.dart';
+import 'package:flutter/painting.dart' show Color;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -168,6 +170,97 @@ void main() {
       expect(c.read(customProvider).cover, b);
     });
 
+    test('размытие, затемнение и режим обложки снимаются в пресет', () {
+      final c = _container();
+      final a = _add(c, 'https://e.com/a.jpg');
+      final b = _add(c, 'https://e.com/b.jpg');
+      final lib = c.read(mediaLibProvider.notifier);
+      final custom = c.read(customProvider.notifier);
+      custom.toggle(CustomCtx.bg, a, true);
+      custom.toggle(CustomCtx.cover, b, true);
+      lib.setBlur(a, 30);
+      lib.setDim(a, 40);
+      c.read(coverModeProvider.notifier).set(CoverMode.fallback);
+      final preset = c.read(presetsProvider.notifier).save('снимок')!;
+
+      // Меняем всё после сохранения — пресет обязан вернуть своё.
+      lib.setBlur(a, 5);
+      lib.setDim(a, 90);
+      c.read(coverModeProvider.notifier).set(CoverMode.always);
+      c.read(presetsProvider.notifier).apply(preset.id);
+      final item = c.read(mediaLibProvider).firstWhere((i) => i.id == a);
+      expect(item.blur, 30);
+      expect(item.dim, 40);
+      expect(c.read(coverModeProvider), CoverMode.fallback);
+    });
+
+    test('тема, прозрачность и шрифт — только по тумблерам', () {
+      final store = JsonStore.memory();
+      final c = _container(store);
+      final a = _add(c, 'https://e.com/a.jpg');
+      c.read(customProvider.notifier).toggle(CustomCtx.bg, a, true);
+      final settings = c.read(settingsProvider.notifier);
+      settings.setTheme('midnight');
+      settings.setFontFamily('Inter');
+      c.read(transparencyProvider.notifier).setOn(true);
+
+      final plain = c.read(presetsProvider.notifier).save('без вида')!;
+      expect(plain.theme, isNull);
+      expect(plain.transparency, isNull);
+      expect(plain.font, isNull);
+      final full = c
+          .read(presetsProvider.notifier)
+          .save('с видом', theme: true, transparency: true, font: true)!;
+
+      settings.setTheme('dark');
+      settings.setFontFamily('Other');
+      c.read(transparencyProvider.notifier).setOn(false);
+      c.read(presetsProvider.notifier).apply(plain.id);
+      expect(c.read(settingsProvider).themeId, 'dark');
+
+      // Круг через хранилище: пресет читается заново с тем же видом.
+      final fresh = _container(store);
+      fresh.read(presetsProvider.notifier).apply(full.id);
+      expect(fresh.read(settingsProvider).themeId, 'midnight');
+      expect(fresh.read(settingsProvider).fontFamily, 'Inter');
+      expect(fresh.read(transparencyProvider).on, isTrue);
+    });
+
+    test('своя тема из пресета возвращается, даже если её удалили', () {
+      final c = _container();
+      final a = _add(c, 'https://e.com/a.jpg');
+      c.read(customProvider.notifier).toggle(CustomCtx.bg, a, true);
+      final settings = c.read(settingsProvider.notifier);
+      final mine = settings.createCustomTheme(
+        name: 'моя',
+        bg: const Color(0xFF112233),
+        blockColor: const Color(0xFF112233),
+        accent: const Color(0xFFFF0000),
+      );
+      final preset = c
+          .read(presetsProvider.notifier)
+          .save('с темой', theme: true)!;
+      settings.deleteCustomTheme(mine.id);
+
+      c.read(presetsProvider.notifier).apply(preset.id);
+      c.read(presetsProvider.notifier).apply(preset.id); // без дублей
+      final state = c.read(settingsProvider);
+      expect(state.themeId, mine.id);
+      expect(state.customThemes.where((t) => t.id == mine.id), hasLength(1));
+    });
+
+    test('пресет с видом переживает удаление всех картинок', () {
+      final c = _container();
+      final a = _add(c, 'https://e.com/a.jpg');
+      c.read(customProvider.notifier).toggle(CustomCtx.bg, a, true);
+      c.read(presetsProvider.notifier).save('вид', font: true);
+      removeMedia(c.read, a);
+      final left = c.read(presetsProvider).single;
+      expect(left.bg, isNull);
+      expect(left.blur, isNull);
+      expect(left.font, isNotNull);
+    });
+
     test('лимит пресетов', () {
       final c = _container();
       final a = _add(c, 'https://e.com/a.jpg');
@@ -235,6 +328,36 @@ void main() {
       expect(parsed, hasLength(1));
       expect(parsed.single.dim, 50);
     });
+
+    test(
+      'вид пресета из файла ПК: #rrggbb, trMode, шрифт CSS-строкой',
+      () async {
+        final c = _container();
+        final added = await importPresets(c.read, '''
+{"kind":"bloom-presets","presets":[{
+  "name":"с ПК","cover":"https://e.com/c.jpg","coverMode":"fallback",
+  "theme":{"id":"custom_1","name":"Моя","bg":"#112233","blockColor":"#112233","accent":"#ff0000","custom":true},
+  "transparency":{"trMode":"on","overlayGlass":true,"nativeTransparent":true,"blockOpacity":70,"glassStr":50,"glassBlur":10},
+  "font":"'Minecraft Rus',monospace"
+}]}''');
+        expect(added, 1);
+        final preset = c.read(presetsProvider).single;
+        expect(preset.coverMode, CoverMode.fallback);
+        expect(preset.transparency!.on, isTrue);
+        expect(preset.transparency!.blockOpacity, 70);
+
+        c.read(presetsProvider.notifier).apply(preset.id);
+        final settings = c.read(settingsProvider);
+        expect(settings.themeId, 'custom_1');
+        expect(settings.preset.bg, const Color(0xFF112233));
+        expect(c.read(coverModeProvider), CoverMode.fallback);
+
+        // И обратно: в файле те же поля, что читает ПК.
+        final json = preset.extrasToJson();
+        expect((json['theme'] as Map)['accent'], '#ff0000');
+        expect((json['transparency'] as Map)['trMode'], 'on');
+      },
+    );
 
     test('имя файла чистится от запрещённых символов', () {
       // Пробелы остаются — они в именах файлов законны, как и на ПК.

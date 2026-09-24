@@ -13,10 +13,15 @@
 /// прибить, а сервис остаётся).
 library;
 
+import 'dart:async';
+
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../core/entities/entities.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/log/bloom_log.dart';
 
 /// Что хендлер умеет попросить у плеера. Реализует `PlaybackController`.
@@ -27,7 +32,16 @@ abstract class PlaybackCommands {
   Future<void> commandPrev();
   Future<void> commandStop();
   Future<void> commandSkipTo(int index);
+  Future<void> commandToggleFav();
 }
+
+/// Имя своей кнопки «лайк» — с ним она возвращается в [BloomAudioHandler.customAction].
+const _favAction = 'fav';
+
+/// iOS: звёздочка на экране блокировки (`NowPlayingLike` в `AppDelegate.swift`).
+/// Своих кнопок audio_service на iOS не показывает, поэтому лайк там идёт
+/// мимо него, через системный `likeCommand`.
+const _iosLike = MethodChannel('bloom/like');
 
 class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
   final AudioPlayer player = AudioPlayer();
@@ -41,7 +55,15 @@ class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
   /// остановленный плеер посреди перехода на следующий трек.
   bool _resolving = false;
 
+  /// Играющий трек в любимых — сердечко в шторке залито.
+  bool _fav = false;
+
   BloomAudioHandler() {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      _iosLike.setMethodCallHandler((call) async {
+        if (call.method == 'toggle') await customAction(_favAction);
+      });
+    }
     player.playbackEventStream.listen(
       _broadcast,
       onError: (Object e, StackTrace st) {
@@ -89,6 +111,18 @@ class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
           MediaControl.skipToPrevious,
           if (playing) MediaControl.pause else MediaControl.play,
           MediaControl.skipToNext,
+          // Своё действие, а не кнопка уведомления: audio_service кладёт его в
+          // custom actions сессии, и шторку из них собирает сама система. Это
+          // Android 13+; на старых версиях кнопки не будет вовсе.
+          MediaControl.custom(
+            androidIcon: _fav
+                ? 'drawable/ic_notif_heart_filled'
+                : 'drawable/ic_notif_heart',
+            label: _fav
+                ? globalL10n?.taRemoveFromFavorites ?? 'Remove from likes'
+                : globalL10n?.taAddToFavorites ?? 'Like',
+            name: _favAction,
+          ),
         ],
         systemActions: const {
           MediaAction.seek,
@@ -114,6 +148,29 @@ class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
     if (_resolving == value) return;
     _resolving = value;
     _broadcast(player.playbackEvent);
+  }
+
+  /// Контроллер сообщает, в любимых ли играющий трек.
+  void setFav(bool value) {
+    if (_fav == value) return;
+    _fav = value;
+    _broadcast(player.playbackEvent);
+    if (defaultTargetPlatform == TargetPlatform.iOS) unawaited(_syncIosLike());
+  }
+
+  Future<void> _syncIosLike() async {
+    try {
+      await _iosLike.invokeMethod<void>('set', {
+        'active': _fav,
+        'title': _fav
+            ? globalL10n?.taRemoveFromFavorites ?? 'Remove from likes'
+            : globalL10n?.taAddToFavorites ?? 'Like',
+      });
+    } on PlatformException {
+      // Не ответил канал — звёздочка просто не обновится.
+    } on MissingPluginException {
+      // Тесты.
+    }
   }
 
   /// Что показывать в шторке и на экране блокировки.
@@ -172,6 +229,15 @@ class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> seek(Duration position) => player.seek(position);
+
+  @override
+  Future<dynamic> customAction(
+    String name, [
+    Map<String, dynamic>? extras,
+  ]) async {
+    if (name == _favAction) return commands?.commandToggleFav();
+    return super.customAction(name, extras);
+  }
 
   @override
   Future<void> stop() async {

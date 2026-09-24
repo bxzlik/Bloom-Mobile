@@ -22,6 +22,7 @@ import '../../app/providers.dart';
 import '../../core/entities/entities.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/log/bloom_log.dart';
+import '../../core/store/library_store.dart';
 import '../../core/store/settings_store.dart';
 import '../../core/store/stats_store.dart';
 import '../../shared/ui/bloom_toast.dart';
@@ -367,6 +368,12 @@ class PlaybackController extends Notifier<PlaybackState>
     // и есть команда «пора».
     ref.listen(sleepTimerProvider, (_, next) => _applySleep(next));
     ref.onDispose(_stopFade);
+    // Сердечко в шторке: лайк могут поставить где угодно в приложении, а трек
+    // сменить десятком путей — поэтому следим за обоими, а не за кнопками.
+    ref.listen(libraryProvider.select((lib) => lib.favs), (_, _) => _syncFav());
+    listenSelf((prev, next) {
+      if (prev?.track?.id != next.track?.id) _syncFav();
+    });
     return const PlaybackState();
   }
 
@@ -1345,6 +1352,17 @@ class PlaybackController extends Notifier<PlaybackState>
 
   @override
   Future<void> commandSkipTo(int index) => jumpTo(index);
+
+  @override
+  Future<void> commandToggleFav() async {
+    final track = state.track;
+    if (track != null) ref.read(libraryProvider.notifier).toggleFav(track);
+  }
+
+  void _syncFav() {
+    final id = state.track?.id;
+    _handler.setFav(id != null && ref.read(libraryProvider).isFav(id));
+  }
 
   @override
   Future<void> commandStop() async {

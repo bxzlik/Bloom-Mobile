@@ -15,6 +15,7 @@ library;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/store/library_store.dart' show jsonStoreProvider;
+import '../player/player_controller.dart' show playbackProvider;
 import 'media_store.dart';
 import 'presets_store.dart';
 
@@ -222,6 +223,47 @@ final customItemProvider = Provider.family<MediaItem?, CustomCtx>((ref, ctx) {
 final customSrcProvider = Provider.family<String?, CustomCtx>(
   (ref, ctx) => ref.watch(customItemProvider(ctx))?.src,
 );
+
+/// Когда своя обложка встаёт поверх обложки трека — десктопный `coverMode`.
+enum CoverMode {
+  /// У всех треков.
+  always,
+
+  /// Только у тех, у кого своей обложки нет.
+  fallback,
+}
+
+final coverModeProvider = NotifierProvider<CoverModeController, CoverMode>(
+  CoverModeController.new,
+);
+
+class CoverModeController extends Notifier<CoverMode> {
+  static const _key = 'coverMode';
+
+  @override
+  CoverMode build() {
+    final raw = ref.read(jsonStoreProvider).readMap(_key);
+    return raw['mode'] == 'fallback' ? CoverMode.fallback : CoverMode.always;
+  }
+
+  void set(CoverMode mode) {
+    if (mode == state) return;
+    state = mode;
+    ref.read(jsonStoreProvider).write(_key, {'mode': mode.name});
+  }
+}
+
+/// Обложка, которую плеер показывает на самом деле: своя из «Кастомизации»
+/// (с учётом [CoverMode]) или обложка трека — десктопный `applyCoverNow`.
+final playerCoverProvider = Provider<String?>((ref) {
+  final own = ref.watch(playbackProvider.select((s) => s.track?.cover));
+  final custom = ref.watch(customSrcProvider(CustomCtx.cover));
+  if (custom == null) return own;
+  final hasOwn = own != null && own.isNotEmpty;
+  return ref.watch(coverModeProvider) == CoverMode.fallback && hasOwn
+      ? own
+      : custom;
+});
 
 /// Где стоит эта картинка — для значков на её плитке в библиотеке. Порядок
 /// тот же, что у тумблеров на её странице.

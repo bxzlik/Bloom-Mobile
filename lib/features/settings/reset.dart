@@ -84,6 +84,7 @@ const List<String> kSettingsKeys = [
   'speed',
   'sleep',
   'custom', // контексты кастомизации: фон, обложка, ползунок
+  'coverMode', // своя обложка всегда или только у треков без обложки
   'presets', // сами пресеты — как `bloom_presets` на ПК
   'libOrder',
   'plAuto',
@@ -117,6 +118,7 @@ Future<void> resetSettings(WidgetRef ref) async {
   ref.invalidate(speedProvider);
   ref.invalidate(sleepTimerProvider);
   ref.invalidate(customProvider);
+  ref.invalidate(coverModeProvider);
   ref.invalidate(presetsProvider);
   ref.invalidate(libOrderProvider);
   ref.invalidate(plAutoProvider);

@@ -37,7 +37,6 @@ import '../../../features/customization/custom_store.dart';
 import '../../../features/lyrics/lyrics_style_store.dart';
 import '../../../features/player/play_button_store.dart';
 import '../../../features/player/player_bg_store.dart';
-import '../../../features/player/player_controller.dart';
 import '../../../features/player/player_style_store.dart';
 import '../../../features/player/player_view_store.dart';
 import '../../../features/player/slider_style_store.dart';
@@ -692,9 +691,7 @@ class _StylePreview extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
     final vinyl = style.isVinyl;
-    final url =
-        ref.watch(customSrcProvider(CustomCtx.cover)) ??
-        ref.watch(playbackProvider.select((s) => s.track?.cover));
+    final url = ref.watch(playerCoverProvider);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),

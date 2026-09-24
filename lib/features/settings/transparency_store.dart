@@ -102,6 +102,24 @@ class Transparency {
     glassBlur: glassBlur ?? this.glassBlur,
   );
 
+  /// Из хранилища или снимка пресета. Битые поля молча заменяем умолчаниями:
+  /// вид приложения не повод ронять запуск.
+  static Transparency fromJson(Map<dynamic, dynamic> raw) {
+    int number(String field, int fallback, int max) {
+      final value = raw[field];
+      return value is num ? value.round().clamp(0, max) : fallback;
+    }
+
+    return Transparency(
+      // `trMode` — так режим пишет ПК (пресет, пришедший файлом с десктопа).
+      on: raw['on'] == true || raw['trMode'] == 'on',
+      overlayGlass: raw['overlayGlass'] == true,
+      blockOpacity: number('blockOpacity', kTrOpacityDefault, 100),
+      glassStr: number('glassStr', kTrBrightnessDefault, 100),
+      glassBlur: number('glassBlur', kTrBlurDefault, kTrBlurMax),
+    );
+  }
+
   Map<String, dynamic> toJson() => {
     'on': on,
     'overlayGlass': overlayGlass,
@@ -133,25 +151,13 @@ class TransparencyController extends Notifier<Transparency> {
   static const _key = 'transparency';
 
   @override
-  Transparency build() {
-    final raw = ref.read(jsonStoreProvider).readMap(_key);
-    int number(String field, int fallback, int max) {
-      final value = raw[field];
-      // Битую запись (правили файл руками) молча заменяем умолчанием: вид
-      // приложения не повод ронять запуск.
-      return value is num ? value.round().clamp(0, max) : fallback;
-    }
-
-    return Transparency(
-      on: raw['on'] == true,
-      overlayGlass: raw['overlayGlass'] == true,
-      blockOpacity: number('blockOpacity', kTrOpacityDefault, 100),
-      glassStr: number('glassStr', kTrBrightnessDefault, 100),
-      glassBlur: number('glassBlur', kTrBlurDefault, kTrBlurMax),
-    );
-  }
+  Transparency build() =>
+      Transparency.fromJson(ref.read(jsonStoreProvider).readMap(_key));
 
   void setOn(bool on) => _set(state.copyWith(on: on));
+
+  /// Вернуть всё разом — из снимка пресета кастомизации.
+  void restore(Transparency next) => _set(next);
 
   void setOverlayGlass(bool on) => _set(state.copyWith(overlayGlass: on));
 
