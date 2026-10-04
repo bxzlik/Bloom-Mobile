@@ -328,7 +328,7 @@ Future<void> showPlatformGuide(
           ),
         if (note case final text?)
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 4),
+            padding: const EdgeInsets.fromLTRB(kSheetEdge, 12, kSheetEdge, 4),
             child: Builder(
               builder: (context) => Text(
                 text,
@@ -355,7 +355,7 @@ class _GuideHeader extends StatelessWidget {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 10, 24, 14),
+      padding: const EdgeInsets.fromLTRB(kSheetEdge, 10, kSheetEdge, 14),
       child: Row(
         children: [
           // Знак в кружке своего цвета — тот же приём, что в строках площадок

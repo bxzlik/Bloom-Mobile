@@ -698,8 +698,8 @@ Future<T?> _pickNavCard<T>({
   required CustomPainter Function(T value, Color ink) paint,
 }) {
   final width = MediaQuery.of(context).size.width;
-  // 12 полей шторки с двух сторон + 12 зазора между столбцами.
-  final cardWidth = (width - 12 * 2 - 12) / 2;
+  // Поля шторки с двух сторон + 12 зазора между столбцами.
+  final cardWidth = (width - kSheetEdge * 2 - 12) / 2;
 
   return showBloomSheetChild<T>(
     context: context,
@@ -708,7 +708,7 @@ Future<T?> _pickNavCard<T>({
     // `pop` со страничным контекстом закрыл бы сами «Настройки».
     child: Builder(
       builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+        padding: const EdgeInsets.fromLTRB(kSheetEdge, 6, kSheetEdge, 6),
         child: Wrap(
           spacing: 12,
           runSpacing: 12,
@@ -811,7 +811,7 @@ Future<void> _pickNavTabs(BuildContext context, WidgetRef ref) =>
       // Заголовка НЕТ (его слово): что настраивают, уже сказано строкой, из
       // которой шторку открыли.
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+        padding: const EdgeInsets.fromLTRB(kSheetEdge, 6, kSheetEdge, 6),
         child: Consumer(
           builder: (context, ref, _) {
             final settings = ref.watch(settingsProvider);
@@ -1439,13 +1439,13 @@ class _FontTileState extends State<_FontTile> {
 Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
   final controller = ref.read(settingsProvider.notifier);
   final width = MediaQuery.of(context).size.width;
-  // 12 полей шторки с двух сторон + 12 зазора между столбцами.
-  final cardWidth = (width - 12 * 2 - 12) / 2;
+  // Поля шторки с двух сторон + 12 зазора между столбцами.
+  final cardWidth = (width - kSheetEdge * 2 - 12) / 2;
 
   await showBloomSheetChild<void>(
     context: context,
     header: Padding(
-      padding: const EdgeInsets.fromLTRB(20, 6, 12, 12),
+      padding: const EdgeInsets.fromLTRB(kSheetEdge, 6, kSheetEdge, 12),
       child: Row(
         children: [
           Expanded(
@@ -1478,7 +1478,7 @@ Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
               : null,
         );
         return Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+          padding: const EdgeInsets.fromLTRB(kSheetEdge, 0, kSheetEdge, 6),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

@@ -324,7 +324,7 @@ class _PlayShapePreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      padding: const EdgeInsets.fromLTRB(kSheetEdge, 8, kSheetEdge, 12),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 26),
         decoration: BoxDecoration(
@@ -372,7 +372,7 @@ class _PlayShapeTile extends StatelessWidget {
     final theme = Theme.of(context).textTheme;
     final l = context.l;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
+      padding: const EdgeInsets.fromLTRB(kSheetEdge, 5, kSheetEdge, 5),
       child: Material(
         color: sheetPanelColor(context),
         borderRadius: BorderRadius.circular(t.radius),
@@ -694,7 +694,7 @@ class _StylePreview extends ConsumerWidget {
     final url = ref.watch(playerCoverProvider);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      padding: const EdgeInsets.fromLTRB(kSheetEdge, 8, kSheetEdge, 12),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 22),
         decoration: BoxDecoration(
@@ -795,7 +795,7 @@ class _StyleTile extends StatelessWidget {
     final theme = Theme.of(context).textTheme;
     final l = context.l;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
+      padding: const EdgeInsets.fromLTRB(kSheetEdge, 5, kSheetEdge, 5),
       child: Material(
         color: sheetPanelColor(context),
         borderRadius: BorderRadius.circular(t.radius),
@@ -921,7 +921,7 @@ class _AlignTile extends StatelessWidget {
     final theme = Theme.of(context).textTheme;
     final l = context.l;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
+      padding: const EdgeInsets.fromLTRB(kSheetEdge, 5, kSheetEdge, 5),
       child: Material(
         // Та же заливка, что у блоков шторки ([SheetPanel]).
         color: sheetPanelColor(context),
@@ -1134,7 +1134,7 @@ class _SliderPreviewState extends State<_SliderPreview> {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      padding: const EdgeInsets.fromLTRB(kSheetEdge, 8, kSheetEdge, 12),
       child: Container(
         padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
         decoration: BoxDecoration(
@@ -1206,7 +1206,7 @@ class _SliderTile extends StatelessWidget {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
+      padding: const EdgeInsets.fromLTRB(kSheetEdge, 5, kSheetEdge, 5),
       child: Material(
         color: sheetPanelColor(context),
         borderRadius: BorderRadius.circular(t.radius),

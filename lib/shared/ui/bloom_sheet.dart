@@ -113,10 +113,11 @@ const double _kSheetMaxFraction = 0.85;
 /// без.
 const double kSheetEdge = 20;
 
-/// Скругление в меню сущности — своё, крупнее общего `t.radius` (14): плашки
-/// тут широкие и без заливки, на общем радиусе они читались углами. Одно число
-/// на блоки пунктов и на карточку обложки — иначе они спорят между собой.
-/// Общий радиус не трогаем: он на всё приложение.
+/// Скругление блоков шторки на обложке — своё, крупнее общего `t.radius` (14):
+/// плашки там широкие и без заливки, на общем радиусе они читались углами.
+/// Одно число на блоки пунктов и на карточку обложки — иначе они спорят между
+/// собой. Общий радиус не трогаем: он на всё приложение. Шторка без обложки
+/// стоит на общем радиусе — см. [sheetPanelRadius].
 const double kSheetPanelRadius = 20;
 
 /// Открыть шторку — одна точка входа на все: и на эти, и на те, у кого своя
@@ -268,6 +269,14 @@ Color sheetPanelLineColor(BuildContext context) =>
     _SheetSkinScope.of(context) == _SheetSkin.plain
     ? context.bloom.ovlLine
     : Colors.white.withValues(alpha: 0.08);
+
+/// Скругление блока шторки: над обложкой — [kSheetPanelRadius], без обложки —
+/// общий `t.radius`, как у плашек страниц (его правка: крупное скругление
+/// оставить только шторкам с обложкой).
+double sheetPanelRadius(BuildContext context) =>
+    _SheetSkinScope.of(context) == _SheetSkin.cover
+    ? kSheetPanelRadius
+    : context.bloom.radius;
 
 class _SheetShell extends ConsumerWidget {
   const _SheetShell({
@@ -483,7 +492,7 @@ class SheetPanel extends StatelessWidget {
         // ровной панелью.
         color: cover ? Colors.transparent : sheetPanelColor(context),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(kSheetPanelRadius),
+          borderRadius: BorderRadius.circular(sheetPanelRadius(context)),
           side: cover
               ? BorderSide(color: sheetPanelLineColor(context))
               : BorderSide.none,
@@ -537,7 +546,7 @@ class _SheetGroup extends StatelessWidget {
         // там всё как было: заливка и никакой кромки.
         color: _cover(context) ? Colors.transparent : sheetPanelColor(context),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(kSheetPanelRadius),
+          borderRadius: BorderRadius.circular(sheetPanelRadius(context)),
           side: _cover(context)
               ? BorderSide(color: sheetPanelLineColor(context))
               : BorderSide.none,
@@ -777,7 +786,7 @@ class SheetField extends StatelessWidget {
     // Скругление и край — как у [SheetPanel]; над обложкой без заливки и с
     // рамкой.
     final cover = _SheetSkinScope.of(context) == _SheetSkin.cover;
-    final radius = BorderRadius.circular(kSheetPanelRadius);
+    final radius = BorderRadius.circular(sheetPanelRadius(context));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(kSheetEdge, 4, kSheetEdge, 6),
@@ -924,7 +933,7 @@ class SheetCoverHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(kSheetEdge, 4, kSheetEdge, 8),
       child: ClipRRect(
         // То же скругление, что у блоков пунктов под ней.
-        borderRadius: BorderRadius.circular(kSheetPanelRadius),
+        borderRadius: BorderRadius.circular(sheetPanelRadius(context)),
         child: SizedBox(
           width: width,
           // Карточка низкая: у плейлиста шапка не должна съедать шторку —
