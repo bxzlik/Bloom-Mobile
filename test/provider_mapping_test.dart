@@ -87,7 +87,6 @@ void main() {
     expect(artist.id, 'sc:artist:3');
     expect(artist.name, 'skrillex');
     expect(artist.fullName, 'Sonny Moore');
-    expect(artist.followers, 6700572);
   });
 
   test('пустой ScPage не ломает маппинг', () {

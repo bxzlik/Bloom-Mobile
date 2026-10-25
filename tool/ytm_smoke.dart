@@ -86,8 +86,7 @@ Future<void> main(List<String> args) async {
   print(
     'getArtist ${page?.artist.name}: ${page?.topTracks.length} популярных, '
     '${page?.tracks.length} треков, ${page?.albums.length} релизов, '
-    '${page?.similarArtists.length} похожих, '
-    '${page?.artist.followers} подписчиков',
+    '${page?.similarArtists.length} похожих',
   );
   check((page?.topTracks.length ?? 0) > 0, 'у артиста нет популярных треков');
   check(

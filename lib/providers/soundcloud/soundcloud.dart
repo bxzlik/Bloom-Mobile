@@ -348,7 +348,6 @@ ScRawTrack mapRawTrack(Object? t) {
     artistVerified: user != null && _vbool(user, 'verified'),
     year: _year(_vstr(t, 'release_date') ?? _vstr(t, 'created_at')),
     releaseDate: _vstr(t, 'release_date') ?? _vstr(t, 'created_at') ?? '',
-    playbackCount: _vu64(t, 'playback_count'),
     policy: _vstr(t, 'policy'),
   );
 }
@@ -361,7 +360,6 @@ ScRawArtist mapRawArtist(Object? u) => ScRawArtist(
   title: _vstr(u, 'username') ?? '',
   artist: _vstr(u, 'full_name') ?? '',
   artwork: _t300(_vstr(u, 'avatar_url')),
-  followers: _vu64(u, 'followers_count') ?? 0,
   permalink: _vstr(u, 'permalink_url'),
 );
 
@@ -536,65 +534,6 @@ Future<List<ScRawTrack>> userLikes(String idOrUrl) async {
   return out;
 }
 
-/// Разбор страницы ленты репостов + курсор следующей. [minFull] — размер
-/// запрошенной страницы: пришло меньше → дальше пусто (SC отдаёт «висячий»
-/// next_href на последней странице).
-ScRepostsPage _parseReposts(Object? d, int minFull) {
-  final coll = _varr(d, 'collection');
-  final rawLen = coll.length;
-  final items = <ScRepostItem>[];
-  for (final x in coll) {
-    if (x is! Map) continue;
-    final xtype = _vstr(x, 'type') ?? '';
-    // У некоторых ответов сущность лежит прямо в item, у других — в
-    // .track/.playlist.
-    final tr = _obj(x, 'track') ?? (xtype.contains('track') ? x : null);
-    final pl = _obj(x, 'playlist') ?? (xtype.contains('playlist') ? x : null);
-    if (tr != null && _hasId(tr) && _vstr(tr, 'title') != null) {
-      items.add(ScRepostItem(kind: 'track', track: mapRawTrack(tr)));
-    } else if (pl != null && _hasId(pl)) {
-      final isAlbum =
-          _vbool(pl, 'is_album') || _vstr(pl, 'set_type') == 'album';
-      items.add(
-        ScRepostItem(
-          kind: isAlbum ? 'album' : 'playlist',
-          playlist: mapRawPlaylist(pl),
-        ),
-      );
-    }
-  }
-  return ScRepostsPage(
-    items: items,
-    next: rawLen >= minFull ? _vstr(d, 'next_href') : null,
-  );
-}
-
-/// Репосты артиста (первая страница); ошибки — пустая лента.
-Future<ScRepostsPage> artistReposts(String idOrUrl) async {
-  try {
-    final id = await _resolveUserId(idOrUrl);
-    final d = await apiFetch(
-      'https://api-v2.soundcloud.com/stream/users/$id/reposts'
-      '?limit=30&linked_partitioning=1',
-    );
-    return _parseReposts(d, 30);
-  } catch (_) {
-    return const ScRepostsPage(items: [], next: null);
-  }
-}
-
-final RegExp _limRe = RegExp(r'[?&]limit=(\d+)');
-
-/// Следующая страница репостов по курсору (`next_href`).
-Future<ScRepostsPage> artistRepostsPage(String cursor) async {
-  final lim = int.tryParse(_limRe.firstMatch(cursor)?.group(1) ?? '') ?? 1;
-  try {
-    return _parseReposts(await apiFetch(cursor), lim);
-  } catch (_) {
-    return const ScRepostsPage(items: [], next: null);
-  }
-}
-
 /// Данные пользователя (hero артиста); null при ошибке.
 Future<ScRawUser?> getUser(String idOrUrl) async {
   try {
@@ -609,7 +548,6 @@ Future<ScRawUser?> getUser(String idOrUrl) async {
       fullName: _vstr(u, 'full_name') ?? '',
       avatar: _t500(_vstr(u, 'avatar_url')),
       banner: banner,
-      followers: _vu64(u, 'followers_count') ?? 0,
       trackCount: _vu64(u, 'track_count') ?? 0,
       description: _vstr(u, 'description') ?? '',
       website: _vstr(u, 'website'),

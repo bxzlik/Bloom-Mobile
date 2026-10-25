@@ -198,7 +198,6 @@ class YtmusicProvider extends MusicProvider {
         name: e.title.isEmpty ? kYtmUnknownArtist : e.title,
         avatar: _blankToNull(e.cover),
         description: _blankToNull(e.description),
-        followers: e.subscribers > 0 ? e.subscribers : null,
         source: MusicSource.ytmusic,
       ),
       topTracks: e.popularTracks.map(trackFromYtm).toList(),

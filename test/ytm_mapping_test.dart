@@ -555,7 +555,6 @@ void main() {
 
       final e = parseArtistPage(page);
       expect(e.description, 'Биография');
-      expect(e.subscribers, 39900000);
       expect(e.albums.map((a) => a.id), ['MPREb_rel']);
       // Метка типа в своё поле не уезжает, год отделён от артиста.
       expect(e.albums.single.year, '2024');
@@ -614,13 +613,6 @@ void main() {
   });
 
   group('мелочи разбора', () {
-    test('счётчик подписчиков', () {
-      expect(parseCount('39.9M subscribers'), 39900000);
-      expect(parseCount('1,2K'), 1200);
-      expect(parseCount('532'), 532);
-      expect(parseCount('нет числа'), 0);
-    });
-
     test('апскейл обложки не портит ссылку без размеров', () {
       expect(
         upscaleThumb('https://i.ytimg.com/vi/x/hq.jpg'),

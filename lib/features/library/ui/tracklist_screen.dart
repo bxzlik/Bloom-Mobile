@@ -577,9 +577,7 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
       _ => lib.inLib[t.id] ?? 0,
     };
 
-    // Прослушивания — СВОИ, из журнала: в `track.playCount` лежит глобальный
-    // счётчик площадки (см. заметку в `wave_seeds.dart`), и по нему список
-    // ранжировался бы чужими прослушиваниями.
+    // Прослушивания — свои, из журнала.
     final int dir = _desc ? -1 : 1;
     list.sort((a, b) {
       final c = switch (_sort) {

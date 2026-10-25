@@ -368,12 +368,6 @@ abstract class AppLocalizations {
   /// **'{count, plural, one{{count} track} other{{count} tracks}}'**
   String tracksCount(int count);
 
-  /// formatted is the already-compacted number (1.2K); count drives the plural form
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, one{{formatted} follower} other{{formatted} followers}}'**
-  String followersCount(int count, String formatted);
-
   /// desktop: stats.playsCount
   ///
   /// In en, this message translates to:
@@ -691,12 +685,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Popular'**
   String get artistPopular;
-
-  /// desktop: search.tab.reposts
-  ///
-  /// In en, this message translates to:
-  /// **'Reposts'**
-  String get artistReposts;
 
   /// desktop: search.similarArtists
   ///

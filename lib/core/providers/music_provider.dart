@@ -59,22 +59,6 @@ class ProfileData {
   });
 }
 
-/// Элемент ленты репостов артиста — трек ИЛИ плейлист/альбом. Лента смешанная и
-/// порядок важен, поэтому union, а не раздельные списки.
-sealed class RepostItem {
-  const RepostItem();
-}
-
-class RepostTrack extends RepostItem {
-  final Track track;
-  const RepostTrack(this.track);
-}
-
-class RepostSet extends RepostItem {
-  final Playlist playlist;
-  const RepostSet(this.playlist);
-}
-
 /// Результат резолва вставленной ссылки.
 sealed class ResolvedUrl {
   const ResolvedUrl();
@@ -119,7 +103,7 @@ class NewTracks extends NewReleases {
 
 /// Контент страницы артиста.
 class ArtistPageData {
-  /// Артист, обогащённый followers/description/website/bannerUrl.
+  /// Артист, обогащённый description/website/bannerUrl.
   final Artist artist;
 
   /// Секция «Популярные».
@@ -130,15 +114,11 @@ class ArtistPageData {
   final List<Playlist> albums;
   final List<Playlist> playlists;
 
-  /// Репосты; пусто у площадок без них.
-  final List<RepostItem> reposts;
-
   /// Похожие исполнители; пусто у площадок, которые их не отдают.
   final List<Artist> similarArtists;
 
   /// Непрозрачный курсор следующей страницы треков (null — больше нет).
   final String? tracksCursor;
-  final String? repostsCursor;
 
   /// Сколько всего треков у артиста по данным площадки — счётчик в шапке, пока
   /// догружено не всё. `null` — площадка не знает, считаем по загруженным.
@@ -150,10 +130,8 @@ class ArtistPageData {
     this.tracks = const [],
     this.albums = const [],
     this.playlists = const [],
-    this.reposts = const [],
     this.similarArtists = const [],
     this.tracksCursor,
-    this.repostsCursor,
     this.tracksTotal,
   });
 }
@@ -167,12 +145,6 @@ class TrackPage {
   final String? cursor;
 
   const TrackPage({this.tracks = const [], this.hasMore = false, this.cursor});
-}
-
-class RepostPage {
-  final List<RepostItem> reposts;
-  final String? cursor;
-  const RepostPage({this.reposts = const [], this.cursor});
 }
 
 /// Содержимое альбома или плейлиста.
@@ -250,8 +222,6 @@ abstract class MusicProvider {
 
   /// Догрузка треков артиста по курсору из [ArtistPageData.tracksCursor].
   Future<TrackPage?> getArtistTracksPage(String cursor) async => null;
-
-  Future<RepostPage?> getArtistRepostsPage(String cursor) async => null;
 
   /// Витрина на главной: чарт площадки. `null` — не участвует.
   Future<List<Track>?> getCharts() async => null;

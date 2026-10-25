@@ -3,7 +3,8 @@
 /// Порт десктопных `computeDupGroups`/`sortGroup` из `LibTracklist`: группируем
 /// по нормализованным названию и артисту, группы из одного трека выбрасываем.
 /// Внутри группы первым идёт тот, кого стоит оставить: с обложкой → чаще
-/// слушали → раньше добавлен. Всё остальное в группе — лишние копии.
+/// слушали (свои прослушивания из журнала, как `Library::dupGroups` ПК) →
+/// раньше добавлен. Всё остальное в группе — лишние копии.
 ///
 /// Режим включается из меню плейлиста и живёт в сторе, а не в состоянии экрана:
 /// зовут его из шторки, а показывает список, и общаться им больше не через что.
@@ -24,10 +25,12 @@ String _norm(String s) =>
 /// Группы дублей в [pool], каждая — от «оставить» к лишним. Порядок групп — как
 /// первое появление трека в списке: так они стоят там же, где человек их видел.
 ///
-/// [addedAt] — когда трек попал в библиотеку (`LibraryState.inLib`): при прочих
-/// равных оставляем ту копию, что появилась раньше.
+/// [plays] — сколько раз слушали трек (`PlayStats.playCount`). [addedAt] —
+/// когда трек попал в библиотеку (`LibraryState.inLib`): при прочих равных
+/// оставляем ту копию, что появилась раньше.
 List<List<Track>> dupGroups(
   List<Track> pool, {
+  int Function(String id)? plays,
   Map<String, int> addedAt = const {},
 }) {
   final byKey = <String, List<Track>>{};
@@ -36,7 +39,8 @@ List<List<Track>> dupGroups(
   }
   return [
     for (final group in byKey.values)
-      if (group.length > 1) sortDupGroup(group, addedAt: addedAt),
+      if (group.length > 1)
+        sortDupGroup(group, plays: plays, addedAt: addedAt),
   ];
 }
 
@@ -44,6 +48,7 @@ List<List<Track>> dupGroups(
 /// Первый — тот, кого оставляем.
 List<Track> sortDupGroup(
   List<Track> group, {
+  int Function(String id)? plays,
   Map<String, int> addedAt = const {},
 }) {
   final sorted = [...group];
@@ -51,8 +56,8 @@ List<Track> sortDupGroup(
     final coverA = (a.cover ?? '').isNotEmpty;
     final coverB = (b.cover ?? '').isNotEmpty;
     if (coverA != coverB) return coverA ? -1 : 1;
-    final playsA = a.playCount ?? 0;
-    final playsB = b.playCount ?? 0;
+    final playsA = plays?.call(a.id) ?? 0;
+    final playsB = plays?.call(b.id) ?? 0;
     if (playsA != playsB) return playsB - playsA;
     return (addedAt[a.id] ?? 0).compareTo(addedAt[b.id] ?? 0);
   });

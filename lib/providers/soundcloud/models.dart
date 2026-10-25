@@ -37,7 +37,6 @@ class ScRawTrack {
   /// Та же дата, из которой вырезан [year], но целиком (`release_date`, иначе
   /// `created_at`) — чтобы «Инфо о треке» показало день и месяц, когда они есть.
   final String releaseDate;
-  final int? playbackCount;
 
   /// `policy` из выдачи api-v2 (`ALLOW` / `MONETIZE` / `BLOCK` / `SNIP`).
   /// Нужен волне: подбор не должен предлагать то, что заведомо не заиграет.
@@ -63,7 +62,6 @@ class ScRawTrack {
     required this.artistPermalink,
     required this.artistVerified,
     required this.year,
-    required this.playbackCount,
     this.releaseDate = '',
     this.policy,
   });
@@ -74,7 +72,6 @@ class ScRawArtist {
   final String title;
   final String artist;
   final String? artwork;
-  final int followers;
   final String? permalink;
 
   const ScRawArtist({
@@ -82,7 +79,6 @@ class ScRawArtist {
     required this.title,
     required this.artist,
     required this.artwork,
-    required this.followers,
     required this.permalink,
   });
 }
@@ -138,7 +134,6 @@ class ScRawUser {
   final String fullName;
   final String? avatar;
   final String? banner;
-  final int followers;
   final int trackCount;
   final String description;
   final String? website;
@@ -150,26 +145,11 @@ class ScRawUser {
     required this.fullName,
     required this.avatar,
     required this.banner,
-    required this.followers,
     required this.trackCount,
     required this.description,
     required this.website,
     required this.permalink,
   });
-}
-
-/// Элемент ленты репостов: репостнутый трек ИЛИ плейлист/альбом.
-class ScRepostItem {
-  final String kind; // "track" | "playlist" | "album"
-  final ScRawTrack? track;
-  final ScRawPlaylist? playlist;
-  const ScRepostItem({required this.kind, this.track, this.playlist});
-}
-
-class ScRepostsPage {
-  final List<ScRepostItem> items;
-  final String? next;
-  const ScRepostsPage({required this.items, required this.next});
 }
 
 class ScTracksCursorPage {

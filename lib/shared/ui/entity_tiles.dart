@@ -754,7 +754,6 @@ class _ArtistCardState extends State<ArtistCard> {
     final size = widget.size;
     final centerLabel = widget.centerLabel;
     final theme = Theme.of(context).textTheme;
-    final followers = artist.followers;
     final align = centerLabel ? TextAlign.center : TextAlign.start;
     final flight = _flightFor(artist.avatar, _tag);
 
@@ -778,16 +777,6 @@ class _ArtistCardState extends State<ArtistCard> {
             overflow: TextOverflow.ellipsis,
             style: theme.titleSmall,
           ),
-          if (followers != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              context.l.followersCount(followers, compactCount(followers)),
-              maxLines: 1,
-              textAlign: align,
-              overflow: TextOverflow.ellipsis,
-              style: theme.bodySmall,
-            ),
-          ],
         ],
       ),
     );

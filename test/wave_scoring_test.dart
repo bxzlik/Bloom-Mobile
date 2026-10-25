@@ -36,7 +36,6 @@ ScRawTrack _raw(
   artistPermalink: null,
   artistVerified: false,
   year: '',
-  playbackCount: null,
   policy: policy,
 );
 

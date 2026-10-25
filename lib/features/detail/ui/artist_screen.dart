@@ -31,7 +31,6 @@ import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/detail_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/glass.dart';
-import '../../../shared/util/format.dart';
 
 class ArtistScreen extends ConsumerStatefulWidget {
   const ArtistScreen({
@@ -59,24 +58,17 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
   String? _error;
   bool _loading = true;
 
-  /// Треки и репосты живут в состоянии экрана, а не в [_data]: их докручивают
-  /// курсорами, и список растёт.
+  /// Треки живут в состоянии экрана, а не в [_data]: их докручивают курсором,
+  /// и список растёт.
   List<Track> _tracks = const [];
   String? _tracksCursor;
 
   /// Сколько треков у артиста всего по данным площадки — см.
   /// [ArtistPageData.tracksTotal].
   int? _tracksTotal;
-  List<RepostItem> _reposts = const [];
-  String? _repostsCursor;
 
-  /// Сколько репостов раскрыто: как на ПК — превью из пяти, «Загрузить ещё»
-  /// наращивает лимит и, когда загруженного перестаёт хватать, тянет страницу.
-  int _repostsLimit = _repostsStep;
-  static const int _repostsStep = 5;
-
-  /// Что именно догружается сейчас — чтобы не жать кнопку дважды.
-  String? _loadingMore;
+  /// Треки догружаются сейчас — чтобы не жать кнопку дважды.
+  bool _loadingMore = false;
 
   /// Прокрутка всей страницы: в неё зона треков отдаёт перелёт за свой край.
   final ScrollController _scroll = ScrollController();
@@ -115,8 +107,6 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         _tracks = data.tracks;
         _tracksCursor = data.tracksCursor;
         _tracksTotal = data.tracksTotal;
-        _reposts = data.reposts;
-        _repostsCursor = data.repostsCursor;
       });
     } catch (e) {
       if (!mounted) return;
@@ -129,8 +119,8 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
 
   Future<void> _moreTracks() async {
     final cursor = _tracksCursor;
-    if (cursor == null || _loadingMore != null) return;
-    setState(() => _loadingMore = 'tracks');
+    if (cursor == null || _loadingMore) return;
+    setState(() => _loadingMore = true);
     final provider = ref.read(registryProvider).forEntity(widget.artistId);
     TrackPage? page;
     try {
@@ -140,7 +130,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
     }
     if (!mounted) return;
     setState(() {
-      _loadingMore = null;
+      _loadingMore = false;
       if (page == null) {
         // Не вышло — курсор гасим, иначе кнопка «Загрузить ещё» будет вечной.
         _tracksCursor = null;
@@ -148,36 +138,6 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
       }
       _tracks = [..._tracks, ...page.tracks];
       _tracksCursor = page.cursor;
-    });
-  }
-
-  /// «Загрузить ещё» под репостами: раскрываем следующую пятёрку, и только если
-  /// раскрывать больше нечего — догружаем страницу из сети.
-  Future<void> _moreReposts() async {
-    if (_loadingMore != null) return;
-    final limit = _repostsLimit + _repostsStep;
-    setState(() => _repostsLimit = limit);
-    if (limit < _reposts.length) return;
-
-    final cursor = _repostsCursor;
-    if (cursor == null) return;
-    setState(() => _loadingMore = 'reposts');
-    final provider = ref.read(registryProvider).forEntity(widget.artistId);
-    RepostPage? page;
-    try {
-      page = await provider?.getArtistRepostsPage(cursor);
-    } catch (_) {
-      page = null;
-    }
-    if (!mounted) return;
-    setState(() {
-      _loadingMore = null;
-      if (page == null) {
-        _repostsCursor = null;
-        return;
-      }
-      _reposts = [..._reposts, ...page.reposts];
-      _repostsCursor = page.cursor;
     });
   }
 
@@ -189,7 +149,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
   }
 
   /// Источник для пилюли плеера — сама страница: с неё играют и «популярные»,
-  /// и лента репостов, и полный список треков. Артист мог ещё не загрузиться
+  /// и полный список треков. Артист мог ещё не загрузиться
   /// (страницу открыли по одному id) — тогда источника нет.
   PlaySource? get _source {
     final artist = _data?.artist ?? widget.initial;
@@ -285,7 +245,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
     );
   }
 
-  /// Подпись под именем: подписчики и сколько треков. Пока треки приходят
+  /// Подпись под именем: сколько треков. Пока треки приходят
   /// порциями, счётчик берём у площадки (у Яндекса это `pager.total`) — иначе
   /// в шапке стояло бы «50 треков» у артиста с тремя сотнями.
   String _subtitle(Artist? artist) {
@@ -293,12 +253,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
     final count = _tracksCursor != null && total > _tracks.length
         ? total
         : _tracks.length;
-    final parts = <String>[
-      if (artist?.followers case final n? when n > 0)
-        context.l.followersCount(n, compactCount(n)),
-      if (count > 0) context.l.tracksCount(count),
-    ];
-    return parts.join(' · ');
+    return count > 0 ? context.l.tracksCount(count) : '';
   }
 
   List<Widget> _sections() {
@@ -308,15 +263,6 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
     final top = data.topTracks;
     final albums = data.albums;
     final similar = data.similarArtists;
-    // Показываем превью из [_repostsLimit] штук — остальное за «Загрузить ещё».
-    final reposts = _reposts.take(_repostsLimit).toList();
-    // Очередь для строки трека в смешанной ленте репостов — только треки, и
-    // только показанные: играем ровно то, что видно на экране. Сеты в неё не
-    // попадают.
-    final repostTracks = reposts
-        .whereType<RepostTrack>()
-        .map((r) => r.track)
-        .toList();
 
     return [
       if (top.isNotEmpty) ...[
@@ -336,24 +282,6 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
           builder: (i) => SetCard(set: albums[i]),
         ),
       ],
-      if (_reposts.isNotEmpty) ...[
-        SectionTitle(context.l.artistReposts),
-        // Лента смешанная: трек играется в очереди из соседних треков ленты,
-        // сет — открывается страницей.
-        for (final item in reposts)
-          switch (item) {
-            RepostTrack(:final track) => TrackRow(
-              track: track,
-              queue: repostTracks,
-              index: repostTracks.indexOf(track),
-              source: _source,
-            ),
-            RepostSet(:final playlist) => SetRow(set: playlist),
-          },
-        // Кнопка нужна, пока есть нераскрытое локально ИЛИ есть курсор.
-        if (_reposts.length > _repostsLimit || _repostsCursor != null)
-          _MoreButton(busy: _loadingMore == 'reposts', onTap: _moreReposts),
-      ],
       if (similar.isNotEmpty) ...[
         SectionTitle(context.l.artistSimilar),
         EntityCarousel(
@@ -366,7 +294,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         SectionTitle(context.l.commonTracks),
         _tracksZone(),
       ],
-      if (top.isEmpty && albums.isEmpty && _reposts.isEmpty && _tracks.isEmpty)
+      if (top.isEmpty && albums.isEmpty && _tracks.isEmpty)
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 40),
           child: Center(
@@ -415,7 +343,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                   index: i,
                   source: _source,
                 )
-              : _MoreButton(busy: _loadingMore == 'tracks', onTap: _moreTracks),
+              : _MoreButton(busy: _loadingMore, onTap: _moreTracks),
         ),
       ),
     );

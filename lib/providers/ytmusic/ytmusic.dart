@@ -1065,7 +1065,6 @@ Future<YtmEntity> artist(String browseId) async {
     albums: mergeById(base.albums, singles, null, (a) => a.id),
     similarArtists: base.similarArtists,
     description: base.description,
-    subscribers: base.subscribers,
   );
 }
 
@@ -1101,7 +1100,6 @@ YtmEntity parseArtistPage(Object? v) {
     albums: albums,
     similarArtists: similar,
     description: h == null ? '' : headerDescription(h),
-    subscribers: h == null ? 0 : headerSubscribers(h),
   );
 }
 
@@ -1311,36 +1309,6 @@ String headerDescription(Object? h) {
   final runs = at(d, ['runs']);
   if (runs is! List) return '';
   return runs.map((r) => str(at(r, ['text']))).join();
-}
-
-/// Число подписчиков из шапки. YTM отдаёт его текстом («39.9M subscribers»),
-/// поэтому разбираем суффикс вручную.
-int headerSubscribers(Object? h) {
-  var found = 0;
-  collectText(at(h, ['subscriptionButton']), (s) {
-    found = parseCount(s);
-    return found == 0;
-  });
-  return found;
-}
-
-/// «39.9M» → 39_900_000, «1.2K» → 1200, «532» → 532. 0, если не число.
-int parseCount(String s) {
-  final t = s.trim();
-  final digits = t
-      .split('')
-      .takeWhile((c) => RegExp(r'[\d.,]').hasMatch(c))
-      .join();
-  final num = double.tryParse(digits.replaceAll(',', '.'));
-  if (num == null) return 0;
-  final rest = t.substring(digits.length).trimLeft();
-  final mult = switch (rest.isEmpty ? '' : rest[0]) {
-    'K' || 'k' || 'т' => 1000.0,
-    'M' || 'm' || 'м' => 1000000.0,
-    'B' || 'b' || 'G' => 1000000000.0,
-    _ => 1.0,
-  };
-  return (num * mult).toInt();
 }
 
 // ============================ Разбор ссылок ============================

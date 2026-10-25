@@ -42,7 +42,6 @@ Track trackFromSc(ScRawTrack t) => Track(
   artistAvatar: t.artistAvatar,
   artistVerified: t.artistVerified,
   creditedArtist: _blankToNull(t.creditedArtist),
-  playCount: t.playbackCount,
   // Стрим резолвится из `media.transcodings` — держим сырьё при треке.
   sourceData: t.media,
 );
@@ -54,7 +53,6 @@ Artist artistFromSc(ScRawArtist a) => Artist(
   fullName: _blankToNull(a.artist),
   avatar: a.artwork,
   permalink: a.permalink,
-  followers: a.followers,
   source: MusicSource.soundcloud,
 );
 
@@ -96,7 +94,6 @@ Artist _artistFromUser(ScRawUser u) => Artist(
   avatar: u.avatar,
   bannerUrl: u.banner,
   permalink: u.permalink,
-  followers: u.followers,
   description: _blankToNull(u.description),
   website: u.website,
   source: MusicSource.soundcloud,
@@ -239,7 +236,7 @@ class SoundCloudProvider extends MusicProvider {
   @override
   Future<ArtistPageData?> getArtist(String id) async {
     final userId = '${scNumericId(id)}';
-    // Всё параллельно: страница артиста собирается из шести разных эндпоинтов,
+    // Всё параллельно: страница артиста собирается из пяти разных эндпоинтов,
     // последовательно это заняло бы секунды. Каждый уже гасит свои ошибки в
     // пустоту, кроме getUser — без него страницу рисовать нечем.
     final parts = await Future.wait([
@@ -248,7 +245,6 @@ class SoundCloudProvider extends MusicProvider {
       sc.artistData(userId).then<Object?>((v) => v, onError: (_) => null),
       sc.relatedArtists(userId).then<Object?>((v) => v, onError: (_) => null),
       sc.userPlaylists(userId).then<Object?>((v) => v, onError: (_) => null),
-      sc.artistReposts(userId).then<Object?>((v) => v, onError: (_) => null),
     ]);
 
     final user = parts[0] as ScRawUser?;
@@ -257,7 +253,6 @@ class SoundCloudProvider extends MusicProvider {
     final data = parts[2] as ScArtistData?;
     final related = (parts[3] as List<ScRawArtist>?) ?? const [];
     final playlists = (parts[4] as List<ScRawPlaylist>?) ?? const [];
-    final reposts = parts[5] as ScRepostsPage?;
 
     return ArtistPageData(
       artist: _artistFromUser(user),
@@ -267,10 +262,8 @@ class SoundCloudProvider extends MusicProvider {
           data?.albums.map((p) => setFromSc(p, isAlbum: true)).toList() ??
           const [],
       playlists: playlists.map((p) => setFromSc(p, isAlbum: false)).toList(),
-      reposts: reposts?.items.map(_repostFromSc).toList() ?? const [],
       similarArtists: related.map(artistFromSc).toList(),
       tracksCursor: data?.tracksNext,
-      repostsCursor: reposts?.next,
     );
   }
 
@@ -319,15 +312,6 @@ class SoundCloudProvider extends MusicProvider {
   }
 
   @override
-  Future<RepostPage?> getArtistRepostsPage(String cursor) async {
-    final page = await sc.artistRepostsPage(cursor);
-    return RepostPage(
-      reposts: page.items.map(_repostFromSc).toList(),
-      cursor: page.next,
-    );
-  }
-
-  @override
   Future<PlayableStream?> resolveStream(Track track) async {
     final stream = await sc.streamUrl(await _media(track));
     return PlayableStream(url: stream.url, isHls: stream.isHls);
@@ -357,7 +341,3 @@ class SoundCloudProvider extends MusicProvider {
   Future<Map<String, dynamic>?> _media(Track track) async =>
       track.sourceData ?? (await resolveTrackById(track.id))?.sourceData;
 }
-
-RepostItem _repostFromSc(ScRepostItem item) => item.kind == 'track'
-    ? RepostTrack(trackFromSc(item.track!))
-    : RepostSet(setFromSc(item.playlist!, isAlbum: item.kind == 'album'));

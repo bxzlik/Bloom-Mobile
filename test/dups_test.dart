@@ -10,7 +10,6 @@ Track _track(
   String name = 'Song',
   String artist = 'Artist',
   String? cover,
-  int? plays,
 }) => Track(
   id: id,
   name: name,
@@ -18,7 +17,6 @@ Track _track(
   duration: const Duration(seconds: 200),
   source: MusicSource.soundcloud,
   cover: cover,
-  playCount: plays,
 );
 
 void main() {
@@ -64,11 +62,12 @@ void main() {
       expect(groups.single.first.id, 'с обложкой');
     });
 
-    test('при равных обложках выигрывает тот, кого чаще слушали', () {
+    test('при равных обложках выигрывает тот, кого чаще слушали сами', () {
+      const plays = {'редкий': 2, 'частый': 40};
       final groups = dupGroups([
-        _track('редкий', cover: 'a.jpg', plays: 2),
-        _track('частый', cover: 'b.jpg', plays: 40),
-      ]);
+        _track('редкий', cover: 'a.jpg'),
+        _track('частый', cover: 'b.jpg'),
+      ], plays: (id) => plays[id] ?? 0);
 
       expect(groups.single.first.id, 'частый');
     });

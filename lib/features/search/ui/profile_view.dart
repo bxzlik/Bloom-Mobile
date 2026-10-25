@@ -28,7 +28,6 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/glass.dart';
-import '../../../shared/util/format.dart';
 import '../../detail/detail_nav.dart';
 import '../../library/import_url.dart' show likesTitle;
 import '../../player/play_source.dart';
@@ -274,13 +273,7 @@ class _HeroState extends ConsumerState<_Hero> {
         ? null
         : CoverFlight(tag: _tag, image: avatar);
     final following = ref.watch(libraryProvider).isFollowing(artist.id);
-    final fullName = artist.fullName ?? '';
-    final followers = artist.followers ?? 0;
-    final sub = [
-      if (fullName.isNotEmpty) fullName,
-      if (followers > 0)
-        context.l.followersCount(followers, compactCount(followers)),
-    ].join(' · ');
+    final sub = artist.fullName ?? '';
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(t.radius),

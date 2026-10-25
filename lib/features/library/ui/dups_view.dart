@@ -18,6 +18,7 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/library_store.dart';
+import '../../../core/store/play_stats.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../dups.dart';
@@ -36,9 +37,10 @@ class DupsSliver extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lib = ref.watch(libraryProvider);
+    final plays = ref.watch(playStatsProvider).playCount;
     // Считаем от свежего состава: убрали копию — группа пересобралась, пустые
     // ушли сами (на десктопе это тот же `useMemo` по пулу).
-    final groups = dupGroups(tracks, addedAt: lib.inLib);
+    final groups = dupGroups(tracks, plays: plays, addedAt: lib.inLib);
     final extra = extraDups(groups);
 
     return SliverList.list(
@@ -55,6 +57,7 @@ class DupsSliver extends ConsumerWidget {
         for (final group in groups)
           _Group(
             group: group,
+            plays: plays,
             onDelete: () =>
                 removeDups(context, ref, listId, group.skip(1).toList()),
             onDeleteOne: (track) => removeDups(context, ref, listId, [track]),
@@ -148,11 +151,15 @@ class _Bar extends StatelessWidget {
 class _Group extends StatelessWidget {
   const _Group({
     required this.group,
+    required this.plays,
     required this.onDelete,
     required this.onDeleteOne,
   });
 
   final List<Track> group;
+
+  /// Свои прослушивания трека — из журнала.
+  final int Function(String id) plays;
   final VoidCallback onDelete;
   final ValueChanged<Track> onDeleteOne;
 
@@ -190,6 +197,7 @@ class _Group extends StatelessWidget {
             for (var i = 0; i < group.length; i++)
               _Row(
                 track: group[i],
+                plays: plays(group[i].id),
                 keep: i == 0,
                 onDelete: () => onDeleteOne(group[i]),
               ),
@@ -202,9 +210,15 @@ class _Group extends StatelessWidget {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.track, required this.keep, required this.onDelete});
+  const _Row({
+    required this.track,
+    required this.plays,
+    required this.keep,
+    required this.onDelete,
+  });
 
   final Track track;
+  final int plays;
 
   /// Тот, кого предлагается оставить, — первый в группе.
   final bool keep;
@@ -215,7 +229,6 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
-    final plays = track.playCount ?? 0;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),

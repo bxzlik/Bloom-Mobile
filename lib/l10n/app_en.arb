@@ -91,14 +91,6 @@
     "description": "Replaces the hand-rolled tracksCount() from shared/util/format.dart",
     "placeholders": { "count": { "type": "int" } }
   },
-  "followersCount": "{count, plural, one{{formatted} follower} other{{formatted} followers}}",
-  "@followersCount": {
-    "description": "formatted is the already-compacted number (1.2K); count drives the plural form",
-    "placeholders": {
-      "count": { "type": "int" },
-      "formatted": { "type": "String" }
-    }
-  },
   "playsCount": "{count, plural, one{{count} play} other{{count} plays}}",
   "@playsCount": {
     "description": "desktop: stats.playsCount",
@@ -205,8 +197,6 @@
   "artistNotFound": "Artist not found",
   "artistPopular": "Popular",
   "@artistPopular": { "description": "desktop: search.popular" },
-  "artistReposts": "Reposts",
-  "@artistReposts": { "description": "desktop: search.tab.reposts" },
   "artistSimilar": "Fans might also like",
   "@artistSimilar": { "description": "desktop: search.similarArtists" },
   "artistNoTracks": "This artist has no available tracks",

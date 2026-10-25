@@ -21,7 +21,6 @@ import '../../core/providers/music_provider.dart';
 import '../../shared/ui/atoms.dart';
 import '../../shared/ui/bloom_sheet.dart';
 import '../../shared/util/artists.dart';
-import '../../shared/util/format.dart';
 import 'detail_nav.dart';
 
 /// Открыть артиста играющего трека: одного — сразу, нескольких — через выбор.
@@ -141,11 +140,10 @@ class _ArtistPickerState extends ConsumerState<_ArtistPicker> {
     final theme = Theme.of(context).textTheme;
     final pending = !_found.containsKey(name);
     final artist = _found[name];
-    final followers = artist?.followers;
 
-    final String? note = followers != null
-        ? context.l.followersCount(followers, compactCount(followers))
-        : (pending || artist != null ? null : context.l.artistNotFoundOnSource);
+    final String? note = pending || artist != null
+        ? null
+        : context.l.artistNotFoundOnSource;
 
     return InkWell(
       // Пока ищем и когда не нашли — идти некуда: строка просто не нажимается.

@@ -94,9 +94,6 @@ class Track {
   /// Артист из `publisher_metadata` — иногда точнее имени аккаунта.
   final String? creditedArtist;
 
-  /// Глобальное число прослушиваний у площадки.
-  final int? playCount;
-
   /// Сырьё площадки для [MusicProvider.resolveStream] и скачивания.
   final Map<String, dynamic>? sourceData;
 
@@ -132,7 +129,6 @@ class Track {
     this.artistAvatar,
     this.artistVerified = false,
     this.creditedArtist,
-    this.playCount,
     this.sourceData,
     this.chartPos,
     this.chartShift = 0,
@@ -268,9 +264,8 @@ class Artist {
   final MusicSource source;
 
   // Поля страницы артиста — заполняются провайдером в getArtist.
-  final int? followers;
 
-  /// Полное имя — подзаголовок профиля рядом с подписчиками.
+  /// Полное имя — подзаголовок профиля.
   final String? fullName;
   final String? description;
   final String? website;
@@ -286,7 +281,6 @@ class Artist {
     this.avatar,
     this.verified = false,
     this.permalink,
-    this.followers,
     this.fullName,
     this.description,
     this.website,
@@ -295,7 +289,6 @@ class Artist {
   });
 
   Artist copyWith({
-    int? followers,
     String? fullName,
     String? description,
     String? website,
@@ -308,7 +301,6 @@ class Artist {
     avatar: avatar ?? this.avatar,
     verified: verified,
     permalink: permalink,
-    followers: followers ?? this.followers,
     fullName: fullName ?? this.fullName,
     description: description ?? this.description,
     website: website ?? this.website,
@@ -322,7 +314,6 @@ class Artist {
     if (avatar != null) 'avatar': avatar,
     if (verified) 'verified': true,
     if (permalink != null) 'permalink': permalink,
-    if (followers != null) 'followers': followers,
     if (fullName != null) 'fullName': fullName,
   };
 
@@ -337,7 +328,6 @@ class Artist {
       avatar: json['avatar'] as String?,
       verified: json['verified'] == true,
       permalink: json['permalink'] as String?,
-      followers: (json['followers'] as num?)?.toInt(),
       fullName: json['fullName'] as String?,
     );
   }

@@ -57,7 +57,7 @@ Future<void> main() async {
   final a = arts.items.first;
   final user = await getUser('${a.id}');
   check(user != null && user.id == a.id, 'get_user не сошёлся');
-  print('artist: ${user?.username} (followers ${user?.followers})');
+  print('artist: ${user?.username}');
 
   // Топ-треки и данные артиста.
   final top = await artistTopTracks('${a.id}', artistName: a.title);
@@ -134,8 +134,7 @@ Future<void> main() async {
     'getArtist ${artistPage?.artist.name}: топ ${artistPage?.topTracks.length}, '
     'треков ${artistPage?.tracks.length}, альбомов ${artistPage?.albums.length}, '
     'плейлистов ${artistPage?.playlists.length}, '
-    'похожих ${artistPage?.similarArtists.length}, '
-    'репостов ${artistPage?.reposts.length}',
+    'похожих ${artistPage?.similarArtists.length}',
   );
   check(
     (artistPage?.topTracks.length ?? 0) > 0,

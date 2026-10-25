@@ -158,19 +158,6 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String followersCount(int count, String formatted) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$formatted подписчиков',
-      many: '$formatted подписчиков',
-      few: '$formatted подписчика',
-      one: '$formatted подписчик',
-    );
-    return '$_temp0';
-  }
-
-  @override
   String playsCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -352,9 +339,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get artistPopular => 'Популярные';
-
-  @override
-  String get artistReposts => 'Репосты';
 
   @override
   String get artistSimilar => 'Похожие исполнители';

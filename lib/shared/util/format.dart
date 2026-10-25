@@ -25,17 +25,6 @@ String totalDur(AppLocalizations l, Duration d) {
   return m >= 60 ? l.commonDurHm(m ~/ 60, m % 60) : l.commonDurMin(m);
 }
 
-/// Короткое число: 1234 → «1.2K», 6700572 → «6.7M».
-String compactCount(int n) {
-  if (n < 1000) return '$n';
-  if (n < 1000000) {
-    final k = n / 1000;
-    return '${k < 10 ? k.toStringAsFixed(1) : k.round()}K';
-  }
-  final m = n / 1000000;
-  return '${m < 10 ? m.toStringAsFixed(1) : m.round()}M';
-}
-
 /// Полная дата релиза под язык: «2024-05-13T00:00:00Z» → «13 мая 2024» /
 /// «May 13, 2024». Площадка отдала один год («2024») или вообще не дату — `null`:
 /// звонящему тогда остаётся показать сам год, как он это делал раньше.

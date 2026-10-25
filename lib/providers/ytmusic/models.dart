@@ -152,9 +152,6 @@ class YtmEntity {
   /// Только для артиста: биография из шапки. Пусто, если YTM её не даёт.
   final String description;
 
-  /// Только для артиста: подписчики канала («39.9M» → 39_900_000).
-  final int subscribers;
-
   const YtmEntity({
     this.title = '',
     this.subtitle = '',
@@ -166,7 +163,6 @@ class YtmEntity {
     this.year = '',
     this.ownerAvatar = '',
     this.description = '',
-    this.subscribers = 0,
   });
 }
 

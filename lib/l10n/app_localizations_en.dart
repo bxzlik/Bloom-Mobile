@@ -156,17 +156,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String followersCount(int count, String formatted) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$formatted followers',
-      one: '$formatted follower',
-    );
-    return '$_temp0';
-  }
-
-  @override
   String playsCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -346,9 +335,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get artistPopular => 'Popular';
-
-  @override
-  String get artistReposts => 'Reposts';
 
   @override
   String get artistSimilar => 'Fans might also like';

@@ -47,7 +47,6 @@
   "commonDurMin": "{m} мин",
 
   "tracksCount": "{count, plural, one{{count} трек} few{{count} трека} many{{count} треков} other{{count} треков}}",
-  "followersCount": "{count, plural, one{{formatted} подписчик} few{{formatted} подписчика} many{{formatted} подписчиков} other{{formatted} подписчиков}}",
   "playsCount": "{count, plural, one{{count} раз} few{{count} раза} many{{count} раз} other{{count} раз}}",
 
   "navHome": "Главная",
@@ -106,7 +105,6 @@
   "artistSourceNotConnected": "Площадка этого артиста не подключена",
   "artistNotFound": "Артист не найден",
   "artistPopular": "Популярные",
-  "artistReposts": "Репосты",
   "artistSimilar": "Похожие исполнители",
   "artistNoTracks": "У этого артиста нет доступных треков",
   "artistTracksToNewPlaylist": "Треки в новый плейлист",

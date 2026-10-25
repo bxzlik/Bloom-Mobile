@@ -21,11 +21,10 @@ import 'package:bloom/core/db/db.dart';
 
 import 'package:bloom/core/l10n/l10n.dart';
 
-Artist _artist(String name, {String? avatar, int? followers}) => Artist(
+Artist _artist(String name, {String? avatar}) => Artist(
   id: 'sc:artist:$name',
   name: name,
   avatar: avatar,
-  followers: followers,
   source: MusicSource.soundcloud,
 );
 
@@ -121,7 +120,7 @@ void main() {
   testWidgets('несколько артистов — шторка с аватарками', (tester) async {
     final sc = _FakeSoundCloud({
       'Kanye West': [
-        _artist('Kanye West', avatar: 'https://cdn/ye.jpg', followers: 1200),
+        _artist('Kanye West', avatar: 'https://cdn/ye.jpg'),
       ],
       'Ty Dolla Sign': [_artist('Ty Dolla Sign', avatar: 'https://cdn/ty.jpg')],
     });
@@ -137,7 +136,8 @@ void main() {
       _avatars(tester),
       containsAll(['https://cdn/ye.jpg', 'https://cdn/ty.jpg']),
     );
-    expect(find.text('1.2K подписчиков'), findsOneWidget);
+    // Подписчиков площадки Bloom не показывает: под именем пусто.
+    expect(find.textContaining('подписч'), findsNothing);
   });
 
   testWidgets('к незнакомому площадке артисту ходить некуда', (tester) async {
