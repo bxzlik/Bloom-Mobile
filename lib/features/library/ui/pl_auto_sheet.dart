@@ -38,10 +38,12 @@ Future<void> showPlAutoSheet(BuildContext context, WidgetRef ref) {
   // Первое открытие: отмечаем всё, что можно обновлять. Пустой список целей
   // означал бы неактивную кнопку «Обновить сейчас» на ровном месте — на ПК
   // цели набираются мышью в сайдбаре, здесь набирать их неоткуда.
-  final state = ref.read(plAutoProvider);
-  if (state.ids.isEmpty && state.lastRun == 0) {
-    final all = auto.candidates().map((p) => p.id).toList();
-    if (all.isNotEmpty) auto.setIds(all);
+  final candidates = auto.candidates();
+  if (ref.read(plAutoProvider).lastRun == 0 &&
+      !candidates.any((p) => p.autoRefresh)) {
+    ref
+        .read(libraryProvider.notifier)
+        .setAutoRefresh(candidates.map((p) => p.id), true);
   }
   return showBloomSheetChild<void>(
     context: context,
@@ -62,7 +64,8 @@ class _PlAutoBody extends ConsumerWidget {
     final candidates = lib.playlists
         .where((p) => p.sources.isNotEmpty)
         .toList();
-    final selected = candidates.where((p) => state.ids.contains(p.id)).length;
+    final selected = candidates.where((p) => p.autoRefresh).length;
+    final library = ref.read(libraryProvider.notifier);
     final allSelected = candidates.isNotEmpty && selected == candidates.length;
 
     return Column(
@@ -108,10 +111,9 @@ class _PlAutoBody extends ConsumerWidget {
                 GestureDetector(
                   onTap: state.running
                       ? null
-                      : () => auto.setIds(
-                          allSelected
-                              ? const []
-                              : candidates.map((p) => p.id).toList(),
+                      : () => library.setAutoRefresh(
+                          candidates.map((p) => p.id),
+                          !allSelected,
                         ),
                   child: Text(
                     allSelected
@@ -140,12 +142,14 @@ class _PlAutoBody extends ConsumerWidget {
                 _CandidateRow(
                   playlist: candidates[i],
                   tracks: lib.tracksOf(candidates[i]).length,
-                  selected: state.ids.contains(candidates[i].id),
+                  selected: candidates[i].autoRefresh,
                   busy: state.busy == candidates[i].id,
                   run: state.runs[candidates[i].id],
                   onTap: state.running
                       ? null
-                      : () => auto.toggleId(candidates[i].id),
+                      : () => library.setAutoRefresh([
+                          candidates[i].id,
+                        ], !candidates[i].autoRefresh),
                 ),
               ],
             ],

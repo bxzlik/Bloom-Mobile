@@ -358,12 +358,7 @@ class _LibraryMenu extends ConsumerWidget {
     final lib = ref.watch(libraryProvider);
     final playlists = ref
         .watch(libOrderProvider)
-        .arrange(
-          lib.playlists,
-          key: (pl) => libKeyOfPlaylist(pl.id),
-          name: (pl) => pl.name,
-          rank: (_) => kLibRankPlaylist,
-        );
+        .arrangePlaylists(lib.playlists);
 
     return _Panel(
       children: [

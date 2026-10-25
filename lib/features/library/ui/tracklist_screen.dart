@@ -43,7 +43,6 @@ import '../../../shared/ui/sticky_hero.dart';
 import '../../../shared/ui/track_swipes.dart';
 import '../dups.dart';
 import '../history_format.dart';
-import '../lib_order_store.dart';
 import '../local_tracks.dart';
 import '../refresh_playlist.dart';
 import 'convert_screen.dart';
@@ -1072,11 +1071,6 @@ Future<void> showPlaylistMenu(
   // hero экрана.
   final cover = playlist.cover ?? (tracks.isEmpty ? null : tracks.first.cover);
 
-  // Закреплённость читаем тут же, до открытия: в обработчиках пунктов `watch`
-  // уже недоступен.
-  final orderKey = libKeyOfPlaylist(playlist.id);
-  final pinned = ref.read(libOrderProvider).isPinned(orderKey);
-
   // Офлайн-состав считаем до открытия шторки: в её обработчиках `watch` уже
   // недоступен, а `read` внутри пункта дал бы состояние на момент нажатия.
   final offlineStatus = listOfflineState(
@@ -1197,8 +1191,10 @@ Future<void> showPlaylistMenu(
           ),
         SheetAction(
           icon: SolarIconsOutline.pin,
-          label: pinned ? context.l.commonUnpin : context.l.commonPin,
-          onTap: () => ref.read(libOrderProvider.notifier).togglePin(orderKey),
+          label: playlist.pinned ? context.l.commonUnpin : context.l.commonPin,
+          onTap: () => ref
+              .read(libraryProvider.notifier)
+              .setPinned(libKeyOfPlaylist(playlist.id), !playlist.pinned),
         ),
         SheetAction(
           icon: SolarIconsOutline.import,

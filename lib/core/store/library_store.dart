@@ -131,6 +131,12 @@ class UserPlaylist {
   /// Место карточки на экране библиотеки (`side_pos`); 0 — ещё не стояла.
   final int sidePos;
 
+  /// Закреплён — стоит в библиотеке первым при любой сортировке.
+  final bool pinned;
+
+  /// Участвует в автообновлении по расписанию (`auto_refresh`).
+  final bool autoRefresh;
+
   const UserPlaylist({
     required this.id,
     required this.name,
@@ -140,6 +146,8 @@ class UserPlaylist {
     this.sources = const [],
     this.createdAt = 0,
     this.sidePos = 0,
+    this.pinned = false,
+    this.autoRefresh = false,
   });
 
   UserPlaylist copyWith({List<String>? trackIds}) => UserPlaylist(
@@ -151,14 +159,31 @@ class UserPlaylist {
     sources: sources,
     createdAt: createdAt,
     sidePos: sidePos,
+    pinned: pinned,
+    autoRefresh: autoRefresh,
   );
 }
 
 class FollowedArtist {
   final Artist artist;
   final int followedAt;
-  const FollowedArtist({required this.artist, required this.followedAt});
+
+  /// Место и закрепление карточки — как у плейлиста, в одном ряду с ним.
+  final int sidePos;
+  final bool pinned;
+
+  const FollowedArtist({
+    required this.artist,
+    required this.followedAt,
+    this.sidePos = 0,
+    this.pinned = false,
+  });
 }
+
+/// Ключ карточки библиотеки: вид и id вместе — плейлист и артист с
+/// одинаковым id иначе стали бы одной карточкой.
+String libKeyOfPlaylist(String id) => 'playlist:$id';
+String libKeyOfArtist(String id) => 'artist:$id';
 
 class LibraryState {
   /// Треки, стоящие хоть в одном списке. id → трек.
@@ -240,7 +265,7 @@ class LibraryController extends Notifier<LibraryState> {
 
     final playlists = [
       for (final r in _db.select(
-        "SELECT id, name, description, cover, sources, created_at, side_pos FROM lists WHERE kind = 'playlist' ORDER BY pinned DESC, side_pos, created_at",
+        "SELECT id, name, description, cover, sources, auto_refresh, created_at, side_pos, pinned FROM lists WHERE kind = 'playlist' ORDER BY pinned DESC, side_pos, created_at",
       ))
         UserPlaylist(
           id: r['id'] as String,
@@ -250,15 +275,22 @@ class LibraryController extends Notifier<LibraryState> {
           sources: _sources(r['sources'] as String?),
           createdAt: r['created_at'] as int,
           sidePos: r['side_pos'] as int,
+          pinned: r['pinned'] == 1,
+          autoRefresh: r['auto_refresh'] == 1,
           trackIds: members[r['id']] ?? const [],
         ),
     ];
 
     final follows = [
       for (final r in _db.select(
-        'SELECT id, name, avatar, extra, at FROM follows ORDER BY pinned DESC, side_pos, at',
+        'SELECT id, name, avatar, extra, at, side_pos, pinned FROM follows ORDER BY pinned DESC, side_pos, at',
       ))
-        FollowedArtist(artist: _artistOfRow(r), followedAt: r['at'] as int),
+        FollowedArtist(
+          artist: _artistOfRow(r),
+          followedAt: r['at'] as int,
+          sidePos: r['side_pos'] as int,
+          pinned: r['pinned'] == 1,
+        ),
     ];
 
     return LibraryState(
@@ -567,17 +599,19 @@ class LibraryController extends Notifier<LibraryState> {
   void _insertPlaylist(UserPlaylist pl) {
     final now = BloomDb.now();
     _db.exec(
-      "INSERT INTO lists (id, kind, name, description, cover, sources, created_at, updated_at, side_pos) VALUES (?, 'playlist', ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO lists (id, kind, name, description, cover, sources, auto_refresh, created_at, updated_at, side_pos, pinned) VALUES (?, 'playlist', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [
         pl.id,
         pl.name,
         pl.description ?? '',
         pl.cover ?? '',
         jsonEncode([for (final s in pl.sources) s.toJson()]),
+        pl.autoRefresh ? 1 : 0,
         pl.createdAt == 0 ? now : pl.createdAt,
         now,
         // Возвращённый («Отменить») встаёт на своё прежнее место.
         pl.sidePos > 0 ? pl.sidePos : _nextSidePos(),
+        pl.pinned ? 1 : 0,
       ],
     );
   }
@@ -657,6 +691,61 @@ class LibraryController extends Notifier<LibraryState> {
   /// Правка плейлиста целиком: [trackIds] — новый состав И порядок.
   void setPlaylistTracks(String id, List<String> trackIds) {
     _setOrder(id, trackIds);
+    _refresh();
+  }
+
+  /// Отметить плейлисты для автообновления по расписанию — или снять отметку.
+  void setAutoRefresh(Iterable<String> ids, bool on) {
+    _db.tx(() {
+      for (final id in ids) {
+        _db.exec(
+          "UPDATE lists SET auto_refresh = ? WHERE id = ? AND kind = 'playlist'",
+          [on ? 1 : 0, id],
+        );
+      }
+    });
+    _refresh();
+  }
+
+  // ── Карточки библиотеки (порт `Library::setPinned/reorder`) ─────────────
+
+  /// Где карточка держит место и закрепление: плейлист — в `lists`, артист —
+  /// в `follows`. Ключ — [libKeyOfPlaylist] / [libKeyOfArtist].
+  ({String table, String id})? _card(String key) {
+    final i = key.indexOf(':');
+    if (i < 0) return null;
+    final id = key.substring(i + 1);
+    return switch (key.substring(0, i)) {
+      'playlist' => (table: 'lists', id: id),
+      'artist' => (table: 'follows', id: id),
+      _ => null,
+    };
+  }
+
+  /// Закрепить карточку (наверх при любой сортировке) или открепить.
+  void setPinned(String key, bool pinned) {
+    final card = _card(key);
+    if (card == null) return;
+    _db.exec('UPDATE ${card.table} SET pinned = ? WHERE id = ?', [
+      pinned ? 1 : 0,
+      card.id,
+    ]);
+    _refresh();
+  }
+
+  /// Новый порядок карточек — плейлистов и артистов вперемешку, как их
+  /// перетащили: места 1…n в общем ряду `side_pos`.
+  void reorderCards(List<String> keys) {
+    _db.tx(() {
+      for (var i = 0; i < keys.length; i++) {
+        final card = _card(keys[i]);
+        if (card == null) continue;
+        _db.exec('UPDATE ${card.table} SET side_pos = ? WHERE id = ?', [
+          i + 1,
+          card.id,
+        ]);
+      }
+    });
     _refresh();
   }
 

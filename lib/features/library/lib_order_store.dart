@@ -1,14 +1,12 @@
-/// Порядок и сортировка библиотеки — порт десктопных `useLibSidebarSort` и
-/// `unifiedOrderStore`.
+/// Вид библиотеки: сортировка и фильтр карточек — настройки, а не данные.
 ///
-/// Как на ПК: режимов четыре, и «По умолчанию» — это НЕ порядок создания, а
-/// пользовательский, собранный перетаскиванием. Закреплённые всегда идут
-/// сверху, в каком бы режиме ни был список: на десктопе вынос pinned делает
-/// `buildOrderedUnifiedEntries` уже после сортировки, здесь — [LibOrderState.arrange].
+/// Сами место и закрепление карточки лежат в её строке базы (`side_pos`,
+/// `pinned` у плейлистов и подписок), как на ПК, — здесь их только
+/// раскладывают. «По умолчанию» — НЕ порядок создания, а пользовательский,
+/// собранный перетаскиванием. Закреплённые всегда идут сверху, в каком бы
+/// режиме ни был список ([LibOrderState.arrange]).
 ///
-/// Папок в мобилке нет (их приносит folder_watcher, которого тут не бывает),
-/// поэтому типов два: плейлист и артист — ранги те же, что в десктопном
-/// `TYPE_ORDER`.
+/// Папок в мобилке нет, поэтому видов два: плейлист и артист.
 library;
 
 import 'package:flutter/widgets.dart';
@@ -17,6 +15,7 @@ import 'package:solar_icons/solar_icons.dart';
 
 import '../../core/l10n/l10n.dart';
 import '../../core/store/json_store.dart' show jsonStoreProvider;
+import '../../core/store/library_store.dart' show UserPlaylist;
 
 enum LibSort { manual, nameAsc, nameDesc, type }
 
@@ -74,11 +73,6 @@ extension LibSortMeta on LibSort {
 LibSort _sortFromId(Object? id) =>
     LibSort.values.firstWhere((s) => s.id == id, orElse: () => LibSort.manual);
 
-/// Ключ записи: тип и id вместе, иначе плейлист и артист с одинаковым id
-/// схлопнулись бы в один элемент порядка (десктопный `keyOf`).
-String libKeyOfPlaylist(String id) => 'playlist:$id';
-String libKeyOfArtist(String id) => 'artist:$id';
-
 /// Ранг типа для режима «По типу»: сначала плейлисты, потом артисты.
 const int kLibRankPlaylist = 0;
 const int kLibRankArtist = 1;
@@ -87,56 +81,37 @@ class LibOrderState {
   const LibOrderState({
     this.sort = LibSort.manual,
     this.filter = LibFilter.all,
-    this.order = const [],
-    this.pinned = const {},
   });
 
   final LibSort sort;
 
   final LibFilter filter;
 
-  /// Пользовательский порядок ключей. Новые записи в нём не значатся и
-  /// уезжают в конец — как `applyOrder` на десктопе.
-  final List<String> order;
+  LibOrderState copyWith({LibSort? sort, LibFilter? filter}) =>
+      LibOrderState(sort: sort ?? this.sort, filter: filter ?? this.filter);
 
-  final Set<String> pinned;
-
-  bool isPinned(String key) => pinned.contains(key);
-
-  LibOrderState copyWith({
-    LibSort? sort,
-    LibFilter? filter,
-    List<String>? order,
-    Set<String>? pinned,
-  }) => LibOrderState(
-    sort: sort ?? this.sort,
-    filter: filter ?? this.filter,
-    order: order ?? this.order,
-    pinned: pinned ?? this.pinned,
-  );
-
-  /// Разложить записи библиотеки по текущему режиму. [key] — ключ записи,
-  /// [name] — по чему сортировать имена, [rank] — тип (`kLibRank*`).
+  /// Разложить карточки библиотеки по текущему режиму. [name] — по чему
+  /// сортировать имена, [rank] — тип (`kLibRank*`), [sidePos] и [pinned] —
+  /// место и закрепление из базы.
   ///
   /// Сортировки в Dart нестабильны, поэтому в компараторе последним идёт
   /// сравнение исходных позиций: без него равные имена (или один и тот же
   /// ранг) тасовались бы на каждой перерисовке.
   List<T> arrange<T>(
     List<T> items, {
-    required String Function(T) key,
     required String Function(T) name,
     required int Function(T) rank,
+    required int Function(T) sidePos,
+    required bool Function(T) pinned,
   }) {
     final indexed = [
       for (var i = 0; i < items.length; i++) (item: items[i], at: i),
     ];
 
     if (sort == LibSort.manual) {
-      final at = {for (var i = 0; i < order.length; i++) order[i]: i};
       indexed.sort((a, b) {
-        final pa = at[key(a.item)] ?? order.length + a.at;
-        final pb = at[key(b.item)] ?? order.length + b.at;
-        return pa != pb ? pa.compareTo(pb) : a.at.compareTo(b.at);
+        final byPlace = sidePos(a.item).compareTo(sidePos(b.item));
+        return byPlace != 0 ? byPlace : a.at.compareTo(b.at);
       });
     } else {
       indexed.sort((a, b) {
@@ -154,12 +129,17 @@ class LibOrderState {
     }
 
     final sorted = indexed.map((e) => e.item).toList();
-    if (pinned.isEmpty) return sorted;
-    return [
-      ...sorted.where((e) => pinned.contains(key(e))),
-      ...sorted.where((e) => !pinned.contains(key(e))),
-    ];
+    return [...sorted.where(pinned), ...sorted.where((e) => !pinned(e))];
   }
+
+  /// Одни плейлисты — в том же порядке, что их плитки в библиотеке.
+  List<UserPlaylist> arrangePlaylists(List<UserPlaylist> playlists) => arrange(
+    playlists,
+    name: (p) => p.name,
+    rank: (_) => kLibRankPlaylist,
+    sidePos: (p) => p.sidePos,
+    pinned: (p) => p.pinned,
+  );
 }
 
 final libOrderProvider = NotifierProvider<LibOrderController, LibOrderState>(
@@ -173,16 +153,12 @@ class LibOrderController extends Notifier<LibOrderState> {
     return LibOrderState(
       sort: _sortFromId(raw['sort']),
       filter: _filterFromId(raw['filter']),
-      order: (raw['order'] as List?)?.whereType<String>().toList() ?? const [],
-      pinned: (raw['pinned'] as List?)?.whereType<String>().toSet() ?? const {},
     );
   }
 
   void _save() => ref.read(jsonStoreProvider).write('libOrder', {
     'sort': state.sort.id,
     'filter': state.filter.id,
-    'order': state.order,
-    'pinned': state.pinned.toList(),
   });
 
   void setSort(LibSort sort) {
@@ -194,19 +170,6 @@ class LibOrderController extends Notifier<LibOrderState> {
   void setFilter(LibFilter filter) {
     if (filter == state.filter) return;
     state = state.copyWith(filter: filter);
-    _save();
-  }
-
-  /// Записать порядок целиком — результат перетаскивания плитки.
-  void setOrder(List<String> keys) {
-    state = state.copyWith(order: keys);
-    _save();
-  }
-
-  void togglePin(String key) {
-    final pinned = Set<String>.from(state.pinned);
-    if (!pinned.remove(key)) pinned.add(key);
-    state = state.copyWith(pinned: pinned);
     _save();
   }
 }

@@ -1,8 +1,13 @@
-/// Авто-обновление плейлистов — порт десктопных `plAutoStore` + `plAutoRefresh`.
+/// Авто-обновление плейлистов — порт `AutoRefresh` ПК.
 ///
 /// Отмеченные плейлисты обходятся по очереди и получают новые треки из своих
 /// источников (`pl.sources` — как на ПК, их может быть несколько и с разных
 /// площадок), так что кандидат — любой плейлист с привязками.
+///
+/// Раскладка как на ПК: отметка — флажок самого плейлиста
+/// ([UserPlaylist.autoRefresh]), расписание (вкл., период, «при запуске») —
+/// настройки, а когда был последний проход и чем кончился у каждого плейлиста
+/// — `kv` базы (`autoRefresh.last`, `autoRefresh.runs`).
 ///
 /// Расписание живёт таймером внутри процесса: разбудить приложение, когда его
 /// закрыли, нечем — фоновых задач у нас нет. Поэтому проход случается либо при
@@ -16,6 +21,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../core/db/db.dart';
 import '../../core/store/json_store.dart';
 import '../../core/store/library_store.dart';
 import '../../core/l10n/l10n.dart';
@@ -24,6 +30,10 @@ import 'refresh_playlist.dart';
 
 /// Варианты периода (минуты) — те же, что в сегмент-переключателе на ПК.
 const List<int> kPlAutoIntervals = [30, 60, 180, 720, 1440];
+
+/// Ключи `kv` — те же, что у ПК.
+const String _kLast = 'autoRefresh.last';
+const String _kRuns = 'autoRefresh.runs';
 
 /// Пауза перед стартовым проходом: площадкам надо успеть подняться.
 const Duration _onStartDelay = Duration(seconds: 12);
@@ -62,7 +72,6 @@ class PlAutoState {
     this.enabled = false,
     this.everyMin = 180,
     this.onStart = true,
-    this.ids = const [],
     this.lastRun = 0,
     this.runs = const {},
     this.busy,
@@ -72,13 +81,10 @@ class PlAutoState {
   final int everyMin;
   final bool onStart;
 
-  /// Плейлисты, отмеченные пользователем: они участвуют и в расписании, и в
-  /// кнопке «Обновить сейчас».
-  final List<String> ids;
-
   /// Когда закончился последний проход — от него считается следующий.
   final int lastRun;
 
+  /// Последнее обновление каждого плейлиста — и руками тоже, как на ПК.
   final Map<String, PlAutoRun> runs;
 
   /// Идёт проход: `null` — простой, иначе id обновляемого плейлиста (пустая
@@ -91,7 +97,6 @@ class PlAutoState {
     bool? enabled,
     int? everyMin,
     bool? onStart,
-    List<String>? ids,
     int? lastRun,
     Map<String, PlAutoRun>? runs,
     String? busy,
@@ -100,7 +105,6 @@ class PlAutoState {
     enabled: enabled ?? this.enabled,
     everyMin: everyMin ?? this.everyMin,
     onStart: onStart ?? this.onStart,
-    ids: ids ?? this.ids,
     lastRun: lastRun ?? this.lastRun,
     runs: runs ?? this.runs,
     busy: clearBusy ? null : (busy ?? this.busy),
@@ -136,69 +140,77 @@ class PlAutoController extends Notifier<PlAutoState> {
   Timer? _timer;
   bool _scheduled = false;
 
+  BloomDb get _db => ref.read(dbProvider);
+
   @override
   PlAutoState build() {
     final raw = ref.read(jsonStoreProvider).readMap('plAuto');
     final everyMin = (raw['everyMin'] as num?)?.toInt();
+    // Плейлисты, которых больше нет, забываются.
+    final alive = {for (final p in ref.read(libraryProvider).playlists) p.id};
+    final saved = _db.getMap(_kRuns);
     final runs = <String, PlAutoRun>{};
-    final rawRuns = raw['runs'];
-    if (rawRuns is Map) {
-      rawRuns.forEach((id, value) {
-        final run = PlAutoRun.fromJson(value);
-        if (id is String && run != null) runs[id] = run;
-      });
-    }
+    saved.forEach((id, value) {
+      final run = PlAutoRun.fromJson(value);
+      if (alive.contains(id) && run != null) runs[id] = run;
+    });
+    if (runs.length != saved.length) _saveRuns(runs);
     return PlAutoState(
       enabled: raw['enabled'] == true,
       everyMin: everyMin != null && everyMin >= 5 ? everyMin : 180,
       onStart: raw['onStart'] != false,
-      ids: (raw['ids'] as List?)?.whereType<String>().toList() ?? const [],
-      lastRun: (raw['lastRun'] as num?)?.toInt() ?? 0,
+      lastRun: (_db.get(_kLast) as num?)?.toInt() ?? 0,
       runs: runs,
     );
   }
 
-  void _save() => ref.read(jsonStoreProvider).write('plAuto', {
+  void _saveSettings() => ref.read(jsonStoreProvider).write('plAuto', {
     'enabled': state.enabled,
     'everyMin': state.everyMin,
     'onStart': state.onStart,
-    'ids': state.ids,
-    'lastRun': state.lastRun,
-    'runs': {for (final e in state.runs.entries) e.key: e.value.toJson()},
   });
+
+  void _saveRuns(Map<String, PlAutoRun> runs) =>
+      _db.set(_kRuns, {for (final e in runs.entries) e.key: e.value.toJson()});
+
+  void _setLastRun(int at) {
+    state = state.copyWith(lastRun: at);
+    _db.set(_kLast, at);
+  }
+
+  /// Запомнить, чем кончилось обновление плейлиста: [added] `null` — ни один
+  /// источник не ответил. Обновление руками считается тоже, как на ПК.
+  void record(String id, int? added) {
+    final runs = {
+      ...state.runs,
+      id: PlAutoRun(
+        at: DateTime.now().millisecondsSinceEpoch,
+        added: added ?? 0,
+        failed: added == null,
+      ),
+    };
+    state = state.copyWith(runs: runs);
+    _saveRuns(runs);
+  }
 
   // ── Настройки ───────────────────────────────────────────────────────────
 
   /// Включение сдвигает отсчёт: иначе давно не обновлявшаяся библиотека
   /// ушла бы в проход прямо в момент нажатия тумблера.
   void setEnabled(bool value) {
-    state = state.copyWith(
-      enabled: value,
-      lastRun: value ? DateTime.now().millisecondsSinceEpoch : state.lastRun,
-    );
-    _save();
+    state = state.copyWith(enabled: value);
+    if (value) _setLastRun(DateTime.now().millisecondsSinceEpoch);
+    _saveSettings();
   }
 
   void setEveryMin(int min) {
     state = state.copyWith(everyMin: min);
-    _save();
+    _saveSettings();
   }
 
   void setOnStart(bool value) {
     state = state.copyWith(onStart: value);
-    _save();
-  }
-
-  void toggleId(String id) {
-    final ids = [...state.ids];
-    if (!ids.remove(id)) ids.add(id);
-    state = state.copyWith(ids: ids);
-    _save();
-  }
-
-  void setIds(List<String> ids) {
-    state = state.copyWith(ids: [...ids]);
-    _save();
+    _saveSettings();
   }
 
   // ── Цели ────────────────────────────────────────────────────────────────
@@ -210,9 +222,9 @@ class PlAutoController extends Notifier<PlAutoState> {
       .where((p) => p.sources.isNotEmpty)
       .toList();
 
-  /// Отмеченные цели, пересечённые с реально существующими.
+  /// Отмеченные для автообновления.
   List<UserPlaylist> targets() =>
-      candidates().where((p) => state.ids.contains(p.id)).toList();
+      candidates().where((p) => p.autoRefresh).toList();
 
   // ── Проход ──────────────────────────────────────────────────────────────
 
@@ -249,32 +261,17 @@ class PlAutoController extends Notifier<PlAutoState> {
           progress: i / targets.length,
         );
         final got = await refreshPlaylistFromSource(registry, library, pl);
-        final at = DateTime.now().millisecondsSinceEpoch;
+        record(pl.id, got);
         if (got == null) {
           failed++;
-          state = state.copyWith(
-            runs: {
-              ...state.runs,
-              pl.id: PlAutoRun(at: at, failed: true),
-            },
-          );
           continue;
         }
         added += got;
         if (got > 0) changed++;
-        state = state.copyWith(
-          runs: {
-            ...state.runs,
-            pl.id: PlAutoRun(at: at, added: got),
-          },
-        );
       }
     } finally {
-      state = state.copyWith(
-        clearBusy: true,
-        lastRun: DateTime.now().millisecondsSinceEpoch,
-      );
-      _save();
+      state = state.copyWith(clearBusy: true);
+      _setLastRun(DateTime.now().millisecondsSinceEpoch);
     }
 
     final result = PlAutoSweep(added: added, changed: changed, failed: failed);

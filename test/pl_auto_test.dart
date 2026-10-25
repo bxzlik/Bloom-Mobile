@@ -100,7 +100,7 @@ void main() {
     final two = lib.createPlaylist('Второй', source: _src('sc:set:2'));
 
     final auto = c.read(plAutoProvider.notifier);
-    auto.setIds([one.id]);
+    lib.setAutoRefresh([one.id], true);
     final result = await auto.runSweep(silent: true);
 
     // В первом прибавился один трек, второй не отмечен — его не трогали.
@@ -140,7 +140,7 @@ void main() {
       lib.setPlaylistSources(pl.id, [_src('sc:set:1'), _src('sc:set:2')]);
 
       final auto = c.read(plAutoProvider.notifier);
-      auto.setIds([pl.id]);
+      lib.setAutoRefresh([pl.id], true);
       final result = await auto.runSweep(silent: true);
 
       expect(result.added, 2);
@@ -163,7 +163,7 @@ void main() {
     lib.setPlaylistSources(pl.id, [_src('sc:set:1'), _src('sc:set:2')]);
 
     final auto = c.read(plAutoProvider.notifier);
-    auto.setIds([pl.id]);
+    lib.setAutoRefresh([pl.id], true);
     final result = await auto.runSweep(silent: true);
 
     // Частичный успех — это успех: недоступную коллекцию могли удалить.
@@ -183,7 +183,7 @@ void main() {
     );
 
     final auto = c.read(plAutoProvider.notifier);
-    auto.setIds([pl.id]);
+    lib.setAutoRefresh([pl.id], true);
     final result = await auto.runSweep(silent: true);
 
     expect(result.failed, 1);
@@ -202,20 +202,49 @@ void main() {
     expect(c.read(plAutoProvider).lastRun, 0);
   });
 
-  test('настройки расписания переживают перезапуск', () {
+  test('расписание, отметки и итоги переживают перезапуск', () async {
     final store = JsonStore.memory();
-    final first = _container(_FakeSoundCloud(const {}), store);
+    final first = _container(
+      _FakeSoundCloud({
+        'sc:set:1': [_track('sc:1')],
+      }),
+      store,
+    );
+    final lib = first.read(libraryProvider.notifier);
+    final pl = lib.createPlaylist('Первый', source: _src('sc:set:1'));
+    lib.setAutoRefresh([pl.id], true);
     first.read(plAutoProvider.notifier)
       ..setEnabled(true)
       ..setEveryMin(720)
-      ..setOnStart(false)
-      ..setIds(['pl_1']);
+      ..setOnStart(false);
+    await first.read(plAutoProvider.notifier).runSweep(silent: true);
 
     final second = _container(_FakeSoundCloud(const {}), store);
     final state = second.read(plAutoProvider);
     expect(state.enabled, isTrue);
     expect(state.everyMin, 720);
     expect(state.onStart, isFalse);
-    expect(state.ids, ['pl_1']);
+    // Отметка — на самом плейлисте, итоги и время прохода — в kv базы.
+    expect(second.read(libraryProvider).playlists.single.autoRefresh, isTrue);
+    expect(state.runs[pl.id]?.added, 1);
+    expect(state.lastRun, greaterThan(0));
+  });
+
+  test('итоги удалённого плейлиста забываются', () async {
+    final store = JsonStore.memory();
+    final first = _container(
+      _FakeSoundCloud({
+        'sc:set:1': [_track('sc:1')],
+      }),
+      store,
+    );
+    final lib = first.read(libraryProvider.notifier);
+    final pl = lib.createPlaylist('Первый', source: _src('sc:set:1'));
+    lib.setAutoRefresh([pl.id], true);
+    await first.read(plAutoProvider.notifier).runSweep(silent: true);
+    lib.deletePlaylist(pl.id);
+
+    final second = _container(_FakeSoundCloud(const {}), store);
+    expect(second.read(plAutoProvider).runs, isEmpty);
   });
 }

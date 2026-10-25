@@ -208,12 +208,7 @@ class PlaylistsSection extends ConsumerWidget {
     // и закреплённые сверху. Фильтр чипов сюда не относится.
     final playlists = ref
         .watch(libOrderProvider)
-        .arrange(
-          ref.watch(libraryProvider).playlists,
-          key: (p) => libKeyOfPlaylist(p.id),
-          name: (p) => p.name,
-          rank: (_) => kLibRankPlaylist,
-        );
+        .arrangePlaylists(ref.watch(libraryProvider).playlists);
     if (playlists.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

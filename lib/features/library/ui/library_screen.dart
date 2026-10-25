@@ -14,8 +14,9 @@
 /// Вид системных плиток тоже десктопный — плоский тинт и цветная иконка
 /// (`--sys-*-tint` / `--sys-*-ico`), а не заливка в полный цвет.
 ///
-/// Порядок плиток — десктопный `unifiedOrderStore`: четыре режима сортировки,
-/// закреплённые сверху, а в режиме «По умолчанию» плитки таскаются пальцем.
+/// Порядок плиток: место и закрепление — в строках базы, как на ПК; четыре
+/// режима сортировки, закреплённые сверху, а в режиме «По умолчанию» плитки
+/// таскаются пальцем.
 /// Долгий тап при этом делит работу: отпустил на месте — меню, потянул —
 /// перестановка (см. `_DragCell`).
 library;
@@ -51,7 +52,7 @@ class LibraryScreen extends ConsumerWidget {
   void _move(WidgetRef ref, List<_Entry> entries, int from, int to) {
     final keys = entries.map((e) => e.key).toList();
     keys.insert(to, keys.removeAt(from));
-    ref.read(libOrderProvider.notifier).setOrder(keys);
+    ref.read(libraryProvider.notifier).reorderCards(keys);
   }
 
   @override
@@ -70,9 +71,10 @@ class LibraryScreen extends ConsumerWidget {
         if (showPlaylists) ...lib.playlists.map(_Entry.playlist),
         if (showArtists) ...lib.follows.map(_Entry.artist),
       ],
-      key: (e) => e.key,
       name: (e) => e.name,
       rank: (e) => e.rank,
+      sidePos: (e) => e.sidePos,
+      pinned: (e) => e.pinned,
     );
 
     // Таскать плитки можно только там, где порядок и правда пользовательский:
@@ -127,7 +129,7 @@ class LibraryScreen extends ConsumerWidget {
                             ),
                         delegate: SliverChildBuilderDelegate((context, i) {
                           final entry = entries[i];
-                          final pinned = order.isPinned(entry.key);
+                          final pinned = entry.pinned;
                           final playlist = entry.playlist;
                           final tile = playlist != null
                               ? _SetTile(
@@ -147,8 +149,7 @@ class LibraryScreen extends ConsumerWidget {
                             // Закреплённые живут отдельной группой наверху — как
                             // `getGroupRank` на ПК: перемешать их с остальными значило
                             // бы уронить плитку туда, откуда её тут же вынесет вверх.
-                            accepts: (from) =>
-                                order.isPinned(entries[from].key) == pinned,
+                            accepts: (from) => entries[from].pinned == pinned,
                             onMove: (from, to) => _move(ref, entries, from, to),
                             onMenu: () => playlist != null
                                 ? showPlaylistMenu(
@@ -270,19 +271,25 @@ class _Entry {
     : follow = null,
       key = libKeyOfPlaylist(playlist.id),
       name = playlist.name,
-      rank = kLibRankPlaylist;
+      rank = kLibRankPlaylist,
+      sidePos = playlist.sidePos,
+      pinned = playlist.pinned;
 
   _Entry.artist(FollowedArtist this.follow)
     : playlist = null,
       key = libKeyOfArtist(follow.artist.id),
       name = follow.artist.name,
-      rank = kLibRankArtist;
+      rank = kLibRankArtist,
+      sidePos = follow.sidePos,
+      pinned = follow.pinned;
 
   final UserPlaylist? playlist;
   final FollowedArtist? follow;
   final String key;
   final String name;
   final int rank;
+  final int sidePos;
+  final bool pinned;
 }
 
 /// Отступы сетки — по ним же считается ширина плитки для «летящей» копии.
@@ -664,8 +671,7 @@ Future<void> _showArtistMenu(
   FollowedArtist followed,
 ) {
   final artist = followed.artist;
-  final key = libKeyOfArtist(artist.id);
-  final pinned = ref.read(libOrderProvider).isPinned(key);
+  final pinned = followed.pinned;
   final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l;
 
@@ -683,7 +689,9 @@ Future<void> _showArtistMenu(
         SheetAction(
           icon: SolarIconsOutline.pin,
           label: pinned ? context.l.commonUnpin : context.l.commonPin,
-          onTap: () => ref.read(libOrderProvider.notifier).togglePin(key),
+          onTap: () => ref
+              .read(libraryProvider.notifier)
+              .setPinned(libKeyOfArtist(artist.id), !pinned),
         ),
       ],
       [

@@ -20,6 +20,7 @@ import '../../core/store/library_store.dart';
 import '../../core/l10n/l10n.dart';
 import '../../shared/ui/bloom_toast.dart';
 import 'import_url.dart';
+import 'pl_auto_store.dart';
 
 /// Обновить состав плейлиста из всех его [UserPlaylist.sources].
 ///
@@ -67,6 +68,7 @@ Future<void> refreshOnePlaylist(
     ref.read(libraryProvider.notifier),
     playlist,
   );
+  ref.read(plAutoProvider.notifier).record(playlist.id, added);
   if (added == null) {
     toast.finish(l.rpNoAnswer, kind: ToastKind.warn);
     return;
