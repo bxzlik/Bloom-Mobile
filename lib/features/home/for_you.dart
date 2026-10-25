@@ -21,7 +21,7 @@ import '../../core/store/library_store.dart';
 import '../../core/store/play_stats.dart';
 import '../../shared/util/track_dedup.dart';
 import '../wave/wave_store.dart';
-import '../wave/wave_types.dart' show normalizeArtist;
+import '../../shared/util/taste.dart' show artistKey;
 import 'daily_showcase.dart';
 
 /// Окно «текущего вкуса»: вкус двухлетней давности рекомендациям только мешает.
@@ -182,7 +182,7 @@ Future<List<Track>> buildForYou(RecsInput input) async {
       if (i >= batch.length) continue;
       final t = batch[i];
       if (known.contains(t.id) || input.disliked.contains(t.id)) continue;
-      final artist = normalizeArtist(t.artist);
+      final artist = artistKey(t.artist);
       final n = perArtist[artist] ?? 0;
       if (n >= kRecsPerArtistMax) continue;
       // Последней — самая дорогая проверка, чтобы не гонять её на отсеянных.

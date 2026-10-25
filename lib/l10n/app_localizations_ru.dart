@@ -2765,31 +2765,21 @@ class AppLocalizationsRu extends AppLocalizations {
   String get waveToastNoSeed => 'Не нашёл трек для волны';
 
   @override
-  String get waveToastScOnly =>
-      'Волна работает для треков SoundCloud и Яндекса';
-
-  @override
   String get waveToastQueueEmpty => 'Очередь пуста';
 
   @override
-  String get waveToastNoScInQueue =>
-      'В очереди нет треков SoundCloud для подбора похожих';
+  String get waveToastNoSeedsInQueue =>
+      'В очереди нет треков площадок, к которым можно подобрать похожие';
 
   @override
   String get waveToastArtistNoSeeds => 'Нет треков этого артиста для волны';
 
   @override
-  String get waveToastNoSimilar => 'SoundCloud не вернул похожих треков';
+  String get waveToastNoSimilar => 'Площадка не вернула похожих треков';
 
   @override
   String get waveToastYmNoAuth =>
       'Не авторизован в Яндекс.Музыке (Настройки → Площадки)';
-
-  @override
-  String get waveToastYmEmpty => 'Волна Яндекса пуста';
-
-  @override
-  String get waveToastYmFailed => 'Не удалось получить волну Яндекса';
 
   @override
   String lfmConnectedAs(String user) {

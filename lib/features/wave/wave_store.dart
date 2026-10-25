@@ -1,16 +1,12 @@
-/// Постоянная память волны: дизлайки, пометки «уже показывали», курсоры
-/// станций, ротация сидов и выбранная площадка.
+/// Постоянная память волны — как у `Wave` и `Taste` ПК.
 ///
-/// Дизлайки и «уже показывали» — таблицы базы `dislikes` и `wave_shown`, как
-/// на ПК (`Taste::setDisliked`, `Wave`): дизлайк знает своё время (список —
-/// новые сверху), снимок трека держит `tracks`. Остальное пока лежит картой
-/// `wave` в bloom.json.
+/// Дизлайки и «уже показывали» — таблицы `dislikes` и `wave_shown`; где
+/// остановилась каждая станция, сдвиг сидов и идущая волна — kv базы под
+/// ключами ПК (`wave.cursors`, `wave.rotation`, `wave.session`). Площадка
+/// «Моей волны» — настройка (на ПК `waveSource`), лежит картой `wave` в
+/// bloom.json.
 ///
 /// Дизлайк ОДИН на все площадки: флага `disliked` у [Track] нет вовсе.
-///
-/// Сеанс волны сюда же и сохраняется: очередь за нас уже сохраняет снимок
-/// «Продолжить» (`resume_store` держит сами треки), а здесь остаётся память
-/// подбора — сиды, что уже играло и кого поднимать.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,28 +17,37 @@ import '../../core/entities/entities.dart';
 import '../../core/store/json_store.dart';
 import '../../core/store/library_store.dart' show libraryProvider;
 import '../../providers/yandex/ym_auth.dart';
+import 'wave_engine.dart' show kWaveShownDays;
 import 'wave_types.dart';
 
 /// Ключ карты волны в bloom.json.
 const String kWaveKey = 'wave';
 
-/// Сколько дней трек, показанный волной, не возвращается в выдачу.
-const int kShownTtlDays = 14;
+const String _kSession = 'wave.session';
+const String _kCursors = 'wave.cursors';
+const String _kRotation = 'wave.rotation';
 
-/// Насколько шагает курсор станции за одну пачку — ровно на её размер.
-const int kStationStep = 20;
+/// Столько станций помнят, где остановились; старые забываются первыми.
+const int kMaxCursors = 300;
 
 const int _kDay = 24 * 3600 * 1000;
 
+/// Площадки, с которых бывает «Моя волна».
+const List<MusicSource> kWaveSources = [
+  MusicSource.soundcloud,
+  MusicSource.ytmusic,
+  MusicSource.yandex,
+];
+
 class WaveState {
   const WaveState({
-    this.source = WaveEngineKind.soundcloud,
+    this.source = MusicSource.soundcloud,
     this.dislikes = const [],
     this.dislikedIds = const {},
   });
 
-  /// Чем набирать «Мою волну»: движком по SoundCloud или станцией Яндекса.
-  final WaveEngineKind source;
+  /// С какой площадки «Моя волна».
+  final MusicSource source;
 
   /// Дизлайкнутые треки, новые сверху.
   final List<Track> dislikes;
@@ -53,7 +58,7 @@ class WaveState {
   bool isDisliked(String trackId) => dislikedIds.contains(trackId);
 
   WaveState copyWith({
-    WaveEngineKind? source,
+    MusicSource? source,
     List<Track>? dislikes,
     Set<String>? dislikedIds,
   }) => WaveState(
@@ -65,62 +70,44 @@ class WaveState {
 
 final waveStoreProvider = NotifierProvider<WaveStore, WaveState>(WaveStore.new);
 
-/// Площадка, которой волна набирается ПРЯМО СЕЙЧАС.
-///
-/// От выбранной отличается одним: вышли из Яндекса — волна не отказывает, а
-/// продолжает работать своим движком по SoundCloud. Сам выбор при этом не
-/// трогаем: вернётся вход — вернётся и станция.
-final effectiveWaveSourceProvider = Provider<WaveEngineKind>((ref) {
+/// Площадка, с которой «Моя волна» идёт ПРЯМО СЕЙЧАС: выбран Яндекс, а входа
+/// нет — волна не отказывает, а идёт с SoundCloud. Сам выбор не трогаем:
+/// вернётся вход — вернётся и станция.
+final effectiveWaveSourceProvider = Provider<MusicSource>((ref) {
   final picked = ref.watch(waveStoreProvider).source;
-  if (picked != WaveEngineKind.yandex) return picked;
-  return ref.watch(ymAuthProvider).authed
-      ? WaveEngineKind.yandex
-      : WaveEngineKind.soundcloud;
+  if (picked != MusicSource.yandex) return picked;
+  return ref.watch(ymAuthProvider).authed ? picked : MusicSource.soundcloud;
 });
 
 class WaveStore extends Notifier<WaveState> {
   JsonStore get _store => ref.read(jsonStoreProvider);
   BloomDb get _db => ref.read(dbProvider);
 
-  /// SC-id сида → смещение в его станции. Переживает конец сеанса: иначе
-  /// каждая новая волна начинала бы с нулевого смещения и предлагала те же
-  /// двадцать треков.
-  final Map<String, int> _cursors = {};
-
-  /// Счётчик «карусели» сидов: каждая новая волна сдвигает выбор, чтобы не
-  /// упираться вечно в одни и те же два трека из топа.
-  int _rotation = 0;
-
-  /// Сохранённый сеанс — его подхватывает «Продолжить», когда снимок сессии
-  /// оказался волновым.
-  WaveSession? _savedSession;
+  /// Ключ сида → `{c: курсор, at: мс}`: новая волна на тех же сидах слышит то,
+  /// что идёт дальше.
+  final Map<String, Map<String, Object?>> _cursors = {};
 
   @override
   WaveState build() {
-    final raw = _store.readMap(kWaveKey);
-
-    _rotation = (raw['rotation'] as num?)?.toInt() ?? 0;
-    final cursors = raw['cursors'];
-    if (cursors is Map) {
-      cursors.forEach((k, v) {
-        if (k is String && v is num) _cursors[k] = v.toInt();
-      });
-    }
-    _savedSession = WaveSession.fromJson(raw['session']);
-
-    // Показанное раньше двух недель больше не держит трек — как `Wave` ПК.
+    _cursors.clear();
+    _db.getMap(_kCursors).forEach((k, v) {
+      if (v is Map) _cursors[k] = v.cast<String, Object?>();
+    });
+    // Показанное раньше двух недель больше не держит трек.
     _db.exec('DELETE FROM wave_shown WHERE at < ?', [
-      BloomDb.now() - kShownTtlDays * _kDay,
+      BloomDb.now() - kWaveShownDays * _kDay,
     ]);
     // Смена площадки трека ([LibraryController.replaceTrack]) переносит и
     // дизлайк — список перечитываем вслед за библиотекой.
     ref.listen(libraryProvider, (_, _) => _reloadDislikes());
 
+    final picked = _store.readMap(kWaveKey)['source'];
     final dislikes = _readDislikes();
     return WaveState(
-      source: raw['source'] == WaveEngineKind.yandex.name
-          ? WaveEngineKind.yandex
-          : WaveEngineKind.soundcloud,
+      source: kWaveSources.firstWhere(
+        (s) => s.code == picked,
+        orElse: () => MusicSource.soundcloud,
+      ),
       dislikes: dislikes,
       dislikedIds: {for (final t in dislikes) t.id},
     );
@@ -141,21 +128,12 @@ class WaveStore extends Notifier<WaveState> {
     );
   }
 
-  void _save() {
-    _store.write(kWaveKey, {
-      'source': state.source.name,
-      'rotation': _rotation,
-      'cursors': _cursors,
-      if (_savedSession != null) 'session': _savedSession!.toJson(),
-    });
-  }
-
   // ── Площадка ────────────────────────────────────────────────────────────
 
-  void setSource(WaveEngineKind source) {
-    if (state.source == source) return;
+  void setSource(MusicSource source) {
+    if (state.source == source || !kWaveSources.contains(source)) return;
     state = state.copyWith(source: source);
-    _save();
+    _store.write(kWaveKey, {'source': source.code});
   }
 
   // ── Дизлайки ────────────────────────────────────────────────────────────
@@ -194,7 +172,7 @@ class WaveStore extends Notifier<WaveState> {
 
   // ── «Уже показывали» ────────────────────────────────────────────────────
 
-  /// Отметить, что трек побывал в выдаче волны — пачкой.
+  /// Отметить, что треки побывали в выдаче волны, — пачкой.
   void markShown(Iterable<String> trackIds) {
     final ids = trackIds.toList();
     if (ids.isEmpty) return;
@@ -211,49 +189,51 @@ class WaveStore extends Notifier<WaveState> {
 
   /// Что волна показывала за последние [withinDays] дней — одним запросом на
   /// пачку, а не по запросу на каждого кандидата.
-  Set<String> shownIds({int withinDays = kShownTtlDays}) => {
-    for (final r in _db.select('SELECT track_id FROM wave_shown WHERE at > ?', [
-      BloomDb.now() - withinDays * _kDay,
-    ]))
+  Set<String> shownIds({int withinDays = kWaveShownDays}) => {
+    for (final r in _db.select(
+      'SELECT track_id FROM wave_shown WHERE at >= ?',
+      [BloomDb.now() - withinDays * _kDay],
+    ))
       r['track_id'] as String,
   };
 
   // ── Курсоры станций ─────────────────────────────────────────────────────
 
-  int cursorOf(String scId) => _cursors[scId] ?? 0;
+  String cursorOf(WaveSeed seed) => _cursors[seed.key]?['c'] as String? ?? '';
 
-  Map<String, int> cursorsFor(Iterable<String> scIds) => {
-    for (final id in scIds) id: cursorOf(id),
-  };
-
-  /// Сдвинуть курсор сида на одну пачку вперёд.
-  void advanceCursor(String scId) {
-    _cursors[scId] = cursorOf(scId) + kStationStep;
-    _save();
+  /// Запомнить, где станции продолжать, — пачкой за один опрос сидов.
+  void saveCursors(Map<WaveSeed, String> next) {
+    if (next.isEmpty) return;
+    final now = BloomDb.now();
+    next.forEach((seed, c) => _cursors[seed.key] = {'c': c, 'at': now});
+    if (_cursors.length > kMaxCursors) {
+      final byAge = _cursors.entries.toList()
+        ..sort(
+          (a, b) => ((a.value['at'] as num?) ?? 0).compareTo(
+            (b.value['at'] as num?) ?? 0,
+          ),
+        );
+      for (final e in byAge.take(_cursors.length - kMaxCursors)) {
+        _cursors.remove(e.key);
+      }
+    }
+    _db.set(_kCursors, _cursors);
   }
 
-  /// Станция кончилась (пустой ответ на ненулевом смещении) — начинаем её
-  /// сначала, иначе после долгих сеансов волна упёрлась бы в пустоту навсегда.
-  void resetCursor(String scId) {
-    if (_cursors.remove(scId) == null) return;
-    _save();
+  // ── Сдвиг сидов «Моей волны» ────────────────────────────────────────────
+
+  int get rotation => (_db.get(_kRotation, 0) as num?)?.toInt() ?? 0;
+
+  /// Текущий сдвиг, а следующей волне — следующий.
+  int takeRotation() {
+    final r = rotation;
+    _db.set(_kRotation, r + 1);
+    return r;
   }
 
-  // ── Ротация сидов ───────────────────────────────────────────────────────
+  // ── Идущая волна ────────────────────────────────────────────────────────
 
-  int get rotation => _rotation;
+  WaveRun? get savedRun => WaveRun.fromJson(_db.get(_kSession));
 
-  void bumpRotation() {
-    _rotation++;
-    _save();
-  }
-
-  // ── Сеанс ───────────────────────────────────────────────────────────────
-
-  WaveSession? get savedSession => _savedSession;
-
-  void saveSession(WaveSession? session) {
-    _savedSession = session;
-    _save();
-  }
+  void saveRun(WaveRun? run) => _db.set(_kSession, run?.toJson());
 }

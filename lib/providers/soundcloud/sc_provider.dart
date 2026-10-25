@@ -8,7 +8,7 @@ library;
 import '../../core/entities/entities.dart';
 import '../../core/providers/music_provider.dart';
 import 'models.dart';
-import 'sc_sources.dart' show similarTracks;
+import 'sc_sources.dart' show similarTracks, waveRelated, waveStation;
 import 'soundcloud.dart' as sc;
 
 /// Сквозные id — как на ПК: `sc:123`, `sc:artist:123`, `sc:set:123`. Альбом и
@@ -234,6 +234,43 @@ class SoundCloudProvider extends MusicProvider {
   }
 
   @override
+  String trackStation(Track track) {
+    final sid = track.source == MusicSource.soundcloud
+        ? scNumericId(track.id)
+        : 0;
+    return sid > 0 ? 'track:$sid' : '';
+  }
+
+  /// Станция трека со смещением и related вперемешку: верх обоих списков
+  /// одинаково хорош. Курсор — следующее смещение станции, и двигается он
+  /// только за тем, что пришло; кончившаяся станция начинается сначала.
+  /// Related не листается — каждый раз тот же список, услышанное отсеет волна.
+  @override
+  Future<StationPage> station(String station, String cursor) async {
+    final sid = station.startsWith('track:') ? station.substring(6) : '';
+    if (int.tryParse(sid) == null) return const StationPage();
+    var offset = int.tryParse(cursor) ?? 0;
+    final related = waveRelated(sid);
+    var run = await waveStation(sid, offset: offset);
+    if (run.isEmpty && offset > 0) {
+      offset = 0;
+      run = await waveStation(sid);
+    }
+    final own = _playable(run);
+    final like = _playable(await related);
+    final tracks = <Track>[
+      for (var i = 0; i < own.length || i < like.length; i++) ...[
+        if (i < own.length) own[i],
+        if (i < like.length) like[i],
+      ],
+    ];
+    return StationPage(
+      tracks: tracks,
+      cursor: run.isEmpty ? '' : '${offset + 20}',
+    );
+  }
+
+  @override
   Future<ArtistPageData?> getArtist(String id) async {
     final userId = '${scNumericId(id)}';
     // Всё параллельно: страница артиста собирается из пяти разных эндпоинтов,
@@ -341,3 +378,14 @@ class SoundCloudProvider extends MusicProvider {
   Future<Map<String, dynamic>?> _media(Track track) async =>
       track.sourceData ?? (await resolveTrackById(track.id))?.sourceData;
 }
+
+/// Что заиграет целиком: превью Go+ (`SNIP`) и закрытые (`BLOCK`) только
+/// пролистывались бы — как `playable` ПК.
+List<Track> _playable(List<ScRawTrack> raw) => [
+  for (final t in raw)
+    if (t.policy == null ||
+        t.policy!.isEmpty ||
+        t.policy == 'ALLOW' ||
+        t.policy == 'MONETIZE')
+      trackFromSc(t),
+];

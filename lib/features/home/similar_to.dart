@@ -22,7 +22,7 @@ import '../../core/entities/entities.dart';
 import '../../core/providers/artist_lookup.dart';
 import '../../core/providers/music_provider.dart';
 import '../../shared/util/artists.dart';
-import '../wave/wave_types.dart' show normalizeArtist;
+import '../../shared/util/taste.dart' show artistKey;
 import 'daily_showcase.dart';
 import 'for_you.dart';
 
@@ -240,10 +240,10 @@ List<Track> _pickTracks(
     if (excludeArtist != null &&
         parseArtists(
           t.artist,
-        ).any((n) => normalizeArtist(n) == excludeArtist)) {
+        ).any((n) => artistKey(n) == excludeArtist)) {
       continue;
     }
-    final artist = normalizeArtist(t.artist);
+    final artist = artistKey(t.artist);
     final n = perArtist[artist] ?? 0;
     if (n >= kRecsPerArtistMax) continue;
     if (!dup.accept(t)) continue;
@@ -260,7 +260,7 @@ List<Artist> _pickArtists(List<Artist> list, String excludeKey) {
   final seen = <String>{excludeKey};
   final uniq = [
     for (final a in list)
-      if (a.name.isNotEmpty && seen.add(normalizeArtist(a.name))) a,
+      if (a.name.isNotEmpty && seen.add(artistKey(a.name))) a,
   ];
   final withAvatar = [
     for (final a in uniq)
@@ -321,7 +321,7 @@ Future<SimilarTo?> _fromTrack(
         ? const <Artist>[]
         : _pickArtists(
             (await _artistPage(input, artist))?.similarArtists ?? const [],
-            normalizeArtist(first),
+            artistKey(first),
           );
     final items = mixSimilar(tracks, artists);
     if (items.length < _minItems) continue;
@@ -363,7 +363,7 @@ List<_ArtistCand> _topArtists(RecsInput input) {
     if (m == null) continue;
     for (final name in parseArtists(m.artist)) {
       if (!_isRealArtist(name)) continue;
-      final key = normalizeArtist(name);
+      final key = artistKey(name);
       final cand = map.putIfAbsent(key, () => _ArtistCand(name, key, m.cover));
       cand.plays += r.plays;
       cand.ids.add(r.id);

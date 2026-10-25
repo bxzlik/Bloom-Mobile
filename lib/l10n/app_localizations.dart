@@ -4832,23 +4832,17 @@ abstract class AppLocalizations {
   /// **'Couldn’t find a track for the wave'**
   String get waveToastNoSeed;
 
-  /// desktop: wave.toast.scOnly, extended: the phone has the Yandex station too
-  ///
-  /// In en, this message translates to:
-  /// **'The wave only works for SoundCloud and Yandex tracks'**
-  String get waveToastScOnly;
-
   /// desktop: wave.toast.queueEmpty
   ///
   /// In en, this message translates to:
   /// **'Queue is empty'**
   String get waveToastQueueEmpty;
 
-  /// desktop: wave.toast.noScInQueue
+  /// desktop: wave.toast.noSeedsInQueue
   ///
   /// In en, this message translates to:
-  /// **'No SoundCloud tracks in the queue to find similar ones'**
-  String get waveToastNoScInQueue;
+  /// **'No platform tracks in the queue to find similar ones'**
+  String get waveToastNoSeedsInQueue;
 
   /// desktop: wave.toast.artistNoSeeds
   ///
@@ -4859,7 +4853,7 @@ abstract class AppLocalizations {
   /// desktop: wave.toast.noSimilar
   ///
   /// In en, this message translates to:
-  /// **'SoundCloud returned no similar tracks'**
+  /// **'The platform returned no similar tracks'**
   String get waveToastNoSimilar;
 
   /// desktop: wave.toast.ymNoAuth
@@ -4867,18 +4861,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not signed in to Yandex Music (Settings → Platforms)'**
   String get waveToastYmNoAuth;
-
-  /// desktop: wave.toast.ymEmpty
-  ///
-  /// In en, this message translates to:
-  /// **'The Yandex wave is empty'**
-  String get waveToastYmEmpty;
-
-  /// desktop: wave.toast.ymError, without the raw API message
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn’t reach the Yandex wave'**
-  String get waveToastYmFailed;
 
   /// desktop: settings.lastfm.connectedAs, without the ✓ — the page shows it in green
   ///

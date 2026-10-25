@@ -1,152 +1,139 @@
-/// Общие типы «Волны» — порт `src/wave/types.ts` из десктопного Bloom.
-///
-/// Отличие от десктопа: `Candidate` несёт готовый [Track], а не сырой ответ
-/// SoundCloud. Реестра гостевых треков, живущего в памяти процесса, у нас нет
-/// вовсе — очередь плеера хранит сами треки (см. `PlaybackState.queue`),
-/// поэтому кандидату незачем таскать сырьё до момента постановки в очередь.
-///
-/// Жанры при этом лежат ОТДЕЛЬНО от трека: у SoundCloud вкусовой сигнал даёт не
-/// только поле `genre`, но и теги, а класть теги в `Track.genres` нельзя — их
-/// увидел бы весь остальной интерфейс.
+/// Общие типы «Волны» — как в `Wave` ПК.
 library;
 
 import '../../core/entities/entities.dart';
 
 /// Чем набирается волна.
 enum WaveMode {
-  /// «Моя волна»: несколько сидов из библиотеки + подмешивание знакомых.
+  /// «Моя волна»: сиды из библиотеки (самое слушаемое и лайки) + свои треки.
   personal,
 
   /// Волна по одному треку.
   track,
 
-  /// «Похожие на очередь»: сиды из текущей очереди, без подмешивания.
+  /// «Похожие на очередь»: сиды из текущей очереди.
   queue,
 
-  /// Волна по артисту: сиды из его треков (SoundCloud) либо нативная станция.
+  /// Волна по артисту: сиды из его треков либо станция Яндекса.
   artist,
 }
 
-/// Откуда пришёл кандидат — влияет и на фильтры, и на скоринг.
-enum WaveOrigin {
-  /// `stations/track-stations:<id>` — основная выдача площадки.
-  station,
+/// Откуда волна берёт треки: радио [station] площадки [provider] (код базы:
+/// `sc`, `ytm`, `ym`).
+class WaveSeed {
+  const WaveSeed(this.provider, this.station);
 
-  /// `tracks/<id>/related` — вкусовые рекомендации к сиду.
-  related,
+  final String provider;
+  final String station;
 
-  /// Знакомый трек из библиотеки, подмешанный к «Моей волне».
-  library,
+  /// Ключ курсора — как у ПК.
+  String get key => '$provider|$station';
+
+  @override
+  bool operator ==(Object other) =>
+      other is WaveSeed &&
+      other.provider == provider &&
+      other.station == station;
+
+  @override
+  int get hashCode => Object.hash(provider, station);
 }
 
-class WaveCandidate {
-  const WaveCandidate({
-    required this.track,
-    required this.origin,
-    required this.sourceRank,
-    required this.artistKey,
-    this.genres = const [],
-  });
-
-  final Track track;
-  final WaveOrigin origin;
-
-  /// Позиция в ответе площадки: чем меньше, тем выше её собственная оценка.
-  final int sourceRank;
-
-  /// Имя артиста, приведённое к нижнему регистру — ключ антиповторов.
-  final String artistKey;
-
-  /// Жанры и теги в нижнем регистре.
-  final List<String> genres;
-
-  String get id => track.id;
-
-  bool get isLibrary => origin == WaveOrigin.library;
-}
-
-/// Память одного сеанса волны: что уже играло, кого поднимать в выдаче и
-/// докуда пролистаны станции сидов.
-class WaveSession {
-  WaveSession({
+/// Идущая волна; переживает перезапуск в kv `wave.session` того же вида, что
+/// на ПК.
+class WaveRun {
+  WaveRun({
     required this.mode,
     required this.seeds,
-    required this.startedAt,
-    List<String>? playedIds,
-    Map<String, double>? artistBonus,
-  }) : playedIds = playedIds ?? [],
-       artistBonus = artistBonus ?? {};
+    this.about = '',
+    this.native = false,
+    List<String>? played,
+    Map<String, int>? bonus,
+  }) : played = played ?? [],
+       bonus = bonus ?? {};
 
   final WaveMode mode;
 
-  /// Сквозные id треков-сидов.
-  final List<String> seeds;
-  final int startedAt;
+  /// С чего начата: `artist:<ключ>`, `track:<id>`; пусто у «Моей волны» и
+  /// очереди.
+  final String about;
 
-  /// Что уже сыграло в этом сеансе — антиповторы.
-  final List<String> playedIds;
+  /// Одна станция, которая учится сама (Яндекс): её порядок не трогаем.
+  final bool native;
 
-  /// Насколько поднимать артиста в выдаче: копится дослушиваниями и падает на
-  /// скипах.
-  final Map<String, double> artistBonus;
+  List<WaveSeed> seeds;
+
+  /// Услышанное в этой волне, старое первым.
+  final List<String> played;
+
+  /// Ключ артиста → дослушали (+3) и пролистнули (−2) в этой волне.
+  final Map<String, int> bonus;
 
   Map<String, dynamic> toJson() => {
     'mode': mode.name,
-    'seeds': seeds,
-    'startedAt': startedAt,
-    'playedIds': playedIds,
-    'artistBonus': artistBonus,
+    'about': about,
+    'native': native,
+    'seeds': [
+      for (final s in seeds) {'p': s.provider, 's': s.station},
+    ],
+    'played': played,
+    'bonus': bonus,
   };
 
-  static WaveSession? fromJson(Object? json) {
+  static WaveRun? fromJson(Object? json) {
     if (json is! Map) return null;
     final mode = WaveMode.values
         .where((m) => m.name == json['mode'])
         .firstOrNull;
-    if (mode == null) return null;
-    return WaveSession(
+    final seeds = [
+      for (final s in (json['seeds'] as List?) ?? const [])
+        if (s is Map && s['p'] is String && s['s'] is String)
+          WaveSeed(s['p'] as String, s['s'] as String),
+    ];
+    if (mode == null || seeds.isEmpty) return null;
+    final bonus = json['bonus'];
+    return WaveRun(
       mode: mode,
-      seeds: (json['seeds'] as List?)?.whereType<String>().toList() ?? const [],
-      startedAt: (json['startedAt'] as num?)?.toInt() ?? 0,
-      playedIds:
-          (json['playedIds'] as List?)?.whereType<String>().toList() ?? [],
-      artistBonus: _numMap(json['artistBonus'], (v) => v.toDouble()),
+      seeds: seeds,
+      about: json['about'] as String? ?? '',
+      native: json['native'] == true,
+      played: (json['played'] as List?)?.whereType<String>().toList(),
+      bonus: bonus is Map
+          ? {
+              for (final e in bonus.entries)
+                if (e.key is String && e.value is num)
+                  e.key as String: (e.value as num).toInt(),
+            }
+          : null,
     );
   }
 }
 
-Map<String, T> _numMap<T extends num>(Object? raw, T Function(num) cast) {
-  if (raw is! Map) return {};
-  return {
-    for (final e in raw.entries)
-      if (e.key is String && e.value is num)
-        e.key as String: cast(e.value as num),
-  };
+/// Кандидат в пачку.
+class WaveCandidate {
+  WaveCandidate(this.track, this.rank, this.artists, {this.library = false});
+
+  final Track track;
+
+  /// Место в своей станции: 0 — верх … 20.
+  final double rank;
+
+  /// Ключи артистов трека (`artistKeys`).
+  final Set<String> artists;
+
+  /// Свой трек из библиотеки, подмешанный в «Мою волну».
+  final bool library;
+
+  double score = 0;
+
+  String get id => track.id;
 }
 
-/// Чем волна кормится с площадки: своим движком по SoundCloud или нативной
-/// станцией Яндекса.
-enum WaveEngineKind { soundcloud, yandex }
-
-/// Приговор прослушиванию — порт `classifyCompletion` из `db/history.ts`.
-enum WaveVerdict { skip, finish, neutral }
-
-/// Ниже стольких секунд И ниже [_kSkipRatio] доли — это скип, а не «послушал».
+/// Ниже стольких секунд И ниже доли 0,3 — пролистнули; от 0,85 — дослушали.
 /// Оба порога вместе: у трека на десять минут первая минута — ещё не оценка.
-const double _kSkipPlayedSec = 20;
-const double _kSkipRatio = 0.3;
-const double _kFinishRatio = 0.85;
-
-WaveVerdict classifyCompletion(Duration played, Duration total) {
-  if (total <= Duration.zero) return WaveVerdict.neutral;
-  final playedSec = played.inMilliseconds / 1000;
+int completionStep(Duration played, Duration total) {
+  if (total <= Duration.zero) return 0;
   final ratio = played.inMilliseconds / total.inMilliseconds;
-  if (playedSec < _kSkipPlayedSec && ratio < _kSkipRatio) {
-    return WaveVerdict.skip;
-  }
-  if (ratio >= _kFinishRatio) return WaveVerdict.finish;
-  return WaveVerdict.neutral;
+  if (played.inMilliseconds < 20000 && ratio < 0.3) return -2;
+  return ratio >= 0.85 ? 3 : 0;
 }
-
-/// Имя артиста как ключ сравнения — порт `normalizeArtist`.
-String normalizeArtist(String? name) => (name ?? '').trim().toLowerCase();

@@ -2732,32 +2732,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get waveToastNoSeed => 'Couldn’t find a track for the wave';
 
   @override
-  String get waveToastScOnly =>
-      'The wave only works for SoundCloud and Yandex tracks';
-
-  @override
   String get waveToastQueueEmpty => 'Queue is empty';
 
   @override
-  String get waveToastNoScInQueue =>
-      'No SoundCloud tracks in the queue to find similar ones';
+  String get waveToastNoSeedsInQueue =>
+      'No platform tracks in the queue to find similar ones';
 
   @override
   String get waveToastArtistNoSeeds =>
       'No tracks of this artist to build a wave from';
 
   @override
-  String get waveToastNoSimilar => 'SoundCloud returned no similar tracks';
+  String get waveToastNoSimilar => 'The platform returned no similar tracks';
 
   @override
   String get waveToastYmNoAuth =>
       'Not signed in to Yandex Music (Settings → Platforms)';
-
-  @override
-  String get waveToastYmEmpty => 'The Yandex wave is empty';
-
-  @override
-  String get waveToastYmFailed => 'Couldn’t reach the Yandex wave';
 
   @override
   String lfmConnectedAs(String user) {

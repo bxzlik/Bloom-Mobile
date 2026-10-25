@@ -23,7 +23,6 @@ import '../../../features/customization/ui/app_background.dart';
 import '../../../features/player/play_source.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../features/wave/wave_actions.dart';
-import '../../../features/wave/wave_seeds.dart' show pickQueueSeeds;
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
@@ -157,7 +156,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
   }
 
   /// Из чего волна берёт сиды: популярные и загруженные треки вместе. Больше
-  /// охват — точнее подбор; лишнее отсеет сам [pickQueueSeeds].
+  /// охват — точнее подбор; лишнее отсеет сам `queueSeeds`.
   List<Track> get _waveSeeds => [...?_data?.topTracks, ..._tracks];
 
   void _play() {
@@ -384,9 +383,9 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
             label: context.l.commonShuffle,
             onTap: queue.isEmpty ? null : _shuffle,
           ),
-          // Волна по артисту: у Яндекса это его нативная станция, у SoundCloud
-          // — подбор по тем трекам, что страница уже загрузила.
-          if (canStartWaveFromArtist(artist, _waveSeeds))
+          // Волна по артисту: у Яндекса это его станция, у остальных — подбор
+          // по тем трекам, что страница уже загрузила.
+          if (canStartWaveFromArtist(ref, artist, _waveSeeds))
             SheetAction(
               icon: SolarIconsOutline.playStream,
               label: context.l.waveFromArtist,

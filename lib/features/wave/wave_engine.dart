@@ -1,191 +1,223 @@
-/// Сборка пачки треков — порт `src/wave/engine.ts` (часть, отвечающая за
-/// подбор; постановка в очередь живёт в `wave_controller`).
+/// Пачка волны из того, что отдали станции, — `Wave::pick` ПК.
 ///
-/// Порядок ровно десктопный: кандидаты от каждого сида → подмешивание знакомых
-/// (только «Моя волна») → фильтры → скоринг → чередование → разрядка по
-/// артистам и жанрам → отсев перезаливов → срез до размера пачки.
+/// Чистая функция над снимком ([WavePick]): она решает, что человек услышит,
+/// и проверять её надо списком, а не на слух. Сеть и постановка в очередь —
+/// в `wave_controller`.
 library;
 
 import 'dart:math';
 
 import '../../core/entities/entities.dart';
-import '../../providers/soundcloud/models.dart';
+import '../../shared/util/taste.dart';
 import '../../shared/util/track_dedup.dart';
-import 'wave_scoring.dart';
-import 'wave_seeds.dart';
-import '../../providers/soundcloud/sc_sources.dart';
-import 'wave_store.dart';
 import 'wave_types.dart';
 
 /// Сколько треков в пачке.
 const int kWaveBatch = 20;
 
-/// Осталось столько треков впереди — пора догружать.
-const int kWaveRefillThreshold = 5;
+/// Осталось столько впереди — пора просить следующую (у станции Яндекса — 4).
+const int kWaveRefillAt = 5;
+const int kWaveRefillAtNative = 4;
 
-/// Доля знакомого из библиотеки в «Моей волне».
-const double _kFamiliarRatio = 0.2;
+/// Не больше стольких треков одного артиста в пачке.
+const int kWaveMaxPerArtist = 2;
 
-/// За сколько дней прослушанное считается «недавним» и в выдачу не идёт.
-const int _kDropRecentDays = 7;
+/// Доля своих треков в «Моей волне».
+const double kWaveFamiliarShare = 0.2;
 
-class WaveEngine {
-  WaveEngine({
-    required this.view,
-    required this.store,
-    required this.queueIds,
-    this.queueTracks = const [],
+/// Слушали за столько дней — снова не предлагаем; показывали за столько — тоже.
+const int kWaveRecentDays = 7;
+const int kWaveShownDays = 14;
+
+/// Снимок, по которому собирается пачка.
+class WavePick {
+  WavePick({
+    required this.run,
+    required this.queue,
+    required this.library,
+    required this.inLibrary,
+    required this.isFav,
+    required this.isDisliked,
+    required this.playedWithin,
+    required this.shown,
     this.currentId,
     Random? random,
-  }) : _rnd = random ?? Random();
+  }) : random = random ?? Random();
 
-  final WaveLibrary view;
-  final WaveStore store;
+  final WaveRun? run;
 
-  /// Что уже стоит в очереди — дублей не подбираем.
-  final Set<String> queueIds;
-
-  /// Сами треки очереди — для отсева перезаливов по содержимому: тот же трек
-  /// другого загрузчика id не совпадёт, а в очереди он уже есть (пришёл с
-  /// прошлой пачкой). Пусто при старте волны — очередь тогда заменяется.
-  final List<Track> queueTracks;
+  /// Очередь плеера: что в ней, второй раз не встаёт (ни тем же id, ни
+  /// перезаливом).
+  final List<Track> queue;
   final String? currentId;
-  final Random _rnd;
 
-  /// Собрать пачку. Пустой список — площадка ничего не дала (нет сети, у сидов
-  /// нет похожих); вызывающий сам решает, что сказать человеку.
-  Future<List<WaveCandidate>> buildBatch({
-    required WaveMode mode,
-    required List<String> seeds,
-    required WaveSession session,
-    int takeCount = kWaveBatch,
-  }) async {
-    final fresh = await _fetchFromSeeds(seeds);
+  /// Треки библиотеки — из них «Моя волна» подмешивает свои.
+  final List<Track> library;
+  final bool Function(String id) inLibrary;
+  final bool Function(String id) isFav;
+  final bool Function(String id) isDisliked;
 
-    var pool = fresh;
-    if (mode == WaveMode.personal) {
-      final exclude = {...session.playedIds, ...queueIds};
-      final wanted = max(1, (takeCount * _kFamiliarRatio).round());
-      // Берём с запасом: половину съедят фильтры.
-      final familiar = pickFamiliarPool(view, exclude, limit: wanted * 2);
-      pool = [
-        ...fresh,
-        for (var i = 0; i < familiar.length; i++)
-          candidateFromLibrary(familiar[i], i),
-      ];
+  /// Звучал ли трек за последние N дней.
+  final bool Function(String id, int days) playedWithin;
+
+  /// Что волна показывала за [kWaveShownDays].
+  final Set<String> shown;
+  final Random random;
+}
+
+/// Пачка из порций станций (по порции на сид). Станция, которая учится сама,
+/// сохраняет свой порядок — уходит только то, что уже в очереди или с
+/// дизлайком. У остальных: ничего слышанного за неделю, показанного за две или
+/// уже лежащего в библиотеке (свои приходят только долей «Моей волны»); дальше
+/// по месту в станции, лайкам и тому, чему волна научилась; артист — не больше
+/// двух раз и никогда дважды подряд.
+List<Track> pickBatch(
+  List<List<Track>> pages,
+  WavePick ctx, {
+  int take = kWaveBatch,
+}) {
+  final queued = {for (final t in ctx.queue) t.id, ?ctx.currentId};
+
+  final cands = <WaveCandidate>[
+    for (final page in pages)
+      for (var i = 0; i < page.length; i++)
+        WaveCandidate(
+          page[i],
+          20.0 * i / max(1, page.length),
+          artistKeys(page[i]),
+        ),
+  ];
+
+  final dup = DupGuard();
+  for (final t in ctx.queue) {
+    dup.add(t);
+  }
+  final out = <Track>[];
+  void fill(Iterable<WaveCandidate> list) {
+    for (final c in list) {
+      if (out.length >= take) break;
+      if (dup.accept(c.track)) out.add(c.track);
     }
-
-    final ctx = WaveFilterCtx(
-      seedGenres: _seedGenres(seeds),
-      session: session,
-      queueIds: queueIds,
-      disliked: view.disliked,
-      inLibrary: view.lib.inLib.keys.toSet(),
-      favIds: view.lib.favs.keys.toSet(),
-      wasShown: store.shownIds().contains,
-      recentlyPlayed: view.recentlyPlayed,
-      currentId: currentId,
-      dropRecentDays: _kDropRecentDays,
-    );
-
-    var filtered = [
-      for (final c in pool)
-        if (passesFilters(c, ctx)) c,
-    ];
-    // Строгий проход вырезал всё — пробуем ослабленный, см. [WaveFilterCtx].
-    if (filtered.isEmpty) {
-      final relaxed = ctx.relax();
-      filtered = [
-        for (final c in pool)
-          if (passesFilters(c, relaxed)) c,
-      ];
-    }
-    if (filtered.isEmpty) return const [];
-
-    // Скор считаем один раз на кандидата: в нём есть случайная добавка, и
-    // пересчёт внутри сравнения дал бы несогласованный порядок.
-    final scored = [for (final c in filtered) (c, scoreCandidate(c, ctx, _rnd))]
-      ..sort((a, b) => b.$2.compareTo(a.$2));
-    var ordered = [for (final x in scored) x.$1];
-
-    if (mode == WaveMode.personal) ordered = interleaveFamiliar(ordered);
-    // Перезаливы режем ДО среза: иначе пачка ушла бы неполной — дубли выпали бы
-    // уже после нарезки.
-    return dedupCandidates(
-      antiClumpByArtist(ordered),
-      already: queueTracks,
-    ).take(takeCount).toList();
   }
 
-  /// Опросить станцию и похожие у каждого сида. Курсор станции двигаем только
-  /// у тех сидов, что реально что-то отдали, — иначе он «уплывает» и следующая
-  /// попытка тянет из заведомо пустого диапазона.
-  Future<List<WaveCandidate>> _fetchFromSeeds(List<String> seeds) async {
-    final out = <WaveCandidate>[];
-    final seen = <String>{};
-
-    void take(List<ScRawTrack> raws, WaveOrigin origin) {
-      for (var i = 0; i < raws.length; i++) {
-        final c = candidateFromSc(raws[i], origin, i);
-        if (c == null || !seen.add(c.id)) continue;
-        out.add(c);
-      }
-    }
-
-    for (final seedId in seeds) {
-      final scId = scIdOf(view.byId(seedId));
-      if (scId == null) continue;
-
-      final offset = store.cursorOf(scId);
-      var station = await waveStation(scId, offset: offset);
-      // Станция кончилась — начинаем её сначала, чтобы человек не застревал в
-      // волне навсегда после долгих сеансов.
-      if (station.isEmpty && offset > 0) {
-        store.resetCursor(scId);
-        station = await waveStation(scId);
-      }
-      if (station.isNotEmpty) store.advanceCursor(scId);
-      take(station, WaveOrigin.station);
-
-      // Похожие дёргаем всегда: они не пагинируются, но для волны по одному
-      // треку это главный вкусовой источник — пропустив его на ненулевом
-      // смещении, мы потеряли бы половину выдачи.
-      take(await waveRelated(scId), WaveOrigin.related);
-    }
+  final run = ctx.run;
+  if (run != null && run.native) {
+    fill(
+      cands.where((c) => !queued.contains(c.id) && !ctx.isDisliked(c.id)),
+    );
     return out;
   }
 
-  /// Жанровый отпечаток сидов — с ним сверяются кандидаты в скоринге.
-  Set<String> _seedGenres(List<String> seeds) => {
-    for (final id in seeds)
-      for (final g in view.byId(id)?.genres ?? const <String>[])
-        if (g.isNotEmpty) g.toLowerCase(),
-  };
-}
-
-/// Убрать из ранжированного списка повторы одного и того же трека — порт
-/// `dedupCandidates` + сверки в `enqueueBatch` с ПК (3.1).
-///
-/// Дедуп не по id: на SoundCloud один трек часто залит несколькими
-/// пользователями, id у них разные, и в очереди оказывалось по 2-3 одинаковых
-/// трека подряд. Сверяем по содержимому (`shared/util/track_dedup.dart`), и не
-/// только внутри пачки, но и против [already] — очереди: дубль мог прийти с
-/// прошлой пачкой. Порядок сохраняется, выше по рангу — тот, что остаётся.
-List<WaveCandidate> dedupCandidates(
-  List<WaveCandidate> list, {
-  Iterable<Track> already = const [],
-}) {
-  final guard = DupGuard();
-  for (final t in already) {
-    guard.add(t);
+  final personal = run?.mode == WaveMode.personal;
+  final played = {...?run?.played};
+  if (personal) {
+    // Доля своих: не слышанных последние три дня.
+    final lib = [
+      for (final t in ctx.library)
+        if (!queued.contains(t.id) &&
+            !played.contains(t.id) &&
+            !ctx.isDisliked(t.id) &&
+            !ctx.playedWithin(t.id, 3))
+          t,
+    ]..shuffle(ctx.random);
+    final familiar = max(1, (take * kWaveFamiliarShare).round()) * 2;
+    for (var i = 0; i < familiar && i < lib.length; i++) {
+      cands.add(
+        WaveCandidate(lib[i], i.toDouble(), artistKeys(lib[i]), library: true),
+      );
+    }
   }
-  return [
-    for (final c in list)
-      if (guard.accept(c.track)) c,
+
+  bool passes(WaveCandidate c, {required bool relaxed}) {
+    final id = c.id;
+    if (queued.contains(id) || played.contains(id) || ctx.isDisliked(id)) {
+      return false;
+    }
+    if (!c.library && ctx.inLibrary(id)) return false;
+    return relaxed ||
+        (!ctx.playedWithin(id, kWaveRecentDays) &&
+            (c.library || !ctx.shown.contains(id)));
+  }
+
+  var kept = [
+    for (final c in cands)
+      if (passes(c, relaxed: false)) c,
   ];
+  // Всё слышали или показывали недавно: лучше повтор, чем тишина.
+  if (kept.isEmpty) {
+    kept = [
+      for (final c in cands)
+        if (passes(c, relaxed: true)) c,
+    ];
+  }
+
+  for (final c in kept) {
+    var s = 20 - c.rank;
+    if (ctx.isFav(c.id)) s += 8;
+    if (run != null) {
+      var b = 0;
+      for (final a in c.artists) {
+        b += run.bonus[a] ?? 0;
+      }
+      s += min(b, 12);
+    }
+    if (!c.library) s += 1;
+    c.score = s + ctx.random.nextDouble() * 2;
+  }
+  // Сортировка устойчивая: `List.sort` в Dart — нет.
+  kept = _stableSorted(kept, (a, b) => b.score.compareTo(a.score));
+
+  // «Моя волна»: один свой после каждых четырёх новых.
+  if (personal) {
+    final fresh = [for (final c in kept) if (!c.library) c];
+    final own = [for (final c in kept) if (c.library) c];
+    kept = [];
+    var f = 0, o = 0;
+    for (var step = 0; f < fresh.length || o < own.length; step++) {
+      if ((step % 5 == 4 && o < own.length) || f >= fresh.length) {
+        kept.add(own[o++]);
+      } else {
+        kept.add(fresh[f++]);
+      }
+    }
+  }
+
+  // Те, что сверх потолка, ждут в конце — на случай короткой пачки.
+  final spaced = <WaveCandidate>[];
+  final later = <WaveCandidate>[];
+  final cap = ArtistCap(kWaveMaxPerArtist);
+  var lastArtists = <String>{};
+  for (final c in kept) {
+    if (!cap.fits(c.track) || c.artists.any(lastArtists.contains)) {
+      later.add(c);
+      continue;
+    }
+    spaced.add(c);
+    cap.take(c.track);
+    lastArtists = c.artists;
+  }
+  fill([...spaced, ...later]);
+  return out;
 }
 
-/// Треки из кандидатов — то, что и уедет в очередь плеера.
-List<Track> tracksOf(List<WaveCandidate> batch) => [
-  for (final c in batch) c.track,
-];
+List<T> _stableSorted<T>(List<T> list, int Function(T, T) compare) {
+  final indexed = [for (var i = 0; i < list.length; i++) (i, list[i])]
+    ..sort((a, b) {
+      final c = compare(a.$2, b.$2);
+      return c != 0 ? c : a.$1.compareTo(b.$1);
+    });
+  return [for (final x in indexed) x.$2];
+}
+
+/// Сиды поровну по списку: все из ≤8, 8 из ≤15, иначе 10. Каждый сид — запрос
+/// или два; больше десяти стартуют медленно и мало что добавляют.
+List<T> spreadSeeds<T>(List<T> all) {
+  final n = all.length;
+  final want = n <= 8
+      ? n
+      : n <= 15
+      ? 8
+      : 10;
+  if (want >= n) return all;
+  return [for (var i = 0; i < want; i++) all[min(n - 1, (i * n / want).round())]];
+}

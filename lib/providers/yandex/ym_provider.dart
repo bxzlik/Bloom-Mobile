@@ -5,6 +5,8 @@
 /// сборка страниц. Зеркало `sc_provider.dart`.
 library;
 
+import 'dart:async';
+
 import '../../core/entities/entities.dart';
 import '../../core/providers/music_provider.dart';
 import 'models.dart';
@@ -106,6 +108,9 @@ Playlist playlistFromYm(YmRawPlaylist p) => Playlist(
 /// offset→page разъехался бы. Порт `_pager` с десктопа.
 String? _pagerQuery;
 int _pagerPage = 0;
+
+/// Станция → batch-id её последней порции: отзыв идёт с ним.
+final Map<String, String> _batches = {};
 
 class YandexProvider extends MusicProvider {
   const YandexProvider();
@@ -235,6 +240,47 @@ class YandexProvider extends MusicProvider {
     return (await ym.similarTracks(
       seedId.substring('ym:'.length),
     )).map(trackFromYm).toList();
+  }
+
+  @override
+  String trackStation(Track track) {
+    final id = track.source == MusicSource.yandex ? ymNumericId(track.id) : '';
+    return id.isNotEmpty && isEnabled ? 'track:$id' : '';
+  }
+
+  /// Станция rotor: идёт дальше от последнего трека, который отдала.
+  @override
+  Future<StationPage> station(String station, String cursor) async {
+    try {
+      final batch = await ym.waveTracks(station, lastId: cursor);
+      if (batch.batchId.isNotEmpty) _batches[station] = batch.batchId;
+      return StationPage(
+        tracks: batch.tracks.map(trackFromYm).toList(),
+        cursor: batch.tracks.isEmpty ? '' : batch.tracks.last.id,
+      );
+    } catch (_) {
+      return const StationPage();
+    }
+  }
+
+  /// Как получится: потерянный отзыв лишь чуть меньше научит станцию.
+  @override
+  void stationFeedback(
+    String station,
+    String event, {
+    Track? track,
+    double played = 0,
+  }) {
+    final id = track == null ? '' : ymNumericId(track.id);
+    unawaited(
+      ym.waveFeedback(
+        station: station,
+        event: event,
+        trackId: id,
+        batchId: _batches[station] ?? '',
+        played: played,
+      ),
+    );
   }
 
   @override

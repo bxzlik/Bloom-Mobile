@@ -12,16 +12,23 @@ void main() {
       'Artist C',
     ]);
     expect(parseArtists('A & B'), ['A', 'B']);
-    expect(parseArtists('A; B × C'), ['A', 'B', 'C']);
-    expect(parseArtists('Sasha x Digweed'), ['Sasha', 'Digweed']);
-    expect(parseArtists('Один и Другой'), ['Один', 'Другой']);
+    expect(parseArtists('A, B × C'), ['A', 'B', 'C']);
+    expect(parseArtists('A vs. B ft C'), ['A', 'B', 'C']);
+  });
+
+  test('«and», «x», «и» — часть имени, как на ПК', () {
+    expect(parseArtists('Florence and the Machine'), [
+      'Florence and the Machine',
+    ]);
+    expect(parseArtists('Sasha x Digweed'), ['Sasha x Digweed']);
+    expect(parseArtists('Один и Другой'), ['Один и Другой']);
   });
 
   test('слово внутри имени именем и остаётся', () {
-    // Связки режут только между пробелами: иначе от «Andrew» осталось бы
-    // «ew», а «Fixt» превратился бы в «Fi».
-    expect(parseArtists('Andrew Fixt'), ['Andrew Fixt']);
-    expect(parseArtists('Sandwith'), ['Sandwith']);
+    // Связки режут только между пробелами: иначе от «Swiftft» осталось бы
+    // «Swift», а «Sandvs» превратился бы в «Sand».
+    expect(parseArtists('Swiftft Fixt'), ['Swiftft Fixt']);
+    expect(parseArtists('Sandvs'), ['Sandvs']);
   });
 
   test('один артист возвращается одним куском', () {

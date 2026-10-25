@@ -1,4 +1,4 @@
-/// Подбор сидов волны: на чём именно она будет построена.
+/// С чего волна стартует: на чём именно она будет построена.
 ///
 /// Проверяем списком, а не на слух: ошибка здесь тихая — волна играет, просто
 /// не то и всегда одно и то же.
@@ -9,6 +9,7 @@ import 'package:bloom/core/store/library_store.dart';
 import 'package:bloom/core/store/play_log.dart';
 import 'package:bloom/core/store/play_stats.dart';
 import 'package:bloom/features/wave/wave_seeds.dart';
+import 'package:bloom/features/wave/wave_types.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Track _track(
@@ -23,203 +24,159 @@ Track _track(
   source: source,
 );
 
-int _daysAgo(int days) =>
-    DateTime.now().millisecondsSinceEpoch - days * 24 * 3600 * 1000;
+/// Радио есть у SoundCloud и YouTube Music; у Яндекса — будто входа нет.
+WaveSeed? _seedOf(Track t) => t.source == MusicSource.yandex
+    ? null
+    : WaveSeed(t.source.code, 'track:${t.id.split(':').last}');
 
-/// Библиотека из перечисленных треков. [plays] — счётчик прослушиваний,
-/// [favs] — что лайкнуто, [playedDaysAgo] — когда слушали.
+WaveSeed _sc(int id) => WaveSeed('sc', 'track:$id');
+
+/// Библиотека из перечисленных треков (свежие сверху). [plays] — прослушивания,
+/// [favs] — лайки по порядку, свежий первым.
 WaveLibrary _library(
   List<Track> tracks, {
   Map<String, int> plays = const {},
-  Set<String> favs = const {},
-  Map<String, int> playedDaysAgo = const {},
+  List<String> favs = const [],
   Set<String> disliked = const {},
   List<Track> extras = const [],
 }) {
   final now = DateTime.now().millisecondsSinceEpoch;
-  // Прослушивания — событиями журнала: последнее в указанный день.
   final events = [
     for (final e in plays.entries)
-      for (var i = e.value - 1; i >= 0; i--)
-        PlayEvent(
-          (playedDaysAgo.containsKey(e.key)
-                  ? _daysAgo(playedDaysAgo[e.key]!)
-                  : now) -
-              i,
-          e.key,
-        ),
+      for (var i = 0; i < e.value; i++) PlayEvent(now - 1000 + i, e.key),
   ]..sort((a, b) => a.ts.compareTo(b.ts));
-  final recent = [for (final e in plays.entries) e.key];
   return WaveLibrary(
     lib: LibraryState(
       tracks: {for (final t in tracks) t.id: t},
-      // Свежие сверху: и место в списке, и время добавления.
       libIds: [for (final t in tracks) t.id],
       inLib: {for (var i = 0; i < tracks.length; i++) tracks[i].id: now - i},
-      favIds: favs.toList(),
-      favs: {for (final id in favs) id: now - favs.toList().indexOf(id)},
+      favIds: favs,
+      favs: {for (var i = 0; i < favs.length; i++) favs[i]: now - i},
     ),
     disliked: disliked,
+    seedOf: _seedOf,
     stats: PlayStats.build(PlayLog(events: events)),
-    recent: recent,
+    recent: [for (final e in plays.keys) e],
     extras: extras,
   );
 }
 
 void main() {
-  group('scIdOf', () {
-    test('числовой id SoundCloud, у остальных площадок — ничего', () {
-      expect(scIdOf(_track('sc:123')), '123');
-      expect(scIdOf(_track('ym:5', source: MusicSource.yandex)), isNull);
-      expect(scIdOf(_track('ytm:abc', source: MusicSource.ytmusic)), isNull);
-      expect(scIdOf(null), isNull);
-    });
-  });
-
-  group('pickQueueSeeds', () {
+  group('queueSeeds', () {
     test('короткая очередь идёт в сиды целиком', () {
       final tracks = [for (var i = 0; i < 5; i++) _track('sc:$i')];
-      final view = _library(tracks);
-      expect(pickQueueSeeds([for (final t in tracks) t.id], view), [
-        for (final t in tracks) t.id,
+      expect(queueSeeds(tracks, _library(tracks)), [
+        for (var i = 0; i < 5; i++) _sc(i),
       ]);
     });
 
-    test('длинная режется до десяти и берётся равномерно по позициям', () {
+    test('длинная — десять равномерно по позициям', () {
       final tracks = [for (var i = 0; i < 20; i++) _track('sc:$i')];
-      final view = _library(tracks);
-      final seeds = pickQueueSeeds([for (final t in tracks) t.id], view);
-
-      expect(seeds.length, 10);
-      // Равномерно — значит с шагом два, а не первые десять подряд.
-      expect(seeds, [for (var i = 0; i < 20; i += 2) 'sc:$i']);
+      expect(queueSeeds(tracks, _library(tracks)), [
+        for (var i = 0; i < 20; i += 2) _sc(i),
+      ]);
     });
 
-    test('дизлайкнутые и чужие площадки отсеиваются ДО расчёта позиций', () {
+    test('площадки вперемешку: у каждой своё радио; без радио и дизлайки — '
+        'мимо, ДО расчёта позиций', () {
       final tracks = [
         _track('sc:1'),
         _track('ym:2', source: MusicSource.yandex),
-        _track('sc:3'),
+        _track('ytm:abc', source: MusicSource.ytmusic),
         _track('sc:4'),
       ];
-      final view = _library(tracks, disliked: {'sc:4'});
-      expect(pickQueueSeeds([for (final t in tracks) t.id], view), [
-        'sc:1',
-        'sc:3',
+      expect(queueSeeds(tracks, _library(tracks, disliked: {'sc:4'})), [
+        _sc(1),
+        const WaveSeed('ytm', 'track:abc'),
       ]);
     });
 
-    test('дубли в очереди сидом становятся один раз', () {
-      final view = _library([_track('sc:1'), _track('sc:2')]);
-      expect(pickQueueSeeds(['sc:1', 'sc:2', 'sc:1'], view), ['sc:1', 'sc:2']);
+    test('одно радио — один сид', () {
+      final tracks = [_track('sc:1'), _track('sc:2'), _track('sc:1')];
+      expect(queueSeeds(tracks, _library(tracks)), [_sc(1), _sc(2)]);
     });
 
-    test('сидов не набралось — пусто, а не список ни о чём', () {
-      final view = _library([_track('ym:1', source: MusicSource.yandex)]);
-      expect(pickQueueSeeds(['ym:1'], view), isEmpty);
-      expect(pickQueueSeeds(const [], view), isEmpty);
-    });
-
-    test('трек из поиска годится в сиды, хотя в библиотеке его нет', () {
-      final outside = _track('sc:99');
-      final view = _library(const [], extras: [outside]);
-      expect(pickQueueSeeds(['sc:99'], view), ['sc:99']);
+    test('сидов не набралось — пусто', () {
+      final ym = [_track('ym:1', source: MusicSource.yandex)];
+      expect(queueSeeds(ym, _library(ym)), isEmpty);
+      expect(queueSeeds(const [], _library(const [])), isEmpty);
     });
   });
 
-  group('pickPersonalSeeds', () {
-    test('берёт слушаемое и лайкнутое, не больше пяти сидов', () {
+  group('personalSeeds', () {
+    test('два самых слушаемых, два свежих лайка и ещё один', () {
       final tracks = [for (var i = 0; i < 12; i++) _track('sc:$i')];
       final view = _library(
         tracks,
         plays: {'sc:0': 10, 'sc:1': 8, 'sc:2': 5},
-        favs: {'sc:7', 'sc:8'},
+        favs: ['sc:7', 'sc:8'],
       );
-      final seeds = pickPersonalSeeds(view, 0);
-
-      expect(seeds.length, lessThanOrEqualTo(5));
-      expect(seeds, containsAll(['sc:0', 'sc:1']));
-      expect(seeds, containsAll(['sc:7', 'sc:8']));
+      expect(personalSeeds(view, 'sc', 0), [
+        _sc(0),
+        _sc(1),
+        _sc(7),
+        _sc(8),
+        _sc(2),
+      ]);
     });
 
-    test('третий сид — следующий из топа, а не случайный «по жанру»', () {
-      final tracks = [for (var i = 0; i < 6; i++) _track('sc:$i')];
-      final view = _library(
-        tracks,
-        plays: {'sc:0': 10, 'sc:1': 8, 'sc:2': 6, 'sc:3': 4},
-      );
-      // Лайков нет: два из топа плюс следующий за ними — и больше ничего.
-      expect(pickPersonalSeeds(view, 0), ['sc:0', 'sc:1', 'sc:2']);
-    });
-
-    test('следующий из топа уже взят — третьим идёт следующий лайк', () {
+    test('следующий из топа уже взят — пятым идёт следующий лайк', () {
       final tracks = [for (var i = 0; i < 6; i++) _track('sc:$i')];
       final view = _library(
         tracks,
         // В топе всего два трека: «следующий» по кругу — снова первый.
         plays: {'sc:0': 10, 'sc:1': 8},
-        favs: {'sc:3', 'sc:4', 'sc:5'},
+        favs: ['sc:3', 'sc:4', 'sc:5'],
       );
-      final seeds = pickPersonalSeeds(view, 0);
-      expect(seeds, containsAll(['sc:0', 'sc:1', 'sc:3', 'sc:4', 'sc:5']));
-      expect(seeds.length, 5);
+      expect(personalSeeds(view, 'sc', 0), [
+        _sc(0),
+        _sc(1),
+        _sc(3),
+        _sc(4),
+        _sc(5),
+      ]);
     });
 
-    test('ротация сдвигает выбор — вторая волна начинается не с того же', () {
+    test('только треки выбранной площадки', () {
+      final tracks = [
+        _track('ytm:a', source: MusicSource.ytmusic),
+        _track('sc:1'),
+        _track('ytm:b', source: MusicSource.ytmusic),
+      ];
+      final view = _library(tracks, plays: {'sc:1': 9, 'ytm:a': 2});
+      expect(personalSeeds(view, 'ytm', 0), [
+        const WaveSeed('ytm', 'track:a'),
+      ]);
+      expect(personalSeeds(view, 'sc', 0), [_sc(1)]);
+    });
+
+    test('сдвиг — вторая волна начинается не с того же', () {
       final tracks = [for (var i = 0; i < 8; i++) _track('sc:$i')];
       final view = _library(
         tracks,
         plays: {'sc:0': 10, 'sc:1': 8, 'sc:2': 6, 'sc:3': 4},
       );
-      expect(pickPersonalSeeds(view, 0), isNot(pickPersonalSeeds(view, 1)));
+      expect(personalSeeds(view, 'sc', 1), [_sc(2), _sc(3), _sc(0)]);
     });
 
-    test('пустая библиотека — сидов нет (интерфейс скажет «послушай ещё»)', () {
-      expect(pickPersonalSeeds(_library(const []), 0), isEmpty);
-    });
-
-    test('слушать ещё нечего — берём свежее из библиотеки', () {
+    test('ничего не слушали и не лайкали — три самых свежих', () {
       final tracks = [for (var i = 0; i < 4; i++) _track('sc:$i')];
-      final seeds = pickPersonalSeeds(_library(tracks), 0);
-      // Порядок «Всех треков» — свежие сверху, они и становятся сидами.
-      expect(seeds, ['sc:0', 'sc:1', 'sc:2']);
+      expect(personalSeeds(_library(tracks), 'sc', 0), [
+        _sc(0),
+        _sc(1),
+        _sc(2),
+      ]);
     });
 
-    test('дизлайкнутое в сиды не идёт', () {
+    test('пусто и дизлайкнутое — без сидов', () {
+      expect(personalSeeds(_library(const []), 'sc', 0), isEmpty);
       final tracks = [_track('sc:1'), _track('sc:2')];
       final view = _library(
         tracks,
         plays: {'sc:1': 10, 'sc:2': 5},
         disliked: {'sc:1'},
       );
-      expect(pickPersonalSeeds(view, 0), isNot(contains('sc:1')));
-    });
-  });
-
-  group('pickFamiliarPool', () {
-    test('исключённое и слушанное на днях в подмешивание не идут', () {
-      final tracks = [for (var i = 0; i < 6; i++) _track('sc:$i')];
-      final view = _library(
-        tracks,
-        plays: {'sc:2': 1},
-        playedDaysAgo: {'sc:2': 1},
-      );
-      final pool = pickFamiliarPool(view, {'sc:0'});
-      final ids = [for (final t in pool) t.id];
-
-      expect(ids, isNot(contains('sc:0')));
-      expect(ids, isNot(contains('sc:2')));
-      expect(ids.length, 4);
-    });
-
-    test('слушанное давно вернуть можно', () {
-      final tracks = [_track('sc:1')];
-      final view = _library(
-        tracks,
-        plays: {'sc:1': 1},
-        playedDaysAgo: {'sc:1': 30},
-      );
-      expect(pickFamiliarPool(view, const {}).single.id, 'sc:1');
+      expect(personalSeeds(view, 'sc', 0), isNot(contains(_sc(1))));
     });
   });
 
@@ -229,7 +186,7 @@ void main() {
       final view = _library(
         tracks,
         plays: {'sc:0': 9, 'sc:1': 7},
-        favs: {'sc:5'},
+        favs: ['sc:5'],
       );
       final faces = pickDisplaySeeds(view, 0, limit: 8);
 

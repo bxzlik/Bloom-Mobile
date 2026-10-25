@@ -1,9 +1,11 @@
-/// Публичное API «Волны» — порт `src/wave/index.ts` вместе с сеансом
-/// (`session.ts`) и фидбеком (`feedback.ts`).
+/// Волна — бесконечная очередь из треков, похожих на то, с чего она начата, из
+/// радио самих площадок; порт `Wave` ПК.
 ///
-/// Один вход на четыре режима и две площадки: [startPersonal], [startByTrack],
-/// [startByQueue], [startByArtist] сами решают, чем набирать очередь — своим
-/// движком по SoundCloud или станцией Яндекса, — и ставят её плееру.
+/// «Моя волна» стартует с библиотеки (самое слушаемое и лайки), остальные — с
+/// трека, артиста или очереди. Радио SoundCloud и YouTube Music идут через наш
+/// отбор и порядок (`pickBatch`); станция Яндекса учится у слушателя сама,
+/// поэтому её порядок сохраняется, а ей сообщают, что дослушали и что
+/// пролистнули. Дизлайки — навсегда, в волне и вне её.
 ///
 /// Тосты отсюда не показываются: методы возвращают [WaveStartResult], а текст
 /// подбирает интерфейс. Контроллер живёт дольше любого экрана, и `BuildContext`
@@ -16,25 +18,26 @@ import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/providers.dart';
 import '../../core/entities/entities.dart';
 import '../../core/l10n/l10n.dart';
+import '../../core/providers/music_provider.dart';
 import '../../core/store/history_store.dart';
 import '../../core/store/library_store.dart';
 import '../../core/store/play_stats.dart';
-import '../../providers/yandex/models.dart' show YmException;
+import '../../providers/soundcloud/sc_sources.dart';
+import '../../providers/yandex/yandex.dart' show kWaveStation;
 import '../../providers/yandex/ym_provider.dart' show ymNumericId;
-import '../../providers/yandex/yandex.dart' as ym;
+import '../../shared/util/taste.dart';
 import '../player/play_source.dart';
 import '../player/player_controller.dart';
 import 'wave_engine.dart';
 import 'wave_seeds.dart';
-import '../../providers/soundcloud/sc_sources.dart';
 import 'wave_store.dart';
 import 'wave_types.dart';
-import 'wave_yandex.dart';
 
-/// Чем кончилась попытка запустить волну. Всё, кроме [ok], интерфейс
-/// показывает тостом.
+/// Чем кончилась попытка запустить волну. Всё, кроме [ok] и [busy],
+/// интерфейс показывает тостом.
 enum WaveStartResult {
   ok,
 
@@ -44,17 +47,14 @@ enum WaveStartResult {
   /// Слушали ещё слишком мало, сидов не набралось.
   notEnoughData,
 
-  /// Трека, от которого просили оттолкнуться, не нашлось.
+  /// У трека нет радио, от которого оттолкнуться.
   noSeed,
-
-  /// У площадки этого трека своего подбора нет.
-  notSupported,
 
   /// Очередь пуста — «похожие на очередь» строить не из чего.
   queueEmpty,
 
-  /// В очереди нет треков SoundCloud.
-  noScInQueue,
+  /// В очереди нет треков с радио.
+  noSeedsInQueue,
 
   /// У артиста не нашлось треков, годных в сиды.
   artistNoSeeds,
@@ -64,12 +64,6 @@ enum WaveStartResult {
 
   /// Волна Яндекса, но в аккаунт не вошли.
   ymNoAuth,
-
-  /// Станция ответила пустотой.
-  ymEmpty,
-
-  /// Станция не ответила (сеть, ошибка API).
-  ymFailed,
 }
 
 class WaveRunState {
@@ -78,63 +72,45 @@ class WaveRunState {
   /// Волна собирается прямо сейчас — кнопка запуска крутит вертушку.
   final bool starting;
 
-  /// Режим идущего сеанса; `null` — волна не играет.
+  /// Режим идущей волны; `null` — волна не играет.
   final WaveMode? mode;
 
   bool get active => mode != null;
-
-  WaveRunState copyWith({
-    bool? starting,
-    WaveMode? mode,
-    bool clearMode = false,
-  }) => WaveRunState(
-    starting: starting ?? this.starting,
-    mode: clearMode ? null : (mode ?? this.mode),
-  );
 }
 
 final waveProvider = NotifierProvider<WaveController, WaveRunState>(
   WaveController.new,
 );
 
+/// Станций, которые спрашивают разом.
+const int _kParallel = 3;
+
 class WaveController extends Notifier<WaveRunState> {
-  final YandexRotor _rotor = YandexRotor();
   final Random _rnd = Random();
 
-  /// Память сеанса своего движка; у станции Яндекса своя (внутри [_rotor]).
-  WaveSession? _session;
+  WaveRun? _run;
 
-  /// Гард от двойного запуска: два тапа по кнопке иначе заводят две волны, и
-  /// обе пишут в одну очередь.
-  bool _starting = false;
+  /// Новая волна или её конец делают старые ответы сети чужими.
+  int _gen = 0;
   bool _refilling = false;
 
   @override
-  WaveRunState build() {
-    // Сохранение трека в библиотеку — самое сильное «хочу ещё такого». Ловим
-    // его здесь, а не в каждой кнопке: путей туда четыре (лайк, «В
-    // библиотеку», плейлист, импорт), а сигнал у них один и тот же.
-    ref.listen(libraryProvider, _noteSaved);
-    return const WaveRunState();
-  }
-
-  /// Что из свежесохранённого пришло из ИДУЩЕЙ волны. Импорт чужого альбома
-  /// на двести треков сигналом не считается — только то, что человек услышал
-  /// в этой самой очереди и решил оставить.
-  void _noteSaved(LibraryState? prev, LibraryState next) {
-    if (prev == null || _session == null) return;
-    if (identical(prev.inLib, next.inLib)) return;
-    for (final track in _queue.queue) {
-      if (next.inLib.containsKey(track.id) &&
-          !prev.inLib.containsKey(track.id)) {
-        onAddedToLibrary(track);
-      }
-    }
-  }
+  WaveRunState build() => const WaveRunState();
 
   PlaybackController get _playback => ref.read(playbackProvider.notifier);
   PlaybackState get _queue => ref.read(playbackProvider);
   WaveStore get _store => ref.read(waveStoreProvider.notifier);
+
+  MusicProvider? _provider(String code) =>
+      ref.read(registryProvider).byId(MusicSource.fromCode(code).id);
+
+  /// Радио трека у его площадки — `Wave::seedOf` ПК.
+  WaveSeed? seedOf(Track t) {
+    final p = ref.read(registryProvider).byId(t.source.id);
+    if (p == null || !p.isEnabled) return null;
+    final station = p.trackStation(t);
+    return station.isEmpty ? null : WaveSeed(t.source.code, station);
+  }
 
   WaveLibrary _view({Iterable<Track> extras = const []}) => WaveLibrary(
     lib: ref.read(libraryProvider),
@@ -142,467 +118,373 @@ class WaveController extends Notifier<WaveRunState> {
     stats: ref.read(playStatsProvider),
     recent: [for (final row in ref.read(historyRowsProvider)) row.id],
     extras: extras,
-    random: _rnd,
+    seedOf: seedOf,
   );
+
+  /// В волне прямо сейчас: она идёт, и очередь — её.
+  bool get _inWave => _run != null && _queue.source is WaveSource;
 
   // ── Запуск ──────────────────────────────────────────────────────────────
 
-  /// «Моя волна»: сиды из библиотеки (SoundCloud) либо станция
-  /// `user:onyourwave` (Яндекс).
+  /// «Моя волна» с площадки из настройки. Выбран Яндекс без входа — с
+  /// SoundCloud (см. [effectiveWaveSourceProvider]).
   Future<WaveStartResult> startPersonal() async {
-    // Именно действующая площадка, а не выбранная: без входа в Яндекс волна
-    // не отказывает, а идёт своим движком (см. [effectiveWaveSourceProvider]).
-    if (ref.read(effectiveWaveSourceProvider) == WaveEngineKind.yandex) {
-      return _startRotor(YandexRotor.personalStation, WaveMode.personal);
+    final src = ref.read(effectiveWaveSourceProvider);
+    if (src == MusicSource.yandex) {
+      return _begin(WaveMode.personal, const [
+        WaveSeed('ym', kWaveStation),
+      ], native: true);
     }
-    final view = _view();
-    final seeds = pickPersonalSeeds(view, _store.rotation);
+    final seeds = personalSeeds(_view(), src.code, _store.takeRotation());
     if (seeds.isEmpty) return WaveStartResult.notEnoughData;
-    _store.bumpRotation();
-    return _startEngine(WaveMode.personal, seeds, view);
+    return _begin(WaveMode.personal, seeds);
   }
 
-  /// Волна по треку. У Яндекса это нативная станция `track:<id>`, у остальных
-  /// — свой подбор, и он умеет только SoundCloud.
+  /// Волна по треку. Радио трека Яндекса — его собственное и учится; остальные
+  /// идут через наш отбор.
   ///
   /// [seedFirst] — начать с самого трека, а дальше уйти в подобранное (тап по
-  /// обложке в кольце на главной). По умолчанию волна сразу играет похожее,
-  /// как пункт «Волна по треку» в меню трека на десктопе.
+  /// обложке в кольце на главной).
   Future<WaveStartResult> startByTrack(
     Track track, {
     bool seedFirst = false,
-  }) async {
-    if (track.source == MusicSource.yandex) {
-      final id = ymNumericId(track.id);
-      if (id.isEmpty) return WaveStartResult.noSeed;
-      return _startRotor(
-        YandexRotor.trackStation(id),
-        WaveMode.track,
-        first: seedFirst ? track : null,
-      );
-    }
-    if (scIdOf(track) == null) return WaveStartResult.notSupported;
-    return _startEngine(
+  }) {
+    final s = seedOf(track);
+    if (s == null) return Future.value(WaveStartResult.noSeed);
+    return _begin(
       WaveMode.track,
-      pickTrackSeeds(track.id),
-      _view(extras: [track]),
+      [s],
+      native: s.provider == MusicSource.yandex.code,
+      about: 'track:${track.id}',
       first: seedFirst ? track : null,
     );
   }
 
-  /// «Похожие на очередь»: сиды из того, что играет сейчас. Библиотеку сюда не
-  /// подмешиваем — очередь человек собрал сам, и волна должна её продолжить, а
-  /// не разбавить знакомым.
-  Future<WaveStartResult> startByQueue([List<Track>? tracks]) async {
+  /// «Похожие на очередь»: очередь заменяется похожими на то, что в ней.
+  Future<WaveStartResult> startByQueue([List<Track>? tracks]) {
     final source = (tracks == null || tracks.isEmpty) ? _queue.queue : tracks;
-    if (source.isEmpty) return WaveStartResult.queueEmpty;
-    final view = _view(extras: source);
-    final seeds = pickQueueSeeds([for (final t in source) t.id], view);
-    if (seeds.isEmpty) return WaveStartResult.noScInQueue;
-    return _startEngine(WaveMode.queue, seeds, view);
+    if (source.isEmpty) return Future.value(WaveStartResult.queueEmpty);
+    final seeds = queueSeeds(source, _view(extras: source));
+    if (seeds.isEmpty) return Future.value(WaveStartResult.noSeedsInQueue);
+    return _begin(WaveMode.queue, seeds);
   }
 
-  /// Волна по артисту: нативная станция у Яндекса, сиды из его треков у
-  /// SoundCloud. [seedTracks] — то, что уже загрузила страница артиста
-  /// (популярные и все).
+  /// Волна по артисту: станция артиста у Яндекса, у остальных — сиды из того,
+  /// что уже загрузила его страница ([seedTracks]: популярные и все).
   Future<WaveStartResult> startByArtist(
     Artist artist, {
     List<Track> seedTracks = const [],
-  }) async {
+  }) {
+    final about = 'artist:${artistKey(artist.name)}';
     if (artist.source == MusicSource.yandex) {
       final id = ymNumericId(artist.id);
-      if (id.isEmpty) return WaveStartResult.artistNoSeeds;
-      return _startRotor(YandexRotor.artistStation(id), WaveMode.artist);
+      if (id.isEmpty) return Future.value(WaveStartResult.artistNoSeeds);
+      if (!(_provider('ym')?.isEnabled ?? false)) {
+        return Future.value(WaveStartResult.ymNoAuth);
+      }
+      return _begin(
+        WaveMode.artist,
+        [WaveSeed('ym', 'artist:$id')],
+        native: true,
+        about: about,
+      );
     }
-    if (seedTracks.isEmpty) return WaveStartResult.artistNoSeeds;
-    final view = _view(extras: seedTracks);
-    final seeds = pickQueueSeeds([for (final t in seedTracks) t.id], view);
-    if (seeds.isEmpty) return WaveStartResult.artistNoSeeds;
-    return _startEngine(WaveMode.artist, seeds, view);
+    final seeds = queueSeeds(seedTracks, _view(extras: seedTracks));
+    if (seeds.isEmpty) return Future.value(WaveStartResult.artistNoSeeds);
+    return _begin(WaveMode.artist, seeds, about: about);
   }
 
-  /// Свой движок: собрать первую пачку и отдать её плееру.
-  Future<WaveStartResult> _startEngine(
+  /// [replace] — пачка становится очередью; иначе дописывается в её конец
+  /// («Авто похожие»), пока [isValid] — пока ждали сеть, могли поставить
+  /// другое.
+  Future<WaveStartResult> _begin(
     WaveMode mode,
-    List<String> seeds,
-    WaveLibrary view, {
+    List<WaveSeed> seeds, {
+    bool native = false,
+    bool replace = true,
+    String about = '',
     Track? first,
+    bool Function()? isValid,
   }) async {
-    if (_starting) return WaveStartResult.busy;
-    _starting = true;
-    state = state.copyWith(starting: true);
+    if (state.starting) return WaveStartResult.busy;
+    final gen = ++_gen;
+    final run = WaveRun(mode: mode, seeds: seeds, about: about, native: native);
+    _run = run;
+    _refilling = false;
+    if (replace) state = WaveRunState(starting: true, mode: state.mode);
+    // Новая волна не должна собраться из тех же ответов, что прошлая.
+    resetWaveSourceCache();
     try {
-      // Кэш чистим ДО сборки: иначе новая волна соберётся из тех же ответов,
-      // что предыдущая, и человек услышит то же самое.
-      resetWaveSourceCache();
-      // Прошлый сеанс закрываем здесь же: дальше мы в любом случае либо
-      // поставим новую очередь, либо ничего не найдём — и в обоих случаях
-      // старая волна уже не идёт. Иначе после неудачного запуска состояние
-      // продолжало бы уверять, что волна играет.
-      _rotor.end();
-      state = state.copyWith(clearMode: true);
-
-      final session = WaveSession(
-        mode: mode,
-        seeds: seeds,
-        startedAt: DateTime.now().millisecondsSinceEpoch,
-      );
-      final engine = WaveEngine(
-        view: view,
-        store: _store,
-        // Старую очередь фильтрам не показываем: она сейчас уедет целиком, и
-        // отбраковка «уже в очереди» вырезала бы годных кандидатов.
-        queueIds: const {},
-        // А вот играющий прямо сейчас трек в свежей волне не нужен — иначе он
-        // же и зазвучит третьим номером. Тот, с которого волну попросили
-        // начать, встаёт в голову отдельно (см. [_handOff]).
-        currentId: _queue.track?.id,
-        random: _rnd,
-      );
-      final batch = await engine.buildBatch(
-        mode: mode,
-        seeds: seeds,
-        session: session,
-      );
-      if (batch.isEmpty) return WaveStartResult.noSimilar;
-
-      final tracks = tracksOf(batch);
-      // Пометки «показано» ставим только гостям: у подмешанного знакомого своя
-      // ротация, и вычёркивать его на две недели незачем.
-      _store.markShown([
-        for (final c in batch)
-          if (!c.isLibrary) c.id,
-      ]);
-
-      _session = session;
-      await _handOff(tracks, mode, first: first);
+      final pages = await _gather(seeds);
+      if (gen != _gen) return WaveStartResult.busy;
+      if (!replace && !(isValid?.call() ?? true)) {
+        _end();
+        return WaveStartResult.noSimilar;
+      }
+      final batch = pickBatch(pages, _pick(run));
+      if (batch.isEmpty) {
+        _end();
+        return WaveStartResult.noSimilar;
+      }
+      _markShown(batch);
+      final source = WaveSource(label: waveLabel(mode), mode: mode);
+      if (replace) {
+        state = WaveRunState(starting: true, mode: mode);
+        _save();
+        await _playback.playWave([
+          ?first,
+          for (final t in batch)
+            if (t.id != first?.id) t,
+        ], source);
+      } else if (!_playback.continueAsWave(batch, source)) {
+        _end();
+        return WaveStartResult.noSimilar;
+      } else {
+        state = WaveRunState(mode: mode);
+        _save();
+      }
+      if (native) {
+        _provider(seeds.first.provider)?.stationFeedback(
+          seeds.first.station,
+          'radioStarted',
+        );
+      }
       return WaveStartResult.ok;
     } finally {
-      _starting = false;
-      state = state.copyWith(starting: false);
+      if (replace && gen == _gen) {
+        state = WaveRunState(mode: _run == null ? null : state.mode);
+      }
     }
   }
 
-  /// Станция Яндекса: взять батч и отдать его плееру.
-  Future<WaveStartResult> _startRotor(
-    String station,
-    WaveMode mode, {
-    Track? first,
-  }) async {
-    if (_starting) return WaveStartResult.busy;
-    if (ym.activeToken() == null) return WaveStartResult.ymNoAuth;
-    _starting = true;
-    state = state.copyWith(starting: true);
-    try {
-      // Свой сеанс закрываем: его догрузка и память подбора станции только
-      // мешали бы. Как и в [_startEngine], гасим состояние сразу — неудачный
-      // запуск не должен оставить «волна играет».
-      _session = null;
-      state = state.copyWith(clearMode: true);
-      final tracks = await _rotor.start(station);
-      if (tracks.isEmpty) return WaveStartResult.ymEmpty;
-      await _handOff(tracks, mode, first: first);
-      return WaveStartResult.ok;
-    } on YmException {
-      return WaveStartResult.ymFailed;
-    } catch (_) {
-      return WaveStartResult.ymFailed;
-    } finally {
-      _starting = false;
-      state = state.copyWith(starting: false);
+  /// Станция каждого сида — оттуда, где она остановилась в прошлый раз (новая
+  /// волна на тех же сидах слышит, что дальше), по несколько разом.
+  Future<List<List<Track>>> _gather(List<WaveSeed> seeds) async {
+    final pages = List<List<Track>>.filled(seeds.length, const []);
+    final cursors = <WaveSeed, String>{};
+    var next = 0;
+    Future<void> worker() async {
+      while (next < seeds.length) {
+        final i = next++;
+        final s = seeds[i];
+        final p = _provider(s.provider);
+        if (p == null) continue;
+        final cursor = _store.cursorOf(s);
+        var page = await p.station(s.station, cursor);
+        // Курсор протух — тогда с начала.
+        if (page.tracks.isEmpty && cursor.isNotEmpty) {
+          page = await p.station(s.station, '');
+        }
+        cursors[s] = page.cursor;
+        pages[i] = page.tracks;
+      }
     }
+
+    await Future.wait([
+      for (var k = 0; k < min(_kParallel, seeds.length); k++) worker(),
+    ]);
+    _store.saveCursors(cursors);
+    return pages;
   }
 
-  /// Отдать собранное плееру. [first] — трек, который обязан зазвучать первым:
-  /// подбор его в пачку обычно не кладёт, поэтому ставим в голову сами и, если
-  /// он там уже был, не дублируем.
-  Future<void> _handOff(
-    List<Track> tracks,
-    WaveMode mode, {
-    Track? first,
-  }) async {
-    var queue = tracks;
-    if (first != null) {
-      queue = [
-        first,
-        for (final t in tracks)
-          if (t.id != first.id) t,
-      ];
-    }
-    state = state.copyWith(mode: mode);
-    _store.saveSession(_session);
-    // Фидбек «трек пошёл» отсюда не шлём: плеер сам позовёт [onTrackStart],
-    // когда трек реально заиграет, — иначе станция услышала бы о нём дважды.
-    await _playback.playWave(
-      queue,
-      WaveSource(label: waveLabel(mode), mode: mode),
+  WavePick _pick(WaveRun run) {
+    final lib = ref.read(libraryProvider);
+    final stats = ref.read(playStatsProvider);
+    final queue = _queue;
+    return WavePick(
+      run: run,
+      queue: queue.queue,
+      currentId: queue.track?.id,
+      library: lib.allTracks,
+      inLibrary: lib.isInLib,
+      isFav: lib.isFav,
+      isDisliked: ref.read(waveStoreProvider).isDisliked,
+      playedWithin: (id, days) => stats.recentlyPlayed(id, days),
+      shown: _store.shownIds(),
+      random: _rnd,
     );
   }
 
-  // ── Ход сеанса ──────────────────────────────────────────────────────────
+  /// «Показано» ставим только чужим: своё из библиотеки ходит долей «Моей
+  /// волны», вычёркивать его на две недели незачем.
+  void _markShown(List<Track> batch) {
+    final lib = ref.read(libraryProvider);
+    _store.markShown([
+      for (final t in batch)
+        if (!lib.isInLib(t.id)) t.id,
+    ]);
+  }
 
-  /// Плеер начал трек. Здесь и решается, идёт ли волна дальше: ушли на
-  /// плейлист — сеанс тихо закрывается, иначе его догрузка била бы в сеть за
-  /// треками, которые уже никому не нужны, а память подбора копила бы чужое.
+  void _save() => _store.saveRun(_run);
+
+  // ── Ход волны ───────────────────────────────────────────────────────────
+
+  /// Впереди мало треков: следующая пачка — от последних услышанных (за чем
+  /// слушатель остаётся, туда волна и идёт) или от сидов, с которых начата.
+  Future<void> _refill() async {
+    final run = _run;
+    if (run == null || !_inWave || state.starting || _refilling) return;
+    final queue = _queue;
+    final left = queue.queue.length - 1 - queue.index;
+    if (left > (run.native ? kWaveRefillAtNative : kWaveRefillAt)) return;
+    var seeds = run.seeds;
+    if (!run.native) {
+      final store = ref.read(waveStoreProvider);
+      final recent = <WaveSeed>[];
+      final heard = run.played.skip(max(0, run.played.length - 6)).toList();
+      for (final id in heard.reversed) {
+        if (recent.length >= 3) break;
+        if (store.isDisliked(id)) continue;
+        final t = queue.queue.where((t) => t.id == id).firstOrNull;
+        final s = t == null ? null : seedOf(t);
+        if (s != null) recent.add(s);
+      }
+      if (recent.isNotEmpty) seeds = recent;
+    }
+    _refilling = true;
+    final gen = _gen;
+    try {
+      final pages = await _gather(seeds);
+      if (gen != _gen || !_inWave) return;
+      final batch = pickBatch(pages, _pick(run));
+      if (batch.isEmpty) return;
+      _markShown(batch);
+      _playback.appendToQueue(batch);
+      _save();
+    } finally {
+      if (gen == _gen) _refilling = false;
+    }
+  }
+
+  /// Плеер начал трек. Ушли на другой список — волна тихо кончается, иначе её
+  /// догрузка писала бы в чужую очередь.
   void onTrackStart(Track track) {
-    if (!_isWaveQueue) {
+    if (_queue.source is! WaveSource) {
       endSession();
       return;
     }
-    final session = _session;
-    if (session != null) {
-      if (!session.playedIds.contains(track.id)) {
-        session.playedIds.add(track.id);
-        // Память сеанса не должна расти вечно: антиповторам хватает и двухсот
-        // последних.
-        if (session.playedIds.length > 200) session.playedIds.removeAt(0);
-      }
-      _store.saveSession(session);
+    final run = _run;
+    if (run == null) return;
+    final s = run.seeds.first;
+    if (run.native && track.source.code == s.provider) {
+      _provider(s.provider)?.stationFeedback(
+        s.station,
+        'trackStarted',
+        track: track,
+      );
     }
-    if (_rotor.isRunning) _rotor.trackStarted(track);
-    unawaited(_maybeRefill());
+    unawaited(_refill());
   }
 
-  /// Плеер уходит с трека — единственный сигнал, по которому волна учится:
-  /// дослушали или пролистнули.
+  /// Трек засчитан прослушанным: в волне он услышан, и пора проверить запас.
+  void onCounted(Track track) {
+    final run = _run;
+    if (run == null || !_inWave) return;
+    if (!run.played.contains(track.id)) run.played.add(track.id);
+    if (run.played.length > 200) {
+      run.played.removeRange(0, run.played.length - 200);
+    }
+    _save();
+    unawaited(_refill());
+  }
+
+  /// Уходим с трека: дослушали (85 %) или пролистнули рано (до 20 с и 30 %) —
+  /// волна учит артиста; станции Яндекса — говорим ей.
   void onTrackEnd(Track track, Duration played, Duration total) {
-    if (!_isWaveQueue) return;
-    if (_rotor.isRunning) {
-      _rotor.trackEnded(track, played, total);
+    final run = _run;
+    if (run == null || !_inWave || total <= Duration.zero) return;
+    if (run.native) {
+      final s = run.seeds.first;
+      if (track.source.code != s.provider) return;
+      final ratio = played.inMilliseconds / total.inMilliseconds;
+      _provider(s.provider)?.stationFeedback(
+        s.station,
+        ratio < 0.3 ? 'skip' : 'trackFinished',
+        track: track,
+        played: played.inMilliseconds / 1000,
+      );
       return;
     }
-    final session = _session;
-    if (session == null) return;
-    final artist = normalizeArtist(track.artist);
-    if (artist.isEmpty) return;
-    switch (classifyCompletion(played, total)) {
-      case WaveVerdict.skip:
-        _bumpArtist(session, artist, -2);
-      case WaveVerdict.finish:
-        // Дослушал — основной положительный сигнал: сердечко у нас курирует
-        // библиотеку, а не учит волну (ровно как на десктопе).
-        _bumpArtist(session, artist, 3);
-      case WaveVerdict.neutral:
-        break;
+    final step = completionStep(played, total);
+    final artists = artistKeys(track);
+    if (step == 0 || artists.isEmpty) return;
+    for (final a in artists) {
+      run.bonus[a] = (run.bonus[a] ?? 0) + step;
     }
-  }
-
-  /// Сохранил трек в библиотеку — самый сильный «хочу ещё такого».
-  void onAddedToLibrary(Track track) {
-    final session = _session;
-    if (session == null) return;
-    final artist = normalizeArtist(track.artist);
-    if (artist.isNotEmpty) _bumpArtist(session, artist, 5);
-  }
-
-  void _bumpArtist(WaveSession session, String artist, double delta) {
-    session.artistBonus.update(artist, (v) => v + delta, ifAbsent: () => delta);
-    _store.saveSession(session);
-  }
-
-  /// Догрузить очередь, если впереди осталось мало.
-  Future<void> _maybeRefill() async {
-    if (_refilling) return;
-    final queue = _queue;
-    final threshold = _rotor.isRunning
-        ? kRotorRefillThreshold
-        : kWaveRefillThreshold;
-    if (queue.queue.length - 1 - queue.index > threshold) return;
-
-    _refilling = true;
-    try {
-      final tracks = _rotor.isRunning
-          ? await _rotor.refill()
-          : await _refillEngine();
-      // Пока ждали сеть, человек мог уйти из волны — в чужую очередь не пишем.
-      if (tracks.isEmpty || !_isWaveQueue) return;
-      _playback.appendToQueue(tracks);
-    } finally {
-      _refilling = false;
-    }
-  }
-
-  Future<List<Track>> _refillEngine() async {
-    final session = _session;
-    if (session == null) return const [];
-    final queue = _queue;
-    final view = _view(extras: queue.queue);
-
-    // Сиды догрузки — последнее, что человек НЕ пролистнул: волна идёт за тем,
-    // что зашло, а не за тем, с чего начиналась.
-    final recent = session.playedIds.reversed.take(6);
-    final good = [
-      for (final id in recent)
-        if (!ref.read(waveStoreProvider).isDisliked(id)) id,
-    ];
-    final seeds = good.isEmpty ? session.seeds : good.take(3).toList();
-
-    final engine = WaveEngine(
-      view: view,
-      store: _store,
-      queueIds: {for (final t in queue.queue) t.id},
-      queueTracks: queue.queue,
-      currentId: queue.track?.id,
-      random: _rnd,
-    );
-    final batch = await engine.buildBatch(
-      mode: session.mode,
-      seeds: seeds,
-      session: session,
-    );
-    if (batch.isEmpty) return const [];
-    _store.markShown([
-      for (final c in batch)
-        if (!c.isLibrary) c.id,
-    ]);
-    return tracksOf(batch);
+    _save();
   }
 
   // ── Дизлайк ─────────────────────────────────────────────────────────────
 
-  /// Поставить/снять дизлайк. Возвращает новое состояние — интерфейсу нужно
-  /// это для тоста.
-  ///
-  /// Дизлайкнутый прямо сейчас играющий трек не дослушивают: сразу уходим
-  /// вперёд. Это единственное действие волны, которое работает и вне сеанса —
-  /// метка живёт в библиотеке, а не в сеансе.
+  /// Поставить/снять дизлайк; возвращает, стоит ли он теперь. Играющий
+  /// дизлайкнутый трек уходит — в очереди он остаётся зачёркнутым.
   bool toggleDislike(Track track) {
     final on = _store.toggleDislike(track);
     if (!on) return false;
-    final current = _queue.track;
-    if (current != null && current.id == track.id) {
-      unawaited(_playback.next());
+    final queue = _queue;
+    if (queue.track?.id == track.id) {
+      if (queue.index < queue.queue.length - 1) {
+        unawaited(_playback.next());
+      } else if (_inWave) {
+        unawaited(_refill());
+      }
     }
     return true;
   }
 
-  // ── Конец сеанса ────────────────────────────────────────────────────────
+  // ── Конец ───────────────────────────────────────────────────────────────
 
-  /// Остановить волну явно (кнопка «Остановить»). Очередь остаётся играть —
-  /// перестаёт только догружаться.
+  /// Остановить волну явно (кнопка «Остановить»). Очередь доигрывает, но
+  /// больше не догружается.
   void stop() => endSession();
 
-  /// Тихо закрыть сеанс: человек ушёл слушать другое.
+  /// Волна кончилась; ответ, ещё идущий по сети, отбрасывается.
   void endSession() {
-    if (_session == null && !_rotor.isRunning && !state.active) return;
-    _session = null;
-    _rotor.end();
-    _store.saveSession(null);
-    state = state.copyWith(clearMode: true);
+    if (_run == null && !state.active) return;
+    _end();
+  }
+
+  void _end() {
+    ++_gen;
+    _run = null;
+    _refilling = false;
+    _store.saveRun(null);
+    state = const WaveRunState();
   }
 
   // ── «Авто похожие» ──────────────────────────────────────────────────────
 
-  /// Очередь доиграла (или вот-вот) — дописать похожие в её хвост, не трогая
-  /// уже стоящее (кнопка «Похожие на очередь», наоборот, заменяет). Порт
-  /// `waveContinueQueue` с ПК.
-  ///
-  /// Площадку выбираем по последнему треку, у которого вообще есть похожие:
-  /// Яндекс — станция `track:<id>`, SoundCloud — свой движок с сидами из
-  /// очереди. YouTube Music и свои файлы сидами не служат. Тихо, без тостов:
-  /// это фон, а не нажатая кнопка. [isValid] — пока ждали сеть, человек мог
-  /// уйти на другой источник: тогда в его очередь не пишем.
+  /// Очередь доиграла (или вот-вот) — дописать в её хвост похожие на то, что в
+  /// ней (кнопка «Похожие на очередь», наоборот, заменяет). Дальше хвост идёт
+  /// волной «похожие на очередь». Тихо, без тостов: это фон, а не нажатая
+  /// кнопка. [isValid] — пока ждали сеть, человек мог поставить другое.
   Future<bool> continueQueue({required bool Function() isValid}) async {
-    if (_starting) return false;
+    if (state.starting) return false;
     final queue = _queue.queue;
-    for (var i = queue.length - 1; i >= 0; i--) {
-      final track = queue[i];
-      if (track.source == MusicSource.yandex) {
-        final id = ymNumericId(track.id);
-        if (id.isEmpty) continue;
-        if (ym.activeToken() == null) return false;
-        return _continueRotor(YandexRotor.trackStation(id), isValid);
-      }
-      if (scIdOf(track) != null) return _continueEngine(queue, isValid);
-    }
-    return false;
-  }
-
-  Future<bool> _continueRotor(String station, bool Function() isValid) async {
-    _session = null;
-    try {
-      final tracks = await _rotor.start(station);
-      if (tracks.isEmpty || !isValid() || !_continueWith(tracks)) {
-        _rotor.end();
-        return false;
-      }
-      return true;
-    } on Object {
-      _rotor.end();
-      return false;
-    }
-  }
-
-  Future<bool> _continueEngine(
-    List<Track> queue,
-    bool Function() isValid,
-  ) async {
-    final view = _view(extras: queue);
-    final seeds = pickQueueSeeds([for (final t in queue) t.id], view);
+    final seeds = queueSeeds(queue, _view(extras: queue));
     if (seeds.isEmpty) return false;
-    _rotor.end();
-    resetWaveSourceCache();
-    final session = WaveSession(
-      mode: WaveMode.queue,
-      seeds: seeds,
-      startedAt: DateTime.now().millisecondsSinceEpoch,
+    final r = await _begin(
+      WaveMode.queue,
+      seeds,
+      replace: false,
+      isValid: isValid,
     );
-    try {
-      final batch = await WaveEngine(
-        view: view,
-        store: _store,
-        // Уже стоящие в очереди треки в пачку не попадают — ни тем же id, ни
-        // перезаливом от другого загрузчика.
-        queueIds: {for (final t in queue) t.id},
-        queueTracks: queue,
-        currentId: _queue.track?.id,
-        random: _rnd,
-      ).buildBatch(mode: WaveMode.queue, seeds: seeds, session: session);
-      if (batch.isEmpty || !isValid()) return false;
-      _session = session;
-      if (!_continueWith(tracksOf(batch))) {
-        _session = null;
-        return false;
-      }
-      _store.markShown([
-        for (final c in batch)
-          if (!c.isLibrary) c.id,
-      ]);
-      return true;
-    } on Object {
-      return false;
-    }
+    return r == WaveStartResult.ok;
   }
 
-  /// Дописать продолжение в очередь плеера; дальше она идёт как волна «похожие
-  /// на очередь» и догружается сама.
-  bool _continueWith(List<Track> tracks) {
-    const mode = WaveMode.queue;
-    final ok = _playback.continueAsWave(
-      tracks,
-      WaveSource(label: waveLabel(mode), mode: mode),
-    );
-    if (!ok) return false;
-    state = state.copyWith(mode: mode);
-    _store.saveSession(_session);
-    return true;
-  }
-
-  /// Подхватить сеанс, восстановленный карточкой «Продолжить»: очередь вернул
-  /// снимок, здесь возвращается память подбора.
-  ///
-  /// Станция Яндекса не восстанавливается — она каждый раз свежая, и её
-  /// очередь после перезапуска доигрывает как обычный список.
+  /// Подхватить волну, которую вернула сессия: очередь вернул снимок, здесь
+  /// возвращается память подбора. Сессия была не волной — сохранённая
+  /// забывается.
   void adoptRestored(PlaySource? source) {
-    if (source is! WaveSource) return;
-    final saved = _store.savedSession;
-    if (saved == null || saved.mode != source.mode) return;
-    _session = saved;
-    state = state.copyWith(mode: source.mode);
+    final saved = _store.savedRun;
+    if (source is! WaveSource) {
+      if (saved != null) _store.saveRun(null);
+      return;
+    }
+    if (saved == null) return;
+    _run = saved;
+    state = WaveRunState(mode: saved.mode);
   }
-
-  /// Играет ли сейчас именно волна.
-  bool get _isWaveQueue => _queue.source is WaveSource;
 }
 
 /// Подпись источника для пилюли в плеере. Берётся один раз, при постановке

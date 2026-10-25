@@ -251,6 +251,28 @@ class YtmusicProvider extends MusicProvider {
     );
   }
 
+  @override
+  String trackStation(Track track) {
+    final vid = track.source == MusicSource.ytmusic
+        ? parseYtmTrackId(track.id)
+        : null;
+    return vid == null || vid.isEmpty ? '' : 'track:$vid';
+  }
+
+  @override
+  Future<StationPage> station(String station, String cursor) async {
+    if (!station.startsWith('track:')) return const StationPage();
+    try {
+      final r = await ytm.radio(station.substring(6), cursor: cursor);
+      return StationPage(
+        tracks: r.tracks.map(trackFromYtm).toList(),
+        cursor: r.cursor,
+      );
+    } catch (_) {
+      return const StationPage();
+    }
+  }
+
   /// Прямая ссылка `googlevideo` — плеер тянет её сам. Локального прокси, как на
   /// десктопе, здесь нет: он там нужен из-за CORS и range-запросов WebView2.
   ///

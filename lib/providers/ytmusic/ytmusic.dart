@@ -972,6 +972,75 @@ Future<YtmSearchMore> searchMore(String query) async {
   );
 }
 
+// ============================ Радио ============================
+
+const String kNextUrl =
+    'https://music.youtube.com/youtubei/v1/next?prettyPrint=false';
+
+/// Радио трека — watch-плейлист с включённым радио, как
+/// `get_watch_playlist(radio=True)` у ytmusicapi (и `YtMusic::station` ПК).
+/// Открывается самим треком — его отбрасываем; дальше ведёт токен [cursor].
+Future<({List<YtmRawTrack> tracks, String cursor})> radio(
+  String id, {
+  String cursor = '',
+}) async {
+  final tok = Uri.encodeQueryComponent(cursor);
+  final v = await _postJson(
+    '$kNextUrl&key=$kWebKey${cursor.isEmpty ? '' : '&ctoken=$tok&continuation=$tok'}',
+    await _webBody({
+      'videoId': id,
+      'playlistId': 'RDAMVM$id',
+      'params': 'wAEB',
+      'isAudioOnly': true,
+      'enablePersistentPlaylistPanel': true,
+      'tunerSettingValue': 'AUTOMIX_SETTING_NORMAL',
+    }),
+    userAgent: kWebUa,
+    extraHeaders: _musicHeaders,
+    errCode: 'ytm.err.radio',
+  );
+  final items = <Object?>[];
+  collectRenderers(v, 'playlistPanelVideoRenderer', items);
+  final seen = {id};
+  final tracks = <YtmRawTrack>[];
+  for (final it in items) {
+    final vid = str(at(it, ['videoId']));
+    final title = firstRun(at(it, ['title']));
+    if (vid.isEmpty || title.isEmpty || !seen.add(vid)) continue;
+    // «Артисты • Альбом • Год»: артисты — первая часть (игра или канал
+    // дальше тоже бывают ссылкой на артиста).
+    final first = <Object?>[];
+    final runs = at(it, ['longBylineText', 'runs']);
+    if (runs is List) {
+      for (final r in runs) {
+        if (str(at(r, ['text'])).trim() == '•') break;
+        first.add(r);
+      }
+    }
+    final byline = {'runs': first};
+    final linked = [
+      for (final r in first)
+        if (pageType(r) == 'MUSIC_PAGE_TYPE_ARTIST') r,
+    ];
+    tracks.add(
+      YtmRawTrack(
+        id: vid,
+        title: title,
+        artist: linked.isEmpty
+            ? meaningfulRuns(byline).join(', ')
+            : col1Artist(byline),
+        artistId: linked.isEmpty ? '' : itemBrowseId(linked.first) ?? '',
+        cover: biggestThumb(at(it, ['thumbnail'])),
+        duration: Duration(
+          seconds: parseClock(firstRun(at(it, ['lengthText']))) ?? 0,
+        ),
+      ),
+    );
+  }
+  final more = findRenderer(v, 'nextRadioContinuationData');
+  return (tracks: tracks, cursor: str(at(more, ['continuation'])));
+}
+
 // ============================ Страницы (browse) ============================
 
 /// POST browse с веб-контекстом → сырой JSON ответа. [params] — им YTM кодирует

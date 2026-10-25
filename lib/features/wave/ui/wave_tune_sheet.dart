@@ -25,7 +25,6 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../wave_faces.dart';
 import '../wave_store.dart';
-import '../wave_types.dart';
 import 'wave_dislikes_sheet.dart';
 
 /// Шторка без обложки — как пикер скорости: сплошной фон, ручка и заголовок
@@ -55,8 +54,8 @@ class _TuneSheet extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const SheetHandle(),
-              // Плитки лежат прямо на шторке, без подложки и подписи: их и так
-              // двое, и что это выбор площадки, видно по самим логотипам.
+              // Плитки лежат прямо на шторке, без подложки и подписи: что это
+              // выбор площадки, видно по самим логотипам.
               Padding(
                 // Боковой край — как у блока «Дизлайки» ниже, иначе плитки
                 // вылезают за его границы.
@@ -68,32 +67,28 @@ class _TuneSheet extends ConsumerWidget {
                 ),
                 child: Row(
                   children: [
-                    Expanded(
-                      child: _SourceTile(
-                        source: MusicSource.soundcloud,
-                        label: 'SoundCloud',
-                        selected: source == WaveEngineKind.soundcloud,
-                        onTap: () => _pick(ref, WaveEngineKind.soundcloud),
+                    for (final s in kWaveSources) ...[
+                      if (s != kWaveSources.first) const SizedBox(width: 10),
+                      Expanded(
+                        child: _SourceTile(
+                          source: s,
+                          label: s.label10n(context.l),
+                          selected:
+                              source == s &&
+                              (s != MusicSource.yandex || ymAuthed),
+                          enabled: s != MusicSource.yandex || ymAuthed,
+                          // Без аккаунта Яндекса выбирать нечего, но и молчать
+                          // нельзя — говорим, куда идти за входом.
+                          onTap: s == MusicSource.yandex && !ymAuthed
+                              ? () => showToast(
+                                  context,
+                                  context.l.waveToastYmNoAuth,
+                                  kind: ToastKind.warn,
+                                )
+                              : () => _pick(ref, s),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _SourceTile(
-                        source: MusicSource.yandex,
-                        label: MusicSource.yandex.label10n(context.l),
-                        selected: ymAuthed && source == WaveEngineKind.yandex,
-                        enabled: ymAuthed,
-                        // Без аккаунта выбирать нечего, но и молчать нельзя —
-                        // говорим, куда идти за входом.
-                        onTap: ymAuthed
-                            ? () => _pick(ref, WaveEngineKind.yandex)
-                            : () => showToast(
-                                context,
-                                context.l.waveToastYmNoAuth,
-                                kind: ToastKind.warn,
-                              ),
-                      ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -118,8 +113,8 @@ class _TuneSheet extends ConsumerWidget {
 
   /// Смена площадки сбрасывает кэш витрины: кольцо обязано показать обложки
   /// ВЫБРАННОЙ станции, а не остаться со старыми.
-  void _pick(WidgetRef ref, WaveEngineKind kind) {
-    ref.read(waveStoreProvider.notifier).setSource(kind);
+  void _pick(WidgetRef ref, MusicSource source) {
+    ref.read(waveStoreProvider.notifier).setSource(source);
     resetWaveFaces();
     ref.invalidate(waveFacesProvider);
   }

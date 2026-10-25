@@ -1,41 +1,38 @@
-/// «Лица волны» — обложки для кольца на главной. Порт `src/wave/faces.ts`.
+/// «Лица волны» — обложки для кольца на главной.
 ///
 /// Это НЕ библиотека: в кольце стоит то, что реально зазвучало бы в волне
-/// ВЫБРАННОЙ площадки, поэтому переключатель SoundCloud/Яндекс меняет и
-/// содержимое кольца:
-///   • SoundCloud — похожие на несколько личных сидов (тот же источник, из
-///     которого движок собирает пачку);
-///   • Яндекс — батч станции `user:onyourwave` (та же станция, что и «Моя
+/// ВЫБРАННОЙ площадки, поэтому выбор площадки меняет и кольцо:
+///   • SoundCloud, YouTube Music — радио нескольких личных сидов (то же, из
+///     чего волна собирает пачку);
+///   • Яндекс — порция станции `user:onyourwave` (та же станция, что и «Моя
 ///     волна»).
 ///
-/// Витрина НЕ трогает состояние настоящей волны: ни сеанса, ни курсоров
-/// станций, ни пометок «показано» — только кэшируемые запросы. Поэтому здесь и
-/// не используется [WaveEngine]: ему нужен живой сеанс, и он двигает курсоры.
+/// Витрина НЕ трогает состояние настоящей волны: ни курсоров станций, ни
+/// пометок «показано», ни отзывов станции — только первые порции радио.
 ///
-/// Отличие от десктопа: плитка несёт сам [Track], а не id с обложкой. Реестра
-/// треков в памяти у нас нет — по одному id волну потом было бы не с чего
-/// запустить.
+/// Плитка несёт сам [Track], а не id с обложкой: по одному id волну потом было
+/// бы не с чего запустить.
 library;
 
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/providers.dart';
 import '../../core/entities/entities.dart';
 import '../../core/store/history_store.dart';
 import '../../core/store/library_store.dart';
 import '../../core/store/play_stats.dart';
-import '../../providers/soundcloud/sc_provider.dart' show trackFromSc;
 import '../../providers/yandex/models.dart' show YmRawTrack;
 import '../../providers/yandex/ym_provider.dart' show trackFromYm;
 import '../../providers/yandex/yandex.dart' as ym;
+import 'wave_controller.dart';
 import 'wave_seeds.dart';
-import '../../providers/soundcloud/sc_sources.dart';
 import 'wave_store.dart';
 import 'wave_types.dart';
 
-/// Сколько личных сидов раскрываем через «похожие». Каждый — отдельный запрос.
-const int _kScSeeds = 3;
+/// Сколько личных сидов раскрываем через радио. Каждый — отдельный запрос.
+const int _kSeeds = 3;
 
 const Duration _ttl = Duration(minutes: 20);
 
@@ -45,44 +42,10 @@ class _Entry {
   final List<Track> faces;
 }
 
-final Map<WaveEngineKind, _Entry> _cache = {};
-final Map<WaveEngineKind, Future<List<Track>>> _inflight = {};
+final Map<MusicSource, _Entry> _cache = {};
+final Map<MusicSource, Future<List<Track>>> _inflight = {};
 
-/// Обложки для кольца выбранной площадки. Пустой список — получить не вышло
-/// (нет сети, не вошли в аккаунт, у сидов нет похожих): интерфейс сам решит,
-/// что показать вместо них.
-Future<List<Track>> fetchWaveFaces(
-  WaveEngineKind source, {
-  required WaveLibrary view,
-  required int rotation,
-  int limit = 8,
-}) {
-  final hit = _cache[source];
-  if (hit != null && DateTime.now().difference(hit.at) < _ttl) {
-    return Future.value(hit.faces);
-  }
-  final running = _inflight[source];
-  if (running != null) return running;
-
-  final future =
-      (source == WaveEngineKind.yandex
-              ? _yandexFaces(limit)
-              : _soundcloudFaces(view, rotation, limit))
-          .catchError((_) => const <Track>[])
-          .then((faces) {
-            // Пустой результат не кэшируем: почти всегда это сеть, а не
-            // «показать нечего», — иначе кольцо застряло бы пустым на весь срок.
-            if (faces.isNotEmpty) {
-              _cache[source] = _Entry(DateTime.now(), faces);
-            }
-            _inflight.remove(source);
-            return faces;
-          });
-  _inflight[source] = future;
-  return future;
-}
-
-/// Сбросить кэш — после смены аккаунта Яндекса или по «потянуть-обновить».
+/// Сбросить кэш — после смены аккаунта Яндекса или выбора площадки.
 void resetWaveFaces() => _cache.clear();
 
 /// Снимок библиотеки для витрины: дизлайкнутое в кольцо не идёт.
@@ -91,24 +54,43 @@ WaveLibrary _view(Ref ref) => WaveLibrary(
   disliked: ref.read(waveStoreProvider).dislikedIds,
   stats: ref.read(playStatsProvider),
   recent: [for (final row in ref.read(historyRowsProvider)) row.id],
+  seedOf: ref.read(waveProvider.notifier).seedOf,
 );
 
-/// Обложки кольца выбранной площадки.
+/// Обложки кольца площадки. Пустой список — получить не вышло (нет сети, не
+/// вошли в аккаунт, у сидов нет радио): интерфейс покажет запасные.
 ///
 /// Библиотеку читаем через `ref.read`, а не `watch`: прослушивание меняет
 /// историю каждые три минуты, и на `watch` кольцо перезапрашивало бы площадку
 /// прямо во время музыки. Свежесть держит срок кэша.
-final waveFacesProvider = FutureProvider.family<List<Track>, WaveEngineKind>((
+final waveFacesProvider = FutureProvider.family<List<Track>, MusicSource>((
   ref,
   source,
 ) {
-  final store = ref.read(waveStoreProvider.notifier);
-  return fetchWaveFaces(
-    source,
-    view: _view(ref),
-    rotation: store.rotation,
-    limit: 8,
-  );
+  final hit = _cache[source];
+  if (hit != null && DateTime.now().difference(hit.at) < _ttl) {
+    return Future.value(hit.faces);
+  }
+  final running = _inflight[source];
+  if (running != null) return running;
+
+  final rotation = ref.read(waveStoreProvider.notifier).rotation;
+  final future =
+      (source == MusicSource.yandex
+              ? _yandexFaces(8)
+              : _radioFaces(ref, source, rotation, 8))
+          .catchError((_) => const <Track>[])
+          .then((faces) {
+            // Пустоту не кэшируем: почти всегда это сеть, а не «показать
+            // нечего», — иначе кольцо застряло бы пустым на весь срок.
+            if (faces.isNotEmpty) {
+              _cache[source] = _Entry(DateTime.now(), faces);
+            }
+            _inflight.remove(source);
+            return faces;
+          });
+  _inflight[source] = future;
+  return future;
 });
 
 /// Запасные плитки — обложки прямо из библиотеки. Показываются, когда площадка
@@ -132,32 +114,40 @@ final waveRingFallbackProvider = Provider<List<Track>>((ref) {
   return out;
 });
 
-// ── SoundCloud ──────────────────────────────────────────────────────────────
+// ── SoundCloud, YouTube Music ───────────────────────────────────────────────
 
-Future<List<Track>> _soundcloudFaces(
-  WaveLibrary view,
+Future<List<Track>> _radioFaces(
+  Ref ref,
+  MusicSource source,
   int rotation,
   int limit,
 ) async {
-  final seeds = <String>[];
+  final provider = ref.read(registryProvider).byId(source.id);
+  if (provider == null) return const [];
+  final view = _view(ref);
+  final seeds = <WaveSeed>[];
   for (final id in pickDisplaySeeds(view, rotation)) {
-    final scId = scIdOf(view.byId(id));
-    if (scId != null && !seeds.contains(scId)) seeds.add(scId);
-    if (seeds.length == _kScSeeds) break;
+    final t = view.byId(id);
+    if (t == null || t.source != source) continue;
+    final s = view.seedOf(t);
+    if (s != null && !seeds.contains(s)) seeds.add(s);
+    if (seeds.length == _kSeeds) break;
   }
   if (seeds.isEmpty) return const [];
 
-  final batches = await Future.wait([for (final s in seeds) waveRelated(s)]);
+  final pages = await Future.wait([
+    for (final s in seeds) provider.station(s.station, ''),
+  ]);
 
-  // Чередуем сиды по кругу: иначе всё кольцо соберётся из похожих на один трек.
+  // Сиды по кругу: иначе всё кольцо собралось бы из похожих на один трек.
   final out = <Track>[];
   final seen = _Seen();
-  final deepest = batches.fold(0, (m, b) => b.length > m ? b.length : m);
+  final deepest = pages.fold(0, (m, p) => p.tracks.length > m ? p.tracks.length : m);
   for (var i = 0; i < deepest && out.length < limit; i++) {
-    for (final batch in batches) {
-      if (i >= batch.length) continue;
-      final track = trackFromSc(batch[i]);
-      if (!seen.add(track)) continue;
+    for (final page in pages) {
+      if (i >= page.tracks.length) continue;
+      final track = page.tracks[i];
+      if (view.disliked.contains(track.id) || !seen.add(track)) continue;
       out.add(track);
       if (out.length >= limit) break;
     }
@@ -184,11 +174,10 @@ class _Seen {
 
 // ── Яндекс ──────────────────────────────────────────────────────────────────
 
-/// Потолок батчей на одно кольцо. Rotor отдаёт ~5 треков за раз, а после отсева
-/// по обложке (у треков одного релиза она общая) на плитки остаётся и того
-/// меньше — одного батча не хватает, часть плиток оставалась пустой. Цепочку
-/// продолжаем `queue=<последний id>`: тот же GET, которым драйвер волны тянет
-/// следующую пачку, только без фидбека — станцию витрина не учит.
+/// Потолок порций на одно кольцо. Rotor отдаёт ~5 треков за раз, а после
+/// отсева по обложке (у треков одного релиза она общая) на плитки остаётся и
+/// того меньше. Цепочку продолжаем `queue=<последний id>` — тот же GET, что у
+/// волны, только мимо провайдера: batch-id и отзывы остаются настоящей волне.
 const int _kYmBatches = 4;
 
 Future<List<Track>> _yandexFaces(int limit) async {

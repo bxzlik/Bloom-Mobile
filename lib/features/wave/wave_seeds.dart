@@ -1,174 +1,117 @@
-/// Подбор сидов — порт `src/wave/seeds.ts`.
+/// С чего волна стартует — `personalSeeds` и `queueSeeds` ПК.
 ///
-/// Чистые функции над снимком библиотеки: то, на чём волна строится, целиком
-/// определяется тем, что человек слушал и лайкал, — и проверять это удобнее
-/// списком, а не на живом сторе.
-///
-/// Число прослушиваний — СВОЁ, из журнала ([PlayStats]), как на ПК: счётчиков
-/// площадок Bloom не берёт вовсе.
+/// Чистые функции над снимком библиотеки ([WaveLibrary]): на чём волна
+/// строится, целиком решает то, что человек слушал и лайкал, — и проверять это
+/// удобнее списком. Прослушивания — свои, из журнала ([PlayStats]).
 library;
-
-import 'dart:math';
 
 import '../../core/entities/entities.dart';
 import '../../core/store/library_store.dart';
 import '../../core/store/play_stats.dart';
-
-/// Числовой SoundCloud-id трека — по нему и ходит подбор похожих. `null` у
-/// всего, что не с SoundCloud: своего движка подбора у остальных площадок нет.
-///
-/// Разбираем сами, а не через `scNumericId`: тот отдаёт ноль и когда id
-/// действительно ноль, и когда разобрать не вышло, — а здесь это разные
-/// ответы. Строку возвращаем как есть, без круга через int.
-String? scIdOf(Track? track) {
-  if (track == null || track.source != MusicSource.soundcloud) return null;
-  final tail = track.id.split(':').last;
-  return int.tryParse(tail) == null ? null : tail;
-}
+import 'wave_engine.dart' show spreadSeeds;
+import 'wave_types.dart';
 
 /// Снимок библиотеки, каким его видит подбор.
 class WaveLibrary {
   WaveLibrary({
     required this.lib,
     required this.disliked,
+    required this.seedOf,
     PlayStats? stats,
     this.recent = const [],
     Iterable<Track> extras = const [],
-    Random? random,
   }) : stats = stats ?? PlayStats.empty,
-       _extras = {for (final t in extras) t.id: t},
-       _rnd = random ?? Random();
+       _extras = {for (final t in extras) t.id: t};
 
   final LibraryState lib;
 
-  /// Сколько раз и когда слушали — журнал прослушиваний целиком, а не 200
-  /// последних треков, как было до 3.0.
+  /// Журнал прослушиваний целиком.
   final PlayStats stats;
 
   /// id из «Истории», свежие сверху.
   final List<String> recent;
 
-  /// id дизлайкнутых треков — в сиды и в подмешивание они не попадают.
+  /// id дизлайкнутых треков — сидами они не бывают.
   final Set<String> disliked;
 
-  /// Треки, которых в библиотеке нет, но сидами они быть могут: трек из
-  /// выдачи поиска, содержимое очереди, страница артиста. Без них «Волна по
-  /// треку» работала бы только для сохранённого.
+  /// Радио трека у его площадки; `null` — радио нет (свой файл, Яндекс без
+  /// входа).
+  final WaveSeed? Function(Track) seedOf;
+
+  /// Треки вне библиотеки, которые тоже бывают сидами: очередь, страница
+  /// артиста.
   final Map<String, Track> _extras;
 
-  final Random _rnd;
-
-  /// Треки библиотеки без дизлайкнутых. Порядок — как в разделе «Все треки».
+  /// Треки библиотеки без дизлайкнутых. Порядок — как в «Все треки».
   late final List<Track> tracks = [
     for (final t in lib.allTracks)
       if (!disliked.contains(t.id)) t,
   ];
 
-  /// Сколько раз трек слушали — из журнала, см. заметку в шапке файла.
   int playCount(String trackId) => stats.playCount(trackId);
-
-  /// Слушали ли трек за последние [days] дней.
-  bool recentlyPlayed(String trackId, int days) =>
-      stats.recentlyPlayed(trackId, days);
 
   Track? byId(String trackId) => _extras[trackId] ?? lib.tracks[trackId];
 }
 
-/// «Волна по треку»: сидом служит он сам.
-List<String> pickTrackSeeds(String trackId) => [trackId];
-
-/// «Похожие на очередь» и «Волна по артисту» на SoundCloud: сиды берём из
-/// списка равномерно по позициям.
-///
-///   ≤8 треков → все; 9–15 → 8; 16+ → 10.
-///
-/// Потолок в десять — цена старта: каждый сид это два запроса к площадке через
-/// общую очередь с паузой, а покрытие дальше почти не растёт (выдачи начинают
-/// пересекаться).
-List<String> pickQueueSeeds(List<String> trackIds, WaveLibrary view) {
-  if (trackIds.isEmpty) return const [];
-
-  // Отбираем годные, сохраняя порядок: дизлайкнутые и не-SoundCloud выкидываем
-  // ДО расчёта позиций, иначе шаг разъедется.
-  final valid = <String>[];
-  final seen = <String>{};
-  for (final id in trackIds) {
-    if (!seen.add(id)) continue;
-    if (view.disliked.contains(id)) continue;
-    if (scIdOf(view.byId(id)) == null) continue;
-    valid.add(id);
+/// Сиды из списка (очередь, треки артиста): по одному на радио, без
+/// дизлайкнутых, поровну по списку ([spreadSeeds]).
+List<WaveSeed> queueSeeds(List<Track> tracks, WaveLibrary view) {
+  final all = <WaveSeed>[];
+  final seen = <WaveSeed>{};
+  for (final t in tracks) {
+    if (view.disliked.contains(t.id)) continue;
+    final s = view.seedOf(t);
+    if (s != null && seen.add(s)) all.add(s);
   }
-  if (valid.isEmpty) return const [];
-
-  final n = valid.length;
-  final target = n <= 8
-      ? n
-      : n <= 15
-      ? 8
-      : 10;
-  if (target >= n) return valid;
-
-  return [
-    for (var i = 0; i < target; i++)
-      valid[min(n - 1, (i * n / target).round())],
-  ];
+  return spreadSeeds(all);
 }
 
-/// «Моя волна»: 3–5 сидов из библиотеки — топ по прослушиваниям, свежие лайки
-/// и ещё один из них же.
-///
-/// [rotation] сдвигает выбор на каждом запуске: без него волна вечно упиралась
-/// бы в одни и те же два трека из топа и два последних лайка.
-List<String> pickPersonalSeeds(WaveLibrary view, int rotation) {
-  final lib = view.tracks;
+/// «Моя волна» с площадки [provider] (код базы): два самых слушаемых, два
+/// самых свежих лайка и ещё один из них же. [rotation] сдвигает выбор на
+/// каждой новой волне — иначе она вечно стояла бы на тех же двух из топа.
+List<WaveSeed> personalSeeds(
+  WaveLibrary view,
+  String provider,
+  int rotation,
+) {
+  bool usable(Track t) =>
+      t.source.code == provider &&
+      !view.disliked.contains(t.id) &&
+      view.seedOf(t) != null;
+  final lib = [
+    for (final t in view.lib.allTracks)
+      if (usable(t)) t,
+  ];
   if (lib.isEmpty) return const [];
 
-  final seeds = <String>{};
-
-  // 1) Топ по прослушиваниям — два трека со сдвигом.
   final byPlays = _byPlays(view, lib);
-  if (byPlays.isNotEmpty) {
-    final a = byPlays[(rotation * 2) % byPlays.length];
-    final b = byPlays[(rotation * 2 + 1) % byPlays.length];
-    seeds.add(a.id);
-    seeds.add(b.id);
+  final favs = [
+    for (final t in _newest(view.lib.favTracks, view.lib.favs))
+      if (usable(t)) t,
+  ];
+
+  final picked = <Track>[];
+  bool take(List<Track> from, int i) {
+    if (from.isEmpty) return false;
+    final t = from[i % from.length];
+    if (picked.any((x) => x.id == t.id)) return false;
+    picked.add(t);
+    return true;
   }
 
-  // 2) Свежие лайки — тоже со сдвигом.
-  final favs = _byFav(view, lib);
-  if (favs.isNotEmpty) {
-    seeds.add(favs[(rotation * 2) % favs.length].id);
-    seeds.add(favs[(rotation * 2 + 1) % favs.length].id);
-  }
-
-  // 3) Ещё один: следующий из топа, а если его нет или он уже взят — следующий
-  // лайк. Раньше здесь был случайный трек «любимого жанра», но жанр на
-  // SoundCloud — свободный текст загрузчика вперемешку с тегами («rap»,
-  // «Hip-hop & Rap», «type beat»), и такой сид был по сути случайным треком
-  // библиотеки; десктоп 3.0 убрал его по той же причине.
-  final nextTop = byPlays.isEmpty
-      ? null
-      : byPlays[(rotation * 2 + 2) % byPlays.length];
-  final nextFav = favs.isEmpty ? null : favs[(rotation * 2 + 2) % favs.length];
-  for (final t in [nextTop, nextFav]) {
-    if (t != null && seeds.add(t.id)) break;
-  }
-
-  // Слушать ещё нечего — берём самое свежее в библиотеке.
-  if (seeds.isEmpty) {
-    for (final t in lib.take(3)) {
-      seeds.add(t.id);
-    }
-  }
-  return seeds.take(5).toList();
+  take(byPlays, rotation * 2);
+  take(byPlays, rotation * 2 + 1);
+  take(favs, rotation * 2);
+  take(favs, rotation * 2 + 1);
+  if (!take(byPlays, rotation * 2 + 2)) take(favs, rotation * 2 + 2);
+  // Ничего не слушали и не лайкали: самое свежее в библиотеке.
+  if (picked.isEmpty) picked.addAll(_newest(lib, view.lib.inLib).take(3));
+  return [for (final t in picked) ?view.seedOf(t)];
 }
 
-/// Витрина «Моей волны» (кольцо обложек на главной): кандидаты в плитки.
-///
-/// Близнец [pickPersonalSeeds] — те же источники в том же порядке, но БЕЗ
-/// сдвига ротации: отрисовка главной не должна прокручивать карусель сидов
-/// настоящей волны. Отдаём с запасом: у части треков обложки не окажется,
-/// финальный отбор делает интерфейс.
+/// Кольцо «Моей волны» на главной: из чего брать обложки. Те же источники в
+/// том же порядке, но БЕЗ сдвига ротации — отрисовка главной не должна
+/// прокручивать сиды настоящей волны. С запасом: у части не будет обложки.
 List<String> pickDisplaySeeds(
   WaveLibrary view,
   int rotation, {
@@ -185,7 +128,10 @@ List<String> pickDisplaySeeds(
   }
 
   final byPlays = _byPlays(view, lib);
-  final favs = _byFav(view, lib);
+  final favs = [
+    for (final t in _newest(view.lib.favTracks, view.lib.favs))
+      if (!view.disliked.contains(t.id)) t,
+  ];
   for (final t in _rotate(byPlays, rotation * 2).take(4)) {
     push(t.id);
   }
@@ -209,37 +155,23 @@ List<String> pickDisplaySeeds(
   return out;
 }
 
-/// Знакомые треки для подмешивания в «Мою волну». Перемешаны: одни и те же
-/// «знакомые» в каждой пачке звучали бы как сбой, а не как узнавание.
-List<Track> pickFamiliarPool(
-  WaveLibrary view,
-  Set<String> exclude, {
-  int limit = 20,
-}) {
-  final pool = [
-    for (final t in view.tracks)
-      if (!exclude.contains(t.id) && !view.recentlyPlayed(t.id, 3)) t,
-  ];
-  pool.shuffle(view._rnd);
-  return pool.take(limit).toList();
-}
-
-/// Треки с ненулевым числом прослушиваний, сверху — самые слушаемые.
+/// Слушанные, самые слушаемые сверху (порядок при равенстве — как пришли).
 List<Track> _byPlays(WaveLibrary view, List<Track> lib) {
   final scored = [
-    for (final t in lib)
-      if (view.playCount(t.id) > 0) (t, view.playCount(t.id)),
-  ]..sort((a, b) => b.$2.compareTo(a.$2));
+    for (var i = 0; i < lib.length; i++)
+      if (view.playCount(lib[i].id) case final n when n > 0) (lib[i], n, i),
+  ]..sort((a, b) => a.$2 != b.$2 ? b.$2.compareTo(a.$2) : a.$3.compareTo(b.$3));
   return [for (final x in scored) x.$1];
 }
 
-/// Лайкнутые, свежие сверху.
-List<Track> _byFav(WaveLibrary view, List<Track> lib) {
-  final favs = [
-    for (final t in lib)
-      if (view.lib.isFav(t.id)) (t, view.lib.favs[t.id] ?? 0),
-  ]..sort((a, b) => b.$2.compareTo(a.$2));
-  return [for (final x in favs) x.$1];
+/// Свежие сверху по времени добавления [at] — `Taste::newestIn` ПК.
+List<Track> _newest(List<Track> list, Map<String, int> at) {
+  final rows = [for (var i = 0; i < list.length; i++) (list[i], i)]
+    ..sort((a, b) {
+      final c = (at[b.$1.id] ?? 0).compareTo(at[a.$1.id] ?? 0);
+      return c != 0 ? c : a.$2.compareTo(b.$2);
+    });
+  return [for (final x in rows) x.$1];
 }
 
 /// Список, прокрученный на [by] позиций.

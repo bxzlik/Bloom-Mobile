@@ -135,9 +135,9 @@ Future<void> showTrackActions(
           ),
       ],
       [
-        // Волна по треку — только у площадок со своим подбором: у остальных
-        // пункт открывался бы ради отказа.
-        if (canStartWaveFrom(track))
+        // Волна по треку — только у площадок с радио: у остальных пункт
+        // открывался бы ради отказа.
+        if (canStartWaveFrom(ref, track))
           SheetAction(
             icon: SolarIconsOutline.playStream,
             label: context.l.waveFromTrack,

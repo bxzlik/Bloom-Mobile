@@ -12,18 +12,24 @@ import '../../core/entities/entities.dart';
 import '../../core/l10n/l10n.dart';
 import '../../shared/ui/bloom_toast.dart';
 import 'wave_controller.dart';
-import 'wave_seeds.dart';
 import 'wave_store.dart';
 
-/// Умеет ли площадка трека подбирать похожее. Пункт «Волна по треку» есть
-/// только у таких: у остальных он показывал бы меню ради отказа.
-bool canStartWaveFrom(Track track) =>
-    track.source == MusicSource.yandex || scIdOf(track) != null;
+/// Есть ли у площадки трека радио. Пункт «Волна по треку» есть только у
+/// таких: у остальных он открывал бы меню ради отказа.
+bool canStartWaveFrom(WidgetRef ref, Track track) =>
+    ref.read(waveProvider.notifier).seedOf(track) != null;
 
-/// Умеет ли площадка артиста строить по нему волну.
-bool canStartWaveFromArtist(Artist artist, List<Track> knownTracks) =>
-    artist.source == MusicSource.yandex ||
-    knownTracks.any((t) => scIdOf(t) != null);
+/// Можно ли строить волну по артисту: станция артиста у Яндекса, у остальных —
+/// радио хотя бы одного из его загруженных треков.
+bool canStartWaveFromArtist(
+  WidgetRef ref,
+  Artist artist,
+  List<Track> knownTracks,
+) {
+  if (artist.source == MusicSource.yandex) return true;
+  final wave = ref.read(waveProvider.notifier);
+  return knownTracks.any((t) => wave.seedOf(t) != null);
+}
 
 /// «Моя волна».
 Future<void> startPersonalWave(BuildContext context, WidgetRef ref) =>
@@ -99,12 +105,9 @@ String waveResultMessage(AppLocalizations l10n, WaveStartResult result) =>
       WaveStartResult.ok || WaveStartResult.busy => '',
       WaveStartResult.notEnoughData => l10n.waveToastNotEnough,
       WaveStartResult.noSeed => l10n.waveToastNoSeed,
-      WaveStartResult.notSupported => l10n.waveToastScOnly,
       WaveStartResult.queueEmpty => l10n.waveToastQueueEmpty,
-      WaveStartResult.noScInQueue => l10n.waveToastNoScInQueue,
+      WaveStartResult.noSeedsInQueue => l10n.waveToastNoSeedsInQueue,
       WaveStartResult.artistNoSeeds => l10n.waveToastArtistNoSeeds,
       WaveStartResult.noSimilar => l10n.waveToastNoSimilar,
       WaveStartResult.ymNoAuth => l10n.waveToastYmNoAuth,
-      WaveStartResult.ymEmpty => l10n.waveToastYmEmpty,
-      WaveStartResult.ymFailed => l10n.waveToastYmFailed,
     };

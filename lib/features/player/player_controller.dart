@@ -518,6 +518,8 @@ class PlaybackController extends Notifier<PlaybackState>
     // статистика профиля и дни, уровень, сиды волны и «Итоги». Своих
     // счётчиков больше нет нигде.
     ref.read(playLogProvider.notifier).log(track);
+    // В волне трек теперь услышан — и пора проверить её запас.
+    ref.read(waveProvider.notifier).onCounted(track);
     // Засчитан последний трек очереди — просим продолжение заранее, чтобы к
     // концу трека пачка уже стояла и переход шёл обычным путём, без паузы.
     _maybeAutoSimilar();
@@ -525,7 +527,7 @@ class PlaybackController extends Notifier<PlaybackState>
 
   /// «Авто похожие» (порт `maybeAutoSimilar` с ПК): последний трек очереди
   /// засчитан, доиграл или на нём нажали «далее» — дописываем в хвост похожие
-  /// (Яндекс или SoundCloud, см. `WaveController.continueQueue`). Не
+  /// (см. `WaveController.continueQueue`). Не
   /// срабатывает при повторе (он сам решает, что после конца) и в живой волне
   /// (она догружается сама).
   void _maybeAutoSimilar() {

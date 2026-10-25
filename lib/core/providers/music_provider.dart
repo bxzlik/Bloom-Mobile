@@ -171,6 +171,15 @@ class PlayableStream {
   });
 }
 
+/// Порция радио площадки — `StationPage` ПК. [cursor] ведёт к следующей, пусто —
+/// радио кончилось (следующий раз начнётся сначала).
+class StationPage {
+  final List<Track> tracks;
+  final String cursor;
+
+  const StationPage({this.tracks = const [], this.cursor = ''});
+}
+
 abstract class MusicProvider {
   const MusicProvider();
 
@@ -235,6 +244,25 @@ abstract class MusicProvider {
   /// `null` — площадка похожих не отдаёт. Чужой или не-трековый id — пустой
   /// список, без похода в сеть.
   Future<List<Track>?> getSimilarTracks(String seedId) async => null;
+
+  /// Радио, с которого волна стартует от трека этой площадки (`track:<id>`), —
+  /// как `Provider::trackStation` ПК. Пусто — радио у площадки нет.
+  String trackStation(Track track) => '';
+
+  /// Порция радио [station] (`track:<id>`, у Яндекса и `user:onyourwave`,
+  /// `artist:<id>`) с [cursor]; пустой курсор — с начала. Сбой — пустая порция:
+  /// волна опрашивает сиды пачкой, и один упавший не должен ронять остальные.
+  Future<StationPage> station(String station, String cursor) async =>
+      const StationPage();
+
+  /// Отзыв радио, которое учится само (Яндекс): `radioStarted`,
+  /// `trackStarted`, `trackFinished`, `skip`; [played] — секунды.
+  void stationFeedback(
+    String station,
+    String event, {
+    Track? track,
+    double played = 0,
+  }) {}
 
   /// Играбельный URL трека этой площадки.
   Future<PlayableStream?> resolveStream(Track track) async => null;
