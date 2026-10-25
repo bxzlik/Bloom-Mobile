@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../entities/entities.dart';
+import 'days_store.dart' show dayKey;
 import 'play_log.dart';
 
 const int _dayMs = 24 * 3600 * 1000;
@@ -126,6 +127,19 @@ class PlayStats {
     for (final e in _plays.entries)
       HistoryRow(e.key, e.value.last, e.value.length),
   ]..sort((a, b) => b.at.compareTo(a.at));
+
+  /// Прослушивания по дням (локальная дата → сколько) — `PlayLog::perDay` ПК:
+  /// график активности, серии, рекорд дня, дни с музыкой.
+  late final Map<String, int> perDay = () {
+    final out = <String, int>{};
+    for (final list in _plays.values) {
+      for (final ts in list) {
+        final key = dayKey(DateTime.fromMillisecondsSinceEpoch(ts));
+        out[key] = (out[key] ?? 0) + 1;
+      }
+    }
+    return out;
+  }();
 }
 
 int _byPlaysThenFresh(TopPlayed a, TopPlayed b) => a.plays != b.plays

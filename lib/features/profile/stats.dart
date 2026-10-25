@@ -1,12 +1,8 @@
-/// Расчёт статистики профиля — порт вычислений из десктопного `StatsSection`.
+/// Расчёт статистики профиля — порт `Stats::details/recount` ПК.
 ///
 /// Источники: журнал прослушиваний ([PlayStats] — сколько раз и когда слушали
-/// каждый трек), дневной журнал и время в приложении. Ничего своего не
-/// персистится — всё считается на лету.
-///
-/// С 3.0 прослушивания берутся из журнала, а не из истории: та упиралась в 200
-/// уникальных треков, всё вытесненное пропадало из сумм и из топа артистов, а
-/// цифры расходились с «Итогами», которые считались по полному журналу.
+/// каждый трек, по дням) и таблица дней ([DaysState] — время в приложении).
+/// Ничего своего не персистится — всё считается на лету.
 ///
 /// Разбивка по площадкам берётся из ПРЕФИКСА id, а не из поля трека: треки
 /// площадок живут в памяти, и после перезапуска половина записей истории уже не
@@ -21,8 +17,8 @@ import '../../core/l10n/l10n.dart';
 import '../../core/entities/entities.dart';
 import '../../core/store/history_store.dart';
 import '../../core/store/library_store.dart';
+import '../../core/store/days_store.dart';
 import '../../core/store/play_stats.dart';
-import '../../core/store/stats_store.dart';
 import '../../shared/util/artists.dart';
 
 /// Строка «Топ треков».
@@ -75,6 +71,7 @@ class ProfileStats {
     required this.recordDate,
     required this.activeDays,
     required this.streak,
+    required this.longestStreak,
     required this.appSec,
     required this.topTracks,
     required this.topArtists,
@@ -105,20 +102,24 @@ class ProfileStats {
   /// Дней подряд с прослушиваниями, считая от сегодня.
   final int streak;
 
+  /// Самая длинная серия дней с прослушиваниями за всё время — по ней
+  /// достижение «Серия»: пропущенный день не отнимает взятую ступень (и её XP).
+  final int longestStreak;
+
   final int appSec;
 
   final List<TrackPlays> topTracks;
   final List<ArtistPlays> topArtists;
   final List<SourcePlays> bySource;
 
-  /// Дневной журнал как есть — для графика и теплокарты.
+  /// Прослушивания по дням — для графика и теплокарты.
   final Map<String, int> activity;
 
   String? get favArtist => topArtists.isEmpty ? null : topArtists.first.name;
 
   static ProfileStats build(
     LibraryState lib,
-    StatsState stats,
+    DaysState days,
     PlayStats journal,
   ) {
     var totalPlays = 0;
@@ -205,11 +206,10 @@ class ProfileStats {
             .toList()
           ..sort((a, b) => b.plays.compareTo(a.plays));
 
+    final perDay = journal.perDay;
     var recordDay = 0;
     String? recordKey;
-    var activeDays = 0;
-    for (final e in stats.activity.entries) {
-      if (e.value > 0) activeDays++;
+    for (final e in perDay.entries) {
       if (e.value > recordDay) {
         recordDay = e.value;
         recordKey = e.key;
@@ -228,16 +228,37 @@ class ProfileStats {
       daySpan: span < 1 ? 1 : span,
       recordDay: recordDay,
       recordDate: recordKey == null ? null : DateTime.tryParse(recordKey),
-      activeDays: activeDays,
-      streak: _streak(stats.activity),
-      appSec: (stats.appMs / 1000).round(),
+      activeDays: perDay.length,
+      streak: _streak(perDay),
+      longestStreak: longestRun(perDay.keys),
+      appSec: days.appMs ~/ 1000,
       topTracks: rows.take(10).toList(),
       topArtists: topArtists.take(10).toList(),
       bySource: bySource,
-      activity: stats.activity,
+      activity: perDay,
     );
   }
 }
+
+/// Дни [keys] (`YYYY-MM-DD`) по возрастанию, без повторов.
+List<DateTime> sortedDays(Iterable<String> keys) =>
+    [for (final k in keys) ?DateTime.tryParse(k)]..sort();
+
+/// Самая длинная серия дней подряд среди [keys].
+int longestRun(Iterable<String> keys) {
+  var longest = 0, run = 0;
+  DateTime? prev;
+  for (final d in sortedDays(keys)) {
+    run = prev != null && nextDay(prev) == d ? run + 1 : 1;
+    prev = d;
+    if (run > longest) longest = run;
+  }
+  return longest;
+}
+
+/// Следующий календарный день — через конструктор, а не +24 ч: на переходе
+/// на летнее время сутки бывают в 23 и 25 часов.
+DateTime nextDay(DateTime d) => DateTime(d.year, d.month, d.day + 1);
 
 /// Площадка артиста — та, где его слушали чаще всего.
 ///
@@ -259,14 +280,14 @@ MusicSource _artistSource(Map<MusicSource, int> plays) {
 /// Дней подряд с прослушиваниями. Отсчёт от сегодня, но если сегодня ещё не
 /// слушали — от вчера: иначе стрик обнулялся бы каждое утро (десктопный грейс).
 int _streak(Map<String, int> log) {
-  var cursor = DateTime.now();
-  if ((log[dayKey(cursor)] ?? 0) == 0) {
-    cursor = cursor.subtract(const Duration(days: 1));
-  }
+  final now = DateTime.now();
+  DateTime back(DateTime d) => DateTime(d.year, d.month, d.day - 1);
+  var cursor = DateTime(now.year, now.month, now.day);
+  if ((log[dayKey(cursor)] ?? 0) == 0) cursor = back(cursor);
   var streak = 0;
   while ((log[dayKey(cursor)] ?? 0) > 0) {
     streak++;
-    cursor = cursor.subtract(const Duration(days: 1));
+    cursor = back(cursor);
   }
   return streak;
 }
@@ -274,7 +295,7 @@ int _streak(Map<String, int> log) {
 final profileStatsProvider = Provider<ProfileStats>((ref) {
   return ProfileStats.build(
     ref.watch(libraryProvider),
-    ref.watch(statsProvider),
+    ref.watch(daysProvider),
     ref.watch(playStatsProvider),
   );
 });

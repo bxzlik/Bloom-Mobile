@@ -15,7 +15,7 @@ import 'core/db/db.dart';
 import 'core/store/cover_store.dart';
 import 'core/store/json_store.dart';
 import 'core/store/settings_store.dart';
-import 'core/store/stats_store.dart';
+import 'core/store/days_store.dart';
 import 'features/customization/ui/app_background.dart';
 import 'features/library/local_tracks.dart';
 import 'features/library/pl_auto_store.dart';
@@ -101,9 +101,9 @@ Future<void> main() async {
   // Мост авто-акцента живёт столько же, сколько процесс: цвет должен ехать за
   // обложкой всегда, а не только пока открыт экран «Интерфейс».
   container.read(autoAccentProvider);
-  // Счётчик времени в приложении — с первой же секунды, как `startUsageTracking`
-  // на десктопе. Живёт до конца процесса, снимать его некому и незачем.
-  UsageTracker(container.read(statsProvider.notifier)).start();
+  // Сегодняшний визит и время в приложении — с первой же секунды, как
+  // `Stats::start` на ПК. Живёт до конца процесса, снимать его некому и незачем.
+  UsageTracker(container.read(daysProvider.notifier)).start();
   // Расписание авто-обновления плейлистов — как `startPlAutoScheduler` на ПК.
   // Таймер живёт столько же, сколько процесс: разбудить закрытое приложение
   // нечем, зато при следующем запуске просроченный период виден по `lastRun`.

@@ -28,7 +28,7 @@ import '../../core/store/json_store.dart';
 import '../../core/store/library_store.dart';
 import '../../core/store/play_log.dart';
 import '../../core/store/settings_store.dart';
-import '../../core/store/stats_store.dart';
+import '../../core/store/days_store.dart';
 import '../../features/customization/custom_store.dart';
 import '../../features/customization/media_store.dart';
 import '../../features/customization/presets_store.dart';
@@ -54,6 +54,7 @@ import '../../features/player/speed_store.dart';
 import '../../features/player/track_anim_store.dart';
 import '../../features/profile/achievements.dart';
 import '../../features/profile/artist_avatars.dart';
+import '../../features/profile/level.dart';
 import '../../features/profile/profile_store.dart';
 import '../../features/search/recent_store.dart';
 import '../../features/wave/wave_controller.dart';
@@ -162,8 +163,11 @@ Future<void> hardReset(WidgetRef ref) async {
   // Витрины главной — их кэш лежал там же и собран по стёртому топу.
   ref.invalidate(forYouProvider);
   ref.invalidate(similarToProvider);
-  ref.invalidate(statsProvider);
-  ref.invalidate(achievementsProvider);
+  ref.invalidate(daysProvider);
+  // Отметки достижений и отложенные XP читаются из kv один раз: без этого
+  // старые отметки висели бы в памяти и первая же сверка записала бы их назад.
+  ref.invalidate(unlockedAchievementsProvider);
+  ref.invalidate(levelBankedProvider);
   ref.invalidate(profileProvider);
   ref.invalidate(recentSearchesProvider);
   // Открытые карточки — отдельный стор от запросов: без этой строки ключ

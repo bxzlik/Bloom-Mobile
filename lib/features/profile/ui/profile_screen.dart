@@ -30,6 +30,7 @@ import '../achievements.dart';
 import '../profile_store.dart';
 import '../stats.dart';
 import 'achievements_sheet.dart';
+import 'level_sheet.dart';
 import 'profile_avatar.dart';
 import 'profile_entry_card.dart';
 import 'stats_sheet.dart';
@@ -105,17 +106,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
             child: Column(
               children: [
-                // Тап по нику копирует его — то же, что клик по `.acc-name`.
-                GestureDetector(
-                  onTap: () =>
-                      _copyNick(context, profile.displayName(context.l)),
-                  child: Text(
-                    profile.displayName(context.l),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.headlineSmall?.copyWith(fontSize: 26),
-                  ),
+                // Уровень перед ником; тап по нику копирует его — то же, что
+                // клик по `.acc-name`.
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    LevelBadge(onTap: () => showLevelSheet(context)),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: GestureDetector(
+                        onTap: () =>
+                            _copyNick(context, profile.displayName(context.l)),
+                        child: Text(
+                          profile.displayName(context.l),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.headlineSmall?.copyWith(fontSize: 26),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 14),
                 _AboutBox(profile: profile),

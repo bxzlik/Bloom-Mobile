@@ -2444,11 +2444,113 @@ abstract class AppLocalizations {
   /// **'Clear'**
   String get statsClear;
 
-  /// No description provided for @statsClearConfirm.
+  /// No description provided for @statsClearTitle.
   ///
   /// In en, this message translates to:
-  /// **'Sure? Tap again'**
-  String get statsClearConfirm;
+  /// **'Clear the statistics?'**
+  String get statsClearTitle;
+
+  /// No description provided for @statsClearSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Plays, history, activity and achievements will be deleted'**
+  String get statsClearSub;
+
+  /// No description provided for @statsClearLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset the level too'**
+  String get statsClearLevel;
+
+  /// No description provided for @levelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Level {level}'**
+  String levelTitle(int level);
+
+  /// No description provided for @levelDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Your level grows as you listen to music and come back to Bloom'**
+  String get levelDesc;
+
+  /// No description provided for @levelXp.
+  ///
+  /// In en, this message translates to:
+  /// **'{into} / {span} XP'**
+  String levelXp(String into, String span);
+
+  /// No description provided for @levelToNext.
+  ///
+  /// In en, this message translates to:
+  /// **'{xp} XP to level {level}'**
+  String levelToNext(int level, String xp);
+
+  /// No description provided for @levelTracks.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{≈ {count} track} other{≈ {count} tracks}}'**
+  String levelTracks(int count);
+
+  /// No description provided for @levelHow.
+  ///
+  /// In en, this message translates to:
+  /// **'How it grows'**
+  String get levelHow;
+
+  /// No description provided for @levelPlays.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening'**
+  String get levelPlays;
+
+  /// No description provided for @levelPlaysSub.
+  ///
+  /// In en, this message translates to:
+  /// **'+{xp} XP a track'**
+  String levelPlaysSub(int xp);
+
+  /// No description provided for @levelDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily visits'**
+  String get levelDays;
+
+  /// No description provided for @levelDaysSub.
+  ///
+  /// In en, this message translates to:
+  /// **'+{xp} XP a day, more for days in a row'**
+  String levelDaysSub(int xp);
+
+  /// No description provided for @levelAch.
+  ///
+  /// In en, this message translates to:
+  /// **'Achievements'**
+  String get levelAch;
+
+  /// No description provided for @levelAchSub.
+  ///
+  /// In en, this message translates to:
+  /// **'+{bronze} / {silver} / {gold} XP for bronze, silver and gold'**
+  String levelAchSub(int bronze, int silver, int gold);
+
+  /// No description provided for @levelBanked.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier stats'**
+  String get levelBanked;
+
+  /// No description provided for @levelBankedSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Kept when the stats were cleared'**
+  String get levelBankedSub;
+
+  /// No description provided for @levelOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get levelOk;
 
   /// No description provided for @statsCopied.
   ///

@@ -1,22 +1,22 @@
-/// Достижения профиля — порт десктопного `achievements.ts` + его стора.
+/// Достижения профиля — порт достижений `Stats::recount` ПК.
 ///
 /// Список декларативный: у каждого достижения три порога (бронза/серебро/
 /// золото) и функция, достающая своё число из уже посчитанной статистики.
-/// Значения НЕ хранятся — считаются на лету; в файл ложатся только даты
-/// разблокировки, чтобы показать «получено 12 августа» и один раз всплыть
-/// уведомлением.
+/// Значения НЕ хранятся — считаются на лету; в kv базы ложатся только даты
+/// разблокировки (`ach.at`, ключи `id:тир`, как на ПК), чтобы показать
+/// «получено 12 августа» и один раз всплыть уведомлением.
 ///
-/// Первый прогон «засеивает» уже выполненное молча (десктопный `seeded`):
-/// иначе пользователь с историей при первом же открытии получил бы пачку
-/// уведомлений разом.
+/// Первый прогон «засеивает» уже выполненное молча (`ach.seeded`): иначе
+/// слушатель с историей при первом же открытии получил бы пачку уведомлений
+/// разом.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:solar_icons/solar_icons.dart';
 
+import '../../core/db/db.dart';
 import '../../core/l10n/l10n.dart';
-import '../../core/store/json_store.dart' show jsonStoreProvider;
 import 'stats.dart';
 
 enum AchTier { bronze, silver, gold }
@@ -93,7 +93,7 @@ final List<AchDef> kAchievements = [
     description: (l) => l.achStreakDesc,
     unit: AchUnit.count,
     tiers: const [3, 7, 30],
-    value: (s) => s.streak,
+    value: (s) => s.longestStreak,
   ),
   AchDef(
     id: 'marathon',
@@ -193,27 +193,25 @@ final unlockedAchievementsProvider =
       AchievementsController.new,
     );
 
+const String _kAt = 'ach.at';
+const String _kSeeded = 'ach.seeded';
+
 class AchievementsController extends Notifier<UnlockedAchievements> {
+  BloomDb get _db => ref.read(dbProvider);
+
   @override
-  UnlockedAchievements build() {
-    final raw = ref.read(jsonStoreProvider).readMap('achievements');
-    final at = raw['at'];
-    return UnlockedAchievements(
-      at: at is Map
-          ? {
-              for (final e in at.entries)
-                if (e.key is String && e.value is num)
-                  e.key as String: (e.value as num).toInt(),
-            }
-          : const {},
-      seeded: raw['seeded'] == true,
-    );
-  }
+  UnlockedAchievements build() => UnlockedAchievements(
+    at: {
+      for (final e in _db.getMap(_kAt).entries)
+        if (e.value is num) e.key: (e.value as num).toInt(),
+    },
+    seeded: _db.get(_kSeeded) == true,
+  );
 
   void _save() {
-    ref.read(jsonStoreProvider).write('achievements', {
-      'at': state.at,
-      'seeded': state.seeded,
+    _db.tx(() {
+      _db.set(_kAt, state.at);
+      _db.set(_kSeeded, state.seeded);
     });
   }
 
@@ -241,9 +239,10 @@ class AchievementsController extends Notifier<UnlockedAchievements> {
     return wasSeeded ? fresh : const [];
   }
 
-  /// Сброс вместе со статистикой.
+  /// Сброс вместе со статистикой. Отметка первого прогона остаётся, как на
+  /// ПК: ступени, взятые заново, — уже новость.
   void clear() {
-    state = const UnlockedAchievements();
+    state = UnlockedAchievements(seeded: state.seeded);
     _save();
   }
 }

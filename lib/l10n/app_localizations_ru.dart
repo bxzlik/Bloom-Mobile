@@ -1427,7 +1427,82 @@ class AppLocalizationsRu extends AppLocalizations {
   String get statsClear => 'Очистить';
 
   @override
-  String get statsClearConfirm => 'Точно? Ещё раз';
+  String get statsClearTitle => 'Очистить статистику?';
+
+  @override
+  String get statsClearSub =>
+      'Прослушивания, история, активность и достижения удалятся';
+
+  @override
+  String get statsClearLevel => 'Сбросить и уровень';
+
+  @override
+  String levelTitle(int level) {
+    return 'Уровень $level';
+  }
+
+  @override
+  String get levelDesc =>
+      'Уровень растёт, пока ты слушаешь музыку и заходишь в Bloom';
+
+  @override
+  String levelXp(String into, String span) {
+    return '$into / $span XP';
+  }
+
+  @override
+  String levelToNext(int level, String xp) {
+    return 'До $level уровня — ещё $xp XP';
+  }
+
+  @override
+  String levelTracks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '≈ $count трека',
+      many: '≈ $count треков',
+      few: '≈ $count трека',
+      one: '≈ $count трек',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get levelHow => 'Как растёт уровень';
+
+  @override
+  String get levelPlays => 'Прослушивание треков';
+
+  @override
+  String levelPlaysSub(int xp) {
+    return '+$xp XP за трек';
+  }
+
+  @override
+  String get levelDays => 'Ежедневные заходы';
+
+  @override
+  String levelDaysSub(int xp) {
+    return '+$xp XP в день, больше за дни подряд';
+  }
+
+  @override
+  String get levelAch => 'Достижения';
+
+  @override
+  String levelAchSub(int bronze, int silver, int gold) {
+    return '+$bronze / $silver / $gold XP за бронзу, серебро и золото';
+  }
+
+  @override
+  String get levelBanked => 'Прошлая статистика';
+
+  @override
+  String get levelBankedSub => 'Осталось после очистки';
+
+  @override
+  String get levelOk => 'Понятно';
 
   @override
   String get statsCopied => 'Статистика скопирована';

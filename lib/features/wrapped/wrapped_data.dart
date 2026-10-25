@@ -12,7 +12,7 @@ library;
 import 'package:flutter/foundation.dart';
 
 import '../../core/entities/entities.dart';
-import '../../core/store/stats_store.dart' show dayKey;
+import '../../core/store/days_store.dart' show dayKey;
 import '../../shared/util/artists.dart';
 import 'periods.dart';
 import '../../core/store/play_log.dart';

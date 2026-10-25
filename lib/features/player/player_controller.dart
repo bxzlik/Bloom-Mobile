@@ -24,7 +24,6 @@ import '../../core/l10n/l10n.dart';
 import '../../core/log/bloom_log.dart';
 import '../../core/store/library_store.dart';
 import '../../core/store/settings_store.dart';
-import '../../core/store/stats_store.dart';
 import '../../shared/ui/bloom_toast.dart';
 import '../lastfm/lastfm_store.dart';
 import '../library/local_tracks.dart';
@@ -507,19 +506,17 @@ class PlaybackController extends Notifier<PlaybackState>
     if (position.inMilliseconds >= total.inMilliseconds * _creditAt) _credit();
   }
 
-  /// Засчитать прослушивание: дневной журнал и журнал прослушиваний. Одна
-  /// точка на всё, как `creditPlay` на десктопе, и зовётся она НЕ на старте:
-  /// трек, который пролистнули или который не заиграл, прослушанным не
-  /// считается.
+  /// Засчитать прослушивание в журнал. Одна точка на всё, как
+  /// `Player::credit` ПК, и зовётся она НЕ на старте: трек, который
+  /// пролистнули или который не заиграл, прослушанным не считается.
   void _credit() {
     if (_credited) return;
     final track = state.track;
     if (track == null) return;
     _credited = true;
-    ref.read(statsProvider.notifier).addPlay();
     // Журнал событий «трек X в момент T» — из него выводятся «История»,
-    // статистика профиля, сиды волны и «Итоги». Отдельно историю вести не
-    // надо: она представление над журналом (`history_store.dart`).
+    // статистика профиля и дни, уровень, сиды волны и «Итоги». Своих
+    // счётчиков больше нет нигде.
     ref.read(playLogProvider.notifier).log(track);
     // Засчитан последний трек очереди — просим продолжение заранее, чтобы к
     // концу трека пачка уже стояла и переход шёл обычным путём, без паузы.
@@ -960,6 +957,7 @@ class PlaybackController extends Notifier<PlaybackState>
       return;
     }
     if (state.repeat == PlayerRepeat.one) {
+      _credited = false; // следующий круг засчитывается заново
       _player.seek(Duration.zero);
       unawaited(_player.play());
       return;

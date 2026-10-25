@@ -1403,7 +1403,80 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statsClear => 'Clear';
 
   @override
-  String get statsClearConfirm => 'Sure? Tap again';
+  String get statsClearTitle => 'Clear the statistics?';
+
+  @override
+  String get statsClearSub =>
+      'Plays, history, activity and achievements will be deleted';
+
+  @override
+  String get statsClearLevel => 'Reset the level too';
+
+  @override
+  String levelTitle(int level) {
+    return 'Level $level';
+  }
+
+  @override
+  String get levelDesc =>
+      'Your level grows as you listen to music and come back to Bloom';
+
+  @override
+  String levelXp(String into, String span) {
+    return '$into / $span XP';
+  }
+
+  @override
+  String levelToNext(int level, String xp) {
+    return '$xp XP to level $level';
+  }
+
+  @override
+  String levelTracks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '≈ $count tracks',
+      one: '≈ $count track',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get levelHow => 'How it grows';
+
+  @override
+  String get levelPlays => 'Listening';
+
+  @override
+  String levelPlaysSub(int xp) {
+    return '+$xp XP a track';
+  }
+
+  @override
+  String get levelDays => 'Daily visits';
+
+  @override
+  String levelDaysSub(int xp) {
+    return '+$xp XP a day, more for days in a row';
+  }
+
+  @override
+  String get levelAch => 'Achievements';
+
+  @override
+  String levelAchSub(int bronze, int silver, int gold) {
+    return '+$bronze / $silver / $gold XP for bronze, silver and gold';
+  }
+
+  @override
+  String get levelBanked => 'Earlier stats';
+
+  @override
+  String get levelBankedSub => 'Kept when the stats were cleared';
+
+  @override
+  String get levelOk => 'Got it';
 
   @override
   String get statsCopied => 'Statistics copied';

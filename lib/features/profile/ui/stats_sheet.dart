@@ -26,21 +26,18 @@ import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/l10n/source_label.dart';
 import '../../../core/providers/artist_lookup.dart';
-import '../../../core/store/play_log.dart';
-import '../../../core/store/stats_store.dart';
+import '../../../core/store/days_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../detail/detail_nav.dart';
-import '../../home/for_you.dart';
-import '../../home/similar_to.dart';
 import '../../player/player_controller.dart';
 import '../../wrapped/periods.dart';
 import '../../wrapped/ui/wrapped_sheet.dart';
 import '../../wrapped/wrapped_store.dart';
-import '../achievements.dart';
 import '../artist_avatars.dart';
+import '../level.dart';
 import '../stats.dart';
 
 /// Открыть статистику. Обложки у шторки нет — фоном встаёт [SheetSurface].
@@ -60,8 +57,10 @@ class StatsSheet extends ConsumerStatefulWidget {
 class _StatsSheetState extends ConsumerState<StatsSheet> {
   _Period _period = _Period.week;
 
-  /// Очистка спрашивает вторым нажатием — своей модалки на ПК тоже нет.
-  bool _confirmClear = false;
+  /// Очистка спрашивает тут же, над кнопками, — как на ПК: что удалится и
+  /// сбросить ли заодно уровень.
+  bool _asking = false;
+  bool _resetLevel = false;
 
   void _copy(ProfileStats s) {
     final l = context.l;
@@ -110,24 +109,16 @@ class _StatsSheetState extends ConsumerState<StatsSheet> {
   }
 
   void _clear() {
-    if (!_confirmClear) {
-      setState(() => _confirmClear = true);
-      // Само остывает, как таймер на десктопе.
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) setState(() => _confirmClear = false);
+    if (!_asking) {
+      setState(() {
+        _resetLevel = false;
+        _asking = true;
       });
       return;
     }
-    setState(() => _confirmClear = false);
-    ref.read(statsProvider.notifier).clear();
-    ref.read(unlockedAchievementsProvider.notifier).clear();
-    // Журнал прослушиваний и есть статистика: из него же «История» и «Итоги».
-    ref.read(playLogProvider.notifier).clear();
-    // Витрины главной собраны по сидам из стёртого топа — пересобираем сразу
-    // (на ПК `clearForYouCache` + `clearSimilarToCache` зовутся отсюда же).
-    ref.read(forYouProvider.notifier).reset();
-    ref.read(similarToProvider.notifier).reset();
-    showToast(context, context.l.statsCleared);
+    setState(() => _asking = false);
+    ref.read(statsClearProvider.notifier).clear(keepLevel: !_resetLevel);
+    showToast(context, context.l.statsCleared, kind: ToastKind.success);
   }
 
   @override
@@ -228,7 +219,44 @@ class _StatsSheetState extends ConsumerState<StatsSheet> {
         // футера, поэтому она отдельной строкой и с акцентной заливкой.
         // Подмена карточки статистики гаснет после первого просмотра, а
         // пересматривают итоги отсюда.
-        if (wrappedMonth != null)
+        if (_asking)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.l.statsClearTitle,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  context.l.statsClearSub,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: t.text2),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        context.l.statsClearLevel,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(color: t.text),
+                      ),
+                    ),
+                    BloomSwitch(
+                      value: _resetLevel,
+                      onChanged: (v) => setState(() => _resetLevel = v),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          )
+        else if (wrappedMonth != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
             child: Row(
@@ -257,16 +285,16 @@ class _StatsSheetState extends ConsumerState<StatsSheet> {
           child: Row(
             children: [
               _ToolButton(
-                icon: SolarIconsOutline.copy,
-                label: context.l.statsCopy,
-                onTap: () => _copy(s),
+                icon: _asking ? null : SolarIconsOutline.copy,
+                label: _asking ? context.l.commonCancel : context.l.statsCopy,
+                onTap: _asking
+                    ? () => setState(() => _asking = false)
+                    : () => _copy(s),
               ),
               const SizedBox(width: 8),
               _ToolButton(
                 icon: SolarIconsOutline.trashBinMinimalistic,
-                label: _confirmClear
-                    ? context.l.statsClearConfirm
-                    : context.l.statsClear,
+                label: context.l.statsClear,
                 color: t.danger,
                 onTap: _clear,
               ),
@@ -754,7 +782,9 @@ class _Bars extends StatelessWidget {
 
     final bars = <({String label, int count, bool today})>[];
     for (var i = days - 1; i >= 0; i--) {
-      final date = today.subtract(Duration(days: i));
+      // Календарный день, а не −24 ч·i: на переходе на летнее время сутки
+      // бывают в 23 и 25 часов, и после полуночи шаг перескочил бы день.
+      final date = DateTime(today.year, today.month, today.day - i);
       final label = days == 7
           // Сокращения дней недели знает `intl` — своей таблицы не держим.
           ? (i == 0
@@ -849,7 +879,11 @@ class _Heatmap extends StatelessWidget {
                             padding: const EdgeInsets.only(bottom: gap),
                             child: _cell(
                               t,
-                              today.subtract(Duration(days: w * 7 + (dow - d))),
+                              DateTime(
+                                today.year,
+                                today.month,
+                                today.day - (w * 7 + (dow - d)),
+                              ),
                               max,
                             ),
                           ),
@@ -935,7 +969,8 @@ class _ToolButton extends StatelessWidget {
     this.background,
   });
 
-  final IconData icon;
+  /// `null` — одна надпись («Отмена» в подтверждении очистки).
+  final IconData? icon;
   final String label;
   final VoidCallback onTap;
   final Color? color;
@@ -958,8 +993,10 @@ class _ToolButton extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 16, color: color ?? t.iconFg),
-                const SizedBox(width: 8),
+                if (icon != null) ...[
+                  Icon(icon, size: 16, color: color ?? t.iconFg),
+                  const SizedBox(width: 8),
+                ],
                 Text(
                   label,
                   style: Theme.of(
