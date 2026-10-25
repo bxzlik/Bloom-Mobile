@@ -127,11 +127,11 @@ class _ListEditorState extends ConsumerState<ListEditor> {
       !listEquals(_ids, _idsWas) ||
       _sourcesChanged;
 
-  /// Источники сравниваем по ссылкам: название площадка могла отдать другое, а
-  /// привязка от этого не изменилась.
+  /// Источники сравниваем по id коллекций: название площадка могла отдать
+  /// другое, а привязка от этого не изменилась.
   bool get _sourcesChanged => !listEquals(
-    [for (final s in _sources) s.url],
-    [for (final s in _playlist?.sources ?? const <PlSourceRef>[]) s.url],
+    [for (final s in _sources) s.id],
+    [for (final s in _playlist?.sources ?? const <PlSourceRef>[]) s.id],
   );
 
   // ── Правка ────────────────────────────────────────────────────────────────

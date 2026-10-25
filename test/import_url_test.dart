@@ -40,20 +40,35 @@ class _FakeSoundCloud extends MusicProvider {
     SearchSort sort = SearchSort.relevance,
   }) async => SearchResults.empty;
 
+  /// id коллекции — последняя часть пути: `https://sc/one?x` → `sc:set:one`,
+  /// так две разные ссылки ведут к одной коллекции.
+  static String _idOf(String url) =>
+      'sc:set:${Uri.parse(url).pathSegments.last}';
+
   @override
   Future<ResolvedUrl?> resolveUrl(String url) async {
     final single = singles[url];
     if (single != null) return ResolvedTrack(single);
-    if (!sets.containsKey(url)) return null;
+    final bare = url.split('?').first;
+    if (!sets.containsKey(bare)) return null;
     return ResolvedSet(
-      Playlist(id: url, title: 'Сет', source: MusicSource.soundcloud),
+      Playlist(
+        id: _idOf(bare),
+        title: 'Сет',
+        ownerName: 'Владелец',
+        sourceUrl: bare,
+        source: MusicSource.soundcloud,
+      ),
     );
   }
 
   @override
   Future<SetContent?> getPlaylist(String id) async => SetContent(
     playlist: Playlist(id: id, title: 'Сет', source: MusicSource.soundcloud),
-    tracks: sets[id] ?? const [],
+    tracks: [
+      for (final e in sets.entries)
+        if (_idOf(e.key) == id) ...e.value,
+    ],
   );
 }
 
@@ -102,8 +117,28 @@ void main() {
     final playlist = env.container.read(libraryProvider).playlists.single;
     expect(playlist.id, result.createdId);
     expect(playlist.trackIds, ['sc:1', 'sc:2']);
-    // Источник запомнен — иначе плейлист нечем было бы обновлять.
-    expect(playlist.sources.map((s) => s.url), ['https://sc/one']);
+    // Источник запомнен — иначе плейлист нечем было бы обновлять. Вид — как
+    // на ПК: обновление идёт по id коллекции у её площадки.
+    final source = playlist.sources.single;
+    expect(source.toJson(), {
+      'url': 'https://sc/one',
+      'title': 'Сет',
+      'owner': 'Владелец',
+      'provider': 'sc',
+      'id': 'sc:set:one',
+      'kind': 'playlist',
+      'cover': '',
+    });
+    expect(PlSourceRef.fromJson(source.toJson())?.toJson(), source.toJson());
+  });
+
+  test('источник без id или площадки не читается', () {
+    expect(PlSourceRef.fromJson({'url': 'https://sc/one'}), isNull);
+    expect(PlSourceRef.fromJson({'id': 'sc:set:1'}), isNull);
+    expect(
+      PlSourceRef.fromJson({'id': 'sc:set:1', 'provider': 'sc'})?.kind,
+      'playlist',
+    );
   });
 
   test('цель «Все треки» не создаёт плейлист и не считает дубли', () async {
@@ -173,7 +208,18 @@ void main() {
     // Импортированная коллекция становится источником и у существующего
     // плейлиста: обновление только подмешивает новые треки наверх, добавленное
     // руками остаётся на месте.
-    expect(playlist.sources.map((s) => s.url), ['https://sc/one']);
+    expect(playlist.sources.map((s) => s.id), ['sc:set:one']);
+
+    // Другая ссылка на ту же коллекцию второй привязкой не становится.
+    await _import(
+      env,
+      'https://sc/one?utm=share',
+      ImportTarget(ImportTargetKind.playlist, playlistId: target.id),
+    );
+    expect(
+      env.container.read(libraryProvider).playlists.single.sources.length,
+      1,
+    );
   });
 
   test('ссылка на одиночный трек отклоняется', () async {

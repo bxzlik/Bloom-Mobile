@@ -23,12 +23,12 @@ Track _track(String id) => Track(
   sourceData: const {'transcodings': []},
 );
 
-/// Площадка, у которой по ссылке лежит плейлист с заданным составом.
+/// Площадка, у которой по id коллекции лежит плейлист с заданным составом.
 class _FakeSoundCloud extends MusicProvider {
-  _FakeSoundCloud(this.byUrl);
+  _FakeSoundCloud(this.byId);
 
-  /// Ссылка → треки. `null` вместо списка — площадка падает.
-  final Map<String, List<Track>?> byUrl;
+  /// id коллекции → треки. `null` вместо списка — площадка падает.
+  final Map<String, List<Track>?> byId;
 
   @override
   MusicSource get source => MusicSource.soundcloud;
@@ -39,22 +39,18 @@ class _FakeSoundCloud extends MusicProvider {
     SearchSort sort = SearchSort.relevance,
   }) async => SearchResults.empty;
 
-  /// id сета делаем равным ссылке — так `getPlaylist` находит его состав.
   @override
-  Future<ResolvedUrl?> resolveUrl(String url) async {
-    if (!byUrl.containsKey(url)) return null;
-    if (byUrl[url] == null) throw StateError('нет сети');
-    return ResolvedSet(
-      Playlist(id: url, title: 'Сет', source: MusicSource.soundcloud),
+  Future<SetContent?> getPlaylist(String id) async {
+    if (byId.containsKey(id) && byId[id] == null) throw StateError('нет сети');
+    return SetContent(
+      playlist: Playlist(id: id, title: 'Сет', source: MusicSource.soundcloud),
+      tracks: byId[id] ?? const [],
     );
   }
-
-  @override
-  Future<SetContent?> getPlaylist(String id) async => SetContent(
-    playlist: Playlist(id: id, title: 'Сет', source: MusicSource.soundcloud),
-    tracks: byUrl[id] ?? const [],
-  );
 }
+
+/// Привязка SC-плейлиста — обновление ищет его по id.
+PlSourceRef _src(String id) => PlSourceRef(id: id, provider: 'sc');
 
 ProviderContainer _container(_FakeSoundCloud provider, JsonStore store) {
   final c = ProviderContainer(
@@ -79,7 +75,7 @@ void main() {
     final c = _container(_FakeSoundCloud(const {}), JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);
     lib.createPlaylist('Свой');
-    lib.createPlaylist('Импортированный', sourceUrl: 'https://sc/one');
+    lib.createPlaylist('Импортированный', source: _src('sc:set:1'));
 
     final names = c
         .read(plAutoProvider.notifier)
@@ -91,17 +87,17 @@ void main() {
 
   test('проход обновляет только отмеченные и считает новые треки', () async {
     final sc = _FakeSoundCloud({
-      'https://sc/one': [_track('sc:1'), _track('sc:2')],
-      'https://sc/two': [_track('sc:9')],
+      'sc:set:1': [_track('sc:1'), _track('sc:2')],
+      'sc:set:2': [_track('sc:9')],
     });
     final c = _container(sc, JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);
     final one = lib.createPlaylist(
       'Первый',
       tracks: [_track('sc:1')],
-      sourceUrl: 'https://sc/one',
+      source: _src('sc:set:1'),
     );
-    final two = lib.createPlaylist('Второй', sourceUrl: 'https://sc/two');
+    final two = lib.createPlaylist('Второй', source: _src('sc:set:2'));
 
     final auto = c.read(plAutoProvider.notifier);
     auto.setIds([one.id]);
@@ -131,20 +127,17 @@ void main() {
     'несколько источников: новое сверху, добавленное руками на месте',
     () async {
       final sc = _FakeSoundCloud({
-        'https://sc/one': [_track('sc:1')],
-        'https://sc/two': [_track('sc:9')],
+        'sc:set:1': [_track('sc:1')],
+        'sc:set:2': [_track('sc:9')],
       });
       final c = _container(sc, JsonStore.memory());
       final lib = c.read(libraryProvider.notifier);
       final pl = lib.createPlaylist(
         'Свой',
-        tracks: [_track('my_1')],
-        sourceUrl: 'https://sc/one',
+        tracks: [_track('sc:7')],
+        source: _src('sc:set:1'),
       );
-      lib.setPlaylistSources(pl.id, [
-        const PlSourceRef(url: 'https://sc/one'),
-        const PlSourceRef(url: 'https://sc/two'),
-      ]);
+      lib.setPlaylistSources(pl.id, [_src('sc:set:1'), _src('sc:set:2')]);
 
       final auto = c.read(plAutoProvider.notifier);
       auto.setIds([pl.id]);
@@ -154,23 +147,20 @@ void main() {
       expect(c.read(libraryProvider).playlists.single.trackIds, [
         'sc:1',
         'sc:9',
-        'my_1',
+        'sc:7',
       ]);
     },
   );
 
   test('один упавший источник не отменяет остальные', () async {
     final sc = _FakeSoundCloud({
-      'https://sc/one': null,
-      'https://sc/two': [_track('sc:9')],
+      'sc:set:1': null,
+      'sc:set:2': [_track('sc:9')],
     });
     final c = _container(sc, JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);
-    final pl = lib.createPlaylist('Свой', tracks: [_track('my_1')]);
-    lib.setPlaylistSources(pl.id, [
-      const PlSourceRef(url: 'https://sc/one'),
-      const PlSourceRef(url: 'https://sc/two'),
-    ]);
+    final pl = lib.createPlaylist('Свой', tracks: [_track('sc:7')]);
+    lib.setPlaylistSources(pl.id, [_src('sc:set:1'), _src('sc:set:2')]);
 
     final auto = c.read(plAutoProvider.notifier);
     auto.setIds([pl.id]);
@@ -179,17 +169,17 @@ void main() {
     // Частичный успех — это успех: недоступную коллекцию могли удалить.
     expect(result.added, 1);
     expect(result.failed, 0);
-    expect(c.read(libraryProvider).playlists.single.trackIds, ['sc:9', 'my_1']);
+    expect(c.read(libraryProvider).playlists.single.trackIds, ['sc:9', 'sc:7']);
   });
 
   test('упавший источник не стирает состав плейлиста', () async {
-    final sc = _FakeSoundCloud({'https://sc/one': null});
+    final sc = _FakeSoundCloud({'sc:set:1': null});
     final c = _container(sc, JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);
     final pl = lib.createPlaylist(
       'Первый',
       tracks: [_track('sc:1')],
-      sourceUrl: 'https://sc/one',
+      source: _src('sc:set:1'),
     );
 
     final auto = c.read(plAutoProvider.notifier);
@@ -205,7 +195,7 @@ void main() {
     final c = _container(_FakeSoundCloud(const {}), JsonStore.memory());
     c
         .read(libraryProvider.notifier)
-        .createPlaylist('Импортированный', sourceUrl: 'https://sc/one');
+        .createPlaylist('Импортированный', source: _src('sc:set:1'));
 
     final result = await c.read(plAutoProvider.notifier).runSweep(silent: true);
     expect(result.skipped, isTrue);

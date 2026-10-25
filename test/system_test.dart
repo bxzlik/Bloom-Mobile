@@ -190,7 +190,8 @@ void main() {
       final result = await import(c, '''
         {"bloom":"playlist","version":2,
          "playlists":[{"name":"С ПК","description":"вечером",
-           "sources":[{"url":"https://soundcloud.com/x/sets/y","title":"Y"}],
+           "sources":[{"url":"https://soundcloud.com/x/sets/y","title":"Y","owner":"x",
+             "provider":"sc","id":"sc:set:9","kind":"playlist","cover":""}],
            "tracks":["ym:7","sc:5"]}],
          "tracks":[
            {"id":"sc:5","title":"Song","artist":"A","album":"","cover":"","duration":225.5,
@@ -206,6 +207,7 @@ void main() {
       expect(pl.name, 'С ПК');
       expect(pl.description, 'вечером');
       expect(pl.sources.single.url, 'https://soundcloud.com/x/sets/y');
+      expect(pl.sources.single.id, 'sc:set:9');
       expect(pl.trackIds, ['ym:7', 'sc:5']);
       final tracks = c.read(libraryProvider).tracks;
       expect(tracks['sc:5']!.sourceData?['transcodings'], isNotEmpty);

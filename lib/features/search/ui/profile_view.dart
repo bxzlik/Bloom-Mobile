@@ -22,6 +22,7 @@ import '../../../core/entities/entities.dart';
 import '../../../core/providers/music_provider.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
+import '../../../providers/soundcloud/sc_provider.dart' show scLikesOf;
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
@@ -29,6 +30,7 @@ import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/util/format.dart';
 import '../../detail/detail_nav.dart';
+import '../../library/import_url.dart' show likesTitle;
 import '../../player/play_source.dart';
 
 /// По сколько лайков добавляет «Показать ещё». У аккаунта их бывает под две
@@ -82,20 +84,20 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     );
   }
 
-  /// Лайки отдельным плейлистом. Ссылка на аккаунт становится источником —
-  /// «Обновить импортированные» перетянет лайки заново (см. refreshImported).
+  /// Лайки отдельным плейлистом. Лайки аккаунта становятся его источником —
+  /// «Обновить треки» перетянет их заново.
   void _likesAsPlaylist() {
     final artist = _profile.artist;
     final likes = _profile.likes;
     if (likes.isEmpty) return;
+    final set = scLikesOf(artist, likesTitle(artist.name));
     ref
         .read(libraryProvider.notifier)
         .createPlaylist(
-          context.l.pvLikesOf(artist.name),
+          set.title,
           tracks: likes,
           cover: artist.avatar,
-          sourceUrl: artist.permalink,
-          sourceTitle: context.l.pvLikesOf(artist.name),
+          source: PlSourceRef.of(set),
         );
     _toast(
       context.l.pvPlaylistCreated(context.l.tracksCount(likes.length)),
@@ -130,12 +132,16 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
         final content = await registry.forEntity(set.id)?.getPlaylist(set.id);
         final tracks = content?.tracks ?? const <Track>[];
         if (tracks.isEmpty) continue;
+        final page = content?.playlist;
         lib.createPlaylist(
-          content?.playlist.title ?? set.title,
+          page?.title ?? set.title,
           tracks: tracks,
-          cover: content?.playlist.cover ?? set.cover,
-          sourceUrl: content?.playlist.sourceUrl ?? set.sourceUrl,
-          sourceTitle: content?.playlist.title ?? set.title,
+          cover: page?.cover ?? set.cover,
+          source: PlSourceRef.of(set).copyWith(
+            title: page?.title,
+            owner: page?.ownerName,
+            cover: page?.cover,
+          ),
         );
         ok++;
       } catch (_) {

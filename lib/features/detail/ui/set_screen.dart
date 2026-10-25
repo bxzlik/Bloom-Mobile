@@ -118,27 +118,19 @@ class _SetScreenState extends ConsumerState<SetScreen> {
         .playQueueShuffled(_tracks, source: SetSource(_set));
   }
 
-  /// Есть ли уже сохранённая копия — ищем по ссылке источника, среди тех же
-  /// привязок, из которых «Обновить треки» тянет новые треки.
-  bool get _saved =>
-      _set.sourceUrl != null &&
-      ref
-          .read(libraryProvider)
-          .playlists
-          .any((p) => p.sources.any((s) => s.url == _set.sourceUrl));
+  /// Есть ли уже сохранённая копия — плейлист, к которому эта коллекция
+  /// привязана источником (тем же, из которого «Обновить треки» тянет новые
+  /// треки), как на ПК.
+  static bool _savedIn(LibraryState lib, Playlist set) =>
+      lib.playlists.any((p) => p.sources.any((s) => s.id == set.id));
+
+  bool get _saved => _savedIn(ref.read(libraryProvider), _set);
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
     final queue = _tracks;
-    // Уже сохранённая копия ищется по ссылке источника — среди тех же привязок,
-    // из которых «Обновить треки» тянет новые треки.
-    final saved =
-        _set.sourceUrl != null &&
-        ref
-            .watch(libraryProvider)
-            .playlists
-            .any((p) => p.sources.any((s) => s.url == _set.sourceUrl));
+    final saved = _savedIn(ref.watch(libraryProvider), _set);
 
     return Scaffold(
       // Под страницей может лежать картинка фона — тогда своей заливки нет.
@@ -304,8 +296,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
           _set.title,
           tracks: _tracks,
           cover: _set.cover,
-          sourceUrl: _set.sourceUrl,
-          sourceTitle: _set.title,
+          source: PlSourceRef.of(_set),
         );
     _toast(
       context.l.addedToast(_set.title, context.l.tracksCount(_tracks.length)),

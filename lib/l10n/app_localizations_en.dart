@@ -1188,11 +1188,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchSectionEmpty => 'Nothing found in this section';
 
   @override
-  String pvLikesOf(String name) {
-    return '$name’s likes';
-  }
-
-  @override
   String pvPlaylistCreated(String tracks) {
     return 'Playlist created — $tracks';
   }

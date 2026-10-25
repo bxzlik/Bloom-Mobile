@@ -1211,11 +1211,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get searchSectionEmpty => 'В этом разделе ничего не нашлось';
 
   @override
-  String pvLikesOf(String name) {
-    return 'Лайки $name';
-  }
-
-  @override
   String pvPlaylistCreated(String tracks) {
     return 'Плейлист создан — $tracks';
   }

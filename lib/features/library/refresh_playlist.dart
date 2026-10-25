@@ -2,9 +2,8 @@
 /// `refreshPlaylistSilent`.
 ///
 /// Источников у плейлиста может быть несколько и с разных площадок
-/// ([UserPlaylist.sources]): каждый резолвится общим путём импорта
-/// (`resolveCollectionUrl`), поэтому разбираются ровно те же виды ссылок —
-/// коллекция (плейлист/альбом) и аккаунт, у которого берутся лайки.
+/// ([UserPlaylist.sources]): каждый берётся по id коллекции у своей площадки
+/// ([fetchSource]), как на ПК, — ссылку заново не разбираем.
 ///
 /// Состав НЕ заменяется: новые треки ложатся наверх плейлиста, всё, что в него
 /// добавили руками, остаётся на месте. Иначе привязать чужую коллекцию к своему
@@ -39,7 +38,7 @@ Future<int?> refreshPlaylistFromSource(
   final fresh = <Track>[];
   for (final source in playlist.sources) {
     try {
-      fresh.addAll((await resolveCollectionUrl(registry, source.url)).tracks);
+      fresh.addAll(await fetchSource(registry, source) ?? const []);
     } catch (_) {
       // Один недоступный источник не должен прерывать остальные.
     }

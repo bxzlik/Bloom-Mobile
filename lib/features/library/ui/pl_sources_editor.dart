@@ -4,7 +4,7 @@
 /// Показывает привязанные коллекции (плейлисты/альбомы/лайки любых площадок) и
 /// даёт привязать новую вставкой ссылки: по «Привязать» ссылка резолвится тем
 /// же путём, что и импорт (`resolveCollectionUrl`), — так проверяем, что это
-/// вообще коллекция, и заодно забираем её название для строки.
+/// вообще коллекция, и заодно забираем её id, название и владельца.
 ///
 /// Черновик живёт у родителя ([ListEditor]) и записывается только по ✓, как имя
 /// и обложка: сеть здесь дёргается сразу, а вот сама привязка — нет.
@@ -20,6 +20,7 @@ import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme/tokens.dart';
+import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/bloom_sheet.dart';
@@ -96,8 +97,7 @@ class _PlSourcesEditorState extends ConsumerState<PlSourcesEditor> {
   Future<void> _add() async {
     final url = _url.text.trim();
     if (url.isEmpty || _busy) return;
-    // Дубль ловим ДО сети: привязывать одно и то же дважды незачем, а ждать
-    // ради этого ответа площадки — тем более.
+    // Та же ссылка — дубль и без сети.
     if (widget.sources.any((s) => s.url == url)) {
       showToast(context, context.l.psDuplicate, kind: ToastKind.warn);
       return;
@@ -106,14 +106,14 @@ class _PlSourcesEditorState extends ConsumerState<PlSourcesEditor> {
     try {
       final found = await resolveCollectionUrl(ref.read(registryProvider), url);
       if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _url.clear();
-      });
-      widget.onChanged([
-        ...widget.sources,
-        PlSourceRef(url: url, title: found.title),
-      ]);
+      setState(() => _busy = false);
+      // Другая ссылка на ту же коллекцию — тоже дубль: сверяем по id.
+      if (widget.sources.any((s) => s.id == found.source.id)) {
+        showToast(context, context.l.psDuplicate, kind: ToastKind.warn);
+        return;
+      }
+      _url.clear();
+      widget.onChanged([...widget.sources, found.source]);
     } on ImportException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -171,7 +171,8 @@ class _PlSourcesEditorState extends ConsumerState<PlSourcesEditor> {
   }
 }
 
-/// Строка привязки: знак площадки, название коллекции, под ним сама ссылка.
+/// Строка привязки: знак площадки, название коллекции, под ним владелец (или
+/// ссылка, если владельца площадка не сказала).
 class _SourceRow extends StatelessWidget {
   const _SourceRow({required this.source, required this.onRemove});
 
@@ -182,8 +183,9 @@ class _SourceRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
-    final platform = detectLinkSource(source.url);
-    final title = source.title;
+    final platform = MusicSource.fromCode(source.provider);
+    final title = source.title.isEmpty ? source.url : source.title;
+    final under = source.owner.isEmpty ? source.url : source.owner;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
@@ -196,26 +198,24 @@ class _SourceRow extends StatelessWidget {
       child: Row(
         children: [
           // Знак площадки — в фирменных цветах, как везде в приложении.
-          if (platform != null) ...[
-            PlatformLogo(platform, size: 18),
-            const SizedBox(width: 12),
-          ],
+          PlatformLogo(platform, size: 18),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title ?? source.url,
+                  title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.titleMedium,
                 ),
-                // Ссылку под названием повторять незачем — она и есть
-                // название, когда площадка не сказала своего.
-                if (title != null) ...[
+                // Ссылку под названием повторять незачем, когда она и есть
+                // название.
+                if (under.isNotEmpty && under != title) ...[
                   const SizedBox(height: 2),
                   Text(
-                    source.url,
+                    under,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.bodySmall?.copyWith(color: t.muted),

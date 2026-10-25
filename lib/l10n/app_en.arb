@@ -596,8 +596,6 @@
   "searchSectionEmpty": "Nothing found in this section",
 
   "@_profileView": {},
-  "pvLikesOf": "{name}’s likes",
-  "@pvLikesOf": { "placeholders": { "name": { "type": "String" } } },
   "pvPlaylistCreated": "Playlist created — {tracks}",
   "@pvPlaylistCreated": { "placeholders": { "tracks": { "type": "String" } } },
   "pvImporting": "Importing {count}…",

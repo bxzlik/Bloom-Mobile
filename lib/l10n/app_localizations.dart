@@ -2054,12 +2054,6 @@ abstract class AppLocalizations {
   /// **'Nothing found in this section'**
   String get searchSectionEmpty;
 
-  /// No description provided for @pvLikesOf.
-  ///
-  /// In en, this message translates to:
-  /// **'{name}’s likes'**
-  String pvLikesOf(String name);
-
   /// No description provided for @pvPlaylistCreated.
   ///
   /// In en, this message translates to:

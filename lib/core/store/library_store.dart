@@ -28,26 +28,89 @@ const String kLibList = 'lib';
 const String kFavList = 'fav';
 
 /// Источник «Обновить треки»: привязанная к плейлисту внешняя коллекция —
-/// плейлист, альбом или профиль (лайки) любой площадки. Их может быть сколько
+/// плейлист, альбом или лайки аккаунта любой площадки. Их может быть сколько
 /// угодно и с разных площадок, как на ПК.
+///
+/// Вид тот же, что у ПК (`lists.sources`): обновление идёт по [id] коллекции
+/// у площадки [provider], а не по ссылке, — ссылка только для показа. Две
+/// привязки одной коллекции — один и тот же [id].
 class PlSourceRef {
-  const PlSourceRef({required this.url, this.title});
+  const PlSourceRef({
+    required this.id,
+    required this.provider,
+    this.url = '',
+    this.title = '',
+    this.owner = '',
+    this.kind = 'playlist',
+    this.cover = '',
+  });
 
+  /// Коллекция страницы площадки как источник.
+  factory PlSourceRef.of(Playlist set) => PlSourceRef(
+    id: set.id,
+    provider: set.source.code,
+    url: set.sourceUrl ?? '',
+    title: set.title,
+    owner: set.ownerName ?? '',
+    kind: set.isAlbum ? 'album' : 'playlist',
+    cover: set.cover ?? '',
+  );
+
+  /// Сквозной id коллекции: `sc:set:1`, `sc:likes:1`, `ym:album:1`, `ytm:pl:x`.
+  final String id;
+
+  /// Код площадки, как в базе: `sc` / `ym` / `ytm`.
+  final String provider;
   final String url;
 
-  /// Название коллекции на момент привязки — только для строки в списке.
-  final String? title;
+  /// Название и владелец на момент привязки — только для строки в списке.
+  final String title;
+  final String owner;
+
+  /// `album` или `playlist` (лайки — тоже `playlist`).
+  final String kind;
+  final String cover;
+
+  bool get isAlbum => kind == 'album';
+
+  PlSourceRef copyWith({
+    String? url,
+    String? title,
+    String? owner,
+    String? cover,
+  }) => PlSourceRef(
+    id: id,
+    provider: provider,
+    url: url ?? this.url,
+    title: title ?? this.title,
+    owner: owner ?? this.owner,
+    kind: kind,
+    cover: cover ?? this.cover,
+  );
 
   Map<String, dynamic> toJson() => {
     'url': url,
-    if (title != null) 'title': title,
+    'title': title,
+    'owner': owner,
+    'provider': provider,
+    'id': id,
+    'kind': kind,
+    'cover': cover,
   };
 
   static PlSourceRef? fromJson(Object? json) {
     if (json is! Map) return null;
-    final url = json['url'];
-    if (url is! String || url.isEmpty) return null;
-    return PlSourceRef(url: url, title: json['title'] as String?);
+    String s(String key) => json[key] is String ? json[key] as String : '';
+    if (s('id').isEmpty || s('provider').isEmpty) return null;
+    return PlSourceRef(
+      id: s('id'),
+      provider: s('provider'),
+      url: s('url'),
+      title: s('title'),
+      owner: s('owner'),
+      kind: s('kind') == 'album' ? 'album' : 'playlist',
+      cover: s('cover'),
+    );
   }
 }
 
@@ -474,8 +537,7 @@ class LibraryController extends Notifier<LibraryState> {
     List<Track> tracks = const [],
     String? cover,
     String? description,
-    String? sourceUrl,
-    String? sourceTitle,
+    PlSourceRef? source,
   }) {
     final pl = UserPlaylist(
       description: description?.trim().isEmpty ?? true
@@ -489,12 +551,9 @@ class LibraryController extends Notifier<LibraryState> {
           ? (globalL10n?.commonNewPlaylist ?? 'New playlist')
           : name.trim(),
       cover: cover ?? (tracks.isEmpty ? null : tracks.first.cover),
-      // Ссылка, из которой плейлист завели, сразу становится его первым
+      // Коллекция, из которой плейлист завели, сразу становится его первым
       // источником обновления — остальные привязывают уже руками, в редакторе.
-      sources: [
-        if (sourceUrl != null && sourceUrl.trim().isNotEmpty)
-          PlSourceRef(url: sourceUrl.trim(), title: sourceTitle),
-      ],
+      sources: [?source],
       createdAt: BloomDb.now(),
     );
     _db.tx(() {
@@ -548,6 +607,15 @@ class LibraryController extends Notifier<LibraryState> {
       _updateList(id, {
         'sources': jsonEncode([for (final s in sources) s.toJson()]),
       });
+
+  /// Привязать коллекцию к плейлисту, если её там ещё нет; `false` — уже
+  /// была (или плейлиста нет).
+  bool linkSource(String id, PlSourceRef source) {
+    final pl = state.playlists.where((p) => p.id == id).firstOrNull;
+    if (pl == null || pl.sources.any((s) => s.id == source.id)) return false;
+    setPlaylistSources(id, [...pl.sources, source]);
+    return true;
+  }
 
   /// Удалить плейлист; его треки остаются в библиотеке.
   void deletePlaylist(String id) {

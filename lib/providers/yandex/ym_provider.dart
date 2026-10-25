@@ -227,13 +227,13 @@ class YandexProvider extends MusicProvider {
     return trackFromYm(await ym.trackOne(numeric));
   }
 
-  /// Похожие для витрин главной. Под префиксом `ym_` живут и артисты, альбомы,
+  /// Похожие для витрин главной. Под префиксом `ym:` живут и артисты, альбомы,
   /// плейлисты — похожих у них нет, в сеть за ними не ходим.
   @override
   Future<List<Track>?> getSimilarTracks(String seedId) async {
-    if (!RegExp(r'^ym_\d+$').hasMatch(seedId)) return const [];
+    if (!RegExp(r'^ym:\d+$').hasMatch(seedId)) return const [];
     return (await ym.similarTracks(
-      seedId.substring(3),
+      seedId.substring('ym:'.length),
     )).map(trackFromYm).toList();
   }
 

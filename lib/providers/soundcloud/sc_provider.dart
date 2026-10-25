@@ -75,6 +75,20 @@ Playlist setFromSc(ScRawPlaylist p, {required bool isAlbum}) => Playlist(
   source: MusicSource.soundcloud,
 );
 
+/// Лайки аккаунта как коллекция (`sc:likes:<id>`) — то, что импортируют и
+/// привязывают источником, как на ПК (`SoundCloud::likesOf`). Название с
+/// языком интерфейса даёт вызывающий.
+Playlist scLikesOf(Artist account, String title) => Playlist(
+  id: 'sc:likes:${scNumericId(account.id)}',
+  title: title,
+  cover: account.avatar,
+  ownerName: account.name,
+  ownerAvatar: account.avatar,
+  ownerId: account.id,
+  sourceUrl: account.permalink == null ? null : '${account.permalink}/likes',
+  source: MusicSource.soundcloud,
+);
+
 Artist _artistFromUser(ScRawUser u) => Artist(
   id: scArtistId(u.id),
   name: u.username,
@@ -217,7 +231,7 @@ class SoundCloudProvider extends MusicProvider {
   /// упрутся в 429.
   @override
   Future<List<Track>?> getSimilarTracks(String seedId) async {
-    final m = RegExp(r'^sc_(\d+)$').firstMatch(seedId);
+    final m = RegExp(r'^sc:(\d+)$').firstMatch(seedId);
     if (m == null) return const [];
     return (await similarTracks(m.group(1)!)).map(trackFromSc).toList();
   }
@@ -267,6 +281,14 @@ class SoundCloudProvider extends MusicProvider {
   Future<SetContent?> getPlaylist(String id) => _getSet(id, isAlbum: false);
 
   Future<SetContent?> _getSet(String id, {required bool isAlbum}) async {
+    // Лайки аккаунта — тоже коллекция: так их обновляет «Обновить треки».
+    if (id.startsWith('sc:likes:')) {
+      final likes = await sc.userLikes(id.substring('sc:likes:'.length));
+      return SetContent(
+        playlist: Playlist(id: id, title: '', source: MusicSource.soundcloud),
+        tracks: likes.map(trackFromSc).toList(),
+      );
+    }
     final full = await sc.playlistById(scNumericId(id));
     final tracks = full.tracks.map(trackFromSc).toList();
     return SetContent(

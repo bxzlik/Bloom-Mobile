@@ -18,6 +18,7 @@ import '../../core/l10n/l10n.dart';
 import '../../core/providers/music_provider.dart';
 import '../../core/providers/registry.dart';
 import '../../core/store/library_store.dart';
+import '../../providers/soundcloud/sc_provider.dart' show scLikesOf;
 
 /// Куда импортировать.
 enum ImportTargetKind { create, library, favorites, playlist }
@@ -33,17 +34,15 @@ class ImportTarget {
   final String? playlistId;
 }
 
-/// Что нашлось по ссылке.
+/// Что нашлось по ссылке: коллекция как источник и её треки.
 class ResolvedCollection {
-  const ResolvedCollection({
-    required this.title,
-    required this.tracks,
-    this.cover,
-  });
+  const ResolvedCollection({required this.source, required this.tracks});
 
-  final String title;
+  final PlSourceRef source;
   final List<Track> tracks;
-  final String? cover;
+
+  String get title => source.title;
+  String? get cover => source.cover.isEmpty ? null : source.cover;
 }
 
 class ImportResult {
@@ -97,6 +96,7 @@ Future<ResolvedCollection> resolveCollectionUrl(
   if (found == null) {
     throw const ImportException(ImportFailure.unrecognized);
   }
+  final link = url.trim();
   switch (found.resolved) {
     case ResolvedSet(playlist: final p):
       final content = p.isAlbum
@@ -105,25 +105,47 @@ Future<ResolvedCollection> resolveCollectionUrl(
       if (content == null) {
         throw const ImportException(ImportFailure.unrecognized);
       }
+      // Название и обложку страница знает лучше, чем ссылка.
+      final page = content.playlist;
       return ResolvedCollection(
-        title: content.playlist.title.isEmpty
-            ? p.title
-            : content.playlist.title,
-        cover: content.playlist.cover ?? p.cover,
+        source: PlSourceRef.of(p).copyWith(
+          url: link,
+          title: page.title.isEmpty ? null : page.title,
+          owner: page.ownerName,
+          cover: page.cover,
+        ),
         tracks: content.tracks,
       );
     case ResolvedProfile(:final profile):
-      // Ссылка на профиль — импортируем его лайки, как на ПК.
+      // Ссылка на аккаунт — его лайки, коллекцией `sc:likes:<id>`.
       return ResolvedCollection(
-        title:
-            globalL10n?.iuLikesTitle(profile.artist.name) ??
-            'Likes · ${profile.artist.name}',
-        cover: profile.artist.avatar,
+        source: PlSourceRef.of(
+          scLikesOf(profile.artist, likesTitle(profile.artist.name)),
+        ).copyWith(url: link),
         tracks: profile.likes,
       );
     case ResolvedTrack() || ResolvedArtist():
       throw const ImportException(ImportFailure.unsupported);
   }
+}
+
+/// «Лайки · имя» — название лайков аккаунта, на языке, что стоит сейчас.
+String likesTitle(String name) =>
+    globalL10n?.iuLikesTitle(name) ?? 'Likes · $name';
+
+/// Треки привязанной коллекции — по её id у её площадки, как на ПК
+/// (`Provider::collection`). `null` — площадки нет, она выключена или
+/// коллекция не нашлась.
+Future<List<Track>?> fetchSource(
+  ProviderRegistry registry,
+  PlSourceRef source,
+) async {
+  final p = registry.byId(MusicSource.fromCode(source.provider).id);
+  if (p == null || !p.isEnabled) return null;
+  final content = source.isAlbum
+      ? await p.getAlbum(source.id)
+      : await p.getPlaylist(source.id);
+  return content?.tracks;
 }
 
 /// Импортировать ссылку в выбранную цель. Обёртка для UI.
@@ -161,8 +183,7 @@ Future<ImportResult> importUrlInto(
         source.title,
         tracks: tracks,
         cover: source.cover,
-        sourceUrl: url.trim(),
-        sourceTitle: source.title,
+        source: source.source,
       );
       return ImportResult(
         title: source.title,
@@ -195,13 +216,7 @@ Future<ImportResult> importUrlInto(
       final added = library.addTracksToPlaylist(id, tracks);
       // Коллекция становится ещё одним источником «Обновить треки» — если её
       // сюда ещё не привязывали.
-      final link = url.trim();
-      if (!before.sources.any((s) => s.url == link)) {
-        library.setPlaylistSources(id, [
-          ...before.sources,
-          PlSourceRef(url: link, title: source.title),
-        ]);
-      }
+      library.linkSource(id, source.source);
       return ImportResult(
         title: source.title,
         added: added,

@@ -352,7 +352,6 @@
   "searchFindSomething": "Найди что-нибудь",
   "searchSectionEmpty": "В этом разделе ничего не нашлось",
 
-  "pvLikesOf": "Лайки {name}",
   "pvPlaylistCreated": "Плейлист создан — {tracks}",
   "pvImporting": "Импортирую {count}…",
   "pvImportProgress": "Импортирую: {done}/{total}",
