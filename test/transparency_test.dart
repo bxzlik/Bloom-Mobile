@@ -12,17 +12,21 @@ import 'package:bloom/app/theme/bloom_theme.dart';
 import 'package:bloom/app/theme/tokens.dart';
 import 'package:bloom/core/l10n/l10n.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/features/settings/transparency_store.dart';
 import 'package:bloom/shared/ui/bloom_sheet.dart';
 import 'package:bloom/shared/ui/glass.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
+import 'support/test_db.dart';
 
 ProviderContainer _container(JsonStore store) {
   final c = ProviderContainer(
-    overrides: [jsonStoreProvider.overrideWithValue(store)],
+    overrides: [
+      jsonStoreProvider.overrideWithValue(store),
+      dbProvider.overrideWithValue(testDb(store)),
+    ],
   );
   addTearDown(c.dispose);
   return c;

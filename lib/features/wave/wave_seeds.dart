@@ -24,7 +24,7 @@ import '../../core/store/play_stats.dart';
 /// ответы. Строку возвращаем как есть, без круга через int.
 String? scIdOf(Track? track) {
   if (track == null || track.source != MusicSource.soundcloud) return null;
-  final tail = track.id.split('_').last;
+  final tail = track.id.split(':').last;
   return int.tryParse(tail) == null ? null : tail;
 }
 

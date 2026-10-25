@@ -55,6 +55,7 @@ dependencies:
   image_picker: ^1.2.3
   audio_service: ^0.18.19
   file_picker: ^12.3.0
+  sqlite3: ^3.5.2
 
 dev_dependencies:
   flutter_test:

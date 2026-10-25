@@ -11,7 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme/fonts.dart';
 import '../../app/theme/tokens.dart';
 import '../../providers/soundcloud/soundcloud.dart' as sc;
-import 'library_store.dart' show jsonStoreProvider;
+import 'json_store.dart' show jsonStoreProvider;
 
 /// Встроенные пресеты в порядке показа — те же три цвета, что в
 /// `THEME_PRESETS` на десктопе.

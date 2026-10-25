@@ -6,11 +6,12 @@ library;
 
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/features/lastfm/lastfm_api.dart';
 import 'package:bloom/features/lastfm/lastfm_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
+import 'support/test_db.dart';
 
 /// Запросы, ушедшие «в сеть» за тест.
 late List<Map<String, String>> sent;
@@ -22,6 +23,7 @@ ProviderContainer _container(JsonStore store, {DateTime? now}) {
   final c = ProviderContainer(
     overrides: [
       jsonStoreProvider.overrideWithValue(store),
+      dbProvider.overrideWithValue(testDb(store)),
       if (now != null) lfmClockProvider.overrideWithValue(() => now),
     ],
   );
@@ -35,7 +37,7 @@ Track _track(
   String? album,
   Duration duration = const Duration(seconds: 300),
 }) => Track(
-  id: 'sc_1',
+  id: 'sc:1',
   name: name,
   artist: artist,
   album: album,

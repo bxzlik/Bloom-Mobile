@@ -140,12 +140,10 @@ class ProfileStats {
       totalPlays += plays;
 
       final source = MusicSource.fromId(entry.id);
-      // Трек — из библиотеки, а если его там уже нет, из снимка журнала: иначе
+      // Трек — из библиотеки, а если его там уже нет, его снимок из базы: иначе
       // всё, что человек слушал, но не сохранил, выпало бы из топов.
       final track = resolveHistoryTrack(entry.id, lib, journal);
-      final perPlay =
-          track?.duration.inSeconds ?? journal.meta[entry.id]?.seconds ?? 0;
-      final seconds = perPlay * plays;
+      final seconds = (track?.duration.inSeconds ?? 0) * plays;
       final was = sources[source] ?? (plays: 0, seconds: 0);
       sources[source] = (
         plays: was.plays + plays,

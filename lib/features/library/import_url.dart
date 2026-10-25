@@ -39,13 +39,11 @@ class ResolvedCollection {
     required this.title,
     required this.tracks,
     this.cover,
-    this.isAlbum = false,
   });
 
   final String title;
   final List<Track> tracks;
   final String? cover;
-  final bool isAlbum;
 }
 
 class ImportResult {
@@ -113,7 +111,6 @@ Future<ResolvedCollection> resolveCollectionUrl(
             : content.playlist.title,
         cover: content.playlist.cover ?? p.cover,
         tracks: content.tracks,
-        isAlbum: p.isAlbum,
       );
     case ResolvedProfile(:final profile):
       // Ссылка на профиль — импортируем его лайки, как на ПК.
@@ -166,7 +163,6 @@ Future<ImportResult> importUrlInto(
         cover: source.cover,
         sourceUrl: url.trim(),
         sourceTitle: source.title,
-        isAlbum: source.isAlbum,
       );
       return ImportResult(
         title: source.title,
@@ -183,15 +179,9 @@ Future<ImportResult> importUrlInto(
       );
 
     case ImportTargetKind.favorites:
-      var added = 0;
-      for (final track in tracks) {
-        if (read().isFav(track.id)) continue;
-        library.toggleFav(track);
-        added++;
-      }
       return ImportResult(
         title: source.title,
-        added: added,
+        added: library.addToFavorites(tracks),
         total: tracks.length,
       );
 

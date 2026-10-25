@@ -54,7 +54,7 @@ WaveCandidate _guest(
   int rank = 0,
   List<String> genres = const [],
 }) => WaveCandidate(
-  track: _track('sc_$id', artist: artist),
+  track: _track('sc:$id', artist: artist),
   origin: WaveOrigin.station,
   sourceRank: rank,
   artistKey: normalizeArtist(artist),
@@ -122,9 +122,9 @@ void main() {
         mode: WaveMode.personal,
         seeds: const [],
         startedAt: 0,
-        playedIds: ['sc_3'],
+        playedIds: ['sc:3'],
       );
-      final ctx = _ctx(session: session, currentId: 'sc_1', queueIds: {'sc_2'});
+      final ctx = _ctx(session: session, currentId: 'sc:1', queueIds: {'sc:2'});
       expect(passesFilters(_guest(1), ctx), isFalse);
       expect(passesFilters(_guest(2), ctx), isFalse);
       expect(passesFilters(_guest(3), ctx), isFalse);
@@ -132,21 +132,21 @@ void main() {
     });
 
     test('дизлайк — про сам трек, соседей того же артиста не трогает', () {
-      final ctx = _ctx(disliked: {'sc_1'});
+      final ctx = _ctx(disliked: {'sc:1'});
       expect(passesFilters(_guest(1, artist: 'A'), ctx), isFalse);
       expect(passesFilters(_guest(2, artist: 'A'), ctx), isTrue);
     });
 
     test('свежая находка, которая уже в библиотеке, находкой не считается', () {
-      final ctx = _ctx(inLibrary: {'sc_1'});
+      final ctx = _ctx(inLibrary: {'sc:1'});
       expect(passesFilters(_guest(1), ctx), isFalse);
       // А подмешанное знакомое приходит именно из библиотеки — его пускаем.
-      final familiar = candidateFromLibrary(_track('sc_1'), 0);
+      final familiar = candidateFromLibrary(_track('sc:1'), 0);
       expect(passesFilters(familiar, ctx), isTrue);
     });
 
     test('недавно слушанное и уже показанное волной не повторяем', () {
-      final ctx = _ctx(recent: {'sc_1'}, shown: {'sc_2'});
+      final ctx = _ctx(recent: {'sc:1'}, shown: {'sc:2'});
       expect(passesFilters(_guest(1), ctx), isFalse);
       expect(passesFilters(_guest(2), ctx), isFalse);
     });
@@ -155,9 +155,9 @@ void main() {
       'ослабленный проход снимает «недавно» и «показывали», но не дизлайк',
       () {
         final ctx = _ctx(
-          recent: {'sc_1'},
-          shown: {'sc_2'},
-          disliked: {'sc_3'},
+          recent: {'sc:1'},
+          shown: {'sc:2'},
+          disliked: {'sc:3'},
         ).relax();
         expect(passesFilters(_guest(1), ctx), isTrue);
         expect(passesFilters(_guest(2), ctx), isTrue);
@@ -166,9 +166,9 @@ void main() {
     );
 
     test('«уже показывали» к подмешанным знакомым не применяется', () {
-      final ctx = _ctx(shown: {'sc_1'});
+      final ctx = _ctx(shown: {'sc:1'});
       expect(
-        passesFilters(candidateFromLibrary(_track('sc_1'), 0), ctx),
+        passesFilters(candidateFromLibrary(_track('sc:1'), 0), ctx),
         isTrue,
       );
     });
@@ -273,7 +273,7 @@ void main() {
       final ranked = [
         for (var i = 0; i < 8; i++) _guest(i),
         for (var i = 100; i < 104; i++)
-          candidateFromLibrary(_track('sc_$i'), i),
+          candidateFromLibrary(_track('sc:$i'), i),
       ];
       final out = interleaveFamiliar(ranked);
       expect(out.length, 12);
@@ -286,7 +286,7 @@ void main() {
     test('знакомые кончились — дальше идут одни гости', () {
       final ranked = [
         for (var i = 0; i < 6; i++) _guest(i),
-        candidateFromLibrary(_track('sc_100'), 0),
+        candidateFromLibrary(_track('sc:100'), 0),
       ];
       final out = interleaveFamiliar(ranked);
       expect(out.length, 7);

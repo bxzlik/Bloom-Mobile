@@ -3,10 +3,11 @@
 library;
 
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/features/library/lib_order_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
+import 'support/test_db.dart';
 
 /// Запись библиотеки в том виде, в каком её видит сортировка.
 class _Item {
@@ -25,7 +26,10 @@ const _all = [..._playlists, ..._artists];
 
 ProviderContainer _container(JsonStore store) {
   final c = ProviderContainer(
-    overrides: [jsonStoreProvider.overrideWithValue(store)],
+    overrides: [
+      jsonStoreProvider.overrideWithValue(store),
+      dbProvider.overrideWithValue(testDb(store)),
+    ],
   );
   addTearDown(c.dispose);
   return c;

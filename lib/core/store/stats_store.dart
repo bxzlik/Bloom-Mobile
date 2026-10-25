@@ -17,7 +17,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../log/bloom_log.dart';
-import 'library_store.dart' show jsonStoreProvider;
+import 'json_store.dart' show jsonStoreProvider;
 
 /// `YYYY-MM-DD` по локальному времени.
 String dayKey(DateTime date) {

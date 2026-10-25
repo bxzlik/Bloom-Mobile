@@ -21,7 +21,7 @@ library;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/entities/entities.dart';
-import '../../core/store/library_store.dart' show jsonStoreProvider;
+import '../../core/store/json_store.dart' show jsonStoreProvider;
 
 /// Сколько запросов помним — как `RS_MAX` на десктопе.
 const int kRecentSearchMax = 8;

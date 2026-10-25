@@ -14,6 +14,8 @@ import 'package:bloom/core/store/settings_store.dart';
 import 'package:bloom/features/library/local_tracks.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
+import 'support/test_db.dart';
 
 /// Ответ канала: минимум полей, остальное дописывают тесты.
 Map<String, Object?> _entry({
@@ -52,7 +54,10 @@ Track _track(Map<String, Object?> entry) {
 
 ProviderContainer _container() {
   final c = ProviderContainer(
-    overrides: [jsonStoreProvider.overrideWithValue(JsonStore.memory())],
+    overrides: [
+      jsonStoreProvider.overrideWithValue(JsonStore.memory()),
+      dbProvider.overrideWithValue(BloomDb.memory()),
+    ],
   );
   addTearDown(c.dispose);
   return c;
@@ -145,7 +150,7 @@ void main() {
       c.read(libraryProvider.notifier).addToLibrary([
         _track(_entry()),
         const Track(
-          id: 'sc_1',
+          id: 'sc:1',
           name: 'Сетевой',
           artist: 'X',
           duration: Duration(minutes: 2),
@@ -160,7 +165,10 @@ void main() {
     test('трек переживает запись в файл библиотеки', () {
       final store = JsonStore.memory();
       final c = ProviderContainer(
-        overrides: [jsonStoreProvider.overrideWithValue(store)],
+        overrides: [
+          jsonStoreProvider.overrideWithValue(store),
+          dbProvider.overrideWithValue(testDb(store)),
+        ],
       );
       addTearDown(c.dispose);
       c.read(libraryProvider.notifier).addToLibrary([
@@ -168,7 +176,10 @@ void main() {
       ]);
 
       final reopened = ProviderContainer(
-        overrides: [jsonStoreProvider.overrideWithValue(store)],
+        overrides: [
+          jsonStoreProvider.overrideWithValue(store),
+          dbProvider.overrideWithValue(testDb(store)),
+        ],
       );
       addTearDown(reopened.dispose);
       final track = reopened.read(libraryProvider).allTracks.single;
@@ -182,7 +193,7 @@ void main() {
       final c = _container();
       final own = _track(_entry(uri: null, file: 'song.mp3'));
       const foreign = Track(
-        id: 'ym_9',
+        id: 'ym:9',
         name: 'Сетевой',
         artist: 'X',
         duration: Duration(minutes: 2),
@@ -210,13 +221,19 @@ void main() {
     test('выбор переживает перезапуск', () {
       final store = JsonStore.memory();
       final c = ProviderContainer(
-        overrides: [jsonStoreProvider.overrideWithValue(store)],
+        overrides: [
+          jsonStoreProvider.overrideWithValue(store),
+          dbProvider.overrideWithValue(testDb(store)),
+        ],
       );
       addTearDown(c.dispose);
       c.read(settingsProvider.notifier).setLocalImport(LocalImportMode.copy);
 
       final reopened = ProviderContainer(
-        overrides: [jsonStoreProvider.overrideWithValue(store)],
+        overrides: [
+          jsonStoreProvider.overrideWithValue(store),
+          dbProvider.overrideWithValue(testDb(store)),
+        ],
       );
       addTearDown(reopened.dispose);
       expect(reopened.read(settingsProvider).localImport, LocalImportMode.copy);

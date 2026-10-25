@@ -66,12 +66,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonUnfollow => 'Отписаться';
 
   @override
-  String get commonCopyLink => 'Скопировать ссылку';
-
-  @override
-  String get commonLinkCopied => 'Ссылка скопирована';
-
-  @override
   String get commonLoadMore => 'Загрузить ещё';
 
   @override
@@ -1185,30 +1179,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get taAddedToLibrary => 'Добавлено в библиотеку';
-
-  @override
-  String get shareAction => 'Поделиться';
-
-  @override
-  String get shareTrack => 'Поделиться треком';
-
-  @override
-  String get shareArtist => 'Поделиться артистом';
-
-  @override
-  String get shareAlbum => 'Поделиться альбомом';
-
-  @override
-  String get sharePlaylist => 'Поделиться плейлистом';
-
-  @override
-  String get shareProfile => 'Поделиться профилем';
-
-  @override
-  String get shareProfileSub => 'делится профилем';
-
-  @override
-  String get shareFail => 'Не удалось отправить карточку';
 
   @override
   String get searchTabAll => 'Всё';
@@ -3309,6 +3279,13 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get sysImportNoPlaylists => 'Плейлисты не найдены';
+
+  @override
+  String get sysImportOld => 'Файл из старой версии Bloom — его не прочитать';
+
+  @override
+  String get sysImportNewer =>
+      'Файл из более новой версии Bloom — обновите приложение';
 
   @override
   String sysImportedFull(int pl, int tr) {

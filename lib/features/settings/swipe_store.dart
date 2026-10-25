@@ -8,7 +8,7 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/store/library_store.dart' show jsonStoreProvider;
+import '../../core/store/json_store.dart' show jsonStoreProvider;
 
 /// Что делает свайп. Один и тот же список во всех четырёх местах — так же, как
 /// в референсе: строка библиотеки тоже умеет «Следующий», а плеер — «Удалить».

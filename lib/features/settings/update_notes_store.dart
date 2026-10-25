@@ -21,7 +21,6 @@ import 'package:intl/intl.dart';
 
 import '../../core/log/bloom_log.dart';
 import '../../core/store/json_store.dart';
-import '../../core/store/library_store.dart' show jsonStoreProvider;
 import 'about_store.dart' show compareVersions, kUpdateRepo;
 
 const String _rawBase =

@@ -32,7 +32,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/store/library_store.dart' show jsonStoreProvider;
+import '../../core/store/json_store.dart' show jsonStoreProvider;
 
 /// Границы ползунков. Те же, что на ПК: проценты 0–100, размытие 0–40 px.
 const int kTrBlurMax = 40;

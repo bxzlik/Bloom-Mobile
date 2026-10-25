@@ -12,8 +12,6 @@ import 'package:bloom/app/theme/tokens.dart';
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/l10n/l10n.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart';
-import 'package:bloom/core/store/play_log.dart';
 import 'package:bloom/features/wave/ui/wave_card.dart';
 import 'package:bloom/features/wave/ui/wave_dislikes_sheet.dart';
 import 'package:bloom/features/wave/ui/wave_ring.dart';
@@ -21,6 +19,8 @@ import 'package:bloom/features/wave/wave_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
+import 'support/test_db.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 Track _track(String id, {String? cover}) => Track(
@@ -33,11 +33,11 @@ Track _track(String id, {String? cover}) => Track(
 );
 
 ProviderContainer _container([JsonStore? store]) {
+  final json = store ?? JsonStore.memory();
   final c = ProviderContainer(
     overrides: [
-      jsonStoreProvider.overrideWithValue(store ?? JsonStore.memory()),
-      // Волна читает статистику прослушиваний, а та — журнал.
-      playLogStoreProvider.overrideWithValue(JsonStore.memory()),
+      jsonStoreProvider.overrideWithValue(json),
+      dbProvider.overrideWithValue(testDb(json)),
     ],
   );
   addTearDown(c.dispose);
@@ -130,7 +130,7 @@ void main() {
         tester,
         _container(),
         WaveRing(
-          faces: [_track('sc_1', cover: 'https://x/1.jpg')],
+          faces: [_track('sc:1', cover: 'https://x/1.jpg')],
           scale: 0.6,
           loading: false,
           onTap: (_) {},
@@ -149,14 +149,14 @@ void main() {
         tester,
         _container(),
         WaveRing(
-          faces: [_track('sc_7', cover: 'https://x/7.jpg')],
+          faces: [_track('sc:7', cover: 'https://x/7.jpg')],
           scale: 0.6,
           loading: false,
           onTap: (t) => tapped = t,
         ),
       );
       await tester.tap(find.byType(GestureDetector).first);
-      expect(tapped?.id, 'sc_7');
+      expect(tapped?.id, 'sc:7');
     });
 
     testWidgets('пустое кольцо тапов не ловит', (tester) async {
@@ -252,7 +252,7 @@ void main() {
       tester,
     ) async {
       final container = _container();
-      container.read(waveStoreProvider.notifier).toggleDislike(_track('sc_1'));
+      container.read(waveStoreProvider.notifier).toggleDislike(_track('sc:1'));
 
       await _pump(
         tester,
@@ -267,14 +267,14 @@ void main() {
       await tester.tap(find.text('открыть'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Song sc_1'), findsOneWidget);
-      expect(find.text('Artist sc_1'), findsOneWidget);
+      expect(find.text('Song sc:1'), findsOneWidget);
+      expect(find.text('Artist sc:1'), findsOneWidget);
 
       // Крестик в строке — второй круглый значок после «очистить всё» в шапке.
       await tester.tap(find.byIcon(SolarIconsOutline.closeCircle));
       await tester.pumpAndSettle();
 
-      expect(container.read(waveStoreProvider).isDisliked('sc_1'), isFalse);
+      expect(container.read(waveStoreProvider).isDisliked('sc:1'), isFalse);
       expect(find.text('Дизлайков пока нет'), findsOneWidget);
       // Запись файла отложенная — дожидаемся её, иначе тест уходит с висящим
       // таймером.

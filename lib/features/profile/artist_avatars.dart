@@ -19,7 +19,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../core/entities/entities.dart';
 import '../../core/providers/artist_lookup.dart';
-import '../../core/store/library_store.dart' show jsonStoreProvider;
+import '../../core/store/json_store.dart' show jsonStoreProvider;
 
 /// Столько живёт запись кеша — как `TTL` на десктопе.
 const Duration _ttl = Duration(days: 30);

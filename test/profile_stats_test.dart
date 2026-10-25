@@ -5,7 +5,6 @@ library;
 
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart';
 import 'package:bloom/core/store/play_log.dart';
 import 'package:bloom/core/store/play_stats.dart';
 import 'package:bloom/core/store/stats_store.dart';
@@ -13,6 +12,7 @@ import 'package:bloom/features/profile/achievements.dart';
 import 'package:bloom/features/profile/stats.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
 
 Track _track(
   String id, {
@@ -34,7 +34,7 @@ ProviderContainer _container([Map<String, dynamic>? seed]) {
   final c = ProviderContainer(
     overrides: [
       jsonStoreProvider.overrideWithValue(JsonStore.memory(seed)),
-      playLogStoreProvider.overrideWithValue(JsonStore.memory()),
+      dbProvider.overrideWithValue(BloomDb.memory()),
       playLogClockProvider.overrideWithValue(
         () => DateTime.fromMillisecondsSinceEpoch(now += 60000),
       ),
@@ -48,28 +48,35 @@ ProviderContainer _container([Map<String, dynamic>? seed]) {
 void _listen(ProviderContainer c, Track track) =>
     c.read(playLogProvider.notifier).log(track);
 
+/// [n] прослушиваний одного трека.
+void _listenMany(ProviderContainer c, int n) {
+  for (var i = 0; i < n; i++) {
+    _listen(c, _track('sc:1'));
+  }
+}
+
 void main() {
   test('повторное прослушивание растит счётчик, а не плодит записи', () {
     final c = _container();
-    final track = _track('sc_1');
+    final track = _track('sc:1');
 
     _listen(c, track);
-    _listen(c, _track('sc_2'));
+    _listen(c, _track('sc:2'));
     _listen(c, track);
 
     final rows = c.read(playStatsProvider).historyRows();
     expect(rows.length, 2);
     // Трек поднялся наверх и унёс счётчик с собой.
-    expect(rows.first.id, 'sc_1');
+    expect(rows.first.id, 'sc:1');
     expect(rows.first.count, 2);
     expect(c.read(profileStatsProvider).totalPlays, 3);
   });
 
   test('время прослушивания и средняя длина считаются по счётчику', () {
     final c = _container();
-    _listen(c, _track('sc_1', seconds: 200));
-    _listen(c, _track('sc_1', seconds: 200));
-    _listen(c, _track('sc_2', seconds: 100));
+    _listen(c, _track('sc:1', seconds: 200));
+    _listen(c, _track('sc:1', seconds: 200));
+    _listen(c, _track('sc:2', seconds: 100));
 
     final stats = c.read(profileStatsProvider);
     expect(stats.listenSec, 500);
@@ -79,39 +86,35 @@ void main() {
 
   test('трек, которого нет в библиотеке, в топе остаётся — по снимку', () {
     final c = _container();
-    _listen(c, _track('sc_1', artist: 'A'));
-    _listen(c, _track('sc_1', artist: 'A'));
+    _listen(c, _track('sc:1', artist: 'A'));
+    _listen(c, _track('sc:1', artist: 'A'));
 
     // Библиотека пуста: трек только слушали, но не сохраняли.
     final stats = c.read(profileStatsProvider);
-    expect(stats.topTracks.single.track.id, 'sc_1');
+    expect(stats.topTracks.single.track.id, 'sc:1');
     expect(stats.topTracks.single.plays, 2);
     expect(stats.favArtist, 'A');
   });
 
-  test('площадка берётся из префикса id — даже без самого трека', () {
-    final c = _container({
-      // Старая история: треков площадок и снимков журнала для них нет.
-      'history': [
-        {'id': 'ytm_1', 'at': 1, 'n': 3},
-        {'id': 'sc_1', 'at': 2, 'n': 1},
-      ],
-    });
+  test('прослушивания раскладываются по площадкам', () {
+    final c = _container();
+    for (var i = 0; i < 3; i++) {
+      _listen(c, _track('ytm:1', source: MusicSource.ytmusic));
+    }
+    _listen(c, _track('sc:1'));
 
     final stats = c.read(profileStatsProvider);
     expect(stats.totalPlays, 4);
     expect(stats.bySource.first.source, MusicSource.ytmusic);
     expect(stats.bySource.first.plays, 3);
     expect(stats.bySource.length, 2);
-    // Треков нет — время посчитать не из чего, но прослушивания не потеряны.
-    expect(stats.listenSec, 0);
   });
 
   test('топ артистов сортируется по прослушиваниям, любимый — первый', () {
     final c = _container();
-    _listen(c, _track('sc_1', artist: 'A'));
-    _listen(c, _track('sc_2', artist: 'B'));
-    _listen(c, _track('sc_2', artist: 'B'));
+    _listen(c, _track('sc:1', artist: 'A'));
+    _listen(c, _track('sc:2', artist: 'B'));
+    _listen(c, _track('sc:2', artist: 'B'));
 
     final stats = c.read(profileStatsProvider);
     expect(stats.favArtist, 'B');
@@ -121,9 +124,9 @@ void main() {
 
   test('мультиартистный трек идёт в зачёт каждому участнику', () {
     final c = _container();
-    _listen(c, _track('sc_1', artist: 'reidenshi, Øneheart'));
-    _listen(c, _track('sc_2', artist: 'Øneheart'));
-    _listen(c, _track('sc_2', artist: 'Øneheart'));
+    _listen(c, _track('sc:1', artist: 'reidenshi, Øneheart'));
+    _listen(c, _track('sc:2', artist: 'Øneheart'));
+    _listen(c, _track('sc:2', artist: 'Øneheart'));
 
     final stats = c.read(profileStatsProvider);
     // Склеенного имени в топе нет — по нему не нашлись бы ни аватар, ни
@@ -155,11 +158,8 @@ void main() {
   });
 
   test('достижения: тиры, прогресс до следующего и максимум', () {
-    final c = _container({
-      'history': [
-        {'id': 'sc_1', 'at': 1, 'n': 150},
-      ],
-    });
+    final c = _container();
+    _listenMany(c, 150);
 
     final list = c.read(achievementsProvider);
     final listener = list.firstWhere((a) => a.def.id == 'listener');
@@ -177,11 +177,8 @@ void main() {
   });
 
   test('первый прогон засеивает молча, новые анлоки приходят потом', () {
-    final c = _container({
-      'history': [
-        {'id': 'sc_1', 'at': 1, 'n': 150},
-      ],
-    });
+    final c = _container();
+    _listenMany(c, 150);
     final unlocked = c.read(unlockedAchievementsProvider.notifier);
 
     // Сид: бронза «Меломана» уже выполнена, но об этом не уведомляют.
@@ -214,11 +211,8 @@ void main() {
         'activity': {dayKey(DateTime.now()): 5},
         'appMs': 1000,
       },
-      'history': [
-        {'id': 'sc_1', 'at': 1, 'n': 150},
-      ],
     });
-    _listen(c, _track('sc_2'));
+    _listen(c, _track('sc:2'));
     c
         .read(unlockedAchievementsProvider.notifier)
         .sync(c.read(achievementsProvider));
@@ -227,7 +221,6 @@ void main() {
     c.read(statsProvider.notifier).clear();
     c.read(unlockedAchievementsProvider.notifier).clear();
     c.read(playLogProvider.notifier).clear();
-    c.read(legacyHistoryProvider.notifier).clear();
 
     final stats = c.read(profileStatsProvider);
     expect(stats.totalPlays, 0);

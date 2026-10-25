@@ -32,7 +32,6 @@ import '../stats.dart';
 import 'achievements_sheet.dart';
 import 'profile_avatar.dart';
 import 'profile_entry_card.dart';
-import 'profile_share_sheet.dart';
 import 'stats_sheet.dart';
 
 /// Сторона аватара на странице — десктопные 120 из `.acc-ava`.
@@ -318,12 +317,6 @@ class _Banner extends StatelessWidget {
                       onTap: () => context.go('/home'),
                     ),
                   const Spacer(),
-                  // Порядок десктопный: «Поделиться», за ней карандаш.
-                  GlassIconButton(
-                    icon: SolarIconsOutline.share,
-                    onTap: () => showProfileShareSheet(context),
-                  ),
-                  const SizedBox(width: 8),
                   GlassIconButton(
                     icon: SolarIconsOutline.pen,
                     onTap: () => context.go('${profileBase(context)}/edit'),

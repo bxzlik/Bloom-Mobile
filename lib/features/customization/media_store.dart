@@ -23,7 +23,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/store/cover_store.dart';
-import '../../core/store/library_store.dart' show jsonStoreProvider;
+import '../../core/store/json_store.dart' show jsonStoreProvider;
 
 /// Границы ползунков страницы картинки — те же, что на десктопе
 /// (`BackgroundCards`: blur 0…80 px, dim 0…100 %).

@@ -33,8 +33,12 @@ Future<ImportResult?> importPlaylistFile(
     ref.read(libraryProvider),
     ref.read(libraryProvider.notifier),
   );
-  if (result == null) {
-    messenger.toast(l.sysImportInvalid, kind: ToastKind.error);
+  if (result.failure case final failure?) {
+    messenger.toast(switch (failure) {
+      ImportFailure.bad => l.sysImportInvalid,
+      ImportFailure.oldFormat => l.sysImportOld,
+      ImportFailure.newer => l.sysImportNewer,
+    }, kind: ToastKind.error);
     return null;
   }
   if (result.playlists == 0) {

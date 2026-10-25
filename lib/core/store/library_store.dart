@@ -1,33 +1,35 @@
-/// Библиотека: треки, любимые, плейлисты, подписки.
+/// Библиотека: «Все треки», любимые, плейлисты, подписки — поверх таблиц
+/// `lists`/`list_tracks`/`follows` базы (порт `Library` + `Lists` ПК).
 ///
-/// Раскладка повторяет десктопную: лайки и подписки — ОТДЕЛЬНЫЕ наборы id, а не
-/// флаги на самом треке (у смешанных источников флаг некуда положить), плейлист
-/// хранит только id треков, сами треки лежат общим словарём.
+/// Раскладка та же, что на ПК: «Все треки» (`lib`), любимые (`fav`) и плейлисты
+/// — одна таблица упорядоченных списков. У каждой строки списка своё место
+/// (`pos`) и своё время добавления (`added_at`): перетаскивание меняет только
+/// место, «свежие лайки» по-прежнему знают, когда их поставили.
 ///
-/// Словарь `tracks` — это ХРАНИЛИЩЕ, а не раздел «Все треки»: там лежит всё, на
-/// что кто-то ссылается (лайк, плейлист), иначе от лайкнутого трека остался бы
-/// один id и заиграть его было бы нечем. Членство в библиотеке — отдельный
-/// набор [LibraryState.inLib], как на десктопе: туда трек попадает только явным
-/// действием (пункт «В библиотеку», лайк, плейлист, импорт).
+/// Инвариант ПК: трек в плейлисте или в любимых — трек в библиотеке
+/// ([_addTo] кладёт его и туда), а убранный из библиотеки убирается отовсюду.
 ///
-/// «Истории» здесь нет: с 3.0 она выводится из журнала прослушиваний
-/// (`history_store.dart`), и трек для её строки, которого нет в хранилище,
-/// собирается из снимка журнала.
+/// [LibraryState] — снимок для экранов: читается синхронно, обновляется после
+/// каждой правки. Сами треки в нём — только те, что стоят в каком-то списке;
+/// снимок любого слышанного трека лежит в `tracks` базы (см. [TrackStore]).
 library;
+
+import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../db/db.dart';
+import '../db/track_store.dart';
 import '../entities/entities.dart';
 import '../l10n/l10n.dart';
-import 'json_store.dart';
+
+/// id служебных списков — те же, что на ПК (`Lists::kLibrary/kFavorites`).
+const String kLibList = 'lib';
+const String kFavList = 'fav';
 
 /// Источник «Обновить треки»: привязанная к плейлисту внешняя коллекция —
 /// плейлист, альбом или профиль (лайки) любой площадки. Их может быть сколько
-/// угодно и с разных площадок, как на десктопе (`PlSourceRef`).
-///
-/// Легаси-вида `scLikes` (лайки SC-пользователя по user-id, без URL) у нас
-/// никогда не было: «Лайки <ник>» и здесь заводятся ссылкой на профиль, и это
-/// обычный [url].
+/// угодно и с разных площадок, как на ПК.
 class PlSourceRef {
   const PlSourceRef({required this.url, this.title});
 
@@ -52,6 +54,8 @@ class PlSourceRef {
 class UserPlaylist {
   final String id;
   final String name;
+
+  /// Состав по местам, первый сверху.
   final List<String> trackIds;
   final String? cover;
   final String? description;
@@ -59,11 +63,10 @@ class UserPlaylist {
   /// Откуда «Обновить треки» тянет новые треки. Пусто — плейлист свой, и
   /// обновлять его неоткуда.
   final List<PlSourceRef> sources;
-
-  /// Импортированный альбом. Хранится так же, как плейлист, но вкладка
-  /// «Альбомы» показывает только их.
-  final bool isAlbum;
   final int createdAt;
+
+  /// Место карточки на экране библиотеки (`side_pos`); 0 — ещё не стояла.
+  final int sidePos;
 
   const UserPlaylist({
     required this.id,
@@ -72,96 +75,42 @@ class UserPlaylist {
     this.cover,
     this.description,
     this.sources = const [],
-    this.isAlbum = false,
     this.createdAt = 0,
+    this.sidePos = 0,
   });
 
-  UserPlaylist copyWith({
-    String? name,
-    List<String>? trackIds,
-    String? cover,
-    String? description,
-    List<PlSourceRef>? sources,
-  }) => UserPlaylist(
+  UserPlaylist copyWith({List<String>? trackIds}) => UserPlaylist(
     id: id,
-    name: name ?? this.name,
+    name: name,
     trackIds: trackIds ?? this.trackIds,
-    cover: cover ?? this.cover,
-    description: description ?? this.description,
-    sources: sources ?? this.sources,
-    isAlbum: isAlbum,
+    cover: cover,
+    description: description,
+    sources: sources,
     createdAt: createdAt,
+    sidePos: sidePos,
   );
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'trackIds': trackIds,
-    if (cover != null) 'cover': cover,
-    if (description != null) 'description': description,
-    if (sources.isNotEmpty) 'sources': [for (final s in sources) s.toJson()],
-    if (isAlbum) 'isAlbum': true,
-    'createdAt': createdAt,
-  };
-
-  static UserPlaylist? fromJson(Object? json) {
-    if (json is! Map) return null;
-    final id = json['id'];
-    final name = json['name'];
-    if (id is! String || name is! String) return null;
-    final sources = [
-      for (final raw in (json['sources'] as List?) ?? const [])
-        ?PlSourceRef.fromJson(raw),
-    ];
-    // Плейлисты, заведённые до списка источников, хранят одну ссылку в
-    // `sourceUrl` — она и становится их единственным источником (десктопный
-    // `migratePlSources`).
-    final legacy = json['sourceUrl'];
-    if (sources.isEmpty && legacy is String && legacy.isNotEmpty) {
-      sources.add(PlSourceRef(url: legacy));
-    }
-    return UserPlaylist(
-      id: id,
-      name: name,
-      trackIds:
-          (json['trackIds'] as List?)?.whereType<String>().toList() ?? const [],
-      cover: json['cover'] as String?,
-      description: json['description'] as String?,
-      sources: sources,
-      isAlbum: json['isAlbum'] == true,
-      createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
-    );
-  }
 }
 
 class FollowedArtist {
   final Artist artist;
   final int followedAt;
   const FollowedArtist({required this.artist, required this.followedAt});
-
-  Map<String, dynamic> toJson() => {
-    ...artist.toJson(),
-    'followedAt': followedAt,
-  };
-
-  static FollowedArtist? fromJson(Object? json) {
-    final artist = Artist.fromJson(json);
-    if (artist == null) return null;
-    return FollowedArtist(
-      artist: artist,
-      followedAt: ((json as Map)['followedAt'] as num?)?.toInt() ?? 0,
-    );
-  }
 }
 
 class LibraryState {
-  /// Хранилище: все треки, на которые кто-то ссылается. id → трек.
+  /// Треки, стоящие хоть в одном списке. id → трек.
   final Map<String, Track> tracks;
 
-  /// Раздел «Все треки»: id → время добавления. Свежие сверху.
+  /// «Все треки» по местам, первый сверху.
+  final List<String> libIds;
+
+  /// id → когда трек попал в библиотеку.
   final Map<String, int> inLib;
 
-  /// id → время лайка. Порядок «Любимого» — по нему, свежие сверху.
+  /// Любимые по местам, первый сверху.
+  final List<String> favIds;
+
+  /// id → когда поставлен лайк.
   final Map<String, int> favs;
 
   final List<UserPlaylist> playlists;
@@ -169,7 +118,9 @@ class LibraryState {
 
   const LibraryState({
     this.tracks = const {},
+    this.libIds = const [],
     this.inLib = const {},
+    this.favIds = const [],
     this.favs = const {},
     this.playlists = const [],
     this.follows = const [],
@@ -180,326 +131,340 @@ class LibraryState {
   bool isFollowing(String artistId) =>
       follows.any((f) => f.artist.id == artistId);
 
-  /// Все треки библиотеки. Порядок — как добавляли, свежие сверху.
-  List<Track> get allTracks {
-    final entries = inLib.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    return entries.map((e) => tracks[e.key]).whereType<Track>().toList();
-  }
+  List<Track> get allTracks => [for (final id in libIds) ?tracks[id]];
 
-  List<Track> get favTracks {
-    final entries = favs.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    return entries.map((e) => tracks[e.key]).whereType<Track>().toList();
-  }
+  List<Track> get favTracks => [for (final id in favIds) ?tracks[id]];
 
-  List<Track> tracksOf(UserPlaylist pl) =>
-      pl.trackIds.map((id) => tracks[id]).whereType<Track>().toList();
-
-  LibraryState copyWith({
-    Map<String, Track>? tracks,
-    Map<String, int>? inLib,
-    Map<String, int>? favs,
-    List<UserPlaylist>? playlists,
-    List<FollowedArtist>? follows,
-  }) => LibraryState(
-    tracks: tracks ?? this.tracks,
-    inLib: inLib ?? this.inLib,
-    favs: favs ?? this.favs,
-    playlists: playlists ?? this.playlists,
-    follows: follows ?? this.follows,
-  );
+  List<Track> tracksOf(UserPlaylist pl) => [
+    for (final id in pl.trackIds) ?tracks[id],
+  ];
 }
-
-/// Файловое хранилище. Подменяется в `main()` реальным (и в тестах — памятью).
-final jsonStoreProvider = Provider<JsonStore>(
-  (ref) =>
-      throw UnimplementedError('jsonStoreProvider должен быть переопределён'),
-);
 
 final libraryProvider = NotifierProvider<LibraryController, LibraryState>(
   LibraryController.new,
 );
 
 class LibraryController extends Notifier<LibraryState> {
-  JsonStore get _store => ref.read(jsonStoreProvider);
+  BloomDb get _db => ref.read(dbProvider);
+  TrackStore get _store => TrackStore(_db);
 
   @override
-  LibraryState build() {
-    final store = ref.read(jsonStoreProvider);
-    final tracks = <String, Track>{};
-    for (final raw in store.readList('tracks')) {
-      final t = Track.fromJson(raw);
-      if (t != null) tracks[t.id] = t;
-    }
-    final favs = <String, int>{};
-    store.readMap('favs').forEach((id, at) {
-      if (at is num) favs[id] = at.toInt();
-    });
+  LibraryState build() => _read(const {});
 
-    final inLib = <String, int>{};
-    if (store.read('lib') == null) {
-      // Данные, записанные до разделения хранилища и «Всех треков»: тогда в
-      // библиотеке лежало ровно содержимое `tracks`, в порядке добавления.
-      var i = 0;
-      for (final id in tracks.keys) {
-        inLib[id] = i++;
-      }
-      store.write('lib', inLib);
-    } else {
-      store.readMap('lib').forEach((id, at) {
-        if (at is num) inLib[id] = at.toInt();
-      });
+  /// Перечитать списки из базы. Треки, уже лежащие в [known], не читаются
+  /// заново — правка трогает пару строк, а не всю библиотеку.
+  LibraryState _read(Map<String, Track> known) {
+    final members = <String, List<String>>{};
+    final added = <String, Map<String, int>>{};
+    for (final r in _db.select(
+      'SELECT list_id, track_id, added_at FROM list_tracks ORDER BY list_id, pos',
+    )) {
+      final list = r['list_id'] as String;
+      final id = r['track_id'] as String;
+      (members[list] ??= []).add(id);
+      (added[list] ??= {})[id] = r['added_at'] as int;
     }
+
+    final ids = {for (final m in members.values) ...m};
+    final tracks = <String, Track>{for (final id in ids) id: ?known[id]};
+    final missing = [
+      for (final id in ids)
+        if (!tracks.containsKey(id)) id,
+    ];
+    for (final t in _store.get(missing)) {
+      tracks[t.id] = t;
+    }
+
+    final playlists = [
+      for (final r in _db.select(
+        "SELECT id, name, description, cover, sources, created_at, side_pos FROM lists WHERE kind = 'playlist' ORDER BY pinned DESC, side_pos, created_at",
+      ))
+        UserPlaylist(
+          id: r['id'] as String,
+          name: r['name'] as String,
+          description: _text(r['description']),
+          cover: _text(r['cover']),
+          sources: _sources(r['sources'] as String?),
+          createdAt: r['created_at'] as int,
+          sidePos: r['side_pos'] as int,
+          trackIds: members[r['id']] ?? const [],
+        ),
+    ];
+
+    final follows = [
+      for (final r in _db.select(
+        'SELECT id, name, avatar, extra, at FROM follows ORDER BY pinned DESC, side_pos, at',
+      ))
+        FollowedArtist(artist: _artistOfRow(r), followedAt: r['at'] as int),
+    ];
 
     return LibraryState(
       tracks: tracks,
-      inLib: inLib,
-      favs: favs,
-      playlists: store
-          .readList('playlists')
-          .map(UserPlaylist.fromJson)
-          .whereType<UserPlaylist>()
-          .toList(),
-      follows: store
-          .readList('follows')
-          .map(FollowedArtist.fromJson)
-          .whereType<FollowedArtist>()
-          .toList(),
+      libIds: members[kLibList] ?? const [],
+      inLib: added[kLibList] ?? const {},
+      favIds: members[kFavList] ?? const [],
+      favs: added[kFavList] ?? const {},
+      playlists: playlists,
+      follows: follows,
     );
   }
 
-  void _saveTracks() => _store.write(
-    'tracks',
-    state.tracks.values.map((t) => t.toJson()).toList(),
-  );
-  void _saveLib() => _store.write('lib', state.inLib);
-  void _saveFavs() => _store.write('favs', state.favs);
-  void _savePlaylists() => _store.write(
-    'playlists',
-    state.playlists.map((p) => p.toJson()).toList(),
-  );
-  void _saveFollows() =>
-      _store.write('follows', state.follows.map((f) => f.toJson()).toList());
+  void _refresh() => state = _read(state.tracks);
 
-  /// Положить треки в общий словарь (merge по id).
-  void _remember(Iterable<Track> batch) {
-    if (batch.isEmpty) return;
-    final next = Map<String, Track>.from(state.tracks);
-    for (final t in batch) {
-      next[t.id] = t;
+  static String? _text(Object? v) => v is String && v.isNotEmpty ? v : null;
+
+  static List<PlSourceRef> _sources(String? raw) {
+    try {
+      final list = jsonDecode(raw ?? '[]');
+      return [
+        if (list is List)
+          for (final s in list) ?PlSourceRef.fromJson(s),
+      ];
+    } catch (_) {
+      return const [];
     }
-    state = state.copyWith(tracks: next);
-    _saveTracks();
   }
 
-  /// Выбросить из хранилища треки, на которые больше никто не ссылается —
-  /// иначе прослушанное копилось бы вечно, оставаясь невидимым.
-  ///
-  /// Единственный выход из `tracks`: удаление трека ссылки только снимает
-  /// ([deleteTrack], [setLibraryTracks]), а уйдёт ли сам трек, решается здесь.
-  ///
-  /// «История» трек больше не держит: её строка без трека в хранилище берёт
-  /// снимок из журнала прослушиваний.
-  void _prune() {
-    final keep = <String>{
-      ...state.inLib.keys,
-      ...state.favs.keys,
-      for (final p in state.playlists) ...p.trackIds,
-    };
-    if (keep.length == state.tracks.length) return;
-    final next = <String, Track>{
-      for (final e in state.tracks.entries)
-        if (keep.contains(e.key)) e.key: e.value,
-    };
-    state = state.copyWith(tracks: next);
-    _saveTracks();
+  static Artist _artistOfRow(Map<String, Object?> r) {
+    final id = r['id'] as String;
+    Map<String, dynamic> x;
+    try {
+      x = (jsonDecode(r['extra'] as String? ?? '{}') as Map)
+          .cast<String, dynamic>();
+    } catch (_) {
+      x = const {};
+    }
+    return Artist(
+      id: id,
+      name: r['name'] as String? ?? '',
+      avatar: _text(r['avatar']),
+      source: MusicSource.fromId(id),
+      permalink: _text(x['permalink']),
+      fullName: _text(x['fullName']),
+      verified: x['verified'] == true,
+    );
+  }
+
+  // ── Списки (порт `Lists`) ──────────────────────────────────────────────
+
+  /// Следующее место карточки на экране библиотеки — общее у плейлистов,
+  /// папок и подписок, как на ПК.
+  int _nextSidePos() =>
+      (_db.value('''SELECT max(coalesce((SELECT max(side_pos) FROM lists), 0),
+          coalesce((SELECT max(side_pos) FROM folders), 0),
+          coalesce((SELECT max(side_pos) FROM follows), 0)) + 1''')
+          as int?) ??
+      1;
+
+  bool _listExists(String list) =>
+      _db.value('SELECT 1 FROM lists WHERE id = ?', [list]) != null;
+
+  /// Положить треки в список — те, которых там ещё нет; всегда наверх, в
+  /// порядке пачки (пустой список так и получает их как есть). Возвращает,
+  /// сколько прибавилось. Трек в списке — трек в библиотеке: новые встают в
+  /// начало «Всех треков».
+  int _addTo(String list, List<Track> tracks) {
+    if (!_listExists(list)) return 0;
+    return _db.tx(() {
+      _store.put(tracks);
+      final have = {
+        for (final r in _db.select(
+          'SELECT track_id FROM list_tracks WHERE list_id = ?',
+          [list],
+        ))
+          r['track_id'] as String,
+      };
+      final fresh = [
+        for (final t in tracks)
+          if (t.id.isNotEmpty && have.add(t.id)) t,
+      ];
+      if (fresh.isEmpty) return 0;
+      final now = BloomDb.now();
+      var pos =
+          (_db.value(
+                'SELECT coalesce(min(pos), 0) FROM list_tracks WHERE list_id = ?',
+                [list],
+              )
+              as int) -
+          fresh.length;
+      final insert = _db.prepare(
+        'INSERT INTO list_tracks (list_id, track_id, pos, added_at) VALUES (?, ?, ?, ?)',
+      );
+      try {
+        for (final t in fresh) {
+          insert.execute([list, t.id, pos++, now]);
+        }
+      } finally {
+        insert.close();
+      }
+      _touch(list);
+      if (list != kLibList) _addTo(kLibList, fresh);
+      return fresh.length;
+    });
+  }
+
+  /// Убрать треки из списка; из библиотеки — значит отовсюду.
+  void _removeFrom(String list, Iterable<String> trackIds) {
+    _db.tx(() {
+      for (final id in trackIds) {
+        _db.exec('DELETE FROM list_tracks WHERE list_id = ? AND track_id = ?', [
+          list,
+          id,
+        ]);
+        if (list == kLibList) {
+          _db.exec('DELETE FROM list_tracks WHERE track_id = ?', [id]);
+        }
+      }
+      _touch(list);
+    });
+  }
+
+  /// Новый порядок списка: [ids] по местам 0…n-1; чего в [ids] нет — уходит
+  /// из списка ([_removeFrom]). Время добавления не трогается.
+  void _setOrder(String list, List<String> ids) {
+    _db.tx(() {
+      final was = {
+        for (final r in _db.select(
+          'SELECT track_id FROM list_tracks WHERE list_id = ?',
+          [list],
+        ))
+          r['track_id'] as String,
+      };
+      _removeFrom(list, was.difference(ids.toSet()));
+      final set = _db.prepare(
+        'UPDATE list_tracks SET pos = ? WHERE list_id = ? AND track_id = ?',
+      );
+      try {
+        for (var i = 0; i < ids.length; i++) {
+          set.execute([i, list, ids[i]]);
+        }
+      } finally {
+        set.close();
+      }
+      _touch(list);
+    });
+  }
+
+  void _touch(String list) => _db.exec(
+    'UPDATE lists SET updated_at = ? WHERE id = ?',
+    [BloomDb.now(), list],
+  );
+
+  void _updateList(String id, Map<String, Object?> columns) {
+    if (columns.isEmpty) return;
+    final sets = [for (final c in columns.keys) '$c = ?', 'updated_at = ?'];
+    _db.exec('UPDATE lists SET ${sets.join(', ')} WHERE id = ?', [
+      ...columns.values,
+      BloomDb.now(),
+      id,
+    ]);
+    _refresh();
   }
 
   // ── Библиотека («Все треки») ────────────────────────────────────────────
 
-  /// Положить треки в библиотеку. Идемпотентно: у тех, что уже там, время
-  /// добавления не переписывается, иначе повторный импорт перетасовал бы
-  /// раздел. Возвращает число реально добавленных.
+  /// Положить треки в библиотеку, новые наверх; уже лежащие остаются на своём
+  /// месте. Возвращает число реально добавленных.
   int addToLibrary(Iterable<Track> batch) {
-    _remember(batch);
-    final next = Map<String, int>.from(state.inLib);
-    // Время добавления обязано строго расти: два добавления подряд попадают в
-    // одну миллисекунду, а сортировка по равным ключам порядок не сохраняет.
-    var at = DateTime.now().millisecondsSinceEpoch;
-    for (final prev in next.values) {
-      if (prev >= at) at = prev + 1;
-    }
-    var added = 0;
-    for (final t in batch) {
-      if (next.containsKey(t.id)) continue;
-      next[t.id] = at + added; // порядок внутри пачки сохраняем
-      added++;
-    }
-    if (added == 0) return 0;
-    state = state.copyWith(inLib: next);
-    _saveLib();
-    return added;
+    final n = _addTo(kLibList, batch.toList());
+    _refresh();
+    return n;
   }
 
-  /// Удалить трек отовсюду — порт `deleteUploadedTrack` + `cascadePurgeTrackRefs`.
-  ///
-  /// Именно насквозь, а не только из «Всех треков»: лайк и плейлист сами кладут
-  /// трек в библиотеку, так что «в любимых, но не в библиотеке» — состояние,
-  /// которого нигде больше не бывает, а оставшийся id висел бы в плейлисте
-  /// счётчиком без строки.
-  ///
-  /// Кроме истории. Она не ссылка на библиотеку, а журнал: «этот трек тогда-то
-  /// играл» — правда, которую удаление трека не отменяет, и живёт она вовсе не
-  /// здесь (`history_store.dart`). Строка удалённого трека остаётся на снимке
-  /// из журнала.
+  /// Удалить трек отовсюду: из библиотеки, лайков и всех плейлистов. Журнал
+  /// прослушиваний не трогается — «этот трек тогда-то играл» остаётся правдой,
+  /// снимок трека для истории держит сама база.
   void deleteTrack(String trackId) {
-    state = state.copyWith(
-      inLib: Map<String, int>.from(state.inLib)..remove(trackId),
-      favs: Map<String, int>.from(state.favs)..remove(trackId),
-      playlists: state.playlists
-          .map(
-            (p) => p.trackIds.contains(trackId)
-                ? p.copyWith(
-                    trackIds: p.trackIds.where((id) => id != trackId).toList(),
-                  )
-                : p,
-          )
-          .toList(),
-    );
-    _saveLib();
-    _saveFavs();
-    _savePlaylists();
-    _prune();
+    _db.tx(() {
+      _removeFrom(kLibList, [trackId]);
+      _store.prune();
+    });
+    _refresh();
   }
 
-  /// Заменить трек версией с другой площадки — порт `replaceLibTrack`.
-  ///
-  /// У новой версии другой id, поэтому ремапим ВСЕ ссылки: «Все треки» (вместе
-  /// со временем добавления — иначе трек прыгнет в начало списка), лайки (с их
-  /// временем) и состав плейлистов (на том же месте). Прослушивания живут в
-  /// журнале — их переносит вызывающий (`switch_platform.dart`).
-  ///
-  /// Сам трек кладём в хранилище всегда: он может быть не в библиотеке (пришёл
-  /// из поиска), а ссылка на него уже есть — например, из плейлиста.
+  /// Заменить трек версией с другой площадки: у новой версии другой id, и все
+  /// ссылки — места в списках, лайк, прослушивания, дизлайк — едут за ним
+  /// ([TrackStore.rekey]), со своими местами и временем добавления.
   void replaceTrack(String oldId, Track next) {
     if (oldId == next.id) return;
-    final tracks = Map<String, Track>.from(state.tracks)
-      ..remove(oldId)
-      ..[next.id] = next;
-
-    Map<String, int> remapTimes(Map<String, int> src) {
-      if (!src.containsKey(oldId)) return src;
-      return {
-        for (final e in src.entries)
-          if (e.key == oldId) next.id: e.value else e.key: e.value,
-      };
-    }
-
-    state = state.copyWith(
-      tracks: tracks,
-      inLib: remapTimes(state.inLib),
-      favs: remapTimes(state.favs),
-      playlists: [
-        for (final pl in state.playlists)
-          if (pl.trackIds.contains(oldId))
-            pl.copyWith(
-              trackIds: [
-                for (final id in pl.trackIds)
-                  if (id == oldId) next.id else id,
-              ],
-            )
-          else
-            pl,
-      ],
-    );
-    _saveTracks();
-    _saveLib();
-    _saveFavs();
-    _savePlaylists();
+    _db.tx(() {
+      _store.rekey(oldId, next.id);
+      _store.put([next]);
+    });
+    state = _read({
+      for (final e in state.tracks.entries)
+        if (e.key != oldId) e.key: e.value,
+      next.id: next,
+    });
   }
 
   /// Снимок библиотеки целиком — для «Отменить» после удаления смахиванием.
-  ///
-  /// Именно всё состояние, а не список id: удаление трека из «Всех треков»
-  /// каскадом чистит лайки и плейлисты (см. [deleteTrack]), и вернуть это по
-  /// частям нельзя. Состояние неизменяемое, снимок — одна ссылка.
   LibraryState snapshot() => state;
 
+  /// Вернуть списки, как они были в [snap]: состав, места и время добавления.
+  /// Плейлисты, которых с тех пор не стало, возвращаются тоже.
   void restoreSnapshot(LibraryState snap) {
-    state = snap;
-    _saveTracks();
-    _saveLib();
-    _saveFavs();
-    _savePlaylists();
-    _saveFollows();
+    _db.tx(() {
+      _store.put(snap.tracks.values);
+      void put(String list, List<String> ids, Map<String, int> added) {
+        _db.exec('DELETE FROM list_tracks WHERE list_id = ?', [list]);
+        final now = BloomDb.now();
+        for (var i = 0; i < ids.length; i++) {
+          if (!snap.tracks.containsKey(ids[i])) continue;
+          _db.exec(
+            'INSERT INTO list_tracks (list_id, track_id, pos, added_at) VALUES (?, ?, ?, ?)',
+            [list, ids[i], i, added[ids[i]] ?? now],
+          );
+        }
+      }
+
+      put(kLibList, snap.libIds, snap.inLib);
+      put(kFavList, snap.favIds, snap.favs);
+      for (final pl in snap.playlists) {
+        if (!_listExists(pl.id)) _insertPlaylist(pl);
+        put(pl.id, pl.trackIds, const {});
+      }
+    });
+    _refresh();
   }
 
   /// Правка «Всех треков» целиком: [ids] — новый состав И порядок, первый
-  /// сверху. Выпавшее из списка удаляется НАСКВОЗЬ, как [deleteTrack]: трек вне
-  /// библиотеки, но в плейлисте — состояние, которого больше нигде не бывает.
-  /// Историю это, как и [deleteTrack], не трогает.
+  /// сверху. Выпавшее удаляется насквозь, как [deleteTrack].
   void setLibraryTracks(List<String> ids) {
-    final gone = state.inLib.keys.toSet()..removeAll(ids);
-    // Порядок раздела держится временем добавления, свежие сверху, — значит
-    // первому в списке достаётся наибольшее время.
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final inLib = <String, int>{
-      for (var i = 0; i < ids.length; i++) ids[i]: now - i,
-    };
-    if (gone.isEmpty) {
-      state = state.copyWith(inLib: inLib);
-      _saveLib();
-      return;
-    }
-    state = state.copyWith(
-      inLib: inLib,
-      favs: Map<String, int>.from(state.favs)
-        ..removeWhere((id, _) => gone.contains(id)),
-      playlists: [
-        for (final p in state.playlists)
-          p.trackIds.any(gone.contains)
-              ? p.copyWith(
-                  trackIds: p.trackIds
-                      .where((id) => !gone.contains(id))
-                      .toList(),
-                )
-              : p,
-      ],
-    );
-    _saveLib();
-    _saveFavs();
-    _savePlaylists();
-    _prune();
+    _db.tx(() {
+      _setOrder(kLibList, ids);
+      _store.prune();
+    });
+    _refresh();
   }
 
   // ── Любимые ─────────────────────────────────────────────────────────────
 
-  /// Переключить лайк. Лайкнутый трек заодно попадает в библиотеку — как на
-  /// десктопе, где fav сперва персистит трек площадки (`saveTrackToLibrary`).
+  /// Переключить лайк. Новый лайк — наверх любимых и в библиотеку.
   bool toggleFav(Track track) {
-    final favs = Map<String, int>.from(state.favs);
-    final on = !favs.containsKey(track.id);
+    final on = !state.isFav(track.id);
     if (on) {
-      favs[track.id] = DateTime.now().millisecondsSinceEpoch;
-      addToLibrary([track]);
+      _addTo(kFavList, [track]);
     } else {
-      favs.remove(track.id);
+      _removeFrom(kFavList, [track.id]);
     }
-    state = state.copyWith(favs: favs);
-    _saveFavs();
+    _refresh();
     return on;
   }
 
+  /// Лайкнуть пачку разом (импорт ссылки в любимые): наверх, в порядке пачки.
+  /// Возвращает, сколько лайков прибавилось.
+  int addToFavorites(List<Track> batch) {
+    final n = _addTo(kFavList, batch);
+    _refresh();
+    return n;
+  }
+
   /// Правка «Любимых» целиком: [ids] — новый состав И порядок. Снятый лайк из
-  /// библиотеки трек не выкидывает — как и [toggleFav], только наоборот.
+  /// библиотеки трек не выкидывает.
   void setFavTracks(List<String> ids) {
-    final now = DateTime.now().millisecondsSinceEpoch;
-    state = state.copyWith(
-      favs: {for (var i = 0; i < ids.length; i++) ids[i]: now - i},
-    );
-    _saveFavs();
-    _prune();
+    _setOrder(kFavList, ids);
+    _refresh();
   }
 
   // ── Плейлисты ───────────────────────────────────────────────────────────
@@ -508,20 +473,21 @@ class LibraryController extends Notifier<LibraryState> {
     String name, {
     List<Track> tracks = const [],
     String? cover,
+    String? description,
     String? sourceUrl,
     String? sourceTitle,
-    bool isAlbum = false,
   }) {
-    final now = DateTime.now().millisecondsSinceEpoch;
     final pl = UserPlaylist(
-      id: _freeId(now),
+      description: description?.trim().isEmpty ?? true
+          ? null
+          : description!.trim(),
+      id: _freeId(BloomDb.now()),
       // Имя плейлиста — данные, а не интерфейс: как назвали при создании,
       // так и останется. Поэтому дефолт берётся на языке, который стоял в
       // этот момент, и потом уже не переводится.
       name: name.trim().isEmpty
           ? (globalL10n?.commonNewPlaylist ?? 'New playlist')
           : name.trim(),
-      trackIds: tracks.map((t) => t.id).toList(),
       cover: cover ?? (tracks.isEmpty ? null : tracks.first.cover),
       // Ссылка, из которой плейлист завели, сразу становится его первым
       // источником обновления — остальные привязывают уже руками, в редакторе.
@@ -529,140 +495,128 @@ class LibraryController extends Notifier<LibraryState> {
         if (sourceUrl != null && sourceUrl.trim().isNotEmpty)
           PlSourceRef(url: sourceUrl.trim(), title: sourceTitle),
       ],
-      isAlbum: isAlbum,
-      createdAt: now,
+      createdAt: BloomDb.now(),
     );
-    addToLibrary(tracks);
-    state = state.copyWith(playlists: [...state.playlists, pl]);
-    _savePlaylists();
-    return pl;
+    _db.tx(() {
+      _insertPlaylist(pl);
+      _addTo(pl.id, tracks);
+    });
+    _refresh();
+    return state.playlists.firstWhere((p) => p.id == pl.id);
   }
 
-  /// Свободный id плейлиста: `pl_<время>`, а если такой уже занят — следующее
-  /// число.
-  ///
-  /// Голого времени мало: несколько плейлистов подряд заводятся в одну
-  /// миллисекунду (импорт файла переноса — как раз цикл), и все получили бы
-  /// ОДИН id. Дальше «удалить» стирало бы их пачкой, а открытие вело бы в
-  /// первый попавшийся.
+  void _insertPlaylist(UserPlaylist pl) {
+    final now = BloomDb.now();
+    _db.exec(
+      "INSERT INTO lists (id, kind, name, description, cover, sources, created_at, updated_at, side_pos) VALUES (?, 'playlist', ?, ?, ?, ?, ?, ?, ?)",
+      [
+        pl.id,
+        pl.name,
+        pl.description ?? '',
+        pl.cover ?? '',
+        jsonEncode([for (final s in pl.sources) s.toJson()]),
+        pl.createdAt == 0 ? now : pl.createdAt,
+        now,
+        // Возвращённый («Отменить») встаёт на своё прежнее место.
+        pl.sidePos > 0 ? pl.sidePos : _nextSidePos(),
+      ],
+    );
+  }
+
+  /// Свободный id плейлиста — как на ПК: `pl` + время в base36, а если такой
+  /// уже занят (несколько плейлистов в одну миллисекунду — импорт файла) —
+  /// следующее число.
   String _freeId(int at) {
-    final taken = {for (final p in state.playlists) p.id};
     var n = at;
-    while (taken.contains('pl_$n')) {
+    while (_listExists('pl${n.toRadixString(36)}')) {
       n++;
     }
-    return 'pl_$n';
+    return 'pl${n.toRadixString(36)}';
   }
 
-  void renamePlaylist(String id, String name) => _updatePlaylist(
-    id,
-    (p) => p.copyWith(name: name.trim().isEmpty ? p.name : name.trim()),
-  );
+  void renamePlaylist(String id, String name) {
+    if (name.trim().isEmpty) return;
+    _updateList(id, {'name': name.trim()});
+  }
 
-  /// Поставить/снять обложку. Не через `copyWith`: там `cover ?? this.cover`,
-  /// и снять обложку было бы нечем.
-  void setPlaylistCover(String id, String? cover) => _updatePlaylist(
-    id,
-    (p) => UserPlaylist(
-      id: p.id,
-      name: p.name,
-      trackIds: p.trackIds,
-      cover: cover,
-      description: p.description,
-      sources: p.sources,
-      isAlbum: p.isAlbum,
-      createdAt: p.createdAt,
-    ),
-  );
+  /// Поставить/снять обложку (`null` — снять).
+  void setPlaylistCover(String id, String? cover) =>
+      _updateList(id, {'cover': cover ?? ''});
 
-  /// Привязки «Обновить треки» целиком — их правит редактор плейлиста
-  /// (`PlSourcesEditor` на ПК).
+  /// Привязки «Обновить треки» целиком — их правит редактор плейлиста.
   void setPlaylistSources(String id, List<PlSourceRef> sources) =>
-      _updatePlaylist(id, (p) => p.copyWith(sources: [...sources]));
+      _updateList(id, {
+        'sources': jsonEncode([for (final s in sources) s.toJson()]),
+      });
 
+  /// Удалить плейлист; его треки остаются в библиотеке.
   void deletePlaylist(String id) {
-    state = state.copyWith(
-      playlists: state.playlists.where((p) => p.id != id).toList(),
-    );
-    _savePlaylists();
+    if (id == kLibList || id == kFavList) return;
+    _db.exec("DELETE FROM lists WHERE id = ? AND kind = 'playlist'", [id]);
+    _refresh();
   }
 
-  /// Вернуть удалённый плейлист на его место — «Отменить» в тосте (порт
-  /// `PlMenu` с ПК). Восстанавливать нечего, если его уже создали заново с тем
-  /// же id, поэтому дубль молча пропускаем.
-  void restorePlaylist(int index, UserPlaylist playlist) {
-    if (state.playlists.any((p) => p.id == playlist.id)) return;
-    final next = [...state.playlists];
-    next.insert(
-      index < 0 ? next.length : index.clamp(0, next.length),
-      playlist,
-    );
-    state = state.copyWith(playlists: next);
-    _savePlaylists();
+  /// Вернуть удалённый плейлист — «Отменить» в тосте. Если его уже создали
+  /// заново с тем же id, возвращать нечего.
+  void restorePlaylist(UserPlaylist playlist) {
+    if (_listExists(playlist.id)) return;
+    _db.tx(() {
+      _insertPlaylist(playlist);
+      _addTo(playlist.id, [
+        for (final id in playlist.trackIds) ?state.tracks[id],
+      ]);
+    });
+    _refresh();
   }
 
-  /// Новый трек уходит НАВЕРХ плейлиста (как на десктопе), дубли игнорируются.
+  /// Положить треки в плейлист — наверх, в порядке пачки; уже лежащие
+  /// пропускаются. Возвращает, сколько прибавилось: «Обновить треки» считает
+  /// новинки именно так.
+  int addTracksToPlaylist(String id, List<Track> batch) {
+    final n = _addTo(id, batch);
+    _refresh();
+    return n;
+  }
+
   void addTrackToPlaylist(String id, Track track) =>
       addTracksToPlaylist(id, [track]);
 
-  /// То же для пачки — выделение из режима правки списка. Порядок внутри пачки
-  /// сохраняется, уже лежащие в плейлисте треки пропускаются.
-  ///
-  /// Возвращает, сколько треков реально прибавилось: «Обновить треки» считает
-  /// новинки именно так — сравнивать составы снаружи было бы нечем, пока идёт
-  /// сеть, плейлист мог измениться.
-  int addTracksToPlaylist(String id, List<Track> batch) {
-    addToLibrary(batch);
-    var added = 0;
-    _updatePlaylist(id, (p) {
-      final have = p.trackIds.toSet();
-      final add = [
-        for (final t in batch)
-          if (have.add(t.id)) t.id,
-      ];
-      added = add.length;
-      if (add.isEmpty) return p;
-      return p.copyWith(trackIds: [...add, ...p.trackIds]);
-    });
-    return added;
+  void removeTrackFromPlaylist(String id, String trackId) {
+    _removeFrom(id, [trackId]);
+    _refresh();
   }
 
-  void removeTrackFromPlaylist(String id, String trackId) => _updatePlaylist(
-    id,
-    (p) => p.copyWith(trackIds: p.trackIds.where((t) => t != trackId).toList()),
-  );
-
-  /// Правка плейлиста целиком: [trackIds] — новый состав И порядок. В отличие
-  /// от [addTracksToPlaylist] сюда приходят только id: треки уже в хранилище,
-  /// добавлять нечего, а вот выпавшие из состава могут стать никому не нужными.
+  /// Правка плейлиста целиком: [trackIds] — новый состав И порядок.
   void setPlaylistTracks(String id, List<String> trackIds) {
-    _updatePlaylist(id, (p) => p.copyWith(trackIds: trackIds));
-    _prune();
-  }
-
-  void _updatePlaylist(String id, UserPlaylist Function(UserPlaylist) f) {
-    state = state.copyWith(
-      playlists: state.playlists.map((p) => p.id == id ? f(p) : p).toList(),
-    );
-    _savePlaylists();
+    _setOrder(id, trackIds);
+    _refresh();
   }
 
   // ── Подписки ────────────────────────────────────────────────────────────
 
   bool toggleFollow(Artist artist) {
     final on = !state.isFollowing(artist.id);
-    state = state.copyWith(
-      follows: on
-          ? [
-              ...state.follows,
-              FollowedArtist(
-                artist: artist,
-                followedAt: DateTime.now().millisecondsSinceEpoch,
-              ),
-            ]
-          : state.follows.where((f) => f.artist.id != artist.id).toList(),
-    );
-    _saveFollows();
+    if (on) {
+      _db.exec(
+        'INSERT OR IGNORE INTO follows (id, provider, name, avatar, extra, at, side_pos) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [
+          artist.id,
+          artist.source.code,
+          artist.name,
+          artist.avatar ?? '',
+          jsonEncode({
+            if (artist.permalink != null) 'permalink': artist.permalink,
+            if (artist.fullName != null) 'fullName': artist.fullName,
+            if (artist.verified) 'verified': true,
+          }),
+          BloomDb.now(),
+          _nextSidePos(),
+        ],
+      );
+    } else {
+      _db.exec('DELETE FROM follows WHERE id = ?', [artist.id]);
+    }
+    _refresh();
     return on;
   }
 }

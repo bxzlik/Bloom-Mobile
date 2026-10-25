@@ -24,8 +24,6 @@ import '../../../features/player/play_source.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../features/wave/wave_actions.dart';
 import '../../../features/wave/wave_seeds.dart' show pickQueueSeeds;
-import '../../../shared/share/share_link.dart';
-import '../../../shared/share/share_sheet.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
@@ -512,16 +510,6 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                       ToastKind.success,
                     );
                   },
-          ),
-        ],
-        [
-          // «Поделиться» вместо прежней «Скопировать ссылку»: ссылку копирует
-          // сама шторка, и это ссылка Bloom, как на ПК, а не сырой permalink
-          // площадки.
-          SheetAction(
-            icon: SolarIconsOutline.share,
-            label: context.l.shareAction,
-            onTap: () => showShareSheet(context, ShareTarget.artist(artist)),
           ),
         ],
       ],

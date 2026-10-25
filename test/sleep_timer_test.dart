@@ -10,12 +10,13 @@ import 'package:bloom/app/theme/bloom_theme.dart';
 import 'package:bloom/app/theme/tokens.dart';
 import 'package:bloom/core/l10n/l10n.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/features/player/sleep_timer_store.dart';
 import 'package:bloom/features/player/ui/sleep_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
+import 'support/test_db.dart';
 
 /// Часы теста: ждать полчаса по-настоящему мы не будем.
 DateTime _now = DateTime(2026, 8, 15, 23, 30);
@@ -24,6 +25,7 @@ ProviderContainer _container(JsonStore store) {
   final c = ProviderContainer(
     overrides: [
       jsonStoreProvider.overrideWithValue(store),
+      dbProvider.overrideWithValue(testDb(store)),
       sleepClockProvider.overrideWithValue(() => _now),
     ],
   );

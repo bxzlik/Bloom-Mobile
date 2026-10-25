@@ -14,7 +14,6 @@ import 'package:bloom/app/theme/tokens.dart';
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/l10n/l10n.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/features/lyrics/lrc.dart';
 import 'package:bloom/features/lyrics/lyrics_api.dart';
 import 'package:bloom/features/lyrics/lyrics_cache.dart';
@@ -25,9 +24,10 @@ import 'package:bloom/features/player/player_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
 
 const _track = Track(
-  id: 'sc_1',
+  id: 'sc:1',
   name: 'Song',
   artist: 'Band',
   duration: Duration(seconds: 180),
@@ -43,6 +43,7 @@ ProviderContainer _container({
   final c = ProviderContainer(
     overrides: [
       jsonStoreProvider.overrideWithValue(store ?? JsonStore.memory()),
+      dbProvider.overrideWithValue(BloomDb.memory()),
       lyricsFetcherProvider.overrideWithValue(({
         required artist,
         required title,
@@ -272,7 +273,7 @@ void main() {
       final stale = ctrl.ensureFor(_track);
       await ctrl.ensureFor(
         const Track(
-          id: 'sc_2',
+          id: 'sc:2',
           name: 'Other',
           artist: 'Band',
           duration: Duration(seconds: 60),
@@ -281,7 +282,7 @@ void main() {
       );
       await stale;
       expect(c.read(lyricsProvider).plain, 'fresh');
-      expect(c.read(lyricsProvider).trackId, 'sc_2');
+      expect(c.read(lyricsProvider).trackId, 'sc:2');
     });
 
     test('трека нет — состояние сбрасывается', () async {
@@ -357,6 +358,7 @@ void main() {
       final c = ProviderContainer(
         overrides: [
           jsonStoreProvider.overrideWithValue(JsonStore.memory()),
+          dbProvider.overrideWithValue(BloomDb.memory()),
           lyricsFetcherProvider.overrideWithValue(
             ({required artist, required title, durationSec}) async =>
                 LyricsResult(found: true, synced: synced),

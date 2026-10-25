@@ -21,6 +21,8 @@ import 'package:bloom/features/settings/reset.dart';
 import 'package:bloom/features/settings/update_notes_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
+import 'support/test_db.dart';
 
 ProviderContainer _container(
   JsonStore store, {
@@ -30,6 +32,7 @@ ProviderContainer _container(
   final c = ProviderContainer(
     overrides: [
       jsonStoreProvider.overrideWithValue(store),
+      dbProvider.overrideWithValue(testDb(store)),
       if (fetch != null) releaseFetchProvider.overrideWithValue(fetch),
       if (notes != null) notesFetchProvider.overrideWithValue(notes),
     ],
@@ -112,239 +115,193 @@ void main() {
   });
 
   group('перенос плейлистов', () {
+    Future<ImportResult> import(ProviderContainer c, String file) =>
+        importPlaylistBundle(
+          file,
+          c.read(libraryProvider),
+          c.read(libraryProvider.notifier),
+        );
+
     test('в файл уезжают только треки плейлистов', () async {
       final c = _container(JsonStore.memory());
       final lib = c.read(libraryProvider.notifier);
-      lib.addToLibrary([_track('sc_1'), _track('sc_2')]);
-      lib.createPlaylist('Вечер', tracks: [_track('sc_1')]);
+      lib.addToLibrary([_track('sc:1'), _track('sc:2')]);
+      lib.createPlaylist('Вечер', tracks: [_track('sc:1')]);
 
       final bundle = await buildExportAllBundle(c.read(libraryProvider));
-      expect(bundle, contains('"sc_1"'));
+      expect(bundle, contains('"sc:1"'));
       // Трек лежит в библиотеке, но ни в одном плейлисте — файл переноса про
       // плейлисты, а не про всю библиотеку.
-      expect(bundle, isNot(contains('"sc_2"')));
+      expect(bundle, isNot(contains('"sc:2"')));
     });
 
     test('выгрузка одного плейлиста берёт только его', () async {
       final c = _container(JsonStore.memory());
       final lib = c.read(libraryProvider.notifier);
-      final mine = lib.createPlaylist('Вечер', tracks: [_track('sc_1')]);
-      lib.createPlaylist('Утро', tracks: [_track('sc_2')]);
+      final mine = lib.createPlaylist('Вечер', tracks: [_track('sc:1')]);
+      lib.createPlaylist('Утро', tracks: [_track('sc:2')]);
 
       final bundle = await buildExportBundle(mine, c.read(libraryProvider));
       expect(bundle, contains('Вечер'));
-      expect(bundle, contains('"sc_1"'));
+      expect(bundle, contains('"sc:1"'));
       expect(bundle, isNot(contains('Утро')));
-      expect(bundle, isNot(contains('"sc_2"')));
+      expect(bundle, isNot(contains('"sc:2"')));
+    });
+
+    test('файл — в формате ПК: метка, версия, трек строкой базы', () async {
+      final c = _container(JsonStore.memory());
+      c
+          .read(libraryProvider.notifier)
+          .createPlaylist(
+            'Вечер',
+            tracks: [
+              Track(
+                id: 'sc:5',
+                name: 'Song',
+                artist: 'A',
+                duration: const Duration(minutes: 3, seconds: 45),
+                source: MusicSource.soundcloud,
+                sourceData: const {
+                  'transcodings': [
+                    {'url': 'u'},
+                  ],
+                },
+              ),
+            ],
+          );
+
+      final doc =
+          jsonDecode(await buildExportAllBundle(c.read(libraryProvider)))
+              as Map<String, dynamic>;
+      expect(doc['bloom'], 'playlist');
+      expect(doc['version'], 2);
+      expect((doc['playlists'] as List).single['tracks'], ['sc:5']);
+      final t = (doc['tracks'] as List).single as Map;
+      expect(t['title'], 'Song');
+      expect(t['duration'], 225);
+      expect(t['provider'], 'sc');
+      expect(t['extra']['scId'], 5);
+      // Транскодинги — тем же ключом, что у ПК: там из них резолвится стрим.
+      expect(t['extra']['media']['transcodings'], isNotEmpty);
+    });
+
+    test('файл с ПК читается: описание, источники, порядок', () async {
+      final c = _container(JsonStore.memory());
+      final result = await import(c, '''
+        {"bloom":"playlist","version":2,
+         "playlists":[{"name":"С ПК","description":"вечером",
+           "sources":[{"url":"https://soundcloud.com/x/sets/y","title":"Y"}],
+           "tracks":["ym:7","sc:5"]}],
+         "tracks":[
+           {"id":"sc:5","title":"Song","artist":"A","album":"","cover":"","duration":225.5,
+            "provider":"sc","extra":{"scId":5,"media":{"transcodings":[{"url":"u"}]}}},
+           {"id":"ym:7","title":"Пес","artist":"Б","album":"","cover":"","duration":3723,
+            "provider":"ym","extra":{"ymId":"7","available":false}}
+         ]}
+        ''');
+
+      expect(result.playlists, 1);
+      expect(result.tracks, 2);
+      final pl = c.read(libraryProvider).playlists.single;
+      expect(pl.name, 'С ПК');
+      expect(pl.description, 'вечером');
+      expect(pl.sources.single.url, 'https://soundcloud.com/x/sets/y');
+      expect(pl.trackIds, ['ym:7', 'sc:5']);
+      final tracks = c.read(libraryProvider).tracks;
+      expect(tracks['sc:5']!.sourceData?['transcodings'], isNotEmpty);
+      expect(tracks['sc:5']!.duration, const Duration(milliseconds: 225500));
+      expect(tracks['ym:7']!.sourceData, {'available': false});
     });
 
     test('файл одного плейлиста читается обычным импортом', () async {
       final source = _container(JsonStore.memory());
       final mine = source
           .read(libraryProvider.notifier)
-          .createPlaylist('Вечер', tracks: [_track('sc_1'), _track('sc_2')]);
+          .createPlaylist('Вечер', tracks: [_track('sc:1'), _track('sc:2')]);
       final file = await buildExportBundle(mine, source.read(libraryProvider));
 
       final c = _container(JsonStore.memory());
-      final result = await importPlaylistBundle(
-        file,
-        c.read(libraryProvider),
-        c.read(libraryProvider.notifier),
-      );
+      final result = await import(c, file);
 
-      expect(result?.playlists, 1);
+      expect(result.playlists, 1);
       expect(c.read(libraryProvider).playlists.single.trackIds, [
-        'sc_1',
-        'sc_2',
+        'sc:1',
+        'sc:2',
       ]);
     });
 
-    test(
-      'имя файла переживает символы, которых не терпит файловая система',
-      () {
-        expect(
-          playlistFileName('AC/DC: лучшее?'),
-          'AC_DC_ лучшее_.bloomplaylist',
-        );
-        // Безымянный плейлист не должен дать файл без имени.
-        expect(playlistFileName('   '), 'bloom-playlist.bloomplaylist');
-      },
-    );
+    test('имя файла — как на ПК', () {
+      expect(
+        playlistFileName('AC/DC: лучшее?'),
+        'AC_DC_ лучшее_.bloomplaylist',
+      );
+      // Безымянный плейлист не должен дать файл без имени.
+      expect(playlistFileName('   '), 'playlist.bloomplaylist');
+    });
 
     test('импорт заводит плейлист заново и возвращает треки', () async {
       final source = _container(JsonStore.memory());
       final lib = source.read(libraryProvider.notifier);
-      lib.createPlaylist('Вечер', tracks: [_track('sc_1'), _track('sc_2')]);
+      lib.createPlaylist('Вечер', tracks: [_track('sc:1'), _track('sc:2')]);
       final file = await buildExportAllBundle(source.read(libraryProvider));
 
-      // id плейлиста — это время его создания, и «другой телефон» здесь тот же
-      // самый: без паузы обе библиотеки заводят плейлист в одну миллисекунду и
-      // получают ОДИН id — проверка ниже тогда падает на ровном месте.
-      await Future<void>.delayed(const Duration(milliseconds: 2));
       final c = _container(JsonStore.memory());
-      final result = await importPlaylistBundle(
-        file,
-        c.read(libraryProvider),
-        c.read(libraryProvider.notifier),
-      );
+      final result = await import(c, file);
 
-      expect(result?.playlists, 1);
-      expect(result?.tracks, 2);
+      expect(result.playlists, 1);
+      expect(result.tracks, 2);
       final pl = c.read(libraryProvider).playlists.single;
       expect(pl.name, 'Вечер');
-      expect(pl.trackIds, ['sc_1', 'sc_2']);
-      // id новый: файл мог приехать с другого телефона, где такой уже занят.
-      expect(pl.id, isNot(source.read(libraryProvider).playlists.single.id));
+      expect(pl.trackIds, ['sc:1', 'sc:2']);
     });
 
     test('id плейлиста из файла не занимает место существующего', () async {
       final c = _container(JsonStore.memory());
       final lib = c.read(libraryProvider.notifier);
-      final mine = lib.createPlaylist('Мой', tracks: [_track('sc_9')]);
+      final mine = lib.createPlaylist('Мой', tracks: [_track('sc:9')]);
       final file = await buildExportAllBundle(c.read(libraryProvider));
 
-      await importPlaylistBundle(
-        file,
-        c.read(libraryProvider),
-        c.read(libraryProvider.notifier),
-      );
+      await import(c, file);
       final playlists = c.read(libraryProvider).playlists;
       expect(playlists.length, 2);
       expect(playlists.first.id, mine.id);
       expect(playlists.last.id, isNot(mine.id));
     });
 
-    test('десктопные имена полей (trs) тоже читаются', () async {
+    test('старый формат, чужой файл и файл новее — внятный отказ', () async {
       final c = _container(JsonStore.memory());
-      c.read(libraryProvider.notifier).addToLibrary([_track('sc_1')]);
-      final result = await importPlaylistBundle(
-        '{"version":1,"playlists":[{"id":"p1","name":"С ПК","trs":["sc_1"]}]}',
-        c.read(libraryProvider),
-        c.read(libraryProvider.notifier),
-      );
-      expect(result?.playlists, 1);
-      expect(c.read(libraryProvider).playlists.single.trackIds, ['sc_1']);
-    });
-
-    test('десктопный снимок трека едет целиком', () async {
-      final c = _container(JsonStore.memory());
-      // Так трек выглядит в файле с ПК: длительность строкой, транскодинги в
-      // `scMedia`, глобальные прослушивания в `scPlaybackCount`, а `playCount`
-      // занят СВОИМ счётчиком — его брать нельзя.
-      final result = await importPlaylistBundle(
-        '''
-        {"version":1,
-         "playlists":[{"id":"p1","name":"С ПК","trs":["sc_5","ym_7","ytm_v"]}],
-         "tracks":[
-           {"id":"sc_5","name":"Song","artist":"A","dur":"3:45","playCount":12,
-            "scPlaybackCount":900,"scMedia":{"transcodings":[{"url":"u"}]}},
-           {"id":"ym_7","name":"Пес","artist":"Б","dur":"1:02:03",
-            "ymAvailable":false},
-           {"id":"ytm_v","name":"Clip","artist":"C","dur":"мусор"}
-         ]}
-        ''',
-        c.read(libraryProvider),
-        c.read(libraryProvider.notifier),
-      );
-
-      expect(result?.tracks, 3);
-      final tracks = c.read(libraryProvider).tracks;
-      final sc = tracks['sc_5']!;
-      expect(sc.source, MusicSource.soundcloud);
-      expect(sc.duration, const Duration(minutes: 3, seconds: 45));
-      expect(sc.playCount, 900);
-      // Транскодинги переехали как есть — иначе трек с ПК нечем было бы играть.
-      expect(sc.sourceData?['transcodings'], isNotEmpty);
       expect(
-        tracks['ym_7']!.duration,
-        const Duration(hours: 1, minutes: 2, seconds: 3),
+        (await import(c, '{"version":1,"playlists":[]}')).failure,
+        ImportFailure.oldFormat,
       );
-      expect(tracks['ym_7']!.sourceData, {'available': false});
-      // YouTube Music играет по одному id, сырьё ему не нужно; нечитаемая
-      // длительность — ноль, а не отказ от трека.
-      expect(tracks['ytm_v']!.sourceData, isNull);
-      expect(tracks['ytm_v']!.duration, Duration.zero);
+      expect((await import(c, 'не json')).failure, ImportFailure.bad);
+      expect(
+        (await import(c, '{"bloom":"playlist","version":3}')).failure,
+        ImportFailure.newer,
+      );
+      expect(c.read(libraryProvider).playlists, isEmpty);
     });
 
-    test('локальный трек с ПК не импортируется — файла тут нет', () async {
+    test('пустой список плейлистов — нули', () async {
       final c = _container(JsonStore.memory());
-      final result = await importPlaylistBundle(
-        '{"version":1,"playlists":[{"name":"С ПК","trs":["lf_abc"]}],'
-        '"tracks":[{"id":"lf_abc","name":"Мой файл","artist":"","dur":"2:00"}]}',
-        c.read(libraryProvider),
-        c.read(libraryProvider.notifier),
+      final empty = await import(
+        c,
+        '{"bloom":"playlist","version":2,"playlists":[]}',
       );
-      expect(result?.playlists, 1);
-      expect(result?.tracks, 0);
+      expect(empty.failure, isNull);
+      expect(empty.playlists, 0);
+    });
+
+    test('трека нет в файле — id в плейлист не попадает', () async {
+      final c = _container(JsonStore.memory());
+      final result = await import(
+        c,
+        '{"bloom":"playlist","version":2,'
+        '"playlists":[{"name":"Пусто","tracks":["sc:404"]}]}',
+      );
+      expect(result.playlists, 1);
+      expect(result.tracks, 0);
       expect(c.read(libraryProvider).playlists.single.trackIds, isEmpty);
-    });
-
-    test('свой снимок трека десктопным разбором не портится', () async {
-      final source = _container(JsonStore.memory());
-      source
-          .read(libraryProvider.notifier)
-          .createPlaylist('Вечер', tracks: [_track('sc_1')]);
-      final file = await buildExportAllBundle(source.read(libraryProvider));
-
-      final c = _container(JsonStore.memory());
-      await importPlaylistBundle(
-        file,
-        c.read(libraryProvider),
-        c.read(libraryProvider.notifier),
-      );
-      expect(c.read(libraryProvider).tracks['sc_1']!.name, 'Song');
-    });
-
-    test('в файле есть и десктопные поля — его откроет ПК', () async {
-      final c = _container(JsonStore.memory());
-      final lib = c.read(libraryProvider.notifier);
-      lib.createPlaylist(
-        'Вечер',
-        tracks: [
-          Track(
-            id: 'sc_5',
-            name: 'Song',
-            artist: 'A',
-            duration: const Duration(minutes: 3, seconds: 45),
-            source: MusicSource.soundcloud,
-            playCount: 900,
-            sourceData: const {
-              'transcodings': [
-                {'url': 'u'},
-              ],
-            },
-          ),
-          Track(
-            id: 'ytm_a_b',
-            name: 'Clip',
-            artist: 'C',
-            duration: const Duration(hours: 1, minutes: 2, seconds: 3),
-            source: MusicSource.ytmusic,
-          ),
-        ],
-      );
-
-      final bundle =
-          jsonDecode(await buildExportAllBundle(c.read(libraryProvider)))
-              as Map<String, dynamic>;
-      // Состав плейлиста ПК берёт из `trs` — своего `trackIds` он не знает.
-      expect((bundle['playlists'] as List).single['trs'], ['sc_5', 'ytm_a_b']);
-      final tracks = {
-        for (final raw in bundle['tracks'] as List)
-          (raw as Map)['id']: raw.cast<String, dynamic>(),
-      };
-      final sc = tracks['sc_5']!;
-      // Резолвер стрима на ПК выбирается по флагу, а не по префиксу id.
-      expect(sc['_sc'], isTrue);
-      expect(sc['scId'], 5);
-      expect(sc['dur'], '3:45');
-      expect(sc['scPlaybackCount'], 900);
-      expect(sc['scMedia'], sc['sourceData']);
-      final ytm = tracks['ytm_a_b']!;
-      expect(ytm['_ytm'], isTrue);
-      // Подчёркивание внутри videoId не должно разрезать id.
-      expect(ytm['ytmVideoId'], 'a_b');
-      expect(ytm['dur'], '1:02:03');
     });
 
     test('обложка-ссылка переживает круг, картинка не роняет импорт', () async {
@@ -353,63 +310,31 @@ void main() {
           .read(libraryProvider.notifier)
           .createPlaylist(
             'Вечер',
-            tracks: [_track('sc_1')],
+            tracks: [_track('sc:1')],
             cover: 'https://cdn/pl.jpg',
           );
       final file = await buildExportAllBundle(c.read(libraryProvider));
       expect(file, contains('https://cdn/pl.jpg'));
 
-      // Обложка с ПК приезжает картинкой внутри файла. Каталога `covers/` в
+      // Своя обложка ПК приезжает картинкой внутри файла. Каталога `covers/` в
       // тестах нет, так что записать её некуда — импорт от этого не должен ни
       // упасть, ни потерять плейлист.
       final other = _container(JsonStore.memory());
-      final result = await importPlaylistBundle(
-        '{"version":1,"playlists":['
-        '{"name":"Ссылкой","trs":[],"cover":"https://cdn/a.jpg"},'
-        '{"name":"Картинкой","trs":[],"cover":"data:image/png;base64,iVBORw0="}'
+      final result = await import(
+        other,
+        '{"bloom":"playlist","version":2,"playlists":['
+        '{"name":"Ссылкой","tracks":[],"cover":"https://cdn/a.jpg"},'
+        '{"name":"Картинкой","tracks":[],"coverData":"iVBORw0="}'
         ']}',
-        other.read(libraryProvider),
-        other.read(libraryProvider.notifier),
       );
 
-      expect(result?.playlists, 2);
-      final playlists = other.read(libraryProvider).playlists;
-      expect(playlists.first.cover, 'https://cdn/a.jpg');
-      expect(playlists.last.cover, isNull);
+      expect(result.playlists, 2);
+      final covers = {
+        for (final p in other.read(libraryProvider).playlists) p.name: p.cover,
+      };
+      expect(covers['Ссылкой'], 'https://cdn/a.jpg');
+      expect(covers['Картинкой'], isNull);
     });
-
-    test('битый файл — null, пустой список плейлистов — нули', () async {
-      final c = _container(JsonStore.memory());
-      expect(
-        await importPlaylistBundle(
-          'не json',
-          c.read(libraryProvider),
-          c.read(libraryProvider.notifier),
-        ),
-        isNull,
-      );
-      final empty = await importPlaylistBundle(
-        '{"version":1,"playlists":[]}',
-        c.read(libraryProvider),
-        c.read(libraryProvider.notifier),
-      );
-      expect(empty?.playlists, 0);
-    });
-
-    test(
-      'трека нет ни в файле, ни в библиотеке — id в плейлист не попадает',
-      () async {
-        final c = _container(JsonStore.memory());
-        final result = await importPlaylistBundle(
-          '{"version":1,"playlists":[{"name":"Пусто","trackIds":["sc_404"]}]}',
-          c.read(libraryProvider),
-          c.read(libraryProvider.notifier),
-        );
-        expect(result?.playlists, 1);
-        expect(result?.tracks, 0);
-        expect(c.read(libraryProvider).playlists.single.trackIds, isEmpty);
-      },
-    );
   });
 
   group('версии и обновления', () {
@@ -593,12 +518,13 @@ void main() {
       final store = JsonStore.memory();
       final c = _container(store);
       c.read(settingsProvider.notifier).setAutoplay(true);
-      c.read(libraryProvider.notifier).addToLibrary([_track('sc_1')]);
+      c.read(libraryProvider.notifier).addToLibrary([_track('sc:1')]);
 
       store.removeAll(kSettingsKeys);
 
       expect(store.read('settings'), isNull);
-      expect(store.read('tracks'), isNotNull);
+      // Библиотека живёт в базе — сброс настроек до неё не достаёт.
+      expect(_container(store).read(libraryProvider).isInLib('sc:1'), isTrue);
       // Пересобранный стор читает уже пустое хранилище — ровно это и делает
       // `resetSettings` через `ref.invalidate`.
       final fresh = _container(store).read(settingsProvider);
@@ -608,12 +534,6 @@ void main() {
 
     test('в список ключей настроек не попали данные пользователя', () {
       for (final key in [
-        'tracks',
-        'lib',
-        'favs',
-        'history',
-        'historyHidden',
-        'playlists',
         'profile',
         'stats',
         'follows',

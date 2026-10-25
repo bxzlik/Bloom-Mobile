@@ -11,7 +11,6 @@ import 'package:bloom/app/theme/bloom_theme.dart';
 import 'package:bloom/app/theme/tokens.dart';
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/features/library/ui/now_playing_jump.dart';
 import 'package:bloom/features/player/player_controller.dart';
 import 'package:bloom/l10n/app_localizations.dart';
@@ -19,6 +18,7 @@ import 'package:bloom/shared/ui/entity_tiles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 /// Шапка списка и её сжатый вид — числа взяты «как в жизни», лишь бы считались.
@@ -169,6 +169,7 @@ void main() {
         ProviderScope(
           overrides: [
             jsonStoreProvider.overrideWithValue(JsonStore.memory({})),
+            dbProvider.overrideWithValue(BloomDb.memory()),
             playbackProvider.overrideWith(
               () => _FakePlayback(
                 PlaybackState(

@@ -212,18 +212,6 @@ abstract class AppLocalizations {
   /// **'Unfollow'**
   String get commonUnfollow;
 
-  /// desktop: share.copyLink
-  ///
-  /// In en, this message translates to:
-  /// **'Copy link'**
-  String get commonCopyLink;
-
-  /// desktop: share.toast.linkCopied
-  ///
-  /// In en, this message translates to:
-  /// **'Link copied'**
-  String get commonLinkCopied;
-
   /// desktop: search.loadMore
   ///
   /// In en, this message translates to:
@@ -2005,54 +1993,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Added to library'**
   String get taAddedToLibrary;
-
-  /// desktop: lib.ctx.share — the menu item and the button that opens the system share sheet
-  ///
-  /// In en, this message translates to:
-  /// **'Share'**
-  String get shareAction;
-
-  /// desktop: share.track
-  ///
-  /// In en, this message translates to:
-  /// **'Share track'**
-  String get shareTrack;
-
-  /// desktop: share.artist
-  ///
-  /// In en, this message translates to:
-  /// **'Share artist'**
-  String get shareArtist;
-
-  /// desktop: share.album
-  ///
-  /// In en, this message translates to:
-  /// **'Share album'**
-  String get shareAlbum;
-
-  /// desktop: share.playlist
-  ///
-  /// In en, this message translates to:
-  /// **'Share playlist'**
-  String get sharePlaylist;
-
-  /// desktop: profile.shareTitle
-  ///
-  /// In en, this message translates to:
-  /// **'Share profile'**
-  String get shareProfile;
-
-  /// the line under “Bloom” in the head of the profile card — desktop draws it in English only
-  ///
-  /// In en, this message translates to:
-  /// **'shares their profile'**
-  String get shareProfileSub;
-
-  /// desktop: share.toast.saveFail — the card could not be handed to the system
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn’t share the card'**
-  String get shareFail;
 
   /// desktop: search.tab.all
   ///
@@ -5587,6 +5527,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No playlists found'**
   String get sysImportNoPlaylists;
+
+  /// desktop: lib.file.oldFormat
+  ///
+  /// In en, this message translates to:
+  /// **'A file from the old Bloom — it can’t be read'**
+  String get sysImportOld;
+
+  /// desktop: lib.file.newer
+  ///
+  /// In en, this message translates to:
+  /// **'A file from a newer Bloom — update the app'**
+  String get sysImportNewer;
 
   /// desktop: settings.system.toast.importedFull
   ///

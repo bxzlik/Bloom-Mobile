@@ -10,36 +10,36 @@ import '../../core/providers/music_provider.dart';
 import 'models.dart';
 import 'yandex.dart' as ym;
 
-/// Сквозные id с префиксом источника — те же, что на десктопе:
-///   трек     → `ym_<id>`
-///   артист   → `ym_artist_<id>`
-///   альбом   → `ym_album_<id>`
-///   плейлист → `ym_pl_<owner>~<kind>` (owner+kind нужны запросу плейлиста)
-///   публичный плейлист нового формата → `ym_plu_<uuid>`
-String ymTrackId(String id) => 'ym_$id';
-String ymArtistId(String id) => 'ym_artist_$id';
-String ymAlbumId(String id) => 'ym_album_$id';
-String ymPlaylistId(String owner, String kind) => 'ym_pl_$owner~$kind';
-String ymPlaylistUuidId(String uuid) => 'ym_plu_$uuid';
+/// Сквозные id с префиксом источника — те же, что на ПК:
+///   трек     → `ym:<id>`
+///   артист   → `ym:artist:<id>`
+///   альбом   → `ym:album:<id>`
+///   плейлист → `ym:pl:<owner>~<kind>` (owner+kind нужны запросу плейлиста)
+///   публичный плейлист нового формата → `ym:plu:<uuid>`
+String ymTrackId(String id) => 'ym:$id';
+String ymArtistId(String id) => 'ym:artist:$id';
+String ymAlbumId(String id) => 'ym:album:$id';
+String ymPlaylistId(String owner, String kind) => 'ym:pl:$owner~$kind';
+String ymPlaylistUuidId(String uuid) => 'ym:plu:$uuid';
 
-/// Разобрать `ym_pl_<owner>~<kind>` обратно (по ПОСЛЕДНЕМУ `~`: в логине
+/// Разобрать `ym:pl:<owner>~<kind>` обратно (по ПОСЛЕДНЕМУ `~`: в логине
 /// владельца тильда встречается, в kind — нет).
 ({String owner, String kind})? parseYmPlaylistId(String id) {
-  if (!id.startsWith('ym_pl_')) return null;
-  final body = id.substring('ym_pl_'.length);
+  if (!id.startsWith('ym:pl:')) return null;
+  final body = id.substring('ym:pl:'.length);
   final i = body.lastIndexOf('~');
   if (i < 0) return null;
   return (owner: body.substring(0, i), kind: body.substring(i + 1));
 }
 
-/// Разобрать `ym_plu_<uuid>` обратно в uuid (новый формат).
+/// Разобрать `ym:plu:<uuid>` обратно в uuid (новый формат).
 String? parseYmPlaylistUuidId(String id) =>
-    id.startsWith('ym_plu_') ? id.substring('ym_plu_'.length) : null;
+    id.startsWith('ym:plu:') ? id.substring('ym:plu:'.length) : null;
 
-/// Числовой id из сквозного (`ym_123`, `ym_artist_123`, `ym_album_123`).
+/// Числовой id из сквозного (`ym:123`, `ym:artist:123`, `ym:album:123`).
 /// Пустая строка — id не разобрался, провайдер тогда просто ничего не найдёт.
 String ymNumericId(String entityId) {
-  final last = entityId.split('_').last;
+  final last = entityId.split(':').last;
   return RegExp(r'^\d+$').hasMatch(last) ? last : '';
 }
 

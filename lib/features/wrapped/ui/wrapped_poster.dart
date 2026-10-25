@@ -21,12 +21,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
-import '../../../shared/share/share_image.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../periods.dart';
 import '../wrapped_data.dart';
 import '../wrapped_format.dart';
+import 'poster_image.dart';
 import 'wrapped_sheet.dart' show coverOfWrappedTrack, periodTitle;
 
 /// Дизайн-бокс постера (3:4, как на ПК — удобно для сторис и чатов).

@@ -11,7 +11,6 @@ import 'package:bloom/app/theme/bloom_theme.dart';
 import 'package:bloom/app/theme/tokens.dart';
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/features/player/mini_style_store.dart';
 import 'package:bloom/features/player/player_controller.dart';
 import 'package:bloom/features/player/ui/mini_player.dart';
@@ -22,6 +21,8 @@ import 'package:bloom/shared/ui/track_flick.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
+import 'support/test_db.dart';
 
 Track _track(String id) => Track(
   id: id,
@@ -44,7 +45,10 @@ class _FakePlayback extends PlaybackController {
 
 ProviderContainer _container(JsonStore store) {
   final c = ProviderContainer(
-    overrides: [jsonStoreProvider.overrideWithValue(store)],
+    overrides: [
+      jsonStoreProvider.overrideWithValue(store),
+      dbProvider.overrideWithValue(testDb(store)),
+    ],
   );
   addTearDown(c.dispose);
   return c;
@@ -146,6 +150,7 @@ void main() {
                 'miniStyle': {'neighbors': true},
               }),
             ),
+            dbProvider.overrideWithValue(BloomDb.memory()),
             playbackProvider.overrideWith(
               () => _FakePlayback(PlaybackState(queue: queue, index: 0)),
             ),

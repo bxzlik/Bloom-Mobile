@@ -24,7 +24,6 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
-import '../../../core/store/history_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../features/offline/offline_store.dart';
 import '../../../shared/ui/atoms.dart';
@@ -46,7 +45,7 @@ class ListEditor extends ConsumerStatefulWidget {
     required this.onClose,
   });
 
-  /// `all` / `fav` / `history` либо id пользовательского плейлиста.
+  /// `all` / `fav` либо id пользовательского плейлиста.
   final String listId;
 
   final String title;
@@ -290,10 +289,6 @@ class _ListEditorState extends ConsumerState<ListEditor> {
         lib.setLibraryTracks(_ids);
       case 'fav':
         lib.setFavTracks(_ids);
-      case 'history':
-        // Порядок в «Истории» не свой — его задаёт время, — поэтому пишем
-        // только убранное.
-        ref.read(historyHideProvider.notifier).hide(gone);
       default:
         final pl = _playlist;
         if (pl != null) {
@@ -396,10 +391,7 @@ class _ListEditorState extends ConsumerState<ListEditor> {
                     final track = _tracks[i];
                     return _EditRow(
                       key: ValueKey(track.id),
-                      // «Историю» правят только составом: её порядок — это
-                      // время прослушивания, и перестановка руками не пережила
-                      // бы ближайшего же трека.
-                      index: widget.listId == 'history' ? null : i,
+                      index: i,
                       track: track,
                       selected: _selected.contains(track.id),
                       // Уедет с блоком, но под пальцем её нет — гасим, чтобы

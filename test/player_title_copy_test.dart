@@ -7,7 +7,7 @@ import 'package:bloom/features/player/ui/full_player.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Track _track({required String name, required String artist}) => Track(
-  id: 'sc_1',
+  id: 'sc:1',
   name: name,
   artist: artist,
   duration: const Duration(minutes: 3),

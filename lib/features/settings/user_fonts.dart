@@ -26,7 +26,6 @@ import '../../app/theme/fonts.dart';
 import '../../core/log/bloom_log.dart';
 import '../../core/store/app_dirs.dart';
 import '../../core/store/json_store.dart';
-import '../../core/store/library_store.dart' show jsonStoreProvider;
 import '../../core/store/settings_store.dart';
 
 const String kUserFontsKey = 'userFonts';

@@ -5,9 +5,9 @@
 ///   поведение, пресеты кастомизации. Библиотека, история, профиль и
 ///   авторизации остаются (тот же список, что `SETTINGS_KEYS` на ПК).
 /// - [hardReset] стирает ВСЁ: `bloom.json` целиком (кроме флага онбординга —
-///   мастер и на десктопе показывается один раз), журнал прослушиваний в
-///   своём `plays.json` и файлы на диске: офлайн-копии, кеш текстов, свои обложки и
-///   скопированные внутрь треки.
+///   мастер и на десктопе показывается один раз), базу `bloom.db` (библиотека,
+///   журнал, подписки) и файлы на диске: офлайн-копии, кеш текстов, свои обложки
+///   и скопированные внутрь треки.
 ///
 /// Отличие от десктопа в том, ЧЕМ заканчивается сброс. Там `location.reload()`
 /// перезагружает окно, и сторы поднимаются заново; окна у нас нет, поэтому
@@ -22,11 +22,11 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/log/bloom_log.dart';
+import '../../core/db/db.dart';
 import '../../core/store/app_dirs.dart';
-import '../../core/store/history_store.dart';
+import '../../core/store/json_store.dart';
 import '../../core/store/library_store.dart';
 import '../../core/store/play_log.dart';
-import '../../core/store/play_stats.dart';
 import '../../core/store/settings_store.dart';
 import '../../core/store/stats_store.dart';
 import '../../features/customization/custom_store.dart';
@@ -146,6 +146,7 @@ Future<void> hardReset(WidgetRef ref) async {
       if (key != _onboardedKey) key,
   ]);
   await store.flush();
+  ref.read(dbProvider).wipe();
 
   // Каталоги сносим целиком и заводим заново: по одному индексу их содержимое
   // уже не обойти — сам индекс мы только что стёрли.
@@ -157,10 +158,7 @@ Future<void> hardReset(WidgetRef ref) async {
   ref.invalidate(playbackProvider);
   ref.invalidate(resumeProvider);
   ref.invalidate(libraryProvider);
-  // Старая история и отметки скрытия лежат в том же `bloom.json` — ключи уже
-  // стёрты, гасим сторы.
-  ref.invalidate(legacyHistoryProvider);
-  ref.invalidate(historyHideProvider);
+  ref.invalidate(playLogProvider);
   // Витрины главной — их кэш лежал там же и собран по стёртому топу.
   ref.invalidate(forYouProvider);
   ref.invalidate(similarToProvider);
@@ -183,13 +181,9 @@ Future<void> hardReset(WidgetRef ref) async {
   ref.invalidate(ymAuthProvider);
   ref.invalidate(lyricsProvider);
   await ref.read(lyricsCacheProvider).clear();
-  // Журнал прослушиваний живёт в своём `plays.json` — `store.removeAll` выше до
-  // него не достаёт, и без этого после «сбросить всё» оставались «История» и
-  // карточки «Итогов» по стёртым трекам. Тумблеры и отметки
-  // просмотра лежат в `bloom.json` под ключом `wrapped`: сам ключ уже стёрт,
-  // гасим стор, чтобы он не висел в памяти до перезапуска.
-  ref.read(playLogProvider.notifier).clear();
-  await ref.read(playLogStoreProvider).flush();
+  // Тумблеры и отметки просмотра «Итогов» лежат в `bloom.json` под ключом
+  // `wrapped`: сам ключ уже стёрт, гасим стор, чтобы он не висел в памяти до
+  // перезапуска.
   ref.invalidate(wrappedPrefsProvider);
   await resetSettings(ref);
 

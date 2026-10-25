@@ -23,7 +23,7 @@ import 'dart:ui' show Color;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/store/cover_store.dart';
-import '../../core/store/library_store.dart' show jsonStoreProvider;
+import '../../core/store/json_store.dart' show jsonStoreProvider;
 import '../../core/store/settings_store.dart';
 import '../settings/transparency_store.dart';
 import 'custom_store.dart';

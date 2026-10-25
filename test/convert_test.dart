@@ -49,40 +49,40 @@ class _FakeProvider extends MusicProvider {
 
 void main() {
   test('уверенное совпадение подставляется само', () async {
-    final src = _track('sc_1');
+    final src = _track('sc:1');
     final provider = _FakeProvider({
-      'Ночь Один': [_track('ytm_1', seconds: 201, source: MusicSource.ytmusic)],
+      'Ночь Один': [_track('ytm:1', seconds: 201, source: MusicSource.ytmusic)],
     });
 
     final items = await scanPlaylistConversion(provider, [src]);
     expect(items.single.status, ConvertStatus.exact);
 
     final decisions = defaultDecisions(items);
-    expect(convertResult(items, decisions).single.id, 'ytm_1');
+    expect(convertResult(items, decisions).single.id, 'ytm:1');
   });
 
   test('спорное остаётся оригиналом, пока не выбрали', () async {
-    final src = _track('sc_1');
+    final src = _track('sc:1');
     final provider = _FakeProvider({
       // То же название, но на час длиннее — матчер уверенным это не считает.
       'Ночь Один': [
-        _track('ytm_1', seconds: 3600, source: MusicSource.ytmusic),
+        _track('ytm:1', seconds: 3600, source: MusicSource.ytmusic),
       ],
     });
 
     final items = await scanPlaylistConversion(provider, [src]);
     expect(items.single.status, ConvertStatus.ambiguous);
-    expect(convertResult(items, defaultDecisions(items)).single.id, 'sc_1');
+    expect(convertResult(items, defaultDecisions(items)).single.id, 'sc:1');
 
     // Выбрали кандидата руками — в копию идёт он.
-    final picked = {'sc_1': TakeMatch(items.single.cands.first.track)};
-    expect(convertResult(items, picked).single.id, 'ytm_1');
+    final picked = {'sc:1': TakeMatch(items.single.cands.first.track)};
+    expect(convertResult(items, picked).single.id, 'ytm:1');
   });
 
   test('трек уже на целевой площадке — за ним не ходим', () async {
     final provider = _FakeProvider(const {});
     final items = await scanPlaylistConversion(provider, [
-      _track('ytm_7', source: MusicSource.ytmusic),
+      _track('ytm:7', source: MusicSource.ytmusic),
     ]);
 
     expect(items.single.status, ConvertStatus.same);
@@ -92,7 +92,7 @@ void main() {
 
   test('упавшая площадка отличается от честного «не нашлось»', () async {
     final provider = _FakeProvider(const {}, throwsOn: {'Ночь Один'});
-    final items = await scanPlaylistConversion(provider, [_track('sc_1')]);
+    final items = await scanPlaylistConversion(provider, [_track('sc:1')]);
 
     expect(items.single.status, ConvertStatus.notfound);
     expect(items.single.failed, isTrue);
@@ -101,21 +101,21 @@ void main() {
   test('чужие площадки из выдачи в кандидаты не попадают', () async {
     final provider = _FakeProvider({
       'Ночь Один': [
-        _track('sc_2', seconds: 200), // тот же трек, но не с целевой площадки
+        _track('sc:2', seconds: 200), // тот же трек, но не с целевой площадки
       ],
     });
 
-    final items = await scanPlaylistConversion(provider, [_track('sc_1')]);
+    final items = await scanPlaylistConversion(provider, [_track('sc:1')]);
     expect(items.single.status, ConvertStatus.notfound);
     expect(items.single.failed, isFalse);
   });
 
   test('пропущенный трек в копию не идёт, порядок остальных прежний', () async {
     final provider = _FakeProvider({
-      'Ночь Один': [_track('ytm_1', seconds: 200, source: MusicSource.ytmusic)],
+      'Ночь Один': [_track('ytm:1', seconds: 200, source: MusicSource.ytmusic)],
       'Утро Один': [
         _track(
-          'ytm_2',
+          'ytm:2',
           name: 'Утро',
           seconds: 200,
           source: MusicSource.ytmusic,
@@ -123,12 +123,12 @@ void main() {
       ],
     });
     final items = await scanPlaylistConversion(provider, [
-      _track('sc_1'),
-      _track('sc_2', name: 'Утро'),
+      _track('sc:1'),
+      _track('sc:2', name: 'Утро'),
     ]);
 
-    final decisions = {...defaultDecisions(items), 'sc_1': const SkipTrack()};
-    expect(convertResult(items, decisions).map((t) => t.id), ['ytm_2']);
+    final decisions = {...defaultDecisions(items), 'sc:1': const SkipTrack()};
+    expect(convertResult(items, decisions).map((t) => t.id), ['ytm:2']);
 
     final stats = convertStats(items, decisions);
     expect(stats.moved, 1);
@@ -139,7 +139,7 @@ void main() {
   test('прогресс доходит до конца и порядок результатов сохраняется', () async {
     final provider = _FakeProvider(const {});
     final tracks = [
-      for (var i = 0; i < 7; i++) _track('sc_$i', name: 'Песня $i'),
+      for (var i = 0; i < 7; i++) _track('sc:$i', name: 'Песня $i'),
     ];
     final progress = <int>[];
 
@@ -157,7 +157,7 @@ void main() {
     final provider = _FakeProvider(const {});
     var cancelled = false;
     final tracks = [
-      for (var i = 0; i < 20; i++) _track('sc_$i', name: 'Песня $i'),
+      for (var i = 0; i < 20; i++) _track('sc:$i', name: 'Песня $i'),
     ];
 
     final items = await scanPlaylistConversion(

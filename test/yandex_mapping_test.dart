@@ -126,7 +126,7 @@ void main() {
   group('сквозные id', () {
     test('плейлист: owner с тильдой разбирается по последней', () {
       final id = ymPlaylistId('user~name', '1003');
-      expect(id, 'ym_pl_user~name~1003');
+      expect(id, 'ym:pl:user~name~1003');
       final parsed = parseYmPlaylistId(id)!;
       expect(parsed.owner, 'user~name');
       expect(parsed.kind, '1003');
@@ -135,14 +135,14 @@ void main() {
     test('публичный плейлист и числовые id', () {
       final uuid = ymPlaylistUuidId('lk.abc-123');
       expect(parseYmPlaylistUuidId(uuid), 'lk.abc-123');
-      expect(parseYmPlaylistUuidId('ym_pl_a~1'), isNull);
+      expect(parseYmPlaylistUuidId('ym:pl:a~1'), isNull);
 
-      expect(ymNumericId('ym_42'), '42');
+      expect(ymNumericId('ym:42'), '42');
       expect(ymNumericId(ymArtistId('7')), '7');
       expect(ymNumericId(ymAlbumId('9')), '9');
       // Не числовой хвост — id не разобрался, провайдер просто ничего не
       // найдёт вместо падения.
-      expect(ymNumericId('ym_plu_abc'), '');
+      expect(ymNumericId('ym:plu:abc'), '');
     });
 
     test('источник узнаётся по префиксу', () {
@@ -165,8 +165,8 @@ void main() {
           available: false,
         ),
       );
-      expect(t.id, 'ym_42');
-      expect(t.artistId, 'ym_artist_7');
+      expect(t.id, 'ym:42');
+      expect(t.artistId, 'ym:artist:7');
       expect(t.year, '2019');
       expect(t.source, MusicSource.yandex);
       expect(t.sourceData?['available'], isFalse);
@@ -185,7 +185,7 @@ void main() {
           trackCount: 0,
         ),
       );
-      expect(a.id, 'ym_album_5');
+      expect(a.id, 'ym:album:5');
       expect(a.trackCount, isNull);
       expect(a.cover, isNull);
       expect(a.year, isNull);
@@ -313,7 +313,7 @@ void main() {
       expect(raw.albumType, 'single');
 
       final album = albumFromYm(raw);
-      expect(album.ownerId, 'ym_artist_77');
+      expect(album.ownerId, 'ym:artist:77');
       expect(album.ownerAvatar, 'https://avatars.yandex.net/a/1000x1000');
       expect(album.albumType, 'single');
       // Пустой тип — обычный альбом, поля нет вовсе.
@@ -328,19 +328,19 @@ void main() {
         await initializeDateFormatting('en');
         final now = DateTime(2026, 9, 13);
         const fresh = Playlist(
-          id: 'ym_album_1',
+          id: 'ym:album:1',
           title: 'A',
           source: MusicSource.yandex,
           releaseDate: '2026-08-14T00:00:00+03:00',
         );
         const old = Playlist(
-          id: 'ym_album_2',
+          id: 'ym:album:2',
           title: 'B',
           source: MusicSource.yandex,
           releaseDate: '2024-05-13',
         );
         const yearOnly = Playlist(
-          id: 'ym_album_3',
+          id: 'ym:album:3',
           title: 'C',
           source: MusicSource.yandex,
           year: '2019',

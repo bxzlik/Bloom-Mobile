@@ -24,8 +24,6 @@ import '../../features/offline/offline_store.dart';
 import '../../features/player/player_controller.dart';
 import '../../features/wave/wave_actions.dart';
 import '../../features/wave/wave_store.dart';
-import '../share/share_link.dart';
-import '../share/share_sheet.dart';
 import '../util/artists.dart';
 import 'atoms.dart';
 import 'bloom_sheet.dart';
@@ -137,15 +135,6 @@ Future<void> showTrackActions(
           ),
       ],
       [
-        // Поделиться — как на ПК, первым в группе площадочных действий. У
-        // своего файла делиться нечем: ссылки на него нет ни у кого, кроме
-        // самого телефона.
-        if (track.source != MusicSource.local)
-          SheetAction(
-            icon: SolarIconsOutline.share,
-            label: context.l.shareAction,
-            onTap: () => showShareSheet(context, ShareTarget.track(track)),
-          ),
         // Волна по треку — только у площадок со своим подбором: у остальных
         // пункт открывался бы ради отказа.
         if (canStartWaveFrom(track))
@@ -422,9 +411,7 @@ Future<void> showAddTracksToPlaylistSheet(
       builder: (context, ref, _) {
         final t = context.bloom;
         final lib = ref.watch(libraryProvider);
-        // Импортированные альбомы в список не идут: дописывать в них треки
-        // руками смысла нет, они перетягиваются из источника целиком.
-        final playlists = lib.playlists.where((p) => !p.isAlbum).toList();
+        final playlists = lib.playlists;
         final outside = [
           for (final track in tracks)
             if (!lib.isInLib(track.id)) track,

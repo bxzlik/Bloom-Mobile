@@ -14,7 +14,6 @@ import 'package:bloom/app/theme/tokens.dart';
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/l10n/l10n.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart';
 import 'package:bloom/features/profile/ui/profile_entry_card.dart'
     show kProfileEntryHeight;
 import 'package:bloom/features/wrapped/periods.dart';
@@ -29,21 +28,24 @@ import 'package:bloom/shared/ui/bloom_sheet.dart' show SheetHandle;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 /// 3 августа 2026: прошедший месяц — июль, окно года закрыто.
 final _now = DateTime(2026, 8, 3, 12);
 
+/// [clock] — часы журнала; по умолчанию стоят на [now] (или [_now]).
 ProviderContainer _container({
   DateTime? now,
-  JsonStore? plays,
+  BloomDb? db,
   JsonStore? main,
+  DateTime Function()? clock,
 }) {
   final c = ProviderContainer(
     overrides: [
       jsonStoreProvider.overrideWithValue(main ?? JsonStore.memory()),
-      playLogStoreProvider.overrideWithValue(plays ?? JsonStore.memory()),
-      playLogClockProvider.overrideWithValue(() => now ?? _now),
+      dbProvider.overrideWithValue(db ?? BloomDb.memory()),
+      playLogClockProvider.overrideWithValue(clock ?? () => now ?? _now),
     ],
   );
   addTearDown(c.dispose);
@@ -65,21 +67,16 @@ Track _track(
   cover: cover,
 );
 
-/// Журнал прямо из событий — расчёт проверяется без плеера и без файла.
+/// Журнал прямо из событий — расчёт проверяется без плеера и без базы.
 PlayLog _log(List<(DateTime, Track)> events) {
-  final meta = <String, PlayMeta>{};
+  final tracks = <String, Track>{};
   final list = <PlayEvent>[];
   for (final (at, track) in events) {
     list.add(PlayEvent(at.millisecondsSinceEpoch, track.id));
-    meta[track.id] = PlayMeta(
-      name: track.name,
-      artist: track.artist,
-      cover: track.cover,
-      seconds: track.duration.inSeconds,
-    );
+    tracks[track.id] = track;
   }
   list.sort((a, b) => a.ts.compareTo(b.ts));
-  return PlayLog(events: list, meta: meta);
+  return PlayLog(events: list, tracks: tracks);
 }
 
 void main() {
@@ -163,9 +160,9 @@ void main() {
     final month = periodRange(PeriodKind.month, _now);
 
     test('считает только события периода', () {
-      final inside = _track('sc_1');
-      final before = _track('sc_2');
-      final after = _track('sc_3');
+      final inside = _track('sc:1');
+      final before = _track('sc:2');
+      final after = _track('sc:3');
       final data = buildWrapped(
         _log([
           (DateTime(2026, 6, 20), before), // раньше периода
@@ -178,12 +175,12 @@ void main() {
       expect(data.plays, 2);
       expect(data.uniqueTracks, 1);
       expect(data.seconds, 360);
-      expect(data.topTracks.single.id, 'sc_1');
+      expect(data.topTracks.single.id, 'sc:1');
     });
 
     test('топ треков по числу прослушиваний', () {
-      final one = _track('sc_1', name: 'Один');
-      final two = _track('sc_2', name: 'Два');
+      final one = _track('sc:1', name: 'Один');
+      final two = _track('sc:2', name: 'Два');
       final data = buildWrapped(
         _log([
           (DateTime(2026, 7, 27, 9), one),
@@ -199,8 +196,8 @@ void main() {
     test('артисты группируются без учёта регистра и пробелов', () {
       final data = buildWrapped(
         _log([
-          (DateTime(2026, 7, 27, 9), _track('sc_1', artist: 'Boards')),
-          (DateTime(2026, 7, 28, 9), _track('sc_2', artist: ' boards ')),
+          (DateTime(2026, 7, 27, 9), _track('sc:1', artist: 'Boards')),
+          (DateTime(2026, 7, 28, 9), _track('sc:2', artist: ' boards ')),
         ]),
         month,
       );
@@ -209,8 +206,8 @@ void main() {
     });
 
     test('мультиартистная строка считается по каждому участнику', () {
-      final duo = _track('sc_1', artist: 'reidenshi, Øneheart', cover: 'a.jpg');
-      final solo = _track('sc_2', artist: 'Øneheart');
+      final duo = _track('sc:1', artist: 'reidenshi, Øneheart', cover: 'a.jpg');
+      final solo = _track('sc:2', artist: 'Øneheart');
       final data = buildWrapped(
         _log([
           (DateTime(2026, 7, 27, 9), duo),
@@ -230,9 +227,9 @@ void main() {
       // соседней площадке принадлежит другому человеку.
       final data = buildWrapped(
         _log([
-          (DateTime(2026, 7, 27, 9), _track('sc_1', artist: 'Boards')),
-          (DateTime(2026, 7, 28, 9), _track('ym_1', artist: 'Boards')),
-          (DateTime(2026, 7, 29, 9), _track('ym_2', artist: 'Boards')),
+          (DateTime(2026, 7, 27, 9), _track('sc:1', artist: 'Boards')),
+          (DateTime(2026, 7, 28, 9), _track('ym:1', artist: 'Boards')),
+          (DateTime(2026, 7, 29, 9), _track('ym:2', artist: 'Boards')),
         ]),
         month,
       );
@@ -246,7 +243,7 @@ void main() {
         _log([
           (DateTime(2026, 7, 27, 9), _track('local_1', artist: 'Boards')),
           (DateTime(2026, 7, 28, 9), _track('local_2', artist: 'Boards')),
-          (DateTime(2026, 7, 29, 9), _track('sc_1', artist: 'Boards')),
+          (DateTime(2026, 7, 29, 9), _track('sc:1', artist: 'Boards')),
         ]),
         month,
       );
@@ -254,8 +251,8 @@ void main() {
     });
 
     test('открытия — только те, кого не было ДО периода', () {
-      final old = _track('sc_1', artist: 'Старый');
-      final fresh = _track('sc_2', artist: 'Новый');
+      final old = _track('sc:1', artist: 'Старый');
+      final fresh = _track('sc:2', artist: 'Новый');
       final data = buildWrapped(
         _log([
           (DateTime(2026, 6, 1), old), // звучал раньше
@@ -272,12 +269,12 @@ void main() {
     test('совместный трек ДО периода закрывает открытие обоим', () {
       // Строка «до периода» тоже разбирается: иначе оба участника навсегда
       // оставались бы «открытием» — по склеенному имени их не узнать.
-      final duo = _track('sc_1', artist: 'reidenshi, Øneheart');
+      final duo = _track('sc:1', artist: 'reidenshi, Øneheart');
       final data = buildWrapped(
         _log([
           (DateTime(2026, 6, 1), duo), // звучал раньше
-          (DateTime(2026, 7, 28, 9), _track('sc_2', artist: 'Øneheart')),
-          (DateTime(2026, 7, 28, 10), _track('sc_3', artist: 'reidenshi')),
+          (DateTime(2026, 7, 28, 9), _track('sc:2', artist: 'Øneheart')),
+          (DateTime(2026, 7, 28, 10), _track('sc:3', artist: 'reidenshi')),
         ]),
         month,
       );
@@ -289,9 +286,9 @@ void main() {
     test('площадки разбираются по префиксу id', () {
       final data = buildWrapped(
         _log([
-          (DateTime(2026, 7, 27, 9), _track('sc_1')),
-          (DateTime(2026, 7, 27, 10), _track('ym_1')),
-          (DateTime(2026, 7, 27, 11), _track('ym_2')),
+          (DateTime(2026, 7, 27, 9), _track('sc:1')),
+          (DateTime(2026, 7, 27, 10), _track('ym:1')),
+          (DateTime(2026, 7, 27, 11), _track('ym:2')),
         ]),
         month,
       );
@@ -301,7 +298,7 @@ void main() {
     });
 
     test('рекорд дня, серия и активные дни', () {
-      final t = _track('sc_1');
+      final t = _track('sc:1');
       final data = buildWrapped(
         _log([
           (DateTime(2026, 7, 27, 9), t),
@@ -320,7 +317,7 @@ void main() {
     });
 
     test('часы, пик и доля ночи', () {
-      final t = _track('sc_1');
+      final t = _track('sc:1');
       final data = buildWrapped(
         _log([
           (DateTime(2026, 7, 27, 2), t),
@@ -348,7 +345,7 @@ void main() {
       final data = buildWrapped(
         PlayLog(
           events: [
-            PlayEvent(DateTime(2026, 7, 28, 9).millisecondsSinceEpoch, 'ym_9'),
+            PlayEvent(DateTime(2026, 7, 28, 9).millisecondsSinceEpoch, 'ym:9'),
           ],
         ),
         month,
@@ -361,58 +358,41 @@ void main() {
   });
 
   group('журнал', () {
-    test('пишет событие и снимок, читает обратно из файла', () {
-      final file = JsonStore.memory();
-      final c = _container(plays: file);
+    test('пишет событие и снимок, читает обратно из базы', () {
+      final db = BloomDb.memory();
+      final c = _container(db: db);
       c
           .read(playLogProvider.notifier)
-          .log(_track('sc_1', name: 'Песня', artist: 'Артист', seconds: 200));
+          .log(_track('sc:1', name: 'Песня', artist: 'Артист', seconds: 200));
 
-      final again = _container(plays: file);
+      final again = _container(db: db);
       final log = again.read(playLogProvider);
-      expect(log.events.single.id, 'sc_1');
+      expect(log.events.single.id, 'sc:1');
       expect(log.events.single.ts, _now.millisecondsSinceEpoch);
-      expect(log.meta['sc_1']!.name, 'Песня');
-      expect(log.meta['sc_1']!.seconds, 200);
-    });
-
-    test('битые записи не роняют чтение', () {
-      final file = JsonStore.memory({
-        'events': [
-          [1, 'sc_1'],
-          'мусор',
-          [null, 'sc_2'],
-          [2, 'sc_3'],
-        ],
-        'meta': {
-          'sc_1': ['Имя', 'Артист', null, 100],
-          'sc_3': 'мусор',
-        },
-      });
-      final log = _container(plays: file).read(playLogProvider);
-      expect(log.events.map((e) => e.id), ['sc_1', 'sc_3']);
-      expect(log.meta.keys, ['sc_1']);
+      expect(log.tracks['sc:1']!.name, 'Песня');
+      expect(log.tracks['sc:1']!.duration.inSeconds, 200);
     });
 
     test('события всегда по возрастанию времени', () {
-      final file = JsonStore.memory({
-        'events': [
-          [200, 'sc_2'],
-          [100, 'sc_1'],
-        ],
-      });
-      final log = _container(plays: file).read(playLogProvider);
-      expect(log.events.map((e) => e.ts), [100, 200]);
+      final db = BloomDb.memory();
+      var at = DateTime(2026, 7, 2);
+      final c = _container(db: db, clock: () => at);
+      c.read(playLogProvider.notifier).log(_track('sc:2'));
+      at = DateTime(2026, 7, 1);
+      c.read(playLogProvider.notifier).log(_track('sc:1'));
+
+      final log = _container(db: db).read(playLogProvider);
+      expect(log.events.map((e) => e.id), ['sc:1', 'sc:2']);
     });
 
-    test('очистка обнуляет и файл', () {
-      final file = JsonStore.memory();
-      final c = _container(plays: file);
+    test('очистка обнуляет и базу', () {
+      final db = BloomDb.memory();
+      final c = _container(db: db);
       c.read(playLogProvider.notifier)
-        ..log(_track('sc_1'))
+        ..log(_track('sc:1'))
         ..clear();
       expect(c.read(playLogProvider).isEmpty, isTrue);
-      expect(_container(plays: file).read(playLogProvider).isEmpty, isTrue);
+      expect(_container(db: db).read(playLogProvider).isEmpty, isTrue);
     });
   });
 
@@ -422,29 +402,21 @@ void main() {
       DateTime? now,
       JsonStore? main,
     }) {
-      final file = JsonStore.memory();
-      final seed = _container(plays: file, now: now, main: main);
+      var clock = now ?? _now;
+      final seed = _container(main: main, clock: () => clock);
       final log = seed.read(playLogProvider.notifier);
       for (final (at, track) in events) {
-        seed.updateOverrides([
-          jsonStoreProvider.overrideWithValue(main ?? JsonStore.memory()),
-          playLogStoreProvider.overrideWithValue(file),
-          playLogClockProvider.overrideWithValue(() => at),
-        ]);
+        clock = at;
         log.log(track);
       }
-      seed.updateOverrides([
-        jsonStoreProvider.overrideWithValue(main ?? JsonStore.memory()),
-        playLogStoreProvider.overrideWithValue(file),
-        playLogClockProvider.overrideWithValue(() => now ?? _now),
-      ]);
+      clock = now ?? _now;
       return seed;
     }
 
     test('месяц доступен всегда, год — только в декабре', () {
       final c = withPlays([
-        (DateTime(2026, 7, 28, 9), _track('sc_1')),
-        (DateTime(2026, 7, 29, 9), _track('sc_2')),
+        (DateTime(2026, 7, 28, 9), _track('sc:1')),
+        (DateTime(2026, 7, 29, 9), _track('sc:2')),
       ]);
       final entries = c.read(wrappedEntriesProvider);
       expect(entries.month!.plays, 2);
@@ -455,7 +427,7 @@ void main() {
 
     test('в декабрьском окне появляется и год', () {
       final c = withPlays([
-        (DateTime(2026, 12, 5, 9), _track('sc_1')),
+        (DateTime(2026, 12, 5, 9), _track('sc:1')),
       ], now: DateTime(2026, 12, 22, 12));
       final entries = c.read(wrappedEntriesProvider);
       expect(entries.year, isNotNull);
@@ -466,18 +438,18 @@ void main() {
 
     test('пустой период — входа нет', () {
       // Слушали до июля: подводить за месяц нечего.
-      final c = withPlays([(DateTime(2026, 6, 1, 9), _track('sc_1'))]);
+      final c = withPlays([(DateTime(2026, 6, 1, 9), _track('sc:1'))]);
       expect(c.read(wrappedEntriesProvider).month, isNull);
     });
 
     test('тумблер «показывать» убирает все входы', () {
-      final c = withPlays([(DateTime(2026, 7, 28, 9), _track('sc_1'))]);
+      final c = withPlays([(DateTime(2026, 7, 28, 9), _track('sc:1'))]);
       c.read(wrappedPrefsProvider.notifier).setShow(false);
       expect(c.read(wrappedEntriesProvider).isEmpty, isTrue);
     });
 
     test('«показывать всегда» открывает год и берёт идущий месяц', () {
-      final c = withPlays([(DateTime(2026, 8, 2, 9), _track('sc_1'))]);
+      final c = withPlays([(DateTime(2026, 8, 2, 9), _track('sc:1'))]);
       // Событие в августе: прошедший месяц (июль) пуст, окно года закрыто.
       expect(c.read(wrappedEntriesProvider).isEmpty, isTrue);
 
@@ -490,7 +462,7 @@ void main() {
     test('про период напоминаем один раз — и после перезапуска тоже', () {
       final main = JsonStore.memory();
       final c = withPlays([
-        (DateTime(2026, 7, 28, 9), _track('sc_1')),
+        (DateTime(2026, 7, 28, 9), _track('sc:1')),
       ], main: main);
       final prefs = c.read(wrappedPrefsProvider.notifier);
       final range = c.read(wrappedEntriesProvider).month!.range;
@@ -511,7 +483,7 @@ void main() {
     test('просмотр снимает подмену и переживает перезапуск', () {
       final main = JsonStore.memory();
       final c = withPlays([
-        (DateTime(2026, 7, 28, 9), _track('sc_1')),
+        (DateTime(2026, 7, 28, 9), _track('sc:1')),
       ], main: main);
       final range = c.read(wrappedEntriesProvider).month!.range;
       c.read(wrappedPrefsProvider.notifier).markSeen(range);
@@ -528,14 +500,14 @@ void main() {
     });
 
     test('подсказка «Итоги месяца» — первую неделю и после просмотра', () {
-      final c = withPlays([(DateTime(2026, 7, 28, 9), _track('sc_1'))]);
+      final c = withPlays([(DateTime(2026, 7, 28, 9), _track('sc:1'))]);
       expect(c.read(wrappedEntriesProvider).monthHint, isTrue);
       final range = c.read(wrappedEntriesProvider).month!.range;
       c.read(wrappedPrefsProvider.notifier).markSeen(range);
       expect(c.read(wrappedEntriesProvider).monthHint, isTrue);
 
       final later = withPlays([
-        (DateTime(2026, 7, 28, 9), _track('sc_1')),
+        (DateTime(2026, 7, 28, 9), _track('sc:1')),
       ], now: DateTime(2026, 8, 8, 12));
       expect(later.read(wrappedEntriesProvider).monthHint, isFalse);
     });
@@ -590,7 +562,7 @@ void main() {
               (
                 DateTime(2026, 7, 28, 9, i * 10 + n),
                 _track(
-                  'sc_$i',
+                  'sc:$i',
                   name: 'Довольно длинное название трека номер $i',
                   artist: 'Исполнитель с длинным именем $i',
                 ),
@@ -637,8 +609,8 @@ void main() {
     /// Данные месяца из пары прослушиваний — их хватает всем входам.
     WrappedData monthData() => buildWrapped(
       _log([
-        (DateTime(2026, 7, 28, 9), _track('sc_1', name: 'Песня')),
-        (DateTime(2026, 7, 29, 9), _track('sc_1', name: 'Песня')),
+        (DateTime(2026, 7, 28, 9), _track('sc:1', name: 'Песня')),
+        (DateTime(2026, 7, 29, 9), _track('sc:1', name: 'Песня')),
       ]),
       periodRange(PeriodKind.month, _now),
     );
@@ -673,7 +645,7 @@ void main() {
 
     testWidgets('плашка года показывает прослушивания и время', (tester) async {
       final year = buildWrapped(
-        _log([(DateTime(2026, 3, 1, 9), _track('sc_1', seconds: 3600))]),
+        _log([(DateTime(2026, 3, 1, 9), _track('sc:1', seconds: 3600))]),
         periodRange(PeriodKind.year, _now),
       );
       await pump(tester, WrappedYearBanner(data: year));

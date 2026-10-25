@@ -13,7 +13,15 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'app_dirs.dart';
+
+/// Файловое хранилище. Подменяется в `main()` реальным (и в тестах — памятью).
+final jsonStoreProvider = Provider<JsonStore>(
+  (ref) =>
+      throw UnimplementedError('jsonStoreProvider должен быть переопределён'),
+);
 
 const Duration _saveDelay = Duration(milliseconds: 400);
 

@@ -13,7 +13,7 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/store/library_store.dart' show jsonStoreProvider;
+import '../../core/store/json_store.dart' show jsonStoreProvider;
 
 /// Тип анимации смены трека: нет / слайд по направлению перехода / затухание.
 enum TrackAnimKind { none, slide, fade }

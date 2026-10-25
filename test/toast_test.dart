@@ -7,11 +7,11 @@ library;
 import 'package:bloom/app/theme/bloom_theme.dart';
 import 'package:bloom/app/theme/tokens.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/shared/ui/bloom_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
 
 import 'package:bloom/core/l10n/l10n.dart';
 
@@ -21,7 +21,10 @@ import 'package:bloom/core/l10n/l10n.dart';
 /// настройки прозрачности (`GlassBox`), а те живут в хранилище.
 Future<ScaffoldMessengerState> _pumpHost(WidgetTester tester) async {
   final container = ProviderContainer(
-    overrides: [jsonStoreProvider.overrideWithValue(JsonStore.memory())],
+    overrides: [
+      jsonStoreProvider.overrideWithValue(JsonStore.memory()),
+      dbProvider.overrideWithValue(BloomDb.memory()),
+    ],
   );
   addTearDown(container.dispose);
 

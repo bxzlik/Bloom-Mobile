@@ -15,7 +15,6 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/store/library_store.dart' show jsonStoreProvider;
 import '../../core/store/json_store.dart';
 import '../../core/store/stats_store.dart' show dayKey;
 import 'periods.dart';

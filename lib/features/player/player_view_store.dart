@@ -10,7 +10,7 @@ library;
 import 'package:flutter/widgets.dart' show CrossAxisAlignment, TextAlign;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/store/library_store.dart' show jsonStoreProvider;
+import '../../core/store/json_store.dart' show jsonStoreProvider;
 
 /// Где в плеере стоит название трека с артистом. Умолчание — по центру, как на
 /// ПК (`DEFAULTS.titleAlign`).

@@ -3,17 +3,21 @@
 library;
 
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/providers/yandex/models.dart';
 import 'package:bloom/providers/yandex/yandex.dart' as ym;
 import 'package:bloom/providers/yandex/ym_auth.dart';
 import 'package:bloom/providers/yandex/ym_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
+import 'support/test_db.dart';
 
 ProviderContainer _container(JsonStore store) {
   final c = ProviderContainer(
-    overrides: [jsonStoreProvider.overrideWithValue(store)],
+    overrides: [
+      jsonStoreProvider.overrideWithValue(store),
+      dbProvider.overrideWithValue(testDb(store)),
+    ],
   );
   addTearDown(c.dispose);
   return c;

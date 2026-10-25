@@ -18,8 +18,6 @@ import '../../../core/store/library_store.dart';
 import '../../../features/customization/ui/app_background.dart';
 import '../../../features/player/play_source.dart';
 import '../../../features/player/player_controller.dart';
-import '../../../shared/share/share_link.dart';
-import '../../../shared/share/share_sheet.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
@@ -308,7 +306,6 @@ class _SetScreenState extends ConsumerState<SetScreen> {
           cover: _set.cover,
           sourceUrl: _set.sourceUrl,
           sourceTitle: _set.title,
-          isAlbum: _set.isAlbum,
         );
     _toast(
       context.l.addedToast(_set.title, context.l.tracksCount(_tracks.length)),
@@ -347,16 +344,6 @@ class _SetScreenState extends ConsumerState<SetScreen> {
                 ? context.l.commonAlreadyInLibrary
                 : context.l.setSaveToLibrary,
             onTap: _tracks.isEmpty ? null : () => _save(saved),
-          ),
-        ],
-        [
-          // «Поделиться» вместо прежней «Скопировать ссылку»: ссылку копирует
-          // сама шторка, и это ссылка Bloom, как на ПК, а не сырой permalink
-          // площадки.
-          SheetAction(
-            icon: SolarIconsOutline.share,
-            label: context.l.shareAction,
-            onTap: () => showShareSheet(context, ShareTarget.set(_set)),
           ),
         ],
       ],

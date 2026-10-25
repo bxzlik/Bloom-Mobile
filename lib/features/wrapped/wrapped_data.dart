@@ -212,7 +212,7 @@ WrappedData buildWrapped(PlayLog log, PeriodRange range) {
   for (final e in log.events) {
     if (e.ts < from) {
       seenTracks.add(e.id);
-      final before = log.meta[e.id];
+      final before = log.tracks[e.id];
       if (before != null && before.artist.isNotEmpty) {
         for (final n in _splitArtists(before.artist, splitCache)) {
           seenArtists.add(_artistKey(n));
@@ -223,11 +223,11 @@ WrappedData buildWrapped(PlayLog log, PeriodRange range) {
     // События отсортированы по ts — дальше только «будущее».
     if (e.ts >= to) break;
 
-    final m = log.meta[e.id];
+    final m = log.tracks[e.id];
     final name = m?.name ?? '';
     final artist = m?.artist ?? '';
     final cover = m?.cover;
-    final sec = m?.seconds ?? 0;
+    final sec = m?.duration.inSeconds ?? 0;
     final source = MusicSource.fromId(e.id);
 
     plays++;

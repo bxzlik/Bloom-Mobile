@@ -19,7 +19,7 @@ import 'dart:ui' show Color;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/store/library_store.dart' show jsonStoreProvider;
+import '../../core/store/json_store.dart' show jsonStoreProvider;
 import '../settings/cover_accent.dart';
 
 /// Фон карточки.

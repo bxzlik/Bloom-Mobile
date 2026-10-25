@@ -8,10 +8,10 @@ import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/providers/music_provider.dart';
 import 'package:bloom/core/providers/registry.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/features/profile/artist_avatars.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
 
 Artist _artist(String name, String? avatar, [MusicSource? source]) => Artist(
   id: '${(source ?? MusicSource.soundcloud).prefix}$name',
@@ -57,6 +57,7 @@ ProviderContainer _container(
   final c = ProviderContainer(
     overrides: [
       jsonStoreProvider.overrideWithValue(JsonStore.memory(seed)),
+      dbProvider.overrideWithValue(BloomDb.memory()),
       registryProvider.overrideWithValue(registry),
     ],
   );

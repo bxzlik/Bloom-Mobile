@@ -12,7 +12,6 @@ import 'package:bloom/app/theme/bloom_theme.dart';
 import 'package:bloom/app/theme/tokens.dart';
 import 'package:bloom/core/l10n/l10n.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/core/store/settings_store.dart';
 import 'package:bloom/features/onboarding/onboarding_store.dart';
 import 'package:bloom/features/onboarding/ui/onboarding_screen.dart';
@@ -20,6 +19,7 @@ import 'package:bloom/features/profile/profile_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
 import 'package:go_router/go_router.dart';
 import 'package:solar_icons/solar_icons.dart';
 
@@ -27,6 +27,7 @@ ProviderContainer _container([JsonStore? store]) {
   final c = ProviderContainer(
     overrides: [
       jsonStoreProvider.overrideWithValue(store ?? JsonStore.memory()),
+      dbProvider.overrideWithValue(BloomDb.memory()),
     ],
   );
   addTearDown(c.dispose);

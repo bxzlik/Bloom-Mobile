@@ -16,28 +16,36 @@
 library;
 
 enum MusicSource {
-  local('local', 'Локальные', ''),
-  soundcloud('soundcloud', 'SoundCloud', 'sc_'),
-  ytmusic('ytmusic', 'YouTube Music', 'ytm_'),
-  yandex('yandex', 'Яндекс.Музыка', 'ym_');
+  local('local', 'local', 'Локальные', 'lf:'),
+  soundcloud('soundcloud', 'sc', 'SoundCloud', 'sc:'),
+  ytmusic('ytmusic', 'ytm', 'YouTube Music', 'ytm:'),
+  yandex('yandex', 'ym', 'Яндекс.Музыка', 'ym:');
 
-  const MusicSource(this.id, this.label, this.prefix);
+  const MusicSource(this.id, this.code, this.label, this.prefix);
 
   /// Технический id источника. В UI не показывается.
   final String id;
+
+  /// Площадка так, как её пишет база (`tracks.provider`) — те же коды, что на ПК.
+  final String code;
+
+  static MusicSource fromCode(String code) => MusicSource.values.firstWhere(
+    (s) => s.code == code,
+    orElse: () => MusicSource.local,
+  );
 
   /// Человекочитаемая метка. Для площадок это бренд и перевода не требует;
   /// переводятся только «Локальные» и «Яндекс.Музыка» — см. `label10n` в
   /// `core/l10n/source_label.dart`, где нужен язык.
   final String label;
 
-  /// Префикс сквозных id сущностей этой площадки.
+  /// Префикс сквозных id сущностей этой площадки — как на ПК: `sc:123`,
+  /// `sc:artist:123`, `ytm:<videoId>`, `ym:<id>`, `lf:<хеш>`.
   final String prefix;
 
   /// Площадка по ПРЕФИКСУ сквозного id — там, где источник не сохранён
-  /// отдельным полем (порт `artistSourceFromId`).
+  /// отдельным полем.
   static MusicSource fromId(String id) {
-    // Порядок важен: 'ytm_' проверяется до 'ym_', иначе не совпадёт ни разу.
     for (final s in [
       MusicSource.ytmusic,
       MusicSource.yandex,
@@ -50,7 +58,7 @@ enum MusicSource {
 }
 
 class Track {
-  /// Сквозной id с префиксом источника («sc_123»).
+  /// Сквозной id с префиксом источника («sc:123»).
   final String id;
 
   /// Заголовок трека.
@@ -131,62 +139,124 @@ class Track {
     this.chartNew = false,
   });
 
-  /// Сериализация для локальной библиотеки. `sourceData` пишется как есть —
-  /// без него сохранённый трек не заиграет: у SoundCloud там transcodings, из
-  /// которых резолвится стрим.
+  /// Трек так, как его держит ПК (`Track::toMap`): строка таблицы `tracks`, он
+  /// же — трек в файле переноса и в кешах. Формат один на обе стороны, поэтому
+  /// синхронизации и файлу нечего переводить.
+  ///
+  /// Своё у площадки — в `extra` под ключами ПК: `scId`/`videoId`/`ymId`,
+  /// `artistId` (голый id площадки), `media` (транскодинги SoundCloud, из них
+  /// резолвится стрим), `available` у Яндекса. Чего ПК не знает (`releaseDate`,
+  /// `creditedArtist`…), лежит там же: чужие ключи ему не мешают, а база при
+  /// записи сливает `extra` со старым, так что ключи ПК (`edited`, `artists`)
+  /// у нас тоже не теряются.
   Map<String, dynamic> toJson() => {
     'id': id,
-    'name': name,
+    'title': name,
     'artist': artist,
-    'durationMs': duration.inMilliseconds,
-    'source': source.id,
-    if (cover != null) 'cover': cover,
-    if (album != null) 'album': album,
-    if (year != null) 'year': year,
-    if (releaseDate != null) 'releaseDate': releaseDate,
-    if (publisher != null) 'publisher': publisher,
-    if (description != null) 'description': description,
-    if (explicit) 'explicit': true,
-    if (genres.isNotEmpty) 'genres': genres,
-    if (url != null) 'url': url,
-    if (artistId != null) 'artistId': artistId,
-    if (artistAvatar != null) 'artistAvatar': artistAvatar,
-    if (artistVerified) 'artistVerified': true,
-    if (creditedArtist != null) 'creditedArtist': creditedArtist,
-    if (playCount != null) 'playCount': playCount,
-    if (sourceData != null) 'sourceData': sourceData,
+    'album': album ?? '',
+    'cover': cover ?? '',
+    'duration': duration.inMilliseconds / 1000,
+    'provider': source.code,
+    'extra': _extra(),
   };
+
+  Map<String, dynamic> _extra() {
+    final bare = id.startsWith(source.prefix)
+        ? id.substring(source.prefix.length)
+        : id;
+    final rawArtist = artistId == null
+        ? null
+        : artistId!.startsWith('${source.prefix}artist:')
+        ? artistId!.substring('${source.prefix}artist:'.length)
+        : artistId;
+    return {
+      ...switch (source) {
+        MusicSource.soundcloud => {
+          'scId': int.tryParse(bare) ?? bare,
+          if (url != null) 'permalink': url,
+          if (rawArtist != null)
+            'artistId': int.tryParse(rawArtist) ?? rawArtist,
+          if (sourceData != null) 'media': sourceData,
+        },
+        MusicSource.ytmusic => {'videoId': bare, 'artistId': ?rawArtist},
+        MusicSource.yandex => {
+          'ymId': bare,
+          'artistId': ?rawArtist,
+          if (sourceData?['available'] == false) 'available': false,
+        },
+        // Свой файл: ключ дедупа и где он лежит — на ПК таких нет, это наше.
+        MusicSource.local => {...?sourceData},
+      },
+      if (year != null) 'year': year,
+      if (genres.isNotEmpty) 'genres': genres,
+      if (publisher != null) 'publisher': publisher,
+      if (releaseDate != null) 'releaseDate': releaseDate,
+      if (description != null) 'description': description,
+      if (explicit) 'explicit': true,
+      if (artistAvatar != null) 'artistAvatar': artistAvatar,
+      if (artistVerified) 'verified': true,
+      if (creditedArtist != null) 'creditedArtist': creditedArtist,
+    };
+  }
 
   static Track? fromJson(Object? json) {
     if (json is! Map) return null;
     final id = json['id'];
-    if (id is! String) return null;
+    if (id is! String || id.isEmpty) return null;
+    final provider = json['provider'];
+    final source = provider is String && provider.isNotEmpty
+        ? MusicSource.fromCode(provider)
+        : MusicSource.fromId(id);
+    final x = (json['extra'] as Map?)?.cast<String, dynamic>() ?? const {};
+    String? text(Object? v) => v is String && v.isNotEmpty ? v : null;
+    final rawArtist = switch (x['artistId']) {
+      final num n when n > 0 => '${n.toInt()}',
+      final String s when s.isNotEmpty => s,
+      _ => null,
+    };
+    final genre = text(x['genre']);
     return Track(
       id: id,
-      name: json['name'] as String? ?? '',
+      name: json['title'] as String? ?? '',
       artist: json['artist'] as String? ?? '',
       duration: Duration(
-        milliseconds: (json['durationMs'] as num?)?.toInt() ?? 0,
+        milliseconds: (((json['duration'] as num?) ?? 0) * 1000).round(),
       ),
-      source: MusicSource.fromId(id),
-      cover: json['cover'] as String?,
-      album: json['album'] as String?,
-      year: json['year'] as String?,
-      releaseDate: json['releaseDate'] as String?,
-      publisher: json['publisher'] as String?,
-      description: json['description'] as String?,
-      explicit: json['explicit'] == true,
+      source: source,
+      cover: text(json['cover']),
+      album: text(json['album']),
+      year: text(x['year']),
+      releaseDate: text(x['releaseDate']),
+      publisher: text(x['publisher']),
+      description: text(x['description']),
+      explicit: x['explicit'] == true,
       genres:
-          (json['genres'] as List?)?.whereType<String>().toList() ?? const [],
-      url: json['url'] as String?,
-      artistId: json['artistId'] as String?,
-      artistAvatar: json['artistAvatar'] as String?,
-      artistVerified: json['artistVerified'] == true,
-      creditedArtist: json['creditedArtist'] as String?,
-      playCount: (json['playCount'] as num?)?.toInt(),
-      sourceData: (json['sourceData'] as Map?)?.cast<String, dynamic>(),
+          (x['genres'] as List?)?.whereType<String>().toList() ??
+          (genre == null ? const [] : [genre.toLowerCase()]),
+      url: text(x['permalink']) ?? _linkOf(source, id),
+      artistId: rawArtist == null
+          ? null
+          : source == MusicSource.local
+          ? null
+          : '${source.prefix}artist:$rawArtist',
+      artistAvatar: text(x['artistAvatar']),
+      artistVerified: x['verified'] == true,
+      creditedArtist: text(x['creditedArtist']),
+      sourceData: switch (source) {
+        MusicSource.soundcloud => (x['media'] as Map?)?.cast<String, dynamic>(),
+        MusicSource.yandex => {'available': x['available'] != false},
+        MusicSource.ytmusic => null,
+        MusicSource.local => x.isEmpty ? null : x,
+      },
     );
   }
+
+  /// Ссылка на трек у площадки, когда своей в `extra` нет: у YouTube Music она
+  /// собирается из id (на ПК так же — `trackLink`).
+  static String? _linkOf(MusicSource source, String id) =>
+      source == MusicSource.ytmusic
+      ? 'https://music.youtube.com/watch?v=${id.substring(source.prefix.length)}'
+      : null;
 }
 
 class Artist {

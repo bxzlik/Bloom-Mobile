@@ -73,9 +73,10 @@ String? localTrackKey(Track track) {
   return key is String ? key : null;
 }
 
-/// Сквозной id своего трека — `lf` + md5 ключа, как на десктопе.
+/// Сквозной id своего трека — `lf:` + md5 ключа. Префикс как на ПК; хеш свой
+/// (там — по звуку файла), но свои файлы между устройствами и не ездят.
 String localTrackId(String key) =>
-    'lf${md5.convert(utf8.encode(key.toLowerCase()))}';
+    'lf:${md5.convert(utf8.encode(key.toLowerCase()))}';
 
 /// Ключи всего, что уже добавлено: нативной стороне, чтобы не копировать и не
 /// разбирать файл, который в библиотеке и так есть.

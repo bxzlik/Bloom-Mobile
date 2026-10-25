@@ -14,7 +14,7 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/store/library_store.dart' show jsonStoreProvider;
+import '../../core/store/json_store.dart' show jsonStoreProvider;
 import '../player/player_controller.dart' show playbackProvider;
 import 'media_store.dart';
 import 'presets_store.dart';

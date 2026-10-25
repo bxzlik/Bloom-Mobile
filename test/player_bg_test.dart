@@ -11,7 +11,6 @@ import 'dart:ui' as ui;
 import 'package:bloom/app/theme/bloom_theme.dart';
 import 'package:bloom/app/theme/tokens.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/features/customization/custom_store.dart';
 import 'package:bloom/features/player/player_bg_store.dart';
 import 'package:bloom/features/player/ui/player_backdrop.dart';
@@ -21,6 +20,8 @@ import 'package:bloom/shared/ui/glass.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
+import 'support/test_db.dart';
 
 /// Готовый кадр без декодера: `createTestImage` в `testWidgets` не доезжает —
 /// декодирование настоящее, а часы там поддельные, и `await` виснет навсегда
@@ -53,7 +54,10 @@ class _FakeImage extends ImageProvider<_FakeImage> {
 
 ProviderContainer _container(JsonStore store) {
   final c = ProviderContainer(
-    overrides: [jsonStoreProvider.overrideWithValue(store)],
+    overrides: [
+      jsonStoreProvider.overrideWithValue(store),
+      dbProvider.overrideWithValue(testDb(store)),
+    ],
   );
   addTearDown(c.dispose);
   return c;
@@ -295,7 +299,10 @@ void main() {
     Future<GlassBox> pumpButton(WidgetTester tester, {bool? glass}) async {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [jsonStoreProvider.overrideWithValue(JsonStore.memory())],
+          overrides: [
+            jsonStoreProvider.overrideWithValue(JsonStore.memory()),
+            dbProvider.overrideWithValue(BloomDb.memory()),
+          ],
           child: MaterialApp(
             theme: buildBloomTheme(BloomThemes.dark),
             home: Scaffold(
@@ -329,7 +336,10 @@ void main() {
   testWidgets('в режиме «Нет» слоя нет вовсе', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [jsonStoreProvider.overrideWithValue(JsonStore.memory())],
+        overrides: [
+          jsonStoreProvider.overrideWithValue(JsonStore.memory()),
+          dbProvider.overrideWithValue(BloomDb.memory()),
+        ],
         child: MaterialApp(
           theme: buildBloomTheme(BloomThemes.dark),
           home: const Scaffold(body: PlayerBackdrop()),

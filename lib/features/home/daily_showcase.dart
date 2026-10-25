@@ -15,7 +15,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/store/library_store.dart' show jsonStoreProvider;
+import '../../core/store/json_store.dart' show jsonStoreProvider;
 import '../../providers/yandex/ym_auth.dart';
 
 /// Паузы перед тихими повторами сборки (после последней — сдаёмся до

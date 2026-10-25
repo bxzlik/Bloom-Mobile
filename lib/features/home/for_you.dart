@@ -4,8 +4,8 @@
 /// Сиды — из журнала прослушиваний ([PlayStats]), а не из «Истории»: самое
 /// слушаемое по списку недавнего — это «самое слушаемое из недавнего».
 ///
-/// Сид не нужно резолвить в [Track]: сквозной id уже несёт площадку (`sc_123`,
-/// `ym_456`), и провайдеру его хватает. Поэтому подборка собирается и по
+/// Сид не нужно резолвить в [Track]: сквозной id уже несёт площадку (`sc:123`,
+/// `ym:456`), и провайдеру его хватает. Поэтому подборка собирается и по
 /// трекам, которых давно нет в библиотеке. Свои файлы отсеиваются тем же шагом —
 /// у них площадки нет, похожих спросить не у кого.
 library;
@@ -67,20 +67,15 @@ class RecsInput {
 
   /// Отсев перезаливов по всему знакомому. Сверки [known] мало: копия того же
   /// трека от другого загрузчика приходит под своим id. Слышанное, но не
-  /// сохранённое, сверяем по снимку из журнала — название, артист, длительность.
-  /// Каждый раз новый: накопитель запоминает принятое.
+  /// сохранённое, сверяем по его снимку из базы. Каждый раз новый: накопитель
+  /// запоминает принятое.
   DupGuard knownDups() {
     final guard = DupGuard();
     for (final t in lib.tracks.values) {
       guard.add(t);
     }
-    for (final r in stats.allPlayed()) {
-      if (lib.tracks.containsKey(r.id)) continue;
-      final m = stats.meta[r.id];
-      if (m == null) continue;
-      guard.addPrint(
-        TrackFingerprint(name: m.name, artist: m.artist, seconds: m.seconds),
-      );
+    for (final e in stats.tracks.entries) {
+      if (!lib.tracks.containsKey(e.key)) guard.add(e.value);
     }
     return guard;
   }
@@ -96,7 +91,7 @@ RecsInput recsInputOf(Ref ref) => RecsInput(
 /// Есть ли у площадки трека похожие. YouTube Music related не отдаёт, у своих
 /// файлов спросить не у кого.
 bool hasSimilarSource(String id) =>
-    id.startsWith('sc_') || id.startsWith('ym_');
+    id.startsWith('sc:') || id.startsWith('ym:');
 
 /// Самое слушаемое с площадок, у которых есть похожие: за окно, а если данных
 /// мало — за всё время.

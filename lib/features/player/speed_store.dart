@@ -13,7 +13,7 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/store/library_store.dart' show jsonStoreProvider;
+import '../../core/store/json_store.dart' show jsonStoreProvider;
 
 /// Пресеты-карточки пикера: медленно / обычно / быстро.
 const List<double> kSpeedPresets = [0.75, 1, 1.25];

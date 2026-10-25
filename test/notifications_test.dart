@@ -10,12 +10,12 @@ import 'package:bloom/app/theme/bloom_theme.dart';
 import 'package:bloom/app/theme/tokens.dart';
 import 'package:bloom/core/l10n/l10n.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart';
 import 'package:bloom/features/notifications/notif_store.dart';
 import 'package:bloom/features/notifications/ui/notif_bell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
 import 'package:solar_icons/solar_icons.dart';
 
 final _at = DateTime(2026, 8, 20, 14, 2);
@@ -24,6 +24,7 @@ ProviderContainer _container({DateTime? now}) {
   final c = ProviderContainer(
     overrides: [
       jsonStoreProvider.overrideWithValue(JsonStore.memory()),
+      dbProvider.overrideWithValue(BloomDb.memory()),
       notifClockProvider.overrideWithValue(() => now ?? _at),
     ],
   );

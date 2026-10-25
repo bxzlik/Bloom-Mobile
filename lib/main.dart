@@ -11,12 +11,9 @@ import 'app/router.dart';
 import 'app/theme/bloom_theme.dart';
 import 'core/l10n/l10n.dart';
 import 'core/log/bloom_log.dart';
+import 'core/db/db.dart';
 import 'core/store/cover_store.dart';
-import 'core/store/history_store.dart';
 import 'core/store/json_store.dart';
-import 'core/store/library_store.dart';
-import 'core/store/play_log.dart';
-import 'core/store/play_stats.dart';
 import 'core/store/settings_store.dart';
 import 'core/store/stats_store.dart';
 import 'features/customization/ui/app_background.dart';
@@ -50,13 +47,8 @@ Future<void> main() async {
   // Хранилище читаем ДО первого кадра: иначе библиотека и тема моргнут
   // пустыми, а экраны придётся городить с состояниями загрузки.
   final store = await _step('bloom.json', JsonStore.open);
-  // Журнал прослушиваний — СВОЙ файл: `bloom.json` переписывается
-  // целиком, и десятки тысяч событий гонялись бы через кодировщик на каждый
-  // лайк (см. шапку `play_log.dart`).
-  final plays = await _step(
-    'plays.json',
-    () => JsonStore.open(name: 'plays.json'),
-  );
+  // Данные слушателя — база, как на ПК: библиотека, журнал, подписки.
+  final db = await _step('bloom.db', BloomDb.open);
   // Свои шрифты — до первого кадра: иначе выбранный мелькнёт Inter.
   await _step('шрифты', () => initUserFonts(store));
   await _step('обложки', initCoverStore);
@@ -93,20 +85,12 @@ Future<void> main() async {
   final container = ProviderContainer(
     overrides: [
       jsonStoreProvider.overrideWithValue(store),
-      playLogStoreProvider.overrideWithValue(plays),
+      dbProvider.overrideWithValue(db),
       audioHandlerProvider.overrideWithValue(handler),
       lyricsCacheProvider.overrideWithValue(lyricsCache),
     ],
   );
   container.read(playbackProvider);
-  // Переход со старой истории на журнал: снимки для её записей, пока треки ещё
-  // лежат в хранилище библиотеки — история их больше не держит, и первая же
-  // чистка хранилища их выбросит. Повторный запуск ничего не добавляет.
-  adoptLegacySnapshots(
-    legacy: container.read(legacyHistoryProvider),
-    lib: container.read(libraryProvider),
-    log: container.read(playLogProvider.notifier),
-  );
   // Пройден ли онбординг — ДО первого маршрута: `redirect` роутера смотрит на
   // флаг, который выставляет этот провайдер, и опоздание показало бы главную
   // на долю секунды раньше мастера.

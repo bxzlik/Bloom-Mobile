@@ -66,12 +66,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonUnfollow => 'Unfollow';
 
   @override
-  String get commonCopyLink => 'Copy link';
-
-  @override
-  String get commonLinkCopied => 'Link copied';
-
-  @override
   String get commonLoadMore => 'Load more';
 
   @override
@@ -1162,30 +1156,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get taAddedToLibrary => 'Added to library';
-
-  @override
-  String get shareAction => 'Share';
-
-  @override
-  String get shareTrack => 'Share track';
-
-  @override
-  String get shareArtist => 'Share artist';
-
-  @override
-  String get shareAlbum => 'Share album';
-
-  @override
-  String get sharePlaylist => 'Share playlist';
-
-  @override
-  String get shareProfile => 'Share profile';
-
-  @override
-  String get shareProfileSub => 'shares their profile';
-
-  @override
-  String get shareFail => 'Couldn’t share the card';
 
   @override
   String get searchTabAll => 'Everything';
@@ -3247,6 +3217,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sysImportNoPlaylists => 'No playlists found';
+
+  @override
+  String get sysImportOld => 'A file from the old Bloom — it can’t be read';
+
+  @override
+  String get sysImportNewer => 'A file from a newer Bloom — update the app';
 
   @override
   String sysImportedFull(int pl, int tr) {

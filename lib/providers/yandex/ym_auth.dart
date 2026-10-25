@@ -20,7 +20,7 @@ import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../core/store/library_store.dart' show jsonStoreProvider;
+import '../../core/store/json_store.dart' show jsonStoreProvider;
 import 'models.dart';
 import 'yandex.dart' as ym;
 import 'ym_provider.dart' show clearYmStreamCache;

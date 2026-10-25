@@ -1006,8 +1006,9 @@ class _Actions extends ConsumerWidget {
 
   final List<Track> tracks;
 
-  /// Карандаш есть у ЛЮБОГО списка библиотеки: править состав и порядок можно
-  /// и во встроенных разделах, просто имя с обложкой там не свои.
+  /// Карандаш есть у каждого списка библиотеки, кроме «Истории»: из неё ничего
+  /// не убирается, а порядок задаёт время (как на ПК). Во встроенных разделах
+  /// правятся состав и порядок, просто имя с обложкой там не свои.
   final VoidCallback onEdit;
 
   @override
@@ -1036,12 +1037,14 @@ class _Actions extends ConsumerWidget {
                     .playQueueShuffled(tracks, source: LibSource(listId))
               : null,
         ),
-        const SizedBox(width: 10),
-        GlassIconButton(
-          icon: SolarIconsOutline.penNewSquare,
-          size: 46,
-          onTap: onEdit,
-        ),
+        if (listId != 'history') ...[
+          const SizedBox(width: 10),
+          GlassIconButton(
+            icon: SolarIconsOutline.penNewSquare,
+            size: 46,
+            onTap: onEdit,
+          ),
+        ],
       ],
     );
   }
@@ -1243,16 +1246,12 @@ Future<void> showPlaylistMenu(
             // плейлист это всего лишь список id, вернуть его дёшево, а сами
             // треки в библиотеке не трогаются.
             final lib = ref.read(libraryProvider.notifier);
-            final index = ref
-                .read(libraryProvider)
-                .playlists
-                .indexWhere((p) => p.id == playlist.id);
             lib.deletePlaylist(playlist.id);
             context.go('/library');
             messenger.toast(
               l10n.tlPlaylistDeleted(playlist.name),
               action: ToastAction(
-                fn: () => lib.restorePlaylist(index, playlist),
+                fn: () => lib.restorePlaylist(playlist),
                 // Своя обложка живёт файлом в каталоге приложения; удаляем её
                 // только когда отменять уже нечего, иначе возвращённый
                 // плейлист остался бы без картинки.

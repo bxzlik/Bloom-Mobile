@@ -8,7 +8,6 @@ import 'package:bloom/core/providers/music_provider.dart';
 import 'package:bloom/core/providers/registry.dart';
 import 'package:bloom/core/store/history_store.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart';
 import 'package:bloom/core/store/play_stats.dart';
 import 'package:bloom/features/home/discover_store.dart';
 import 'package:bloom/features/home/ui/home_sections.dart';
@@ -16,9 +15,11 @@ import 'package:bloom/features/player/play_source.dart';
 import 'package:bloom/features/player/resume_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
+import 'support/test_db.dart';
 
 Track _track(String id) => Track(
-  id: 'sc_$id',
+  id: 'sc:$id',
   name: id,
   artist: 'A',
   duration: const Duration(minutes: 3),
@@ -64,6 +65,7 @@ ProviderContainer _container(MusicProvider provider) {
   final c = ProviderContainer(
     overrides: [
       jsonStoreProvider.overrideWithValue(JsonStore.memory()),
+      dbProvider.overrideWithValue(BloomDb.memory()),
       registryProvider.overrideWithValue(
         ProviderRegistry()..register(provider),
       ),
@@ -87,7 +89,7 @@ void main() {
       );
       expect(data.queue.length, 3);
       expect(data.index, 1);
-      expect(data.track.id, 'sc_b');
+      expect(data.track.id, 'sc:b');
     });
 
     test('длинная режется с текущего трека — он обязан попасть в снимок', () {
@@ -99,7 +101,7 @@ void main() {
         paused: false,
       );
       expect(data.queue.length, kResumeQueueLimit);
-      expect(data.track.id, 'sc_t400');
+      expect(data.track.id, 'sc:t400');
       // Хвост короче лимита — окно сдвигается назад, но текущий остаётся внутри.
       final tail = ResumeData.capture(
         queue: queue,
@@ -108,7 +110,7 @@ void main() {
         paused: false,
       );
       expect(tail.queue.length, kResumeQueueLimit);
-      expect(tail.track.id, 'sc_t495');
+      expect(tail.track.id, 'sc:t495');
     });
 
     test('переживает запись и чтение', () {
@@ -121,7 +123,7 @@ void main() {
       );
       final read = ResumeData.fromJson(saved.toJson());
       expect(read, isNotNull);
-      expect(read!.track.id, 'sc_b');
+      expect(read!.track.id, 'sc:b');
       expect(read.position, const Duration(seconds: 90));
       // Источник переживает запись целиком, а не одним id: пилюля в шапке
       // плеера после перезапуска обязана назвать тот же список.
@@ -138,7 +140,7 @@ void main() {
         paused: true,
       ).toJson();
       json['index'] = 7;
-      expect(ResumeData.fromJson(json)?.track.id, 'sc_a');
+      expect(ResumeData.fromJson(json)?.track.id, 'sc:a');
     });
 
     test('пустая очередь снимком не считается', () {
@@ -148,7 +150,10 @@ void main() {
     test('контроллер читает записанное и чистит', () {
       final store = JsonStore.memory();
       final c = ProviderContainer(
-        overrides: [jsonStoreProvider.overrideWithValue(store)],
+        overrides: [
+          jsonStoreProvider.overrideWithValue(store),
+          dbProvider.overrideWithValue(testDb(store)),
+        ],
       );
       addTearDown(c.dispose);
       expect(c.read(resumeProvider), isNull);
@@ -163,7 +168,7 @@ void main() {
             ),
           );
       expect(store.read(kResumeKey), isNotNull);
-      expect(ResumeData.fromJson(store.read(kResumeKey))?.track.id, 'sc_a');
+      expect(ResumeData.fromJson(store.read(kResumeKey))?.track.id, 'sc:a');
       c.read(resumeProvider.notifier).clear();
       expect(c.read(resumeProvider), isNull);
       expect(store.read(kResumeKey), isNull);
@@ -183,7 +188,7 @@ void main() {
 
       final back = ResumeData.fromJson(data.toJson())!;
       expect(back.cleared, isTrue);
-      expect(back.fullQueue?.map((t) => t.id), ['sc_a', 'sc_b', 'sc_c']);
+      expect(back.fullQueue?.map((t) => t.id), ['sc:a', 'sc:b', 'sc:c']);
     });
 
     test('«Продолжить» поднимает полную очередь на том же треке', () {
@@ -196,7 +201,7 @@ void main() {
       );
       final cont = data.forContinue();
       expect(cont.queue.length, 3);
-      expect(cont.track.id, 'sc_b');
+      expect(cont.track.id, 'sc:b');
       expect(cont.position, const Duration(seconds: 30));
       // Развёрнутый снимок — обычная очередь, без пометок.
       expect(cont.cleared, isFalse);
@@ -219,14 +224,14 @@ void main() {
     test('идут в порядке «Истории», лимит соблюдается', () {
       final history = [
         for (final (i, id) in ['a', 'b', 'c'].indexed)
-          HistoryItem(HistoryRow('sc_$id', 10 - i, 1), _track(id)),
+          HistoryItem(HistoryRow('sc:$id', 10 - i, 1), _track(id)),
       ];
       expect(recentTracks(history, 12).map((t) => t.id), [
-        'sc_a',
-        'sc_b',
-        'sc_c',
+        'sc:a',
+        'sc:b',
+        'sc:c',
       ]);
-      expect(recentTracks(history, 2).map((t) => t.id), ['sc_a', 'sc_b']);
+      expect(recentTracks(history, 2).map((t) => t.id), ['sc:a', 'sc:b']);
     });
   });
 
@@ -241,7 +246,7 @@ void main() {
       );
       expect(first, isNotNull);
       expect(first!.source, MusicSource.yandex);
-      expect((first.block as DiscoverTracks).tracks.single.id, 'sc_a');
+      expect((first.block as DiscoverTracks).tracks.single.id, 'sc:a');
       expect(provider.chartCalls, 1);
 
       // Второй заход на главную сеть не дёргает.
@@ -255,7 +260,7 @@ void main() {
 
       final result = await c.read(discoverProvider(DiscoverMode.charts).future);
       expect(result, isNotNull);
-      expect((result!.block as DiscoverTracks).tracks.single.id, 'sc_a');
+      expect((result!.block as DiscoverTracks).tracks.single.id, 'sc:a');
       // Первый ответ был пустой — значит сходили дважды.
       expect(provider.chartCalls, 2);
     });
@@ -273,7 +278,7 @@ void main() {
 
     test('новинки альбомами разбираются как альбомы', () async {
       final album = Playlist(
-        id: 'ym_1',
+        id: 'ym:1',
         title: 'Альбом',
         source: MusicSource.yandex,
         isAlbum: true,
@@ -282,7 +287,7 @@ void main() {
       final result = await c.read(
         discoverProvider(DiscoverMode.newReleases).future,
       );
-      expect((result!.block as DiscoverAlbums).albums.single.id, 'ym_1');
+      expect((result!.block as DiscoverAlbums).albums.single.id, 'ym:1');
     });
 
     test('новинки треками разбираются как треки', () async {
@@ -290,7 +295,7 @@ void main() {
       final result = await c.read(
         discoverProvider(DiscoverMode.newReleases).future,
       );
-      expect((result!.block as DiscoverTracks).tracks.single.id, 'sc_n');
+      expect((result!.block as DiscoverTracks).tracks.single.id, 'sc:n');
     });
   });
 }

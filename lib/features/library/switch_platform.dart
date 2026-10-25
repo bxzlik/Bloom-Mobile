@@ -23,10 +23,8 @@ import '../../core/l10n/l10n.dart';
 import '../../core/l10n/source_label.dart';
 import '../../core/log/bloom_log.dart';
 import '../../core/providers/match.dart';
-import '../../core/store/history_store.dart';
 import '../../core/store/library_store.dart';
 import '../../core/store/play_log.dart';
-import '../../core/store/play_stats.dart';
 import '../../shared/ui/bloom_toast.dart';
 import '../offline/offline_store.dart';
 import '../player/player_controller.dart';
@@ -98,15 +96,11 @@ Future<void> switchTrackPlatform(
     return;
   }
 
-  final newId = best.track.id;
+  // Ссылки переезжают в самой базе: места в списках, лайк и прослушивания
+  // (а с ними «История», статистика и «Итоги») — трек тот же, и делить его
+  // счётчик между двумя id нельзя. Журнал после этого перечитываем.
   ref.read(libraryProvider.notifier).replaceTrack(track.id, best.track);
-  // Прослушивания живут не в библиотеке, а в журнале: трек тот же, и счётчик,
-  // строка «Истории» и «Итоги» обязаны переехать вместе с ним. Иначе
-  // прослушивания делятся между двумя id: счётчик новой версии с нуля, в
-  // «Итогах» два трека, а строка «Истории» играет старую площадку.
-  ref.read(playLogProvider.notifier).renameTrack(track.id, newId);
-  ref.read(legacyHistoryProvider.notifier).renameTrack(track.id, newId);
-  ref.read(historyHideProvider.notifier).renameTrack(track.id, newId);
+  ref.read(playLogProvider.notifier).reload();
   ref.read(playbackProvider.notifier).replaceInQueue(track.id, best.track);
   // Скачанная копия осталась от прежней площадки: она играет не тот файл, что
   // теперь стоит за треком, и сослаться на неё уже некому.

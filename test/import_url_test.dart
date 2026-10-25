@@ -10,6 +10,7 @@ import 'package:bloom/core/store/library_store.dart';
 import 'package:bloom/features/library/import_url.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
 
 Track _track(String id) => Track(
   id: id,
@@ -60,7 +61,10 @@ class _FakeSoundCloud extends MusicProvider {
   _FakeSoundCloud provider,
 ) {
   final c = ProviderContainer(
-    overrides: [jsonStoreProvider.overrideWithValue(JsonStore.memory())],
+    overrides: [
+      jsonStoreProvider.overrideWithValue(JsonStore.memory()),
+      dbProvider.overrideWithValue(BloomDb.memory()),
+    ],
   );
   addTearDown(c.dispose);
   return (container: c, registry: ProviderRegistry()..register(provider));
@@ -83,7 +87,7 @@ void main() {
     final env = _setup(
       _FakeSoundCloud(
         sets: {
-          'https://sc/one': [_track('sc_1'), _track('sc_2')],
+          'https://sc/one': [_track('sc:1'), _track('sc:2')],
         },
       ),
     );
@@ -97,7 +101,7 @@ void main() {
     expect(result.added, 2);
     final playlist = env.container.read(libraryProvider).playlists.single;
     expect(playlist.id, result.createdId);
-    expect(playlist.trackIds, ['sc_1', 'sc_2']);
+    expect(playlist.trackIds, ['sc:1', 'sc:2']);
     // Источник запомнен — иначе плейлист нечем было бы обновлять.
     expect(playlist.sources.map((s) => s.url), ['https://sc/one']);
   });
@@ -106,11 +110,11 @@ void main() {
     final env = _setup(
       _FakeSoundCloud(
         sets: {
-          'https://sc/one': [_track('sc_1'), _track('sc_2')],
+          'https://sc/one': [_track('sc:1'), _track('sc:2')],
         },
       ),
     );
-    env.container.read(libraryProvider.notifier).addToLibrary([_track('sc_1')]);
+    env.container.read(libraryProvider.notifier).addToLibrary([_track('sc:1')]);
 
     final result = await _import(
       env,
@@ -129,11 +133,11 @@ void main() {
     final env = _setup(
       _FakeSoundCloud(
         sets: {
-          'https://sc/one': [_track('sc_1'), _track('sc_2')],
+          'https://sc/one': [_track('sc:1'), _track('sc:2')],
         },
       ),
     );
-    env.container.read(libraryProvider.notifier).toggleFav(_track('sc_1'));
+    env.container.read(libraryProvider.notifier).toggleFav(_track('sc:1'));
 
     final result = await _import(
       env,
@@ -149,13 +153,13 @@ void main() {
     final env = _setup(
       _FakeSoundCloud(
         sets: {
-          'https://sc/one': [_track('sc_1'), _track('sc_2')],
+          'https://sc/one': [_track('sc:1'), _track('sc:2')],
         },
       ),
     );
     final target = env.container
         .read(libraryProvider.notifier)
-        .createPlaylist('Мой', tracks: [_track('sc_1')]);
+        .createPlaylist('Мой', tracks: [_track('sc:1')]);
 
     final result = await _import(
       env,
@@ -165,7 +169,7 @@ void main() {
 
     expect(result.added, 1);
     final playlist = env.container.read(libraryProvider).playlists.single;
-    expect(playlist.trackIds.toSet(), {'sc_1', 'sc_2'});
+    expect(playlist.trackIds.toSet(), {'sc:1', 'sc:2'});
     // Импортированная коллекция становится источником и у существующего
     // плейлиста: обновление только подмешивает новые треки наверх, добавленное
     // руками остаётся на месте.
@@ -174,7 +178,7 @@ void main() {
 
   test('ссылка на одиночный трек отклоняется', () async {
     final env = _setup(
-      _FakeSoundCloud(singles: {'https://sc/track': _track('sc_1')}),
+      _FakeSoundCloud(singles: {'https://sc/track': _track('sc:1')}),
     );
 
     expect(

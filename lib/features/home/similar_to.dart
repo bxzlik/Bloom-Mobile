@@ -21,7 +21,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/entities/entities.dart';
 import '../../core/providers/artist_lookup.dart';
 import '../../core/providers/music_provider.dart';
-import '../../core/store/history_store.dart' show trackFromPlayMeta;
 import '../../shared/util/artists.dart';
 import '../wave/wave_types.dart' show normalizeArtist;
 import 'daily_showcase.dart';
@@ -164,18 +163,14 @@ bool _isRealArtist(String name) {
   return n.isNotEmpty && n != '—' && n != 'unknown artist';
 }
 
-/// Имя, артист и обложка трека: библиотека, иначе снимок из журнала.
+/// Имя, артист и обложка трека: библиотека, иначе снимок из базы.
 ({String name, String artist, String? cover})? _metaOf(
   RecsInput input,
   String id,
 ) {
-  final t = input.lib.tracks[id];
-  if (t != null && t.name.isNotEmpty) {
-    return (name: t.name, artist: t.artist, cover: t.cover);
-  }
-  final m = input.stats.meta[id];
-  if (m == null || m.name.isEmpty) return null;
-  return (name: m.name, artist: m.artist, cover: m.cover);
+  final t = input.lib.tracks[id] ?? input.stats.tracks[id];
+  if (t == null || t.name.isEmpty) return null;
+  return (name: t.name, artist: t.artist, cover: t.cover);
 }
 
 MusicProvider? _providerOf(RecsInput input, MusicSource source) {
@@ -331,8 +326,7 @@ Future<SimilarTo?> _fromTrack(
     final items = mixSimilar(tracks, artists);
     if (items.length < _minItems) continue;
 
-    final track =
-        input.lib.tracks[id] ?? trackFromPlayMeta(id, input.stats.meta[id]);
+    final track = input.lib.tracks[id] ?? input.stats.tracks[id];
     return SimilarTo(
       SimilarTrackSeed(
         id: id,

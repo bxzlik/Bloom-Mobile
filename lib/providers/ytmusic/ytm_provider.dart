@@ -15,32 +15,32 @@ import '../../core/providers/music_provider.dart';
 import 'models.dart';
 import 'ytmusic.dart' as ytm;
 
-/// Сквозные id с префиксом источника — те же, что на десктопе:
-///   трек     → `ytm_<videoId>`
-///   артист   → `ytm_artist_<browseId>`
-///   альбом   → `ytm_album_<browseId>`
-///   плейлист → `ytm_pl_<browseId>`
-String ytmTrackId(String videoId) => 'ytm_$videoId';
-String ytmArtistId(String browseId) => 'ytm_artist_$browseId';
-String ytmAlbumId(String browseId) => 'ytm_album_$browseId';
-String ytmPlaylistId(String browseId) => 'ytm_pl_$browseId';
+/// Сквозные id с префиксом источника — те же, что на ПК:
+///   трек     → `ytm:<videoId>`
+///   артист   → `ytm:artist:<browseId>`
+///   альбом   → `ytm:album:<browseId>`
+///   плейлист → `ytm:pl:<browseId>`
+String ytmTrackId(String videoId) => 'ytm:$videoId';
+String ytmArtistId(String browseId) => 'ytm:artist:$browseId';
+String ytmAlbumId(String browseId) => 'ytm:album:$browseId';
+String ytmPlaylistId(String browseId) => 'ytm:pl:$browseId';
 
 /// Обратный разбор сквозного id. У трека префикс общий с остальными, поэтому
-/// сначала отсекаем более длинные — иначе `ytm_album_MPRE…` разобрался бы как
-/// videoId `album_MPRE…`.
+/// сначала отсекаем более длинные — иначе `ytm:album:MPRE…` разобрался бы как
+/// videoId `album:MPRE…`.
 String? parseYtmTrackId(String id) =>
-    id.startsWith('ytm_') &&
-        !id.startsWith('ytm_artist_') &&
-        !id.startsWith('ytm_album_') &&
-        !id.startsWith('ytm_pl_')
-    ? id.substring('ytm_'.length)
+    id.startsWith('ytm:') &&
+        !id.startsWith('ytm:artist:') &&
+        !id.startsWith('ytm:album:') &&
+        !id.startsWith('ytm:pl:')
+    ? id.substring('ytm:'.length)
     : null;
 String? parseYtmArtistId(String id) =>
-    id.startsWith('ytm_artist_') ? id.substring('ytm_artist_'.length) : null;
+    id.startsWith('ytm:artist:') ? id.substring('ytm:artist:'.length) : null;
 String? parseYtmAlbumId(String id) =>
-    id.startsWith('ytm_album_') ? id.substring('ytm_album_'.length) : null;
+    id.startsWith('ytm:album:') ? id.substring('ytm:album:'.length) : null;
 String? parseYtmPlaylistId(String id) =>
-    id.startsWith('ytm_pl_') ? id.substring('ytm_pl_'.length) : null;
+    id.startsWith('ytm:pl:') ? id.substring('ytm:pl:'.length) : null;
 
 String? _blankToNull(String s) => s.isEmpty ? null : s;
 

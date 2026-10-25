@@ -11,15 +11,15 @@ import 'models.dart';
 import 'sc_sources.dart' show similarTracks;
 import 'soundcloud.dart' as sc;
 
-/// Сквозные id: числовой id SoundCloud с префиксом источника.
-String scTrackId(int id) => 'sc_$id';
-String scArtistId(int id) => 'sc_artist_$id';
-String scSetId(int id, {required bool isAlbum}) =>
-    isAlbum ? 'sc_album_$id' : 'sc_playlist_$id';
+/// Сквозные id — как на ПК: `sc:123`, `sc:artist:123`, `sc:set:123`. Альбом и
+/// плейлист у SoundCloud — один «set», различает их [Playlist.isAlbum].
+String scTrackId(int id) => 'sc:$id';
+String scArtistId(int id) => 'sc:artist:$id';
+String scSetId(int id) => 'sc:set:$id';
 
 /// Числовой id обратно из сквозного. Небезопасные значения дают 0 — провайдер
 /// тогда просто ничего не найдёт, вместо падения.
-int scNumericId(String entityId) => int.tryParse(entityId.split('_').last) ?? 0;
+int scNumericId(String entityId) => int.tryParse(entityId.split(':').last) ?? 0;
 
 String? _blankToNull(String s) => s.isEmpty ? null : s;
 
@@ -59,7 +59,7 @@ Artist artistFromSc(ScRawArtist a) => Artist(
 );
 
 Playlist setFromSc(ScRawPlaylist p, {required bool isAlbum}) => Playlist(
-  id: scSetId(p.id, isAlbum: isAlbum),
+  id: scSetId(p.id),
   title: p.title,
   cover: p.artwork,
   // У SC отсутствующий счётчик приходит нулём — «0 треков» под альбомом с

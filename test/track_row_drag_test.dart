@@ -9,17 +9,17 @@ import 'package:bloom/app/theme/bloom_theme.dart';
 import 'package:bloom/app/theme/tokens.dart';
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/shared/ui/atoms.dart';
 import 'package:bloom/shared/ui/entity_tiles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
 
 import 'package:bloom/core/l10n/l10n.dart';
 
 const _track = Track(
-  id: 'sc_1',
+  id: 'sc:1',
   name: 'sleep mode',
   artist: 'ONDA ANDAR',
   duration: Duration(minutes: 2, seconds: 53),
@@ -34,7 +34,10 @@ Future<void> _pumpRow(WidgetTester tester, {int? dragIndex}) async {
   _log.clear();
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [jsonStoreProvider.overrideWithValue(JsonStore.memory())],
+      overrides: [
+        jsonStoreProvider.overrideWithValue(JsonStore.memory()),
+        dbProvider.overrideWithValue(BloomDb.memory()),
+      ],
       child: MaterialApp(
         // Язык прибит гвоздями: иначе проверки текста зависели бы от локали
         // машины, на которой гоняют тесты.

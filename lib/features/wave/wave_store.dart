@@ -21,7 +21,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/entities/entities.dart';
 import '../../core/store/json_store.dart';
-import '../../core/store/library_store.dart' show jsonStoreProvider;
 import '../../providers/yandex/ym_auth.dart';
 import 'wave_types.dart';
 

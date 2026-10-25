@@ -696,7 +696,7 @@ void main() {
           duration: Duration(minutes: 2),
         ),
       );
-      expect(t.id, 'ytm_vid');
+      expect(t.id, 'ytm:vid');
       expect(t.name, kYtmUntitled);
       expect(t.artist, kYtmUnknownArtist);
       expect(t.cover, isNull);
@@ -715,7 +715,7 @@ void main() {
           trackCount: 7,
         ),
       );
-      expect(p.id, 'ytm_pl_VLPL42');
+      expect(p.id, 'ytm:pl:VLPL42');
       expect(p.sourceUrl, 'https://music.youtube.com/playlist?list=PL42');
       expect(p.trackCount, 7);
       expect(p.isAlbum, isFalse);

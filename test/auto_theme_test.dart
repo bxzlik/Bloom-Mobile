@@ -7,17 +7,18 @@
 library;
 
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/core/store/settings_store.dart';
 import 'package:bloom/features/settings/cover_accent.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
 
 ProviderContainer _container([JsonStore? store]) {
   final c = ProviderContainer(
     overrides: [
       jsonStoreProvider.overrideWithValue(store ?? JsonStore.memory()),
+      dbProvider.overrideWithValue(BloomDb.memory()),
     ],
   );
   addTearDown(c.dispose);

@@ -5,14 +5,18 @@ library;
 
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/features/search/recent_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
+import 'support/test_db.dart';
 
 ProviderContainer _container(JsonStore store) {
   final c = ProviderContainer(
-    overrides: [jsonStoreProvider.overrideWithValue(store)],
+    overrides: [
+      jsonStoreProvider.overrideWithValue(store),
+      dbProvider.overrideWithValue(testDb(store)),
+    ],
   );
   addTearDown(c.dispose);
   return c;
@@ -92,13 +96,13 @@ void main() {
   test('открытое: наверх, без дублей по типу и id', () {
     final c = _container(JsonStore.memory());
     final notifier = c.read(recentItemsProvider.notifier);
-    notifier.push(RecentTrack(_track('sc_1')));
+    notifier.push(RecentTrack(_track('sc:1')));
     notifier.push(
       RecentArtist(
-        const Artist(id: 'sc_9', name: 'Kavinsky', source: MusicSource.local),
+        const Artist(id: 'sc:9', name: 'Kavinsky', source: MusicSource.local),
       ),
     );
-    notifier.push(RecentTrack(_track('sc_1')));
+    notifier.push(RecentTrack(_track('sc:1')));
 
     final state = c.read(recentItemsProvider);
     expect(state, hasLength(2));
@@ -108,10 +112,10 @@ void main() {
   test('трек и сет с одинаковым id — разные записи', () {
     final c = _container(JsonStore.memory());
     final notifier = c.read(recentItemsProvider.notifier);
-    notifier.push(RecentTrack(_track('sc_1')));
+    notifier.push(RecentTrack(_track('sc:1')));
     notifier.push(
       RecentSet(
-        const Playlist(id: 'sc_1', title: 'Outrun', source: MusicSource.local),
+        const Playlist(id: 'sc:1', title: 'Outrun', source: MusicSource.local),
       ),
     );
     expect(c.read(recentItemsProvider), hasLength(2));
@@ -121,7 +125,7 @@ void main() {
     final c = _container(JsonStore.memory());
     final notifier = c.read(recentItemsProvider.notifier);
     for (var i = 0; i <= kRecentItemMax; i++) {
-      notifier.push(RecentTrack(_track('sc_$i')));
+      notifier.push(RecentTrack(_track('sc:$i')));
     }
     expect(c.read(recentItemsProvider), hasLength(kRecentItemMax));
   });
@@ -129,11 +133,11 @@ void main() {
   test('открытое переживает перезапуск целой сущностью', () {
     final store = JsonStore.memory();
     _container(store).read(recentItemsProvider.notifier)
-      ..push(RecentTrack(_track('sc_1')))
+      ..push(RecentTrack(_track('sc:1')))
       ..push(
         RecentSet(
           const Playlist(
-            id: 'ym_5',
+            id: 'ym:5',
             title: 'Outrun',
             source: MusicSource.local,
             isAlbum: true,
@@ -159,12 +163,12 @@ void main() {
   test('удаление и очистка открытых', () {
     final c = _container(JsonStore.memory());
     final notifier = c.read(recentItemsProvider.notifier);
-    final track = RecentTrack(_track('sc_1'));
+    final track = RecentTrack(_track('sc:1'));
     notifier.push(track);
-    notifier.push(RecentTrack(_track('sc_2')));
+    notifier.push(RecentTrack(_track('sc:2')));
     // Удаляем по ключу, а не по ссылке: в списке лежит запись, восстановленная
     // с диска, — тем же объектом она уже не будет.
-    notifier.remove(RecentTrack(_track('sc_1')));
+    notifier.remove(RecentTrack(_track('sc:1')));
     expect(c.read(recentItemsProvider), hasLength(1));
     notifier.clear();
     expect(c.read(recentItemsProvider), isEmpty);
@@ -177,7 +181,7 @@ void main() {
         {'kind': 'таких нет', 'data': <String, dynamic>{}},
         {
           'kind': 'artist',
-          'data': {'id': 'sc_9', 'name': 'Kavinsky'},
+          'data': {'id': 'sc:9', 'name': 'Kavinsky'},
         },
       ],
     });

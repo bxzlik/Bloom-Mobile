@@ -9,7 +9,6 @@ import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/providers/music_provider.dart';
 import 'package:bloom/core/providers/registry.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/features/detail/artists_sheet.dart';
 import 'package:bloom/features/detail/ui/artist_screen.dart';
 import 'package:bloom/features/player/player_controller.dart';
@@ -18,11 +17,12 @@ import 'package:bloom/shared/ui/bloom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
 
 import 'package:bloom/core/l10n/l10n.dart';
 
 Artist _artist(String name, {String? avatar, int? followers}) => Artist(
-  id: 'sc_artist_$name',
+  id: 'sc:artist:$name',
   name: name,
   avatar: avatar,
   followers: followers,
@@ -30,12 +30,12 @@ Artist _artist(String name, {String? avatar, int? followers}) => Artist(
 );
 
 Track _track(String artist) => Track(
-  id: 'sc_1',
+  id: 'sc:1',
   name: 'Песня',
   artist: artist,
   duration: const Duration(minutes: 3),
   source: MusicSource.soundcloud,
-  artistId: 'sc_artist_uploader',
+  artistId: 'sc:artist:uploader',
 );
 
 class _FakeSoundCloud extends MusicProvider {
@@ -76,6 +76,7 @@ Future<void> _pump(
     ProviderScope(
       overrides: [
         jsonStoreProvider.overrideWithValue(JsonStore.memory()),
+        dbProvider.overrideWithValue(BloomDb.memory()),
         registryProvider.overrideWithValue(
           ProviderRegistry()..register(provider),
         ),
@@ -173,7 +174,7 @@ void main() {
   testWidgets('один артист без точного id — тапать нечего', (tester) async {
     final sc = _FakeSoundCloud(const {});
     final track = Track(
-      id: 'sc_2',
+      id: 'sc:2',
       name: 'Песня',
       artist: 'Onda',
       duration: const Duration(minutes: 3),

@@ -1,22 +1,19 @@
-/// Отдать картинку системной шторке «Поделиться».
+/// Постер «Итогов» — отдать картинку системной шторке.
 ///
-/// Постер «Итогов» на ПК рисуется на canvas и сохраняется файлом
-/// (`cover_download`). На телефоне сохранённый в галерею PNG человек всё равно
-/// понесёт в мессенджер руками, поэтому финальный шаг здесь — системный
-/// `ACTION_SEND` / `UIActivityViewController`: оттуда карточка уходит в чат или
-/// в сторис одним касанием, а «Сохранить в галерею» есть в той же шторке.
+/// На ПК постер сохраняется файлом PNG. На телефоне сохранённый в галерею PNG
+/// человек всё равно понесёт в мессенджер руками, поэтому финальный шаг здесь —
+/// системный `ACTION_SEND` / `UIActivityViewController`: оттуда картинка уходит
+/// в чат или в сторис одним касанием, а «Сохранить в галерею» есть в той же
+/// шторке.
 ///
-/// Пакета `share_plus` не тянем — своя пара методов в уже заведённом канале
+/// Пакета `share_plus` не тянем — свой метод в уже заведённом канале
 /// `bloom/files` (тот же приём, что с уведомлениями и скачиванием: ради одного
 /// системного вызова пакет в проект не заводим).
 library;
 
 import 'dart:io';
-import 'dart:ui' as ui;
 
-import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 import 'package:path_provider/path_provider.dart';
 
 const MethodChannel _channel = MethodChannel('bloom/files');
@@ -35,24 +32,6 @@ Future<File> _shareFile(String name) async {
   final dir = Directory('${(await getTemporaryDirectory()).path}/share');
   if (!dir.existsSync()) await dir.create(recursive: true);
   return File('${dir.path}/$name');
-}
-
-/// Снять карточку в PNG. [key] — ключ её `RepaintBoundary`; `null` возвращается,
-/// когда границы в дереве уже нет (шторку закрыли, пока шёл снимок).
-///
-/// Живёт здесь, а не в шторке: карточек «Поделиться» две — сущности площадки и
-/// профиля, — а снимаются они одинаково.
-Future<Uint8List?> captureShareCard(
-  GlobalKey key, {
-  required double pixelRatio,
-}) async {
-  final boundary =
-      key.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-  if (boundary == null) return null;
-  final image = await boundary.toImage(pixelRatio: pixelRatio);
-  final data = await image.toByteData(format: ui.ImageByteFormat.png);
-  image.dispose();
-  return data?.buffer.asUint8List();
 }
 
 /// Отдать PNG системной шторке. `false` — отправить не удалось (нативная

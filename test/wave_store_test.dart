@@ -4,11 +4,12 @@ library;
 
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/library_store.dart' show jsonStoreProvider;
 import 'package:bloom/features/wave/wave_store.dart';
 import 'package:bloom/features/wave/wave_types.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:bloom/core/db/db.dart';
+import 'support/test_db.dart';
 
 Track _track(String id) => Track(
   id: id,
@@ -20,7 +21,10 @@ Track _track(String id) => Track(
 
 ProviderContainer _container(JsonStore store) {
   final c = ProviderContainer(
-    overrides: [jsonStoreProvider.overrideWithValue(store)],
+    overrides: [
+      jsonStoreProvider.overrideWithValue(store),
+      dbProvider.overrideWithValue(testDb(store)),
+    ],
   );
   addTearDown(c.dispose);
   return c;
@@ -31,47 +35,47 @@ void main() {
     final store = JsonStore.memory();
     _container(
       store,
-    ).read(waveStoreProvider.notifier).toggleDislike(_track('sc_1'));
+    ).read(waveStoreProvider.notifier).toggleDislike(_track('sc:1'));
 
     // Новый контейнер — то же, что новый запуск приложения.
     final state = _container(store).read(waveStoreProvider);
-    expect(state.isDisliked('sc_1'), isTrue);
+    expect(state.isDisliked('sc:1'), isTrue);
     // Список дизлайков надо чем-то показывать: одного id мало.
-    expect(state.dislikes['sc_1']!.name, 'Song');
+    expect(state.dislikes['sc:1']!.name, 'Song');
   });
 
   test('повторный дизлайк снимает метку', () {
     final c = _container(JsonStore.memory());
     final wave = c.read(waveStoreProvider.notifier);
-    final track = _track('sc_1');
+    final track = _track('sc:1');
 
     expect(wave.toggleDislike(track), isTrue);
     expect(wave.toggleDislike(track), isFalse);
-    expect(c.read(waveStoreProvider).isDisliked('sc_1'), isFalse);
+    expect(c.read(waveStoreProvider).isDisliked('sc:1'), isFalse);
   });
 
   test('показанное волной не возвращается в выдачу', () {
     final c = _container(JsonStore.memory());
     final wave = c.read(waveStoreProvider.notifier);
 
-    expect(wave.wasShown('sc_1'), isFalse);
-    wave.markShown(['sc_1', 'sc_2']);
-    expect(wave.wasShown('sc_1'), isTrue);
-    expect(wave.wasShown('sc_3'), isFalse);
+    expect(wave.wasShown('sc:1'), isFalse);
+    wave.markShown(['sc:1', 'sc:2']);
+    expect(wave.wasShown('sc:1'), isTrue);
+    expect(wave.wasShown('sc:3'), isFalse);
     // Срок задаётся вызывающим: за сутки трек «показанным» ещё не считается.
-    expect(wave.wasShown('sc_1', withinDays: 0), isFalse);
+    expect(wave.wasShown('sc:1', withinDays: 0), isFalse);
   });
 
   test('пометок не копится больше потолка', () {
     final c = _container(JsonStore.memory());
     final wave = c.read(waveStoreProvider.notifier);
-    wave.markShown([for (var i = 0; i < kShownLimit + 50; i++) 'sc_$i']);
+    wave.markShown([for (var i = 0; i < kShownLimit + 50; i++) 'sc:$i']);
 
     // Свежие остаются, самые старые вытеснены — карта не растёт вечно.
-    expect(wave.wasShown('sc_${kShownLimit + 49}'), isTrue);
+    expect(wave.wasShown('sc:${kShownLimit + 49}'), isTrue);
     var kept = 0;
     for (var i = 0; i < kShownLimit + 50; i++) {
-      if (wave.wasShown('sc_$i')) kept++;
+      if (wave.wasShown('sc:$i')) kept++;
     }
     expect(kept, kShownLimit);
   });
@@ -108,9 +112,9 @@ void main() {
         .saveSession(
           WaveSession(
             mode: WaveMode.track,
-            seeds: const ['sc_1'],
+            seeds: const ['sc:1'],
             startedAt: 5,
-            playedIds: ['sc_1', 'sc_2'],
+            playedIds: ['sc:1', 'sc:2'],
             artistBonus: {'artist': 3},
           ),
         );
@@ -119,8 +123,8 @@ void main() {
       store,
     ).read(waveStoreProvider.notifier).savedSession!;
     expect(restored.mode, WaveMode.track);
-    expect(restored.seeds, ['sc_1']);
-    expect(restored.playedIds, ['sc_1', 'sc_2']);
+    expect(restored.seeds, ['sc:1']);
+    expect(restored.playedIds, ['sc:1', 'sc:2']);
     expect(restored.artistBonus['artist'], 3);
   });
 
