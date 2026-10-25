@@ -19,7 +19,6 @@ import 'package:solar_icons/solar_icons.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
-import '../../../core/store/cover_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
@@ -32,6 +31,7 @@ import '../stats.dart';
 import 'achievements_sheet.dart';
 import 'level_sheet.dart';
 import 'profile_avatar.dart';
+import 'profile_banner.dart';
 import 'profile_entry_card.dart';
 import 'stats_sheet.dart';
 
@@ -130,6 +130,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 ),
                 const SizedBox(height: 14),
                 _AboutBox(profile: profile),
+                if (profile.hasAbout) const SizedBox(height: 12),
+                const _Since(),
                 const SizedBox(height: 16),
                 // Статистика и достижения живут в шторках, а не вкладками под
                 // карточкой: на странице от них остаются две кнопки, и профиль
@@ -268,7 +270,6 @@ class _Banner extends StatelessWidget {
     final t = context.bloom;
     final top = MediaQuery.paddingOf(context).top;
     final height = kProfileBannerStrip + top;
-    final image = coverImage(profile.banner);
 
     return SizedBox(
       // Аватар свисает с кромки ровно наполовину.
@@ -288,10 +289,7 @@ class _Banner extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (image == null)
-                    DecoratedBox(decoration: profile.bannerDecoration())
-                  else
-                    Image(image: image, fit: BoxFit.cover),
+                  ProfileBannerFill(profile: profile),
                   // Кнопки и часы системной строки тонут на светлом снимке —
                   // им нужна тень независимо от того, что за картинка.
                   DecoratedBox(
@@ -350,6 +348,34 @@ class _Banner extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// «С нами с …» — когда Bloom впервые запустили на этом устройстве, как
+/// строка с календарём у ПК.
+class _Since extends ConsumerWidget {
+  const _Since();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.bloom;
+    final since = ref.watch(profileSinceProvider);
+    final date = DateFormat.yMMMMd(
+      Localizations.localeOf(context).toString(),
+    ).format(since);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(SolarIconsOutline.calendar, size: 15, color: t.muted),
+        const SizedBox(width: 7),
+        Text(
+          context.l.profileSince(date),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: t.muted),
+        ),
+      ],
     );
   }
 }

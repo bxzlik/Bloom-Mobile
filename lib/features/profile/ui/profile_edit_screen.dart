@@ -1,7 +1,7 @@
 /// Редактирование профиля.
 ///
 /// Состав полей — десктопный (`ProfileEditModal`) минус пластинка: ник, о себе,
-/// статус, цвет и градиент обложки. Раскладка — по присланному макету, но
+/// статус, заливка обложки («Авто» / цвет / градиент). Раскладка — по присланному макету, но
 /// сверху не голая строка кнопок, а живой предпросмотр шапки профиля: полоса
 /// обложки, на ней кнопки, аватар свисает с её кромки — ровно так, как страница
 /// будет выглядеть после сохранения. Дальше блоки «капсовая подпись + тёмная
@@ -19,7 +19,6 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show LengthLimitingTextInputFormatter;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,6 +37,7 @@ import '../../../shared/ui/glass.dart';
 import '../profile_store.dart';
 import 'image_cropper.dart';
 import 'profile_avatar.dart';
+import 'profile_banner.dart';
 import 'profile_screen.dart' show kProfileAvatarSize, kProfileBannerStrip;
 
 /// Стрелки к [kBannerAngles] — те же, что в десктопной модалке.
@@ -68,7 +68,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   );
 
   bool get _dirty =>
-      !mapEquals(_draft.toJson(), _saved.toJson()) ||
+      _draft != _saved ||
       _name.text.trim() != _saved.name ||
       _bio.text.trim() != _saved.bio ||
       _status.text.trim() != _saved.status;
@@ -151,12 +151,12 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   // ── Выход ─────────────────────────────────────────────────────────────────
 
   void _save() {
-    final name = _name.text.trim();
+    // Пустой ник сохраняется пустым, как на ПК: показывается «Пользователь».
     ref
         .read(profileProvider.notifier)
         .save(
           _draft.copyWith(
-            name: name.isEmpty ? _saved.name : name,
+            name: _name.text.trim(),
             bio: _bio.text.trim(),
             status: _status.text.trim(),
           ),
@@ -228,14 +228,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                           label: context.l.profileNickname,
                           controller: _name,
                           hint: context.l.profileNicknameHint,
-                          limit: 32,
+                          limit: kNickMax,
                         ),
                         const SizedBox(height: 16),
                         _Field(
                           label: context.l.profileAbout,
                           controller: _bio,
                           hint: context.l.profileAboutHint,
-                          limit: 300,
+                          limit: kBioMax,
                           lines: 4,
                         ),
                         const SizedBox(height: 16),
@@ -243,7 +243,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                           label: context.l.profileStatus,
                           controller: _status,
                           hint: context.l.profileStatusHint,
-                          limit: 80,
+                          limit: kStatusMax,
                           italic: true,
                         ),
                       ],
@@ -329,7 +329,7 @@ class _BannerHeader extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    _bannerFill(draft),
+                    ProfileBannerFill(profile: draft),
                     // Та же тень под кнопки и часы, что на странице: на светлом
                     // снимке белые иконки без неё пропадают.
                     DecoratedBox(
@@ -481,7 +481,7 @@ class _ImageSheetState extends State<_ImageSheet> {
                     child: SizedBox(
                       width: 54,
                       height: 30,
-                      child: _bannerFill(_draft),
+                      child: ProfileBannerFill(profile: _draft),
                     ),
                   ),
                 ),
@@ -505,7 +505,7 @@ class _ImageSheetState extends State<_ImageSheet> {
                           borderRadius: BorderRadius.circular(t.radius * 0.7),
                           child: AspectRatio(
                             aspectRatio: 16 / 5,
-                            child: _bannerFill(_draft),
+                            child: ProfileBannerFill(profile: _draft),
                           ),
                         )
                       else
@@ -516,13 +516,15 @@ class _ImageSheetState extends State<_ImageSheet> {
                         const SizedBox(height: 14),
                         Row(
                           children: [
-                            _Swatch(
-                              color: _draft.bannerColor,
-                              onTap: () => _pickColor(
-                                _draft.bannerColor,
-                                (c) => _patch(_draft.copyWith(bannerColor: c)),
+                            if (_draft.bannerMode != BannerColorMode.auto)
+                              _Swatch(
+                                color: _draft.bannerColor,
+                                onTap: () => _pickColor(
+                                  _draft.bannerColor,
+                                  (c) =>
+                                      _patch(_draft.copyWith(bannerColor: c)),
+                                ),
                               ),
-                            ),
                             if (_draft.bannerMode ==
                                 BannerColorMode.gradient) ...[
                               const SizedBox(width: 10),
@@ -539,6 +541,7 @@ class _ImageSheetState extends State<_ImageSheet> {
                             _Segmented<BannerColorMode>(
                               value: _draft.bannerMode,
                               items: {
+                                BannerColorMode.auto: (l) => l.profileColorAuto,
                                 BannerColorMode.solid: (l) =>
                                     l.profileColorSolid,
                                 BannerColorMode.gradient: (l) =>
@@ -549,6 +552,15 @@ class _ImageSheetState extends State<_ImageSheet> {
                             ),
                           ],
                         ),
+                        if (_draft.bannerMode == BannerColorMode.auto) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            context.l.profileAutoHint,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodySmall?.copyWith(color: t.muted),
+                          ),
+                        ],
                         if (_draft.bannerMode == BannerColorMode.gradient) ...[
                           const SizedBox(height: 12),
                           _AngleRow(
@@ -588,14 +600,6 @@ class _ImageSheetState extends State<_ImageSheet> {
       ),
     );
   }
-}
-
-/// Заливка обложки: своя картинка либо цвет/градиент.
-Widget _bannerFill(UserProfile profile) {
-  final image = coverImage(profile.banner);
-  return image == null
-      ? DecoratedBox(decoration: profile.bannerDecoration())
-      : Image(image: image, fit: BoxFit.cover);
 }
 
 /// Вкладка шторки: одна миниатюра. Выбранная не обводится, а светлеет —

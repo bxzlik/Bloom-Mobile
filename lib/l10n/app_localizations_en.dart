@@ -1268,7 +1268,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileColorSolid => 'Color';
 
   @override
+  String get profileColorAuto => 'Auto';
+
+  @override
   String get profileColorGradient => 'Gradient';
+
+  @override
+  String get profileAutoHint => 'The colour of your most played track\'s cover';
+
+  @override
+  String profileSince(String date) {
+    return 'With us since $date';
+  }
 
   @override
   String get profileRemoveImage => 'Remove image';

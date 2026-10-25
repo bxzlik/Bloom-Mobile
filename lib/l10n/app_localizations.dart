@@ -2186,11 +2186,29 @@ abstract class AppLocalizations {
   /// **'Color'**
   String get profileColorSolid;
 
+  /// No description provided for @profileColorAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get profileColorAuto;
+
   /// No description provided for @profileColorGradient.
   ///
   /// In en, this message translates to:
   /// **'Gradient'**
   String get profileColorGradient;
+
+  /// No description provided for @profileAutoHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The colour of your most played track\'s cover'**
+  String get profileAutoHint;
+
+  /// No description provided for @profileSince.
+  ///
+  /// In en, this message translates to:
+  /// **'With us since {date}'**
+  String profileSince(String date);
 
   /// No description provided for @profileRemoveImage.
   ///

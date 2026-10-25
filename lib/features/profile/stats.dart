@@ -74,6 +74,7 @@ class ProfileStats {
     required this.longestStreak,
     required this.appSec,
     required this.topTracks,
+    this.topCover,
     required this.topArtists,
     required this.bySource,
     required this.activity,
@@ -109,6 +110,10 @@ class ProfileStats {
   final int appSec;
 
   final List<TrackPlays> topTracks;
+
+  /// Обложка самого слушаемого трека (из тех, у кого она есть).
+  final String? topCover;
+
   final List<ArtistPlays> topArtists;
   final List<SourcePlays> bySource;
 
@@ -131,6 +136,8 @@ class ProfileStats {
         >{};
     final sources = <MusicSource, ({int plays, int seconds})>{};
     final rows = <TrackPlays>[];
+    String? topCover;
+    var topPlays = 0, topTs = 0;
 
     var firstTs = DateTime.now().millisecondsSinceEpoch;
     var lastTs = firstTs;
@@ -158,6 +165,16 @@ class ProfileStats {
       // Дальше нужен сам трек: без него нечего показать в топах.
       if (track == null) continue;
       rows.add(TrackPlays(track, plays));
+      // Обложка для «Авто» у баннера профиля: больше всех прослушиваний, при
+      // равенстве — слушанный позже (тот же запрос, что на ПК).
+      final cover = track.cover;
+      if (cover != null &&
+          cover.isNotEmpty &&
+          (plays > topPlays || plays == topPlays && entry.lastTs > topTs)) {
+        topCover = cover;
+        topPlays = plays;
+        topTs = entry.lastTs;
+      }
 
       // Строка артиста бывает мультиартистной («reidenshi, Øneheart») —
       // считаем каждого отдельно, иначе в топе стоит склеенное имя, по
@@ -233,6 +250,7 @@ class ProfileStats {
       longestStreak: longestRun(perDay.keys),
       appSec: days.appMs ~/ 1000,
       topTracks: rows.take(10).toList(),
+      topCover: topCover,
       topArtists: topArtists.take(10).toList(),
       bySource: bySource,
       activity: perDay,

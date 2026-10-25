@@ -168,6 +168,7 @@ Future<void> hardReset(WidgetRef ref) async {
   // старые отметки висели бы в памяти и первая же сверка записала бы их назад.
   ref.invalidate(unlockedAchievementsProvider);
   ref.invalidate(levelBankedProvider);
+  ref.invalidate(profileSinceProvider);
   ref.invalidate(profileProvider);
   ref.invalidate(recentSearchesProvider);
   // Открытые карточки — отдельный стор от запросов: без этой строки ключ

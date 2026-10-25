@@ -1292,7 +1292,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get profileColorSolid => 'Цвет';
 
   @override
+  String get profileColorAuto => 'Авто';
+
+  @override
   String get profileColorGradient => 'Градиент';
+
+  @override
+  String get profileAutoHint => 'Цвет обложки самого слушаемого трека';
+
+  @override
+  String profileSince(String date) {
+    return 'С нами с $date';
+  }
 
   @override
   String get profileRemoveImage => 'Убрать картинку';
