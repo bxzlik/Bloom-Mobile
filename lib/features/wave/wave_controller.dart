@@ -138,7 +138,7 @@ class WaveController extends Notifier<WaveRunState> {
 
   WaveLibrary _view({Iterable<Track> extras = const []}) => WaveLibrary(
     lib: ref.read(libraryProvider),
-    disliked: ref.read(waveStoreProvider).dislikes.keys.toSet(),
+    disliked: ref.read(waveStoreProvider).dislikedIds,
     stats: ref.read(playStatsProvider),
     recent: [for (final row in ref.read(historyRowsProvider)) row.id],
     extras: extras,

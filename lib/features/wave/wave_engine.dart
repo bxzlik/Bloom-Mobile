@@ -82,7 +82,7 @@ class WaveEngine {
       disliked: view.disliked,
       inLibrary: view.lib.inLib.keys.toSet(),
       favIds: view.lib.favs.keys.toSet(),
-      wasShown: store.wasShown,
+      wasShown: store.shownIds().contains,
       recentlyPlayed: view.recentlyPlayed,
       currentId: currentId,
       dropRecentDays: _kDropRecentDays,

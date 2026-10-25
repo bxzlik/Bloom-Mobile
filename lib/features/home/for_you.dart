@@ -85,7 +85,7 @@ RecsInput recsInputOf(Ref ref) => RecsInput(
   registry: ref.read(registryProvider),
   stats: ref.read(playStatsProvider),
   lib: ref.read(libraryProvider),
-  disliked: ref.read(waveStoreProvider).dislikes.keys.toSet(),
+  disliked: ref.read(waveStoreProvider).dislikedIds,
 );
 
 /// Есть ли у площадки трека похожие. YouTube Music related не отдаёт, у своих

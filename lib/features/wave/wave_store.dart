@@ -1,16 +1,12 @@
 /// Постоянная память волны: дизлайки, пометки «уже показывали», курсоры
 /// станций, ротация сидов и выбранная площадка.
 ///
-/// На десктопе это четыре отдельных ключа localStorage (`bloom_wave_shown`,
-/// `bloom_wave_station_offsets`, `bloom_wave_seed_rotation`,
-/// `bloom_wave_source`) плюс стор дизлайков; здесь всё лежит одной картой
-/// `wave` в bloom.json — файл общий, и плодить в нём ключи под каждый счётчик
-/// незачем.
+/// Дизлайки и «уже показывали» — таблицы базы `dislikes` и `wave_shown`, как
+/// на ПК (`Taste::setDisliked`, `Wave`): дизлайк знает своё время (список —
+/// новые сверху), снимок трека держит `tracks`. Остальное пока лежит картой
+/// `wave` в bloom.json.
 ///
-/// Дизлайк у нас ОДИН на все площадки, без деления на «библиотечный флаг» и
-/// «гостевой стор», как на ПК: флага `disliked` у [Track] нет вовсе (у
-/// смешанных источников его некуда положить — ровно та же причина, по которой
-/// лайки живут отдельным набором id, см. `library_store`).
+/// Дизлайк ОДИН на все площадки: флага `disliked` у [Track] нет вовсе.
 ///
 /// Сеанс волны сюда же и сохраняется: очередь за нас уже сохраняет снимок
 /// «Продолжить» (`resume_store` держит сами треки), а здесь остаётся память
@@ -19,8 +15,11 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/db/db.dart';
+import '../../core/db/track_store.dart';
 import '../../core/entities/entities.dart';
 import '../../core/store/json_store.dart';
+import '../../core/store/library_store.dart' show libraryProvider;
 import '../../providers/yandex/ym_auth.dart';
 import 'wave_types.dart';
 
@@ -30,33 +29,38 @@ const String kWaveKey = 'wave';
 /// Сколько дней трек, показанный волной, не возвращается в выдачу.
 const int kShownTtlDays = 14;
 
-/// Потолок пометок «показано». Дальше вытесняем самые старые: карта растёт по
-/// двадцать записей на каждую пачку и без предела съела бы файл.
-const int kShownLimit = 1000;
-
 /// Насколько шагает курсор станции за одну пачку — ровно на её размер.
 const int kStationStep = 20;
+
+const int _kDay = 24 * 3600 * 1000;
 
 class WaveState {
   const WaveState({
     this.source = WaveEngineKind.soundcloud,
-    this.dislikes = const {},
+    this.dislikes = const [],
+    this.dislikedIds = const {},
   });
 
   /// Чем набирать «Мою волну»: движком по SoundCloud или станцией Яндекса.
   final WaveEngineKind source;
 
-  /// Дизлайкнутые треки: id → снимок трека (список дизлайков надо чем-то
-  /// показывать и после перезапуска).
-  final Map<String, Track> dislikes;
+  /// Дизлайкнутые треки, новые сверху.
+  final List<Track> dislikes;
 
-  bool isDisliked(String trackId) => dislikes.containsKey(trackId);
+  /// Их id — для проверки «дизлайкнут ли» без перебора списка.
+  final Set<String> dislikedIds;
 
-  WaveState copyWith({WaveEngineKind? source, Map<String, Track>? dislikes}) =>
-      WaveState(
-        source: source ?? this.source,
-        dislikes: dislikes ?? this.dislikes,
-      );
+  bool isDisliked(String trackId) => dislikedIds.contains(trackId);
+
+  WaveState copyWith({
+    WaveEngineKind? source,
+    List<Track>? dislikes,
+    Set<String>? dislikedIds,
+  }) => WaveState(
+    source: source ?? this.source,
+    dislikes: dislikes ?? this.dislikes,
+    dislikedIds: dislikedIds ?? this.dislikedIds,
+  );
 }
 
 final waveStoreProvider = NotifierProvider<WaveStore, WaveState>(WaveStore.new);
@@ -76,14 +80,12 @@ final effectiveWaveSourceProvider = Provider<WaveEngineKind>((ref) {
 
 class WaveStore extends Notifier<WaveState> {
   JsonStore get _store => ref.read(jsonStoreProvider);
+  BloomDb get _db => ref.read(dbProvider);
 
   /// SC-id сида → смещение в его станции. Переживает конец сеанса: иначе
   /// каждая новая волна начинала бы с нулевого смещения и предлагала те же
   /// двадцать треков.
   final Map<String, int> _cursors = {};
-
-  /// id трека → когда его показала волна.
-  final Map<String, int> _shown = {};
 
   /// Счётчик «карусели» сидов: каждая новая волна сдвигает выбор, чтобы не
   /// упираться вечно в одни и те же два трека из топа.
@@ -104,24 +106,38 @@ class WaveStore extends Notifier<WaveState> {
         if (k is String && v is num) _cursors[k] = v.toInt();
       });
     }
-    final shown = raw['shown'];
-    if (shown is Map) {
-      shown.forEach((k, v) {
-        if (k is String && v is num) _shown[k] = v.toInt();
-      });
-    }
     _savedSession = WaveSession.fromJson(raw['session']);
 
-    final dislikes = <String, Track>{};
-    for (final item in (raw['dislikes'] as List?) ?? const []) {
-      final t = Track.fromJson(item);
-      if (t != null) dislikes[t.id] = t;
-    }
+    // Показанное раньше двух недель больше не держит трек — как `Wave` ПК.
+    _db.exec('DELETE FROM wave_shown WHERE at < ?', [
+      BloomDb.now() - kShownTtlDays * _kDay,
+    ]);
+    // Смена площадки трека ([LibraryController.replaceTrack]) переносит и
+    // дизлайк — список перечитываем вслед за библиотекой.
+    ref.listen(libraryProvider, (_, _) => _reloadDislikes());
+
+    final dislikes = _readDislikes();
     return WaveState(
       source: raw['source'] == WaveEngineKind.yandex.name
           ? WaveEngineKind.yandex
           : WaveEngineKind.soundcloud,
       dislikes: dislikes,
+      dislikedIds: {for (final t in dislikes) t.id},
+    );
+  }
+
+  List<Track> _readDislikes() => TrackStore(_db).get([
+    for (final r in _db.select(
+      'SELECT track_id FROM dislikes ORDER BY at DESC',
+    ))
+      r['track_id'] as String,
+  ]);
+
+  void _reloadDislikes() {
+    final list = _readDislikes();
+    state = state.copyWith(
+      dislikes: list,
+      dislikedIds: {for (final t in list) t.id},
     );
   }
 
@@ -130,8 +146,6 @@ class WaveStore extends Notifier<WaveState> {
       'source': state.source.name,
       'rotation': _rotation,
       'cursors': _cursors,
-      'shown': _shown,
-      'dislikes': [for (final t in state.dislikes.values) t.toJson()],
       if (_savedSession != null) 'session': _savedSession!.toJson(),
     });
   }
@@ -149,66 +163,60 @@ class WaveStore extends Notifier<WaveState> {
   /// Поставить/снять дизлайк. Возвращает новое состояние — вызывающему нужно
   /// это для тоста.
   bool toggleDislike(Track track) {
-    final next = Map<String, Track>.from(state.dislikes);
-    final on = !next.containsKey(track.id);
-    if (on) {
-      next[track.id] = track;
-    } else {
-      next.remove(track.id);
-    }
-    state = state.copyWith(dislikes: next);
-    _save();
+    final on = !state.isDisliked(track.id);
+    _db.tx(() {
+      if (on) {
+        // Снимок — чтобы список дизлайков было чем показать и потом.
+        TrackStore(_db).put([track]);
+        _db.exec(
+          'INSERT OR REPLACE INTO dislikes (track_id, at) VALUES (?, ?)',
+          [track.id, BloomDb.now()],
+        );
+      } else {
+        _db.exec('DELETE FROM dislikes WHERE track_id = ?', [track.id]);
+      }
+    });
+    _reloadDislikes();
     return on;
   }
 
   void undislike(String trackId) {
-    if (!state.dislikes.containsKey(trackId)) return;
-    state = state.copyWith(
-      dislikes: Map<String, Track>.from(state.dislikes)..remove(trackId),
-    );
-    _save();
+    if (!state.isDisliked(trackId)) return;
+    _db.exec('DELETE FROM dislikes WHERE track_id = ?', [trackId]);
+    _reloadDislikes();
   }
 
   void clearDislikes() {
     if (state.dislikes.isEmpty) return;
-    state = state.copyWith(dislikes: const {});
-    _save();
+    _db.exec('DELETE FROM dislikes');
+    _reloadDislikes();
   }
 
   // ── «Уже показывали» ────────────────────────────────────────────────────
 
-  /// Отметить, что трек побывал в выдаче волны. Пачками, а не по одному:
-  /// запись файла отложенная, но перебирать карту двадцать раз подряд незачем.
+  /// Отметить, что трек побывал в выдаче волны — пачкой.
   void markShown(Iterable<String> trackIds) {
-    final now = DateTime.now().millisecondsSinceEpoch;
-    var touched = false;
-    for (final id in trackIds) {
-      _shown[id] = now;
-      touched = true;
-    }
-    if (!touched) return;
-    _pruneShown(now);
-    _save();
+    final ids = trackIds.toList();
+    if (ids.isEmpty) return;
+    final now = BloomDb.now();
+    _db.tx(() {
+      for (final id in ids) {
+        _db.exec(
+          'INSERT OR REPLACE INTO wave_shown (track_id, at) VALUES (?, ?)',
+          [id, now],
+        );
+      }
+    });
   }
 
-  bool wasShown(String trackId, {int withinDays = kShownTtlDays}) {
-    final at = _shown[trackId];
-    if (at == null) return false;
-    return DateTime.now().millisecondsSinceEpoch - at <
-        withinDays * 24 * 3600 * 1000;
-  }
-
-  void _pruneShown(int now) {
-    final cutoff = now - kShownTtlDays * 24 * 3600 * 1000;
-    _shown.removeWhere((_, at) => at < cutoff);
-    if (_shown.length <= kShownLimit) return;
-    // Держим самые свежие: старые всё равно вот-вот истекут по сроку.
-    final byAge = _shown.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    _shown
-      ..clear()
-      ..addEntries(byAge.take(kShownLimit));
-  }
+  /// Что волна показывала за последние [withinDays] дней — одним запросом на
+  /// пачку, а не по запросу на каждого кандидата.
+  Set<String> shownIds({int withinDays = kShownTtlDays}) => {
+    for (final r in _db.select('SELECT track_id FROM wave_shown WHERE at > ?', [
+      BloomDb.now() - withinDays * _kDay,
+    ]))
+      r['track_id'] as String,
+  };
 
   // ── Курсоры станций ─────────────────────────────────────────────────────
 

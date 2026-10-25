@@ -28,7 +28,8 @@ class _DislikesSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
-    final tracks = ref.watch(waveStoreProvider).dislikes.values.toList();
+    // Новые сверху, как на ПК.
+    final tracks = ref.watch(waveStoreProvider).dislikes;
 
     return ConstrainedBox(
       constraints: BoxConstraints(

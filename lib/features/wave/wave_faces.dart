@@ -88,7 +88,7 @@ void resetWaveFaces() => _cache.clear();
 /// Снимок библиотеки для витрины: дизлайкнутое в кольцо не идёт.
 WaveLibrary _view(Ref ref) => WaveLibrary(
   lib: ref.read(libraryProvider),
-  disliked: ref.read(waveStoreProvider).dislikes.keys.toSet(),
+  disliked: ref.read(waveStoreProvider).dislikedIds,
   stats: ref.read(playStatsProvider),
   recent: [for (final row in ref.read(historyRowsProvider)) row.id],
 );

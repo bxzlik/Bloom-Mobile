@@ -4,6 +4,7 @@ library;
 
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/store/json_store.dart';
+import 'package:bloom/core/store/library_store.dart';
 import 'package:bloom/features/wave/wave_store.dart';
 import 'package:bloom/features/wave/wave_types.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -41,7 +42,39 @@ void main() {
     final state = _container(store).read(waveStoreProvider);
     expect(state.isDisliked('sc:1'), isTrue);
     // Список дизлайков надо чем-то показывать: одного id мало.
-    expect(state.dislikes['sc:1']!.name, 'Song');
+    expect(state.dislikes.single.name, 'Song');
+  });
+
+  test('список дизлайков — новые сверху', () async {
+    final c = _container(JsonStore.memory());
+    final wave = c.read(waveStoreProvider.notifier);
+    wave.toggleDislike(_track('sc:1'));
+    await Future<void>.delayed(const Duration(milliseconds: 2));
+    wave.toggleDislike(_track('sc:2'));
+    expect(c.read(waveStoreProvider).dislikes.map((t) => t.id), [
+      'sc:2',
+      'sc:1',
+    ]);
+  });
+
+  test('смена площадки трека уносит дизлайк с собой', () {
+    final c = _container(JsonStore.memory());
+    c.read(waveStoreProvider.notifier).toggleDislike(_track('sc:1'));
+    c.read(libraryProvider.notifier).replaceTrack('sc:1', _track('ytm:a'));
+
+    final state = c.read(waveStoreProvider);
+    expect(state.isDisliked('sc:1'), isFalse);
+    expect(state.isDisliked('ytm:a'), isTrue);
+  });
+
+  test('«очистить» снимает все дизлайки', () {
+    final c = _container(JsonStore.memory());
+    final wave = c.read(waveStoreProvider.notifier);
+    wave
+      ..toggleDislike(_track('sc:1'))
+      ..toggleDislike(_track('sc:2'))
+      ..clearDislikes();
+    expect(c.read(waveStoreProvider).dislikes, isEmpty);
   });
 
   test('повторный дизлайк снимает метку', () {
@@ -58,26 +91,23 @@ void main() {
     final c = _container(JsonStore.memory());
     final wave = c.read(waveStoreProvider.notifier);
 
-    expect(wave.wasShown('sc:1'), isFalse);
+    expect(wave.shownIds(), isEmpty);
     wave.markShown(['sc:1', 'sc:2']);
-    expect(wave.wasShown('sc:1'), isTrue);
-    expect(wave.wasShown('sc:3'), isFalse);
-    // Срок задаётся вызывающим: за сутки трек «показанным» ещё не считается.
-    expect(wave.wasShown('sc:1', withinDays: 0), isFalse);
+    expect(wave.shownIds(), {'sc:1', 'sc:2'});
+    // Срок задаётся вызывающим: за нулевой срок «показанным» не считается.
+    expect(wave.shownIds(withinDays: 0), isEmpty);
   });
 
-  test('пометок не копится больше потолка', () {
-    final c = _container(JsonStore.memory());
-    final wave = c.read(waveStoreProvider.notifier);
-    wave.markShown([for (var i = 0; i < kShownLimit + 50; i++) 'sc:$i']);
-
-    // Свежие остаются, самые старые вытеснены — карта не растёт вечно.
-    expect(wave.wasShown('sc:${kShownLimit + 49}'), isTrue);
-    var kept = 0;
-    for (var i = 0; i < kShownLimit + 50; i++) {
-      if (wave.wasShown('sc:$i')) kept++;
-    }
-    expect(kept, kShownLimit);
+  test('показанное раньше двух недель забывается при запуске', () {
+    final store = JsonStore.memory();
+    final db = testDb(store);
+    final old = BloomDb.now() - (kShownTtlDays + 1) * 24 * 3600 * 1000;
+    db.exec('INSERT INTO wave_shown (track_id, at) VALUES (?, ?)', [
+      'sc:1',
+      old,
+    ]);
+    _container(store).read(waveStoreProvider);
+    expect(db.value('SELECT count(*) FROM wave_shown'), 0);
   });
 
   test('курсор станции двигается пачками и переживает перезапуск', () {
