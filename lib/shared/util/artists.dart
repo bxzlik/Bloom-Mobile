@@ -1,6 +1,25 @@
 /// Разбор строки артистов — как `Artists::split` ПК.
 library;
 
+import '../../core/entities/entities.dart';
+
+/// Первый артист трека и его страница, если она известна, — первая ссылка
+/// `Artists::linksOf` ПК. Строка SoundCloud — один аккаунт, что бы ни было в
+/// его имени («Simon & Garfunkel»); у остальных — первое имя строки, а id —
+/// только когда имя одно.
+({String name, String? id}) firstArtistLink(Track t) {
+  if (t.source == MusicSource.soundcloud &&
+      t.artistId != null &&
+      parseArtists(t.artist).isNotEmpty) {
+    return (name: t.artist.trim(), id: t.artistId);
+  }
+  final names = parseArtists(t.artist);
+  return (
+    name: names.isEmpty ? '' : names.first,
+    id: names.length == 1 ? t.artistId : null,
+  );
+}
+
 /// Разделители: `,` `&` `×` и связки feat./ft./vs. Не «and», «x», «и»: они
 /// часть слишком многих имён («Florence and the Machine», «Mr. X»).
 ///

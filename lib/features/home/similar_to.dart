@@ -1,14 +1,13 @@
 /// Витрина «Похожие на X» на главной: один сид из топа прослушиваний и то, что
-/// на него похоже, — треки и артисты вперемешку. Порт десктопного
-/// `features/library/lib/similarTo.ts` (3.1).
+/// на него похоже, — треки и артисты вперемешку; `Home::buildSimilar` ПК.
 ///
 /// Сид живёт сутки, как «Для вас», и чередует тип: чётный день — артист,
 /// нечётный — трек. Внутри типа сиды идут по кругу по верху топа, так что
 /// витрина успевает показать несколько разных «якорей».
 ///
 /// Откуда что берётся:
-///   трек-сид   → похожие треки: похожие на него самого;
-///                похожие артисты: артист этого трека → его страница.
+///   трек-сид   → похожие треки: похожие на него самого, не его артистов;
+///                похожие артисты: первый артист трека → его страница.
 ///   артист-сид → похожие артисты: его страница;
 ///                похожие треки: похожие на его самые слушаемые треки, но без
 ///                его собственных (иначе витрина стала бы его дискографией).
@@ -22,7 +21,7 @@ import '../../core/entities/entities.dart';
 import '../../core/providers/artist_lookup.dart';
 import '../../core/providers/music_provider.dart';
 import '../../shared/util/artists.dart';
-import '../../shared/util/taste.dart' show artistKey;
+import '../../shared/util/taste.dart';
 import 'daily_showcase.dart';
 import 'for_you.dart';
 
@@ -34,8 +33,15 @@ const int _seedTries = 2;
 const int _tracksMax = 14;
 const int _artistsMax = 6;
 
-/// Меньше карточек — витрина выглядит обрывком, пробуем другой сид или тип.
-const int _minItems = 4;
+/// Меньше ТРЕКОВ — «похожие на» превращаются в список имён: другой сид или тип.
+const int _minTracks = 4;
+
+/// Столько артистов с картинкой хватает, чтобы безликих не брать.
+const int _minFaced = 4;
+
+/// Карточки «Для вас», видные без прокрутки: от них «Похожие на» держатся
+/// всегда, от остальных — пока хватает своих.
+const int _forYouNear = 6;
 
 sealed class SimilarSeed {
   const SimilarSeed();
@@ -163,40 +169,28 @@ bool _isRealArtist(String name) {
   return n.isNotEmpty && n != '—' && n != 'unknown artist';
 }
 
-/// Имя, артист и обложка трека: библиотека, иначе снимок из базы.
-({String name, String artist, String? cover})? _metaOf(
-  RecsInput input,
-  String id,
-) {
-  final t = input.lib.tracks[id] ?? input.stats.tracks[id];
-  if (t == null || t.name.isEmpty) return null;
-  return (name: t.name, artist: t.artist, cover: t.cover);
-}
-
 MusicProvider? _providerOf(RecsInput input, MusicSource source) {
   final p = input.registry.byId(source.id);
   return p != null && p.isEnabled ? p : null;
 }
 
-/// Артист на площадке трека [viaTrackId]. Если трек в библиотеке и артист у
-/// него один, берём точный id из самого трека: поиск по имени на SoundCloud
-/// легко промахивается мимо нужного аккаунта.
+/// Артист [name] на площадке трека [via] — `Artists::find` ПК: известна его
+/// страница по треку — она, иначе поиск по имени.
 Future<Artist?> _resolveArtist(
   RecsInput input,
   String name,
-  String viaTrackId,
+  Track via,
 ) async {
-  final source = MusicSource.fromId(viaTrackId);
-  final t = input.lib.tracks[viaTrackId];
-  if (t != null && t.artistId != null && parseArtists(t.artist).length == 1) {
+  final link = firstArtistLink(via);
+  if (link.name == name && link.id != null) {
     return Artist(
-      id: t.artistId!,
+      id: link.id!,
       name: name,
-      avatar: t.artistAvatar,
-      source: source,
+      avatar: via.artistAvatar,
+      source: via.source,
     );
   }
-  final provider = _providerOf(input, source);
+  final provider = _providerOf(input, via.source);
   if (provider == null) return null;
   try {
     return await findArtistCached(provider, name);
@@ -215,49 +209,53 @@ Future<ArtistPageData?> _artistPage(RecsInput input, Artist artist) async {
   }
 }
 
-/// Отбор треков: только незнакомое (не сохранённое, не слышанное, не из
-/// соседней «Для вас»), без реаплоадов и не больше двух от одного артиста.
-/// [excludeArtist] — ключ артиста-сида: его треки в «похожих на него» лишние.
+/// Отбор треков — `Home::pickTracks` ПК: только новое (не сохранённое, не
+/// слышанное, не из соседней «Для вас»), без копий, не больше двух на артиста
+/// (по каждому имени), без своих артистов сида ([own]).
+///
+/// «Для вас» собрана из того же топа и лучшее уже забрала, поэтому строгий
+/// проход часто выходит коротким: тогда держимся только от её первых карточек —
+/// повтор в дальнем её конце лучше ряда из одних имён.
 List<Track> _pickTracks(
   RecsInput input,
   List<Track> batch,
   Set<String> skip,
-  String? excludeArtist,
+  Set<String> own,
   List<Track> forYou,
 ) {
-  final known = {...input.known, for (final t in forYou) t.id, ...skip};
-  // Перезаливы сверяем и с соседней «Для вас»: под другим id та же песня
-  // стояла бы в двух витринах одна под другой.
-  final dup = input.knownDups();
-  for (final t in forYou) {
-    dup.add(t);
-  }
-  final out = <Track>[];
-  final perArtist = <String, int>{};
-  for (final t in batch) {
-    if (out.length >= _tracksMax) break;
-    if (known.contains(t.id) || input.disliked.contains(t.id)) continue;
-    if (excludeArtist != null &&
-        parseArtists(
-          t.artist,
-        ).any((n) => artistKey(n) == excludeArtist)) {
-      continue;
+  List<Track> select(List<Track> avoid) {
+    final known = {...input.known, for (final t in avoid) t.id, ...skip};
+    final dup = input.knownDups();
+    for (final t in avoid) {
+      dup.add(t);
     }
-    final artist = artistKey(t.artist);
-    final n = perArtist[artist] ?? 0;
-    if (n >= kRecsPerArtistMax) continue;
-    if (!dup.accept(t)) continue;
-    perArtist[artist] = n + 1;
-    known.add(t.id);
-    out.add(t);
+    final cap = ArtistCap(kRecsPerArtistMax);
+    final out = <Track>[];
+    for (final t in batch) {
+      if (out.length >= _tracksMax) break;
+      if (known.contains(t.id) || input.disliked.contains(t.id)) continue;
+      if (artistKeys(t).any(own.contains) || !cap.fits(t)) continue;
+      if (!dup.accept(t)) continue;
+      known.add(t.id);
+      cap.take(t);
+      out.add(t);
+    }
+    return out;
   }
-  return out;
+
+  final strict = select(forYou);
+  if (strict.length >= _minTracks || forYou.length <= _forYouNear) {
+    return strict;
+  }
+  final soft = select(forYou.take(_forYouNear).toList());
+  return soft.length > strict.length ? soft : strict;
 }
 
-/// Похожие артисты без сида и повторов. Серый круг-заглушка в ряду выглядит
-/// поломкой, поэтому безликих берём, только когда иначе артистов почти нет.
-List<Artist> _pickArtists(List<Artist> list, String excludeKey) {
-  final seen = <String>{excludeKey};
+/// Похожие артисты без своих сида ([own]) и повторов. Серый круг-заглушка в
+/// ряду выглядит поломкой, поэтому безликих берём, только когда иначе
+/// артистов почти нет.
+List<Artist> _pickArtists(List<Artist> list, Set<String> own) {
+  final seen = {...own};
   final uniq = [
     for (final a in list)
       if (a.name.isNotEmpty && seen.add(artistKey(a.name))) a,
@@ -266,22 +264,22 @@ List<Artist> _pickArtists(List<Artist> list, String excludeKey) {
     for (final a in uniq)
       if (a.avatar != null) a,
   ];
-  return (withAvatar.length >= _minItems ? withAvatar : uniq)
+  return (withAvatar.length >= _minFaced ? withAvatar : uniq)
       .take(_artistsMax)
       .toList();
 }
 
-/// Смешать: артист на каждой третьей позиции (Т А Т Т А Т Т …) — ряд читается
-/// как смесь, а не как два блока подряд. Кончился один вид — хвост добивается
-/// другим.
+/// Смешать: артист на каждой третьей позиции (Т А Т Т А Т Т …), и артистов не
+/// больше половины треков — ряд лиц с треком-другим читается как список имён.
 List<SimilarItem> mixSimilar(List<Track> tracks, List<Artist> artists) {
+  final few = artists.take((tracks.length + 1) ~/ 2).toList();
   final out = <SimilarItem>[];
   var ti = 0;
   var ai = 0;
-  while (ti < tracks.length || ai < artists.length) {
+  while (ti < tracks.length || ai < few.length) {
     final wantArtist = out.length % 3 == 1;
-    if ((wantArtist && ai < artists.length) || ti >= tracks.length) {
-      out.add(SimilarArtistItem(artists[ai++]));
+    if ((wantArtist && ai < few.length) || ti >= tracks.length) {
+      out.add(SimilarArtistItem(few[ai++]));
     } else {
       out.add(SimilarTrackItem(tracks[ti++]));
     }
@@ -289,68 +287,86 @@ List<SimilarItem> mixSimilar(List<Track> tracks, List<Artist> artists) {
   return out;
 }
 
-/// Трек-сид: самые слушаемые треки, по кругу.
+/// Похожие на [seedId], которых пропускает [_pickTracks]; жидкий ответ
+/// добирается похожими на трек, который назовёт [more] (`null` — как есть).
+Future<List<Track>> _likeTracks(
+  RecsInput input,
+  String seedId,
+  Track? Function(List<Track> first) more,
+  Set<String> skip,
+  Set<String> own,
+  List<Track> forYou,
+) async {
+  final b0 = await similarTracksFor(input.registry, seedId);
+  final tracks = _pickTracks(input, b0, skip, own, forYou);
+  final next = tracks.length < _tracksMax ? more(b0) : null;
+  if (next == null) return tracks;
+  final b1 = await similarTracksFor(input.registry, next.id);
+  return _pickTracks(input, [...b0, ...b1], skip, own, forYou);
+}
+
+/// Трек-сид: самые слушаемые треки, по кругу. Похожее на него от других и
+/// артисты, похожие на его первого. Свои артисты — ни там, ни там: у
+/// SoundCloud аккаунт (первая ссылка) и имена в строке бывают разными, поэтому
+/// считаются оба.
 Future<SimilarTo?> _fromTrack(
   RecsInput input,
   int turn,
   List<Track> forYou,
 ) async {
-  final pool = topWithSimilar(
-    input,
-    limit: _seedPool * 4,
-    minPlays: 2,
-  ).take(_seedPool).toList();
+  final pool = recsTopPlayed(input, limit: _seedPool, minPlays: 2);
   for (var k = 0; k < math.min(_seedTries, pool.length); k++) {
     final id = pool[(turn + k) % pool.length].id;
-    final meta = _metaOf(input, id);
-    if (meta == null) continue;
+    final seed = input.trackOf(id);
+    if (seed == null || seed.name.isEmpty) continue;
 
-    final tracks = _pickTracks(
-      input,
-      await similarTracksFor(input.registry, id),
-      {id},
-      null,
-      forYou,
-    );
-    final names = parseArtists(meta.artist);
-    final first = names.isEmpty ? '' : names.first;
+    final first = firstArtistLink(seed).name;
+    final own = {...artistKeys(seed), if (first.isNotEmpty) artistKey(first)};
+    // Добор — от лучшего в ответе трека чужого артиста.
+    Track? more(List<Track> b0) =>
+        b0.where((t) => !artistKeys(t).any(own.contains)).firstOrNull;
+    final tracks = await _likeTracks(input, id, more, {id}, own, forYou);
+    // Показывать всё равно нечего — за артистами не ходим.
+    if (tracks.length < _minTracks) continue;
+
     final artist = _isRealArtist(first)
-        ? await _resolveArtist(input, first, id)
+        ? await _resolveArtist(input, first, seed)
         : null;
     final artists = artist == null
         ? const <Artist>[]
         : _pickArtists(
             (await _artistPage(input, artist))?.similarArtists ?? const [],
-            artistKey(first),
+            own,
           );
-    final items = mixSimilar(tracks, artists);
-    if (items.length < _minItems) continue;
-
-    final track = input.lib.tracks[id] ?? input.stats.tracks[id];
     return SimilarTo(
       SimilarTrackSeed(
         id: id,
-        name: meta.name,
-        artist: meta.artist,
-        cover: meta.cover ?? track?.cover,
-        track: track,
+        name: seed.name,
+        artist: seed.artist,
+        cover: seed.cover,
+        track: seed,
       ),
-      items,
+      mixSimilar(tracks, artists),
     );
   }
   return null;
 }
 
 class _ArtistCand {
-  _ArtistCand(this.name, this.key, this.cover);
+  _ArtistCand(this.name, this.key);
 
   final String name;
   final String key;
-  final String? cover;
   int plays = 0;
 
   /// Его треки из топа, самый слушаемый первым.
-  final List<String> ids = [];
+  final List<Track> theirs = [];
+
+  /// Свой трек — где он один (аватар трека его), иначе самый слушаемый:
+  /// `Taste::Artist::own` ПК.
+  Track get own =>
+      theirs.where((t) => parseArtists(t.artist).length == 1).firstOrNull ??
+      theirs.first;
 }
 
 /// Топ артистов — свёртка топа треков, как в статистике профиля: совместный
@@ -358,22 +374,24 @@ class _ArtistCand {
 /// площадка никого не найдёт.
 List<_ArtistCand> _topArtists(RecsInput input) {
   final map = <String, _ArtistCand>{};
-  for (final r in topWithSimilar(input, limit: 1000)) {
-    final m = _metaOf(input, r.id);
-    if (m == null) continue;
-    for (final name in parseArtists(m.artist)) {
+  for (final r in recsTopPlayed(input, limit: 1000)) {
+    final t = input.trackOf(r.id);
+    if (t == null) continue;
+    for (final name in parseArtists(t.artist)) {
       if (!_isRealArtist(name)) continue;
       final key = artistKey(name);
-      final cand = map.putIfAbsent(key, () => _ArtistCand(name, key, m.cover));
+      final cand = map.putIfAbsent(key, () => _ArtistCand(name, key));
       cand.plays += r.plays;
-      cand.ids.add(r.id);
+      cand.theirs.add(t);
     }
   }
   final list = map.values.toList()..sort((a, b) => b.plays.compareTo(a.plays));
   return list.take(_seedPool).toList();
 }
 
-/// Артист-сид: самые слушаемые артисты, по кругу.
+/// Артист-сид: самые слушаемые артисты, по кругу. Похожие артисты — с его
+/// страницы; треки — похожие на его самые слушаемые, но не его (иначе это
+/// его дискография).
 Future<SimilarTo?> _fromArtist(
   RecsInput input,
   int turn,
@@ -382,34 +400,36 @@ Future<SimilarTo?> _fromArtist(
   final pool = _topArtists(input);
   for (var k = 0; k < math.min(_seedTries, pool.length); k++) {
     final cand = pool[(turn + k) % pool.length];
-    final artist = await _resolveArtist(input, cand.name, cand.ids.first);
+    final artist = await _resolveArtist(input, cand.name, cand.own);
     if (artist == null) continue;
 
     final page = await _artistPage(input, artist);
-    final artists = _pickArtists(page?.similarArtists ?? const [], cand.key);
-    // Похожие на один трек после отсева его же треков бывают жидкими — тогда
-    // добираем от второго по прослушиваниям.
-    final batch = <Track>[];
-    var tracks = <Track>[];
-    for (final id in cand.ids.take(2)) {
-      batch.addAll(await similarTracksFor(input.registry, id));
-      tracks = _pickTracks(input, batch, cand.ids.toSet(), cand.key, forYou);
-      if (tracks.length >= _tracksMax) break;
-    }
-    final items = mixSimilar(tracks, artists);
-    if (items.length < _minItems) continue;
-
     final found = page?.artist ?? artist;
+    final name = found.name.isEmpty ? cand.name : found.name;
+    final own = {cand.key, artistKey(name)};
+    final artists = _pickArtists(page?.similarArtists ?? const [], own);
+    // Похожие на один трек без его же треков бывают жидкими — добираем от
+    // второго по прослушиваниям.
+    final tracks = await _likeTracks(
+      input,
+      cand.theirs.first.id,
+      (_) => cand.theirs.elementAtOrNull(1),
+      {for (final t in cand.theirs) t.id},
+      own,
+      forYou,
+    );
+    if (tracks.length < _minTracks) continue;
+
     return SimilarTo(
       SimilarArtistSeed(
         Artist(
           id: found.id,
-          name: found.name.isEmpty ? cand.name : found.name,
-          avatar: found.avatar ?? artist.avatar ?? cand.cover,
+          name: name,
+          avatar: found.avatar ?? artist.avatar ?? cand.own.cover,
           source: found.source,
         ),
       ),
-      items,
+      mixSimilar(tracks, artists),
     );
   }
   return null;
@@ -442,9 +462,10 @@ class SimilarToController extends DailyShowcase<SimilarTo> {
   @override
   String get storeKey => 'similarTo';
 
-  /// 2 — перезаливы сверяются со слышанным и с треками «Для вас».
+  /// 3 — правила ПК: от четырёх треков, артистов не больше половины треков,
+  /// без своих артистов трек-сида, добор с другого трека.
   @override
-  int get version => 2;
+  int get version => 3;
 
   @override
   Future<SimilarTo?> fetch() async {

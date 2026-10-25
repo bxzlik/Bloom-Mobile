@@ -1,13 +1,10 @@
-/// Витрина «Для вас» на главной: похожие на то, что человек слушает чаще всего.
-/// Порт десктопного `features/library/lib/forYou.ts` (3.0).
+/// Витрина «Для вас» на главной: похожие на то, что человек слушает, —
+/// `Home::buildForYou` ПК.
 ///
-/// Сиды — из журнала прослушиваний ([PlayStats]), а не из «Истории»: самое
-/// слушаемое по списку недавнего — это «самое слушаемое из недавнего».
-///
-/// Сид не нужно резолвить в [Track]: сквозной id уже несёт площадку (`sc:123`,
-/// `ym:456`), и провайдеру его хватает. Поэтому подборка собирается и по
-/// трекам, которых давно нет в библиотеке. Свои файлы отсеиваются тем же шагом —
-/// у них площадки нет, похожих спросить не у кого.
+/// Сиды — самое слушаемое из журнала прослушиваний ([PlayStats]), потом свежие
+/// лайки и свежее в библиотеке: трек, залайканный вчера и ещё не сыгранный,
+/// говорит о вкусе не меньше. Сначала по одному на артиста — пять хитов одного
+/// артиста сделали бы полосу его витриной.
 library;
 
 import 'dart:math' as math;
@@ -19,9 +16,9 @@ import '../../core/entities/entities.dart';
 import '../../core/providers/registry.dart';
 import '../../core/store/library_store.dart';
 import '../../core/store/play_stats.dart';
+import '../../shared/util/taste.dart';
 import '../../shared/util/track_dedup.dart';
 import '../wave/wave_store.dart';
-import '../../shared/util/taste.dart' show artistKey;
 import 'daily_showcase.dart';
 
 /// Окно «текущего вкуса»: вкус двухлетней давности рекомендациям только мешает.
@@ -37,7 +34,7 @@ const int _seedLimit = 5;
 const int kForYouMax = 20;
 
 /// Больше двух треков одного артиста полоса не выдерживает — становится его
-/// витриной.
+/// витриной. Считается по каждому имени трека.
 const int kRecsPerArtistMax = 2;
 
 /// Всё, из чего собираются витрины. Снимок, а не живые сторы: сборка идёт
@@ -58,6 +55,9 @@ class RecsInput {
   /// Дизлайки волны — в витрину они не попадают ни сидом, ни карточкой.
   final Set<String> disliked;
   final DateTime now;
+
+  /// Трек по id: из библиотеки, иначе его снимок из журнала.
+  Track? trackOf(String id) => lib.tracks[id] ?? stats.tracks[id];
 
   /// Всё, что человек уже знает: сохранённое и когда-либо слышанное.
   late final Set<String> known = {
@@ -88,14 +88,22 @@ RecsInput recsInputOf(Ref ref) => RecsInput(
   disliked: ref.read(waveStoreProvider).dislikedIds,
 );
 
-/// Есть ли у площадки трека похожие. YouTube Music related не отдаёт, у своих
-/// файлов спросить не у кого.
-bool hasSimilarSource(String id) =>
-    id.startsWith('sc:') || id.startsWith('ym:');
+/// Можно ли спросить похожие: площадка трека включена и у неё есть радио для
+/// него — `Taste::askable` ПК. Своим файлам спросить не у кого.
+bool recsAskable(RecsInput input, Track t) {
+  final p = input.registry.byId(t.source.id);
+  return p != null && p.isEnabled && p.trackStation(t).isNotEmpty;
+}
 
-/// Самое слушаемое с площадок, у которых есть похожие: за окно, а если данных
-/// мало — за всё время.
-List<TopPlayed> topWithSimilar(
+/// Снимок трека есть, и о нём можно спросить.
+bool _askableId(RecsInput input, String id) {
+  final t = input.trackOf(id);
+  return t != null && recsAskable(input, t);
+}
+
+/// Самое слушаемое, о чём можно спросить, без дизлайков, — `Taste::topTracks`
+/// ПК: за окно, а пока там мало — за всё время.
+List<TopPlayed> recsTopPlayed(
   RecsInput input, {
   required int limit,
   int minPlays = 1,
@@ -103,12 +111,12 @@ List<TopPlayed> topWithSimilar(
   List<TopPlayed> pick({int? sinceDays, required int minPlays}) => [
     for (final r in input.stats.topPlayed(
       sinceDays: sinceDays,
-      limit: limit,
+      limit: limit * 4,
       minPlays: minPlays,
       now: input.now,
     ))
-      if (hasSimilarSource(r.id)) r,
-  ];
+      if (!input.disliked.contains(r.id) && _askableId(input, r.id)) r,
+  ].take(limit).toList();
   final top = pick(sinceDays: kRecsWindowDays, minPlays: minPlays);
   return top.length >= _windowMinSeeds ? top : pick(minPlays: 1);
 }
@@ -128,33 +136,48 @@ Future<List<Track>> similarTracksFor(
   }
 }
 
-/// Сиды: самое слушаемое за окно; добивка — свежие лайки и недавно добавленное
-/// (трек могли залайкать вчера и ещё ни разу не отыграть, но как указание на
-/// вкус он не хуже заслушанного).
+/// Список свежими сверху по времени добавления [at] — `Taste::newestIn` ПК.
+List<Track> newestFirst(List<Track> list, Map<String, int> at) {
+  final rows = [for (var i = 0; i < list.length; i++) (list[i], i)]
+    ..sort((a, b) {
+      final c = (at[b.$1.id] ?? 0).compareTo(at[a.$1.id] ?? 0);
+      return c != 0 ? c : a.$2.compareTo(b.$2);
+    });
+  return [for (final x in rows) x.$1];
+}
+
+/// Сиды: самое слушаемое, свежие лайки, свежее в библиотеке; первым проходом —
+/// по одному на артиста, вторым — добор.
 List<String> pickForYouSeeds(RecsInput input, {int limit = _seedLimit}) {
+  final all = [
+    for (final r in recsTopPlayed(input, limit: limit * 3, minPlays: 2))
+      ?input.trackOf(r.id),
+    ...newestFirst(input.lib.favTracks, input.lib.favs),
+    ...newestFirst(input.lib.allTracks, input.lib.inLib),
+  ];
   final out = <String>[];
   final seen = <String>{};
-  void push(String id) {
-    if (out.length >= limit) return;
-    if (!hasSimilarSource(id) || input.disliked.contains(id)) return;
-    if (seen.add(id)) out.add(id);
-  }
-
-  for (final r in topWithSimilar(input, limit: limit * 4, minPlays: 2)) {
-    push(r.id);
-  }
-  for (final t in input.lib.favTracks) {
-    push(t.id);
-  }
-  for (final t in input.lib.allTracks) {
-    push(t.id);
+  final artists = <String>{};
+  for (final spread in [true, false]) {
+    for (final t in all) {
+      if (out.length >= limit) return out;
+      final keys = artistKeys(t);
+      if (seen.contains(t.id) ||
+          (spread && keys.any(artists.contains)) ||
+          input.disliked.contains(t.id) ||
+          !recsAskable(input, t)) {
+        continue;
+      }
+      seen.add(t.id);
+      artists.addAll(keys);
+      out.add(t.id);
+    }
   }
   return out;
 }
 
-/// Собрать полосу. Сборка идёт «по кругу» — по треку от каждого сида за проход:
-/// иначе первый сид с длинным related забивает всю полосу, и подборка выглядит
-/// как похожие на один трек.
+/// Собрать полосу. По кругу — по треку от каждого сида за проход: иначе
+/// длинный список первого сида забивает всю полосу.
 Future<List<Track>> buildForYou(RecsInput input) async {
   final seeds = pickForYouSeeds(input);
   if (seeds.isEmpty) return const [];
@@ -172,9 +195,9 @@ Future<List<Track>> buildForYou(RecsInput input) async {
   // Сверка не только по id: один трек на двух площадках имеет разные id, а на
   // SoundCloud ещё и реаплоады от разных загрузчиков.
   final dup = input.knownDups();
+  final cap = ArtistCap(kRecsPerArtistMax);
 
   final out = <Track>[];
-  final perArtist = <String, int>{};
   final maxLen = batches.map((b) => b.length).reduce(math.max);
   for (var i = 0; i < maxLen && out.length < kForYouMax; i++) {
     for (final batch in batches) {
@@ -182,12 +205,11 @@ Future<List<Track>> buildForYou(RecsInput input) async {
       if (i >= batch.length) continue;
       final t = batch[i];
       if (known.contains(t.id) || input.disliked.contains(t.id)) continue;
-      final artist = artistKey(t.artist);
-      final n = perArtist[artist] ?? 0;
-      if (n >= kRecsPerArtistMax) continue;
+      if (!cap.fits(t)) continue;
       // Последней — самая дорогая проверка, чтобы не гонять её на отсеянных.
       if (!dup.accept(t)) continue;
-      perArtist[artist] = n + 1;
+      known.add(t.id);
+      cap.take(t);
       out.add(t);
     }
   }
@@ -202,9 +224,10 @@ class ForYouController extends DailyShowcase<List<Track>> {
   @override
   String get storeKey => 'forYou';
 
-  /// 2 — перезаливы сверяются и со слышанным, не только с библиотекой.
+  /// 3 — правила ПК: сиды по одному на артиста, YouTube Music тоже сид,
+  /// потолок артиста по каждому имени.
   @override
-  int get version => 2;
+  int get version => 3;
 
   @override
   Future<List<Track>?> fetch() async {

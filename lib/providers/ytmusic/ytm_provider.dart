@@ -259,6 +259,18 @@ class YtmusicProvider extends MusicProvider {
     return vid == null || vid.isEmpty ? '' : 'track:$vid';
   }
 
+  /// Похожих отдельно YouTube Music не отдаёт — это начало радио трека.
+  @override
+  Future<List<Track>?> getSimilarTracks(String seedId) async {
+    final vid = parseYtmTrackId(seedId);
+    if (vid == null || vid.isEmpty) return const [];
+    final page = await station('track:$vid', '');
+    return [
+      for (final t in page.tracks)
+        if (t.id != seedId) t,
+    ];
+  }
+
   @override
   Future<StationPage> station(String station, String cursor) async {
     if (!station.startsWith('track:')) return const StationPage();
