@@ -179,13 +179,13 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
     // ещё и в [dispose], см. [_dupsHere].
     final dups = _dupsHere = ref.watch(dupsProvider) == widget.listId;
 
+    // id плейлистов теперь как на ПК (`plmvio1qa0`), без приставки — ищем
+    // всегда, встроенные `all`/`fav`/`history` просто не найдутся.
     UserPlaylist? playlist;
-    if (widget.listId.startsWith('pl_')) {
-      for (final p in lib.playlists) {
-        if (p.id == widget.listId) {
-          playlist = p;
-          break;
-        }
+    for (final p in lib.playlists) {
+      if (p.id == widget.listId) {
+        playlist = p;
+        break;
       }
     }
 
