@@ -5900,6 +5900,18 @@ abstract class AppLocalizations {
   /// **'Not connected'**
   String get pcNotPaired;
 
+  /// Connect: the full player's button and sheet title — where the sound goes, this phone or the computer
+  ///
+  /// In en, this message translates to:
+  /// **'Play on'**
+  String get pcPlayOn;
+
+  /// No description provided for @pcThisPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'This phone'**
+  String get pcThisPhone;
+
   /// No description provided for @pcPairedTo.
   ///
   /// In en, this message translates to:

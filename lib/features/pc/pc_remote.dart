@@ -20,6 +20,7 @@ import '../../core/sync/pc_client.dart';
 import '../../providers/yandex/ym_provider.dart' show ymNumericId;
 import '../player/play_source.dart';
 import '../player/player_controller.dart';
+import '../player/session_store.dart' show SessionData;
 
 /// Когда на этом устройстве последний раз шёл звук, мс — та же отметка, что
 /// `connect.played` ПК. Пишет плеер.
@@ -70,9 +71,17 @@ class PcRemoteController extends Notifier<PcPlayback?> {
   StreamSubscription<bool>? _ownPlaying;
   Timer? _refetch;
 
+  /// Звук забрали сюда («Играть на телефоне»): телефон не пульт, пока ПК сам
+  /// снова не заиграет.
+  bool _pinned = false;
+  int _pinnedAt = 0;
+
   @override
   PcPlayback? build() {
-    ref.onDispose(detach);
+    ref.onDispose(() {
+      _refetch?.cancel();
+      _ownPlaying?.cancel();
+    });
     return null;
   }
 
@@ -92,6 +101,7 @@ class PcRemoteController extends Notifier<PcPlayback?> {
   void detach() {
     _client = null;
     _pc = null;
+    _pinned = false;
     _refetch?.cancel();
     _ownPlaying?.cancel();
     _ownPlaying = null;
@@ -100,9 +110,19 @@ class PcRemoteController extends Notifier<PcPlayback?> {
   }
 
   void onEvent(PcEvent e) {
+    final d = e.data;
+    // Звук двигают с ПК: двигает всё равно телефон, он знает обе очереди.
+    if (e.name == 'connect') {
+      switch (d['do']) {
+        case 'take':
+          unawaited(playHere());
+        case 'give':
+          unawaited(playOnPc());
+      }
+      return;
+    }
     final pc = _pc;
     if (pc == null) return;
-    final d = e.data;
     switch (e.name) {
       case 'player':
         pc.playing = d['playing'] == true;
@@ -132,6 +152,79 @@ class PcRemoteController extends Notifier<PcPlayback?> {
     }
     if (pc.playing) pc.at = BloomDb.now();
     _decide();
+  }
+
+  // ── «Играть на» ────────────────────────────────────────────────────────
+
+  /// Звук — сюда: очередь ПК с той же секунды играет на телефоне, ПК замолкает.
+  Future<void> playHere() async {
+    final client = _client;
+    if (client == null) return;
+    try {
+      final d = await client.json('GET', '/v1/connect');
+      List<Track> tracks(Object? list) => [
+        for (final t in (list as List?) ?? const []) ?Track.fromJson(t),
+      ];
+      final queue = tracks(d['tracks']);
+      final index = _int(d['index'], -1);
+      if (index < 0 || index >= queue.length) return;
+      final position = d['position'] is num
+          ? Duration(milliseconds: ((d['position'] as num) * 1000).round())
+          : Duration.zero;
+      _pinned = true;
+      _pinnedAt = BloomDb.now();
+      state = null;
+      logInfo('connect', 'звук — на телефон');
+      await ref
+          .read(playbackProvider.notifier)
+          .resumeSession(
+            SessionData(
+              queue: queue,
+              orig: tracks(d['orig']),
+              index: index,
+              position: position,
+              savedAt: DateTime.now(),
+              source: PlaySource.fromJson(d['source']),
+              shuffle: d['shuffle'] == true,
+              repeat: _repeat(d['repeat']),
+            ),
+          );
+      await client.json('POST', '/v1/connect/took', body: const {});
+    } catch (e) {
+      logWarn('connect', 'звук с ПК не забран: $e');
+    }
+  }
+
+  /// Звук — на ПК: своя сессия с той же секунды играет там, телефон замолкает
+  /// и становится пультом.
+  Future<void> playOnPc() async {
+    final client = _client;
+    final playback = ref.read(playbackProvider.notifier);
+    final own = playback.localSession();
+    if (client == null || own == null) return;
+    try {
+      await client.json(
+        'POST',
+        '/v1/connect/take',
+        body: {
+          'tracks': [for (final t in own.queue) t.toJson()],
+          'orig': [for (final t in own.orig) t.toJson()],
+          'index': own.index,
+          'position': own.position.inMilliseconds / 1000,
+          'shuffle': own.shuffle,
+          'repeat': own.repeat.name,
+          'source': own.source?.toJson() ?? const {},
+        },
+      );
+      logInfo('connect', 'звук — на ПК');
+      _pinned = false;
+      await playback.pauseLocal();
+      _pc?.playing = true;
+      _pc?.at = BloomDb.now();
+      _decide();
+    } catch (e) {
+      logWarn('connect', 'звук на ПК не ушёл: $e');
+    }
   }
 
   // ── Команды ────────────────────────────────────────────────────────────
@@ -272,6 +365,18 @@ class PcRemoteController extends Notifier<PcPlayback?> {
       return;
     }
     final ownPlaying = ref.read(audioPlayerProvider).playing;
+    // Забрали сюда — пока ПК сам не заиграет, звук тут.
+    // Пару секунд после переноса ПК ещё доигрывает — это не «заиграл сам».
+    if (_pinned &&
+        pc.playing &&
+        !ownPlaying &&
+        BloomDb.now() - _pinnedAt > 3000) {
+      _pinned = false;
+    }
+    if (_pinned) {
+      state = null;
+      return;
+    }
     final ownAt = _int(_db.get(kConnectPlayed), 0);
     final remote =
         !ownPlaying && (state != null || pc.playing || pc.at >= ownAt);

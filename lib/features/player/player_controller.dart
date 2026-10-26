@@ -1366,6 +1366,36 @@ class PlaybackController extends Notifier<PlaybackState>
       ..setTrack(track, queueIndex: 0);
   }
 
+  // --- Connect: звук переезжает между телефоном и ПК (`pc_remote.dart`)
+
+  /// Своя сессия как есть — её забирает ПК («Играть на ПК»). `null` — очереди
+  /// нет.
+  SessionData? localSession() {
+    final track = _st.track;
+    if (track == null) return null;
+    return SessionData(
+      queue: _st.queue,
+      orig: _origQueue ?? const [],
+      index: _st.index,
+      position: _loadedId == track.id ? _player.position : _loadingAt,
+      savedAt: DateTime.now(),
+      source: _st.source,
+      shuffle: _st.shuffle,
+      repeat: _st.repeat,
+    );
+  }
+
+  /// Своё — на паузу: звук ушёл на ПК. Загрузка в полёте больше не наша: без
+  /// отмены она, упав, сама перешла бы к следующему треку и заиграла здесь.
+  Future<void> pauseLocal() {
+    ++_generation;
+    if (_st.loading) {
+      _st = _st.copyWith(loading: false);
+      _handler.setResolving(false);
+    }
+    return _player.pause();
+  }
+
   // --- PlaybackCommands: команды из шторки, с экрана блокировки, с гарнитуры
 
   @override

@@ -72,10 +72,18 @@ enum PairResult { ok, notBloom, unreachable, wrong, closed, tooMany, failed }
 
 @immutable
 class PcState {
-  const PcState({this.link, this.status = PcStatus.idle, this.lastSync = 0});
+  const PcState({
+    this.link,
+    this.status = PcStatus.idle,
+    this.lastSync = 0,
+    this.live = false,
+  });
 
   final PcLink? link;
   final PcStatus status;
+
+  /// Поток событий ПК открыт: ПК на связи прямо сейчас (Connect).
+  final bool live;
 
   /// Последний удачный круг, мс; 0 — не было.
   final int lastSync;
@@ -87,10 +95,12 @@ class PcState {
     bool unlink = false,
     PcStatus? status,
     int? lastSync,
+    bool? live,
   }) => PcState(
     link: unlink ? null : (link ?? this.link),
     status: status ?? this.status,
     lastSync: lastSync ?? this.lastSync,
+    live: live ?? this.live,
   );
 }
 
@@ -120,7 +130,8 @@ class PcController extends Notifier<PcState> {
       _life?.dispose();
       _writes?.cancel();
       _settle?.cancel();
-      _closeLive();
+      _retry?.cancel();
+      _live?.cancel();
     });
     return PcState(
       link: PcLink.fromJson(_db.get(_kLink)),
@@ -218,6 +229,7 @@ class PcController extends Notifier<PcState> {
       cancelOnError: true,
     );
     ref.read(pcRemoteProvider.notifier).attach(client);
+    state = state.copyWith(live: true);
   }
 
   void _closeLive() {
@@ -225,6 +237,7 @@ class PcController extends Notifier<PcState> {
     _live?.cancel();
     _live = null;
     ref.read(pcRemoteProvider.notifier).detach();
+    if (state.live) state = state.copyWith(live: false);
   }
 
   /// Связь оборвалась: ПК закрыли, сеть пропала, телефон отключили там.
@@ -233,6 +246,7 @@ class PcController extends Notifier<PcState> {
   void _liveLost(String why) {
     _live = null;
     ref.read(pcRemoteProvider.notifier).detach();
+    state = state.copyWith(live: false);
     logInfo('sync', 'поток событий ПК оборвался: $why');
     if (!_shown || !state.paired) return;
     _retry?.cancel();
@@ -314,7 +328,7 @@ class PcController extends Notifier<PcState> {
       final link = await run();
       if (link == null) return PairResult.unreachable;
       _db.set(_kLink, link.toJson());
-      state = PcState(link: link, lastSync: state.lastSync);
+      state = PcState(link: link, lastSync: state.lastSync, live: state.live);
       logInfo('sync', 'сопряжён с ПК «${link.name}»');
       unawaited(sync());
       return PairResult.ok;

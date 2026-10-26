@@ -3437,6 +3437,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pcNotPaired => 'Not connected';
 
   @override
+  String get pcPlayOn => 'Play on';
+
+  @override
+  String get pcThisPhone => 'This phone';
+
+  @override
   String pcPairedTo(String name) {
     return 'Connected to “$name”';
   }

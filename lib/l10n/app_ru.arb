@@ -1029,6 +1029,8 @@
   "apFontReadErr": "Не удалось прочитать файл шрифта",
   "setPc": "Компьютер",
   "pcNotPaired": "Не подключён",
+  "pcPlayOn": "Играть на",
+  "pcThisPhone": "Этот телефон",
   "pcPairedTo": "Подключён к «{name}»",
   "pcSyncedAt": "Синхронизировано {when}",
   "pcSyncing": "Синхронизация…",

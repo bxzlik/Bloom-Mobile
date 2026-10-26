@@ -3502,6 +3502,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pcNotPaired => 'Не подключён';
 
   @override
+  String get pcPlayOn => 'Играть на';
+
+  @override
+  String get pcThisPhone => 'Этот телефон';
+
+  @override
   String pcPairedTo(String name) {
     return 'Подключён к «$name»';
   }

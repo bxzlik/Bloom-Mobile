@@ -19,6 +19,7 @@ import '../../../features/customization/custom_store.dart';
 import '../../../features/customization/ui/image_thumb.dart';
 import '../../../features/settings/swipe_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/marquee_text.dart';
 import '../../../shared/ui/track_actions.dart';
@@ -30,6 +31,8 @@ import '../../detail/artists_sheet.dart';
 import '../../lyrics/lyrics_store.dart';
 import '../../lyrics/lyrics_style_store.dart';
 import '../../lyrics/ui/lyrics_view.dart';
+import '../../pc/pc_remote.dart';
+import '../../pc/pc_store.dart';
 import '../play_error.dart';
 import '../player_bg_store.dart';
 import '../player_controller.dart';
@@ -917,6 +920,57 @@ class _SleepButton extends ConsumerWidget {
   }
 }
 
+/// «Играть на» (Connect): куда идёт звук — этот телефон или компьютер. Есть,
+/// только пока ПК на связи; горит, пока звук на ПК.
+class _PlayOnButton extends ConsumerWidget {
+  const _PlayOnButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!ref.watch(pcProvider.select((s) => s.live))) {
+      return const SizedBox.shrink();
+    }
+    final onPc = ref.watch(pcRemoteProvider.select((r) => r != null));
+    return Semantics(
+      button: true,
+      label: context.l.pcPlayOn,
+      child: _FlatIcon(
+        icon: SolarIconsOutline.monitorSmartphone,
+        size: 25,
+        active: onPc,
+        onTap: () => _showPlayOn(context, ref, onPc),
+      ),
+    );
+  }
+
+  static void _showPlayOn(BuildContext context, WidgetRef ref, bool onPc) {
+    final t = context.bloom;
+    final pc = ref.read(pcProvider).link?.name ?? '';
+    final remote = ref.read(pcRemoteProvider.notifier);
+    Widget? mark(bool on) =>
+        on ? Icon(SolarIconsBold.checkCircle, size: 18, color: t.accent) : null;
+    showBloomSheet(
+      context: context,
+      groups: [
+        [
+          SheetAction(
+            icon: SolarIconsOutline.monitor,
+            label: pc.isEmpty ? context.l.setPc : pc,
+            trailing: mark(onPc),
+            onTap: onPc ? null : remote.playOnPc,
+          ),
+          SheetAction(
+            icon: SolarIconsOutline.smartphone,
+            label: context.l.pcThisPhone,
+            trailing: mark(!onPc),
+            onTap: onPc ? remote.playHere : null,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _FlatIcon extends StatelessWidget {
   const _FlatIcon({
     required this.icon,
@@ -1065,6 +1119,7 @@ class _Tools extends ConsumerWidget {
         ),
         _ToolPill(
           children: [
+            const _PlayOnButton(),
             _FlatIcon(
               icon: SolarIconsOutline.speedometerMiddle,
               size: 25,
