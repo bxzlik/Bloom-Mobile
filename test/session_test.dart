@@ -50,7 +50,6 @@ void _save(
   List<Track>? orig,
   List<Track>? full,
   bool shuffle = false,
-  bool smartShuffle = false,
   PlayerRepeat repeat = PlayerRepeat.off,
   bool ended = false,
 }) {
@@ -61,7 +60,6 @@ void _save(
     position: position,
     source: source,
     shuffle: shuffle,
-    smartShuffle: smartShuffle,
     repeat: repeat,
     ended: ended,
     playing: false,
@@ -79,7 +77,6 @@ void main() {
       position: const Duration(milliseconds: 90440),
       orig: [_track('a'), _track('b'), _track('c')],
       shuffle: true,
-      smartShuffle: true,
       repeat: PlayerRepeat.one,
       source: const LibSource('fav'),
     );
@@ -89,7 +86,6 @@ void main() {
     expect(back.track.id, 'sc:b');
     expect(back.position, const Duration(milliseconds: 90400));
     expect(back.shuffle, isTrue);
-    expect(back.smartShuffle, isTrue);
     expect(back.repeat, PlayerRepeat.one);
     expect(back.source?.id, 'fav');
     expect(back.cleared, isFalse);
@@ -113,7 +109,6 @@ void main() {
     expect(s['ended'], isTrue);
     expect(s['playing'], isFalse);
     expect(s['source'], {'kind': 'playlist', 'id': 'lib', 'glyph': 'note'});
-    expect(s.containsKey('smartShuffle'), isFalse);
     expect(
       db
           .select('SELECT list, pos, track_id FROM session_tracks')
@@ -179,13 +174,6 @@ void main() {
     _save(open2(), [_track('a'), _track('b')], index: 1);
     final plain = open2().read(sessionProvider)!;
     expect(identical(plain.forContinue(), plain), isTrue);
-  });
-
-  test('умная перемешка без обычной не оживает', () {
-    final (open, db) = _app();
-    _save(open(), [_track('a')]);
-    db.set(kSessionKey, {...db.getMap(kSessionKey), 'smartShuffle': true});
-    expect(open().read(sessionProvider)!.smartShuffle, isFalse);
   });
 
   test('свой плейлист называется в карте именем с карточки', () {

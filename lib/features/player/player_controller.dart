@@ -31,7 +31,6 @@ import '../notifications/notif_store.dart';
 import '../offline/offline_store.dart';
 import '../wave/wave_controller.dart';
 import '../../core/store/play_log.dart';
-import '../../core/store/play_stats.dart';
 import 'audio_handler.dart';
 import 'nightcore_ios.dart';
 import 'notification_permission.dart';
@@ -106,11 +105,6 @@ class PlaybackState {
   final PlayerRepeat repeat;
   final bool shuffle;
 
-  /// «Умная» перемешка — подвид [shuffle], без него не бывает: [shuffle]
-  /// по-прежнему отвечает на «перемешано ли вообще», этот флаг различает
-  /// вариант (порт `smartShuffle` из `queueStore`).
-  final bool smartShuffle;
-
   /// Откуда набрана очередь: раздел библиотеки, альбом площадки, страница
   /// артиста, выдача поиска (см. [PlaySource]). `null` — источника нет вовсе.
   ///
@@ -127,7 +121,6 @@ class PlaybackState {
     this.error,
     this.repeat = PlayerRepeat.off,
     this.shuffle = false,
-    this.smartShuffle = false,
     this.source,
   });
 
@@ -159,7 +152,6 @@ class PlaybackState {
     bool clearError = false,
     PlayerRepeat? repeat,
     bool? shuffle,
-    bool? smartShuffle,
     PlaySource? source,
     bool clearSource = false,
   }) => PlaybackState(
@@ -169,10 +161,6 @@ class PlaybackState {
     error: clearError ? null : (error ?? this.error),
     repeat: repeat ?? this.repeat,
     shuffle: shuffle ?? this.shuffle,
-    // Выключенная перемешка гасит и умную: подвид без неё не живёт.
-    smartShuffle: (shuffle ?? this.shuffle)
-        ? (smartShuffle ?? this.smartShuffle)
-        : false,
     source: clearSource ? null : (source ?? this.source),
   );
 }
@@ -248,45 +236,6 @@ List<Track> shuffledQueue(List<Track> tracks, int keep, Random rnd) {
     rest[j] = tmp;
   }
   return head == null ? rest : [head, ...rest];
-}
-
-/// Вес трека для «умной» перемешки — порт `smartShuffleWeight` с ПК: недавно и
-/// часто слушанные тяжелее и статистически всплывают в НАЧАЛЕ очереди, но
-/// порядок каждый раз новый. Контраст намеренно большой (~140×): холодных
-/// треков в библиотеке кратно больше недавних, и при слабом смещении они
-/// забивают начало.
-///   base:    0.5    — трек без истории
-///   recency: до +40 — экспоненциальное затухание, «горячая» неделя, к месяцу гаснет
-///   freq:    до +30 — число прослушиваний (потолок 10)
-double smartShuffleWeight(PlayStats stats, String id, {DateTime? now}) {
-  final count = stats.playCount(id);
-  final last = stats.lastPlayedAt(id);
-  var recency = 0.0;
-  if (last > 0) {
-    final at = (now ?? DateTime.now()).millisecondsSinceEpoch;
-    final days = (at - last) / 86400000;
-    recency = 40 * exp(-days / 6);
-  }
-  return 0.5 + recency + min(count, 10) * 3;
-}
-
-/// Взвешенная перемешка без повторов (Эфраимидис—Спиракис): ключ `u^(1/w)`,
-/// чем тяжелее трек, тем ближе ключ к 1 и тем раньше он встаёт. Трек [keep]
-/// встаёт первым и в тасовке не участвует — как в [shuffledQueue].
-List<Track> weightedShuffledQueue(
-  List<Track> tracks,
-  int keep,
-  double Function(Track) weight,
-  Random rnd,
-) {
-  final rest = [...tracks];
-  final head = (keep >= 0 && keep < rest.length) ? rest.removeAt(keep) : null;
-  final keyed = [
-    for (final t in rest)
-      (t, pow(rnd.nextDouble(), 1 / max(weight(t), 1e-4)).toDouble()),
-  ]..sort((a, b) => b.$2.compareTo(a.$2));
-  final out = [for (final (t, _) in keyed) t];
-  return head == null ? out : [head, ...out];
 }
 
 class PlaybackController extends Notifier<PlaybackState>
@@ -380,8 +329,7 @@ class PlaybackController extends Notifier<PlaybackState>
       } else if (prev?.index != next.index ||
           prev?.loading != next.loading ||
           !identical(prev?.source, next.source) ||
-          prev?.repeat != next.repeat ||
-          prev?.smartShuffle != next.smartShuffle) {
+          prev?.repeat != next.repeat) {
         _stateDirty();
       }
     });
@@ -521,7 +469,6 @@ class PlaybackController extends Notifier<PlaybackState>
               : _player.position,
           source: state.source,
           shuffle: state.shuffle,
-          smartShuffle: state.smartShuffle,
           repeat: state.repeat,
           ended: _queueEnded,
           playing: _player.playing,
@@ -619,7 +566,7 @@ class PlaybackController extends Notifier<PlaybackState>
   Future<void> playQueue(List<Track> tracks, int index, {PlaySource? source}) {
     if (state.shuffle && tracks.length > 1) {
       return _start(
-        _shuffled(tracks, index, smart: state.smartShuffle),
+        shuffledQueue(tracks, index, _rnd),
         0,
         source: source,
         orig: tracks,
@@ -632,8 +579,7 @@ class PlaybackController extends Notifier<PlaybackState>
   /// случайного трека, а не с первого. Порт `playShuffledFromSource`.
   Future<void> playQueueShuffled(List<Track> tracks, {PlaySource? source}) {
     if (tracks.isEmpty) return Future.value();
-    // Кнопка на карточке — всегда обычная перемешка, как на ПК.
-    state = state.copyWith(shuffle: true, smartShuffle: false);
+    state = state.copyWith(shuffle: true);
     return _start(
       shuffledQueue(tracks, -1, _rnd),
       0,
@@ -730,7 +676,6 @@ class PlaybackController extends Notifier<PlaybackState>
     // возвращаем флагом, а порядок до неё — из `orig`.
     state = state.copyWith(
       shuffle: data.shuffle,
-      smartShuffle: data.smartShuffle,
       repeat: data.repeat,
     );
     await _start(
@@ -1098,46 +1043,11 @@ class PlaybackController extends Notifier<PlaybackState>
     state = state.copyWith(repeat: nextMode);
   }
 
-  /// Перемешанная копия: обычная — Фишер—Йетс, умная — с весами по журналу
-  /// прослушиваний.
-  List<Track> _shuffled(List<Track> tracks, int keep, {required bool smart}) {
-    if (!smart) return shuffledQueue(tracks, keep, _rnd);
-    final stats = ref.read(playStatsProvider);
-    final now = DateTime.now();
-    return weightedShuffledQueue(
-      tracks,
-      keep,
-      (t) => smartShuffleWeight(stats, t.id, now: now),
-      _rnd,
-    );
-  }
-
   /// Перемешка переставляет саму очередь, а не подсовывает случайный номер в
   /// [next] — иначе список в шторке очереди врал бы о том, что пойдёт дальше.
-  /// Кнопка крутит режимы: выкл → обычная → умная → выкл; выключение
-  /// возвращает запомненный порядок. Порт `cycleShuffle`.
+  /// Выключение возвращает запомненный порядок.
   void toggleShuffle() {
     final q = state.queue;
-    if (state.shuffle && !state.smartShuffle) {
-      if (q.length <= 1) {
-        state = state.copyWith(smartShuffle: true);
-        return;
-      }
-      // Обычная → умная: мешаем заново от исходного порядка, а не от уже
-      // перемешанного — иначе снимок «до перемешки» потерялся бы.
-      final base = _origQueue ?? [...q];
-      final current = state.track;
-      final at = current == null
-          ? -1
-          : base.indexWhere((t) => t.id == current.id);
-      _origQueue = base;
-      final shuffled = _shuffled(base, at, smart: true);
-      state = state.copyWith(queue: shuffled, index: 0, smartShuffle: true);
-      _handler
-        ..setQueue(shuffled)
-        ..setTrack(state.track, queueIndex: 0);
-      return;
-    }
     if (state.shuffle) {
       final orig = _origQueue;
       _origQueue = null;
@@ -1415,11 +1325,7 @@ class PlaybackController extends Notifier<PlaybackState>
     _origQueue = null; // возвращать нечего: очереди больше нет
     // Очередь уходит, а режимы повтора и перемешивания — нет: это настройки
     // плеера, а не свойство конкретной очереди.
-    state = PlaybackState(
-      repeat: state.repeat,
-      shuffle: state.shuffle,
-      smartShuffle: state.smartShuffle,
-    );
+    state = PlaybackState(repeat: state.repeat, shuffle: state.shuffle);
     _handler
       ..setResolving(false)
       ..setQueue(const [])

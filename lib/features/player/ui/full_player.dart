@@ -883,9 +883,6 @@ class _Transport extends ConsumerWidget {
             size: 24,
             active: state.shuffle,
             onTap: ctrl.toggleShuffle,
-            mark: state.smartShuffle
-                ? Icon(SolarIconsBold.stars, size: 9, color: t.accentText)
-                : null,
           ),
         ],
       ),

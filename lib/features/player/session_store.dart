@@ -6,7 +6,7 @@
 ///
 /// Из неё же «Продолжить» на главной и в меню. Мобильное сверх ПК: список
 /// `full` — очередь до очистки («очистить» оставляет один играющий трек, а
-/// «Продолжить» возвращает всё), и ключ `smartShuffle`.
+/// «Продолжить» возвращает всё).
 library;
 
 import 'package:flutter/foundation.dart';
@@ -33,7 +33,6 @@ class SessionData {
     this.full = const [],
     this.source,
     this.shuffle = false,
-    this.smartShuffle = false,
     this.repeat = PlayerRepeat.off,
     this.ended = false,
     this.playing = false,
@@ -54,7 +53,6 @@ class SessionData {
   final DateTime savedAt;
   final PlaySource? source;
   final bool shuffle;
-  final bool smartShuffle;
   final PlayerRepeat repeat;
 
   /// Очередь доиграла без повтора — стоим в начале последнего трека.
@@ -79,7 +77,6 @@ class SessionData {
       savedAt: savedAt,
       source: source,
       shuffle: shuffle,
-      smartShuffle: smartShuffle,
       repeat: repeat,
     );
   }
@@ -131,7 +128,6 @@ class SessionStore extends Notifier<SessionData?> {
     // Трека больше нет: место в очереди остаётся, позиция — нет.
     final found = index >= 0;
     if (!found) index = saved.clamp(0, _queue.length - 1);
-    final shuffle = s['shuffle'] == true;
     return SessionData(
       queue: _queue,
       orig: _orig,
@@ -146,9 +142,7 @@ class SessionStore extends Notifier<SessionData?> {
         (s['at'] as num?)?.toInt() ?? 0,
       ),
       source: PlaySource.fromJson(s['source']),
-      shuffle: shuffle,
-      // Умная перемешка — подвид обычной и без неё не живёт.
-      smartShuffle: shuffle && s['smartShuffle'] == true,
+      shuffle: s['shuffle'] == true,
       repeat:
           PlayerRepeat.values.elementAtOrNull(
             (s['repeat'] as num?)?.toInt() ?? 0,
@@ -212,7 +206,6 @@ class SessionStore extends Notifier<SessionData?> {
     required Duration position,
     required PlaySource? source,
     required bool shuffle,
-    required bool smartShuffle,
     required PlayerRepeat repeat,
     required bool ended,
     required bool playing,
@@ -224,7 +217,6 @@ class SessionStore extends Notifier<SessionData?> {
       'pos': (position.inMilliseconds / 100).round() / 10,
       'source': source == null ? <String, dynamic>{} : _sourceJson(source),
       'shuffle': shuffle,
-      if (smartShuffle) 'smartShuffle': true,
       'repeat': repeat.index,
       'ended': ended,
       'playing': playing,
