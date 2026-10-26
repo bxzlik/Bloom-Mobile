@@ -93,11 +93,17 @@ jobs:
       # Имя артефакта — это имя zip'а, в который GitHub заворачивает файлы при
       # скачивании со страницы прогона (обойти нельзя). В релиз по тегу
       # содержимое ложится как есть, без обёртки.
+      #
+      # Три дня, а не 90 по умолчанию: артефакт нужен, только чтобы скачать
+      # сборку сразу и передать её в релиз (релиз хранится отдельно). Иначе
+      # они копятся и забивают квоту хранилища аккаунта — тогда загрузка
+      # падает с «Artifact storage quota has been hit».
       - uses: actions/upload-artifact@v4
         with:
           name: bloom-${{ env.VERSION }}-android
           path: bloom-${{ env.VERSION }}.apk
           if-no-files-found: error
+          retention-days: 3
 
   ios:
     name: iOS (без подписи)
@@ -143,6 +149,7 @@ jobs:
           name: bloom-${{ env.VERSION }}-ios
           path: bloom-${{ env.VERSION }}.ipa
           if-no-files-found: error
+          retention-days: 3 # см. Android выше
 
   release:
     name: GitHub Release
