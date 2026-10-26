@@ -4,8 +4,12 @@
 /// на».
 ///
 /// Своё состояние телефона (очередь, сессия) при этом не трогается: связь
-/// пропала — телефон снова показывает своё. Сторона ПК — `ConnectHost`
-/// (`src/devices/ConnectHost.cpp`) и поток событий API.
+/// пропала — телефон снова показывает своё. Сторона ПК — `Connect`
+/// (`src/devices/Connect.cpp`) и поток событий API.
+///
+/// И наоборот: пока звук здесь, телефон шлёт ПК своё состояние
+/// (`/v1/connect/state`), ПК его показывает (`Player::mirror`), а что нажали на
+/// ПК, приходит сюда событием `command`.
 library;
 
 import 'dart:async';
@@ -17,6 +21,7 @@ import '../../core/db/db.dart';
 import '../../core/entities/entities.dart';
 import '../../core/log/bloom_log.dart';
 import '../../core/sync/pc_client.dart';
+import '../../core/sync/sync_log.dart';
 import '../../providers/yandex/ym_provider.dart' show ymNumericId;
 import '../player/play_source.dart';
 import '../player/player_controller.dart';
@@ -76,10 +81,18 @@ class PcRemoteController extends Notifier<PcPlayback?> {
   bool _pinned = false;
   int _pinnedAt = 0;
 
+  /// Своё, сказанное ПК: очередь (по ней видно, слать ли её снова) и было ли
+  /// «звук здесь».
+  List<Track>? _sentQueue;
+  bool _reported = false;
+  Timer? _report;
+  late final String _me = SyncLog(_db).device();
+
   @override
   PcPlayback? build() {
     ref.onDispose(() {
       _refetch?.cancel();
+      _report?.cancel();
       _ownPlaying?.cancel();
     });
     return null;
@@ -90,6 +103,8 @@ class PcRemoteController extends Notifier<PcPlayback?> {
   /// Открылся поток событий ПК.
   void attach(PcClient client) {
     _client = client;
+    _sentQueue = null;
+    _reported = false;
     _ownPlaying ??= ref
         .read(audioPlayerProvider)
         .playingStream
@@ -103,6 +118,7 @@ class PcRemoteController extends Notifier<PcPlayback?> {
     _pc = null;
     _pinned = false;
     _refetch?.cancel();
+    _report?.cancel();
     _ownPlaying?.cancel();
     _ownPlaying = null;
     if (state != null) logInfo('connect', 'телефон больше не пульт ПК');
@@ -121,10 +137,15 @@ class PcRemoteController extends Notifier<PcPlayback?> {
       }
       return;
     }
+    if (e.name == 'command') {
+      _carryOut(d);
+      return;
+    }
     final pc = _pc;
     if (pc == null) return;
     switch (e.name) {
       case 'player':
+        pc.mirrorsMe = d['active'] == _me;
         pc.playing = d['playing'] == true;
         pc.liked = d['liked'] == true;
         pc.shuffle = d['shuffle'] == true;
@@ -150,8 +171,116 @@ class PcRemoteController extends Notifier<PcPlayback?> {
       default:
         return;
     }
-    if (pc.playing) pc.at = BloomDb.now();
+    // Пока ПК показывает нас, его «играет» — это мы.
+    if (pc.playing && !pc.mirrorsMe) pc.at = BloomDb.now();
     _decide();
+  }
+
+  /// Нажатое на ПК, пока он показывает нас: делаем у себя.
+  void _carryOut(Map<String, Object?> d) {
+    final p = ref.read(playbackProvider.notifier);
+    List<Track> tracks() => [
+      for (final t in (d['tracks'] as List?) ?? const []) ?Track.fromJson(t),
+    ];
+    final source = PlaySource.fromJson(d['source']);
+    final index = _int(d['index'], 0);
+    switch (d['do']) {
+      case 'toggle':
+        unawaited(p.toggle());
+      case 'play':
+        unawaited(p.commandPlay());
+      case 'pause':
+        unawaited(p.commandPause());
+      case 'next':
+        unawaited(p.next());
+      case 'prev':
+        unawaited(p.prev());
+      case 'seek':
+        final at = d['position'];
+        if (at is num) {
+          unawaited(p.seek(Duration(milliseconds: (at * 1000).round())));
+        }
+      case 'jump':
+        unawaited(p.jumpTo(index));
+      case 'remove':
+        unawaited(p.removeAt(index));
+      case 'move':
+        // У ПК `to` — место после переноса, у нас — до изъятия строки.
+        final from = _int(d['from'], -1), to = _int(d['to'], -1);
+        if (from >= 0 && to >= 0) p.reorder(from, to > from ? to + 1 : to);
+      case 'shuffle':
+        p.toggleShuffle();
+      case 'repeat':
+        p.cycleRepeat();
+      case 'clear':
+        p.clearExceptCurrent();
+      case 'playList':
+        final list = tracks();
+        if (list.isEmpty) return;
+        unawaited(
+          d['shuffle'] == true
+              ? p.playQueueShuffled(list, source: source)
+              : p.playQueue(
+                  list,
+                  index.clamp(0, list.length - 1),
+                  source: source,
+                ),
+        );
+      case 'enqueue':
+        d['next'] == true
+            ? p.queueTracksNext(tracks(), source: source)
+            : p.queueTracks(tracks(), source: source);
+    }
+  }
+
+  // ── Своё — ПК ──────────────────────────────────────────────────────────
+
+  /// Своё поменялось (трек, очередь, пауза, перемотка): сказать ПК, если звук
+  /// здесь. Пачка правок подряд уходит одним разом.
+  void reportSoon() {
+    if (_client == null || state != null) return;
+    _report?.cancel();
+    _report = Timer(const Duration(milliseconds: 150), _sendReport);
+  }
+
+  Future<void> _sendReport() async {
+    final client = _client;
+    if (client == null || state != null) return;
+    final playback = ref.read(playbackProvider.notifier);
+    final own = playback.localSession();
+    final Map<String, Object?> body;
+    if (own == null) {
+      if (!_reported) return;
+      body = {'active': false};
+    } else {
+      body = {
+        'active': true,
+        'id': own.track.id,
+        'playing': ref.read(audioPlayerProvider).playing,
+        'position': own.position.inMilliseconds / 1000,
+        'duration': playback.localDuration.inMilliseconds / 1000,
+        'shuffle': own.shuffle,
+        'repeat': own.repeat.name,
+        'source': own.source?.toJson() ?? const {},
+        // Очередь — только когда поменялась: её могут быть сотни треков.
+        if (!identical(own.queue, _sentQueue)) ...{
+          'tracks': [for (final t in own.queue) t.toJson()],
+          'orig': [for (final t in own.orig) t.toJson()],
+        },
+      };
+    }
+    try {
+      await client.json(
+        'POST',
+        '/v1/connect/state',
+        body: body,
+        timeout: const Duration(seconds: 8),
+      );
+      _sentQueue = own?.queue;
+      _reported = own != null;
+    } catch (e) {
+      logWarn('connect', 'своё состояние до ПК не дошло: $e');
+    }
   }
 
   // ── «Играть на» ────────────────────────────────────────────────────────
@@ -344,10 +473,11 @@ class PcRemoteController extends Notifier<PcPlayback?> {
         ..shuffle = d['shuffle'] == true
         ..repeat = _repeat(d['repeat'])
         ..liked = d['liked'] == true
+        ..mirrorsMe = d['active'] == _me
         ..source = PlaySource.fromJson(d['source']);
       _setPosition(pc, d);
       if (_pc == null) pc.at = _int(d['at'], 0);
-      if (pc.playing) pc.at = BloomDb.now();
+      if (pc.playing && !pc.mirrorsMe) pc.at = BloomDb.now();
       _pc = pc;
       _decide();
     } catch (e) {
@@ -365,6 +495,11 @@ class PcRemoteController extends Notifier<PcPlayback?> {
       return;
     }
     final ownPlaying = ref.read(audioPlayerProvider).playing;
+    // ПК показывает нас — звук здесь.
+    if (pc.mirrorsMe) {
+      _local();
+      return;
+    }
     // Забрали сюда — пока ПК сам не заиграет, звук тут.
     // Пару секунд после переноса ПК ещё доигрывает — это не «заиграл сам».
     if (_pinned &&
@@ -374,14 +509,14 @@ class PcRemoteController extends Notifier<PcPlayback?> {
       _pinned = false;
     }
     if (_pinned) {
-      state = null;
+      _local();
       return;
     }
     final ownAt = _int(_db.get(kConnectPlayed), 0);
     final remote =
         !ownPlaying && (state != null || pc.playing || pc.at >= ownAt);
     if (!remote) {
-      state = null;
+      _local();
       return;
     }
     if (state == null) logInfo('connect', 'телефон — пульт ПК');
@@ -399,6 +534,15 @@ class PcRemoteController extends Notifier<PcPlayback?> {
       duration: pc.duration,
       liked: pc.liked,
     );
+  }
+
+  /// Звук здесь: на экране своё, и ПК узнаёт, что показывать.
+  void _local() {
+    final was = state;
+    state = null;
+    // Только на переходе: каждое событие ПК — не повод слать своё снова
+    // (на него ПК ответил бы событием же — и так по кругу).
+    if (was != null || !_reported) reportSoon();
   }
 
   static void _setPosition(_Pc pc, Map<String, Object?> d) {
@@ -439,4 +583,7 @@ class _Pc {
 
   /// Когда на ПК играло последним, мс.
   int at = 0;
+
+  /// ПК сейчас показывает этот телефон (`active` — наш id): его «играет» — наше.
+  bool mirrorsMe = false;
 }

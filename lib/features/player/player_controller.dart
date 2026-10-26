@@ -318,6 +318,7 @@ class PlaybackController extends Notifier<PlaybackState>
       // всего и уходит из приложения.
       handler.player.playingStream.listen((playing) {
         _stateDirty();
+        _reportToPc();
         // Только что звучало — отметка «играло здесь» встаёт на миг паузы.
         if (!playing && BloomDb.now() - _audibleAt < 6000) {
           _audibleAt = 0;
@@ -328,7 +329,10 @@ class PlaybackController extends Notifier<PlaybackState>
     // Плюс по таймеру, пока играет: процесс убивают без предупреждения, и без
     // тика «Продолжить» вернуло бы на позицию последнего нажатия паузы.
     final ticker = Timer.periodic(_sessionEvery, (_) {
-      if (handler.player.playing) _stateDirty();
+      if (handler.player.playing) {
+        _stateDirty();
+        _reportToPc(); // ПК, показывающий нас, сверяет часы
+      }
     });
     ref.onDispose(() {
       ticker.cancel();
@@ -373,6 +377,7 @@ class PlaybackController extends Notifier<PlaybackState>
     final prev = _local;
     _local = next;
     if (ref.read(pcRemoteProvider) == null) state = next;
+    _reportToPc();
     if (prev.track?.id != next.track?.id) _syncFav();
     // Перемешка меняет и порядок, к которому возвращаться.
     if (!identical(prev.queue, next.queue) || prev.shuffle != next.shuffle) {
@@ -1112,7 +1117,14 @@ class PlaybackController extends Notifier<PlaybackState>
     }
   }
 
-  Future<void> seek(Duration to) => _pc?.seek(to) ?? _player.seek(to);
+  Future<void> seek(Duration to) async {
+    if (_pc case final pc?) return pc.seek(to);
+    await _player.seek(to);
+    _reportToPc();
+  }
+
+  /// Своё поменялось — ПК, если он показывает нас, узнаёт (`pc_remote.dart`).
+  void _reportToPc() => ref.read(pcRemoteProvider.notifier).reportSoon();
 
   void cycleRepeat() {
     if (_pc case final pc?) {
@@ -1384,6 +1396,10 @@ class PlaybackController extends Notifier<PlaybackState>
       repeat: _st.repeat,
     );
   }
+
+  /// Длительность своего трека — для ПК, который его показывает.
+  Duration get localDuration =>
+      _player.duration ?? _st.track?.duration ?? Duration.zero;
 
   /// Своё — на паузу: звук ушёл на ПК. Загрузка в полёте больше не наша: без
   /// отмены она, упав, сама перешла бы к следующему треку и заиграла здесь.
