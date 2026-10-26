@@ -25,7 +25,7 @@ import 'features/offline/offline_store.dart';
 import 'features/onboarding/onboarding_store.dart';
 import 'features/player/audio_handler.dart';
 import 'features/player/player_controller.dart';
-import 'features/player/resume_store.dart';
+import 'features/player/session_store.dart';
 import 'features/settings/auto_accent.dart';
 import 'features/settings/user_fonts.dart';
 import 'providers/yandex/ym_auth.dart';
@@ -225,7 +225,7 @@ void _catchUnhandled() {
 void _restoreSession(ProviderContainer container) {
   final settings = container.read(settingsProvider);
   if (!settings.restoreQueue) return;
-  final data = container.read(resumeProvider);
+  final data = container.read(sessionProvider);
   // Очередь очистили — в плеер её не поднимаем, «Продолжить» остаётся.
   if (data == null || data.cleared) return;
   logInfo(

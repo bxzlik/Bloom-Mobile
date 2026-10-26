@@ -49,7 +49,6 @@ class SimilarToSection extends ConsumerWidget {
     final source = PlainSource(
       id: 'similarTo',
       label: '${l.homeSimilarTo} ${seed.name}',
-      icon: PlainSourceIcon.note,
       cover: seed.cover,
     );
 
@@ -126,7 +125,6 @@ VoidCallback? _seedAction(
           source: PlainSource(
             id: 'similarTo:seed',
             label: track.name,
-            icon: PlainSourceIcon.note,
             cover: track.cover,
           ),
         ),

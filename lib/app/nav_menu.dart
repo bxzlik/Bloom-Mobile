@@ -28,7 +28,7 @@ import '../core/store/settings_store.dart';
 import '../features/library/lib_order_store.dart';
 import '../features/library/ui/create_playlist_sheet.dart';
 import '../features/player/player_controller.dart';
-import '../features/player/resume_store.dart';
+import '../features/player/session_store.dart';
 import '../features/settings/transparency_store.dart';
 import '../features/wave/wave_actions.dart';
 import '../shared/ui/atoms.dart';
@@ -306,7 +306,7 @@ class _HomeMenu extends ConsumerWidget {
     final playing = ref.watch(playingProvider).value ?? false;
     // Снимок прошлой сессии нужен, только пока живого трека нет — ровно то же
     // условие, что у карточки «Продолжить» на главной.
-    final resume = track == null ? ref.watch(resumeProvider) : null;
+    final resume = track == null ? ref.watch(sessionProvider) : null;
 
     // Продолжать нечего — пункта нет: играющий трек продолжать не надо, а до
     // первого запуска и продолжать не с чего.
@@ -328,7 +328,7 @@ class _HomeMenu extends ConsumerWidget {
             onTap: () {
               final player = hostRef.read(playbackProvider.notifier);
               if (resume != null) {
-                player.resumeSession(resume);
+                player.resumeSession(resume.forContinue());
               } else {
                 player.toggle();
               }

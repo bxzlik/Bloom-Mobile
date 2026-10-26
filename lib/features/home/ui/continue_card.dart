@@ -2,8 +2,8 @@
 /// (`app/pages/HomePage.tsx`): обложка, круглая кнопка play/pause, полоса-
 /// пилюля с названием внутри и ♡ справа. Одной строкой, как на ПК.
 ///
-/// Два состояния: живой трек этой сессии (полоса перематывается) и снимок
-/// прошлой сессии из [resumeProvider] — тогда полоса просто показывает, где
+/// Два состояния: живой трек этой сессии (полоса перематывается) и прошлая
+/// сессия из [sessionProvider] — тогда полоса просто показывает, где
 /// остановились, а тап восстанавливает очередь и играет с того же места.
 library;
 
@@ -17,7 +17,7 @@ import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/track_actions.dart';
 import '../../player/player_controller.dart';
-import '../../player/resume_store.dart';
+import '../../player/session_store.dart';
 import '../../player/ui/player_sheet.dart';
 import '../../settings/cover_accent.dart';
 
@@ -31,7 +31,7 @@ class ContinueCard extends ConsumerWidget {
     // обновляет его каждые несколько секунд, и подписка на ходу перерисовывала
     // бы карточку впустую.
     if (track == null) {
-      final data = ref.watch(resumeProvider);
+      final data = ref.watch(sessionProvider);
       return data == null ? const SizedBox.shrink() : _FromResume(data: data);
     }
     return const _Live();
@@ -93,14 +93,14 @@ class _LiveState extends ConsumerState<_Live> {
 class _FromResume extends ConsumerWidget {
   const _FromResume({required this.data});
 
-  final ResumeData data;
+  final SessionData data;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final track = data.track;
     final total = track.duration;
-    // Очередь — целиком, какой была до очистки (`fullQueue`).
-    void start(ResumeData data) =>
+    // Очередь — целиком, какой была до очистки (`full`).
+    void start(SessionData data) =>
         ref.read(playbackProvider.notifier).resumeSession(data.forContinue());
     return _CardShell(
       track: track,

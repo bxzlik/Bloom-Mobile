@@ -37,7 +37,6 @@ class ForYouSection extends ConsumerWidget {
     final source = PlainSource(
       id: 'forYou',
       label: l.homeForYou,
-      icon: PlainSourceIcon.note,
       cover: tracks.first.cover,
     );
     // Из одного трека стопка не складывается, да и повторяла бы соседа.

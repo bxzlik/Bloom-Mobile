@@ -37,7 +37,7 @@ import 'nightcore_ios.dart';
 import 'notification_permission.dart';
 import 'play_error.dart';
 import 'play_source.dart';
-import 'resume_store.dart';
+import 'session_store.dart';
 import 'sleep_timer_store.dart';
 import 'speed_store.dart';
 import 'track_swap_dir.dart';
@@ -340,17 +340,19 @@ class PlaybackController extends Notifier<PlaybackState>
       // Зачёт прослушивания — на 90% трека, как на десктопе; плюс своё,
       // независимое правило зачёта у Last.fm (см. [_onPosition]).
       handler.player.positionStream.listen(_onPosition),
-      // Снимок сессии — на каждую смену play/pause: именно на паузе человек
-      // чаще всего и уходит из приложения.
-      handler.player.playingStream.listen((_) => _saveResume()),
+      // Сессия — на каждую смену play/pause: именно на паузе человек чаще
+      // всего и уходит из приложения.
+      handler.player.playingStream.listen((_) => _stateDirty()),
     ];
     // Плюс по таймеру, пока играет: процесс убивают без предупреждения, и без
     // тика «Продолжить» вернуло бы на позицию последнего нажатия паузы.
-    final ticker = Timer.periodic(_resumeEvery, (_) {
-      if (handler.player.playing) _saveResume();
+    final ticker = Timer.periodic(_sessionEvery, (_) {
+      if (handler.player.playing) _stateDirty();
     });
     ref.onDispose(() {
       ticker.cancel();
+      _queueSave?.cancel();
+      _stateSave?.cancel();
       for (final s in subs) {
         s.cancel();
       }
@@ -372,6 +374,16 @@ class PlaybackController extends Notifier<PlaybackState>
     ref.listen(libraryProvider.select((lib) => lib.favs), (_, _) => _syncFav());
     listenSelf((prev, next) {
       if (prev?.track?.id != next.track?.id) _syncFav();
+      // Перемешка меняет и порядок, к которому возвращаться.
+      if (!identical(prev?.queue, next.queue) || prev?.shuffle != next.shuffle) {
+        _queueDirty();
+      } else if (prev?.index != next.index ||
+          prev?.loading != next.loading ||
+          !identical(prev?.source, next.source) ||
+          prev?.repeat != next.repeat ||
+          prev?.smartShuffle != next.smartShuffle) {
+        _stateDirty();
+      }
     });
     return const PlaybackState();
   }
@@ -452,29 +464,67 @@ class PlaybackController extends Notifier<PlaybackState>
     }
   }
 
-  /// Как часто обновляем позицию в снимке сессии. Реже — заметный откат назад
-  /// после убийства процесса, чаще — лишняя запись файла на ровном месте.
-  static const Duration _resumeEvery = Duration(seconds: 10);
+  /// Как часто обновляем позицию в сессии, пока играет. Реже — заметный откат
+  /// назад после убийства процесса, чаще — лишняя запись на ровном месте.
+  static const Duration _sessionEvery = Duration(seconds: 10);
 
-  /// Записать снимок «Продолжить». Пустая очередь снимок не трогает: остановка
-  /// не должна стирать то, что человек слушал.
-  void _saveResume() {
+  /// Запись сессии откладывается на 300 мс, как у `Session` ПК: пачка правок
+  /// очереди подряд пишется одной записью.
+  Timer? _queueSave, _stateSave;
+
+  void _queueDirty() {
+    _stateSave?.cancel();
+    _queueSave?.cancel();
+    _queueSave = Timer(const Duration(milliseconds: 300), _saveQueue);
+  }
+
+  /// Очередь ждёт записи — она запишет и состояние.
+  void _stateDirty() {
+    if (_queueSave?.isActive == true || _stateSave?.isActive == true) return;
+    _stateSave = Timer(const Duration(milliseconds: 300), _saveState);
+  }
+
+  /// Записать то, что ждёт, сразу.
+  void _flushSession() {
+    if (_queueSave?.isActive == true) {
+      _saveQueue();
+    } else if (_stateSave?.isActive == true) {
+      _saveState();
+    }
+  }
+
+  /// Пустая очередь строки не трогает: остановка не стирает то, что слушали.
+  void _saveQueue() {
+    _queueSave?.cancel();
+    ref
+        .read(sessionProvider.notifier)
+        .saveQueue(
+          state.queue,
+          state.shuffle ? _origQueue : null,
+          _preClearQueue,
+        );
+    _saveState();
+  }
+
+  void _saveState() {
+    _stateSave?.cancel();
     final track = state.track;
     if (track == null) return;
     ref
-        .read(resumeProvider.notifier)
-        .save(
-          ResumeData.capture(
-            queue: state.queue,
-            index: state.index,
-            position: _player.position,
-            paused: !_player.playing,
-            source: state.source,
-            fullQueue: _preClearQueue,
-            shuffle: state.shuffle,
-            smartShuffle: state.smartShuffle,
-            repeat: state.repeat,
-          ),
+        .read(sessionProvider.notifier)
+        .saveState(
+          index: state.index,
+          // Пока новый трек грузится (или не заиграл), позиция плеера ещё от
+          // прошлого — пишем ту, с которой его ставили.
+          position: state.loading || _loadedId != track.id
+              ? _loadingAt
+              : _player.position,
+          source: state.source,
+          shuffle: state.shuffle,
+          smartShuffle: state.smartShuffle,
+          repeat: state.repeat,
+          ended: _queueEnded,
+          playing: _player.playing,
         );
   }
 
@@ -650,7 +700,6 @@ class PlaybackController extends Notifier<PlaybackState>
     if (orig != null) _origQueue = [...orig, ...add];
     state = state.copyWith(queue: q);
     _handler.setQueue(q);
-    _saveResume();
     return add.length;
   }
 
@@ -662,47 +711,42 @@ class PlaybackController extends Notifier<PlaybackState>
     if (_append(tracks) == 0) return false;
     _origQueue = null;
     state = state.copyWith(source: source, shuffle: false);
-    _saveResume();
     return true;
   }
 
-  /// Продолжить прошлую сессию — очередь из снимка, с той же позиции
-  /// (карточка «Продолжить» на главной). Порт `restoreResumeQueue`.
+  /// Продолжить прошлую сессию — та же очередь с той же позиции (запуск
+  /// приложения, «Продолжить» на главной), как `Session::restore` ПК.
   ///
-  /// Снимок мог быть волновым: очередь вернётся сама, а вот память подбора
+  /// Сессия могла быть волновой: очередь вернётся сама, а вот память подбора
   /// живёт отдельно — без неё волна доиграла бы сохранённые треки и молча
   /// встала, вместо того чтобы догрузиться.
   ///
   /// [autoplay] `false` — сессия возвращается НА ПАУЗЕ: так работает
   /// «Восстановление очереди» при запуске приложения (`Настройки → Аудио`).
-  Future<void> resumeSession(ResumeData data, {bool autoplay = true}) {
+  Future<void> resumeSession(SessionData data, {bool autoplay = true}) async {
     ref.read(waveProvider.notifier).adoptRestored(data.source);
-    return _resume(data, autoplay: autoplay);
-  }
-
-  Future<void> _resume(ResumeData data, {bool autoplay = true}) {
     // Режимы ставим ДО очереди: `_start` их не трогает, а `_load` уже смотрит
-    // на повтор. Порядок очереди в снимке — тот самый, тасованный, так что
-    // перемешку возвращаем флагом, не перетасовывая заново.
+    // на повтор. Очередь записана уже тасованной, так что перемешку
+    // возвращаем флагом, а порядок до неё — из `orig`.
     state = state.copyWith(
       shuffle: data.shuffle,
       smartShuffle: data.smartShuffle,
       repeat: data.repeat,
     );
-    // Исходного порядка до перемешки в снимке нет (см. `ResumeData.shuffle`) —
-    // `_origQueue` остаётся пустым, и выключение перемешки просто снимет флаг.
-    return _start(
+    await _start(
       data.queue,
       data.index,
       source: data.source,
-      orig: null,
+      orig: data.shuffle && data.orig.isNotEmpty ? data.orig : null,
       // Первые пару секунд перематывать некуда — начинаем с начала трека.
       startAt: data.position > const Duration(seconds: 2)
           ? data.position
           : null,
       autoplay: autoplay,
-      preClear: data.fullQueue,
+      preClear: data.full.isEmpty ? null : data.full,
     );
+    // Доиграла до конца — «далее» и «Авто похожие» ведут себя как тогда.
+    if (data.ended && state.track?.id == data.track.id) _queueEnded = true;
   }
 
   /// Трек, который загрузили, но играть не начали (восстановление на паузе).
@@ -719,6 +763,9 @@ class PlaybackController extends Notifier<PlaybackState>
   /// по-настоящему игравшего. Без этой отметки цепочка авто-скипов научила бы
   /// подбор тому, чего не было.
   String? _loadedId;
+
+  /// С какой позиции ставили текущий трек — её пишет сессия, пока он грузится.
+  Duration _loadingAt = Duration.zero;
 
   /// [skipped] — сколько недоступных треков уже пропустили в этой цепочке.
   /// Порог — длина очереди: если не заиграл ни один, авто-скип обязан
@@ -741,6 +788,7 @@ class PlaybackController extends Notifier<PlaybackState>
     // моменту перерисовки прошлый номер в очереди уже потерян.
     commitSwapDir(state.queue, index);
     final gen = ++_generation;
+    _loadingAt = startAt ?? Duration.zero;
     // Прошлый трек умолкает СРАЗУ, а не когда доедет ссылка на новый. Источник
     // у just_audio подменяется только в setUrl — то есть после похода в сеть за
     // стримом, и всё это время в ушах играл бы старый трек, хотя в плеере уже
@@ -834,10 +882,6 @@ class PlaybackController extends Notifier<PlaybackState>
         // Загрузили, но не играем — события «трек пошёл» ждут первого play.
         _pendingStart = track;
       }
-      // Снимок «Продолжить» — сразу на новом треке: подписка на playingStream
-      // при переходе внутри очереди молчит (плеер и так играл), и до тика
-      // таймера карточка звала бы обратно на прошлый трек.
-      _saveResume();
       if (autoplay) logInfo('player', 'играю', now: true);
       // play() у just_audio завершается НЕ когда началось воспроизведение, а
       // когда трек доиграл (или его поставили на паузу). Ждать его нельзя:
@@ -1189,7 +1233,6 @@ class PlaybackController extends Notifier<PlaybackState>
     if (orig != null) _origQueue = [...orig, ...add];
     state = state.copyWith(queue: q);
     _handler.setQueue(q);
-    _saveResume();
     return add.length;
   }
 
@@ -1219,7 +1262,6 @@ class PlaybackController extends Notifier<PlaybackState>
     _handler
       ..setQueue(q)
       ..setTrack(state.track, queueIndex: index);
-    _saveResume();
     return batch.where((t) => t.id != current?.id).length;
   }
 
@@ -1259,7 +1301,6 @@ class PlaybackController extends Notifier<PlaybackState>
     if (state.track?.id == next.id) {
       _handler.setTrack(state.track, queueIndex: state.index);
     }
-    _saveResume();
   }
 
   /// Убрать трек из очереди (смахивание строки). Порт `removeFromQueue`.
@@ -1267,15 +1308,15 @@ class PlaybackController extends Notifier<PlaybackState>
     final q = [...state.queue];
     if (index < 0 || index >= q.length) return;
     if (q.length == 1) {
-      // Последний — очередь пуста, плеер сбрасываем. Очередь до очистки — для
-      // «Продолжить» (если кнопкой очистки уже урезали, берём полную).
-      final full = _preClearQueue ?? q;
+      // Последний — очередь пуста, плеер сбрасываем. Её строки (и очередь до
+      // очистки) остаются для «Продолжить» — дописываем то, что ждёт записи.
+      _flushSession();
       await commandStop();
       await _player.stop();
       // Восстанавливать в плеер после перезапуска нечего, а запись при пустой
-      // очереди ничего не пишет — помечаем снимок явно, иначе удалённый трек
+      // очереди ничего не пишет — помечаем сессию явно, иначе удалённый трек
       // возвращался. Волна тоже закончилась: её очередь только что убрали.
-      ref.read(resumeProvider.notifier).markCleared(fullQueue: full);
+      ref.read(sessionProvider.notifier).markCleared();
       ref.read(waveProvider.notifier).endSession();
       return;
     }
@@ -1314,9 +1355,6 @@ class PlaybackController extends Notifier<PlaybackState>
     _handler
       ..setQueue([track])
       ..setTrack(track, queueIndex: 0);
-    // Сама по себе очистка ни тика, ни play/pause не даёт — без записи на паузе
-    // очищенная очередь вернулась бы после перезапуска.
-    _saveResume();
   }
 
   // --- PlaybackCommands: команды из шторки, с экрана блокировки, с гарнитуры
@@ -1329,9 +1367,16 @@ class PlaybackController extends Notifier<PlaybackState>
     if (state.loading) return;
     // После stop() (смахнули шторку) источник у just_audio уже отпущен —
     // «играть» должно перезапустить трек, а не молча ничего не сделать.
-    if (_player.processingState == ProcessingState.idle &&
-        state.track != null) {
-      await _load(state.index);
+    final track = state.track;
+    if (_player.processingState == ProcessingState.idle && track != null) {
+      // Трек так и не заиграл (восстановленная сессия без сети) — снова с той
+      // же позиции, а не с начала.
+      await _load(
+        state.index,
+        startAt: _loadedId != track.id && _loadingAt > Duration.zero
+            ? _loadingAt
+            : null,
+      );
       return;
     }
     // Сессию восстановили на паузе и вот сейчас её пустили — самое время

@@ -1,5 +1,5 @@
-/// Главная: снимок сессии («Продолжить»), лента «Недавно слушали» и витрина
-/// «Новинки»/«Чарты» с её кешем и тихими повторами.
+/// Главная: лента «Недавно слушали» и витрина «Новинки»/«Чарты» с её кешем и
+/// тихими повторами. Сессия («Продолжить») — в `session_test.dart`.
 library;
 
 import 'package:bloom/app/providers.dart';
@@ -11,12 +11,9 @@ import 'package:bloom/core/store/json_store.dart';
 import 'package:bloom/core/store/play_stats.dart';
 import 'package:bloom/features/home/discover_store.dart';
 import 'package:bloom/features/home/ui/home_sections.dart';
-import 'package:bloom/features/player/play_source.dart';
-import 'package:bloom/features/player/resume_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloom/core/db/db.dart';
-import 'support/test_db.dart';
 
 Track _track(String id) => Track(
   id: 'sc:$id',
@@ -77,148 +74,6 @@ ProviderContainer _container(MusicProvider provider) {
 
 void main() {
   setUp(resetDiscoverCache);
-
-  group('снимок сессии', () {
-    test('короткая очередь уносится целиком', () {
-      final queue = [_track('a'), _track('b'), _track('c')];
-      final data = ResumeData.capture(
-        queue: queue,
-        index: 1,
-        position: const Duration(seconds: 42),
-        paused: true,
-      );
-      expect(data.queue.length, 3);
-      expect(data.index, 1);
-      expect(data.track.id, 'sc:b');
-    });
-
-    test('длинная режется с текущего трека — он обязан попасть в снимок', () {
-      final queue = [for (var i = 0; i < 500; i++) _track('t$i')];
-      final data = ResumeData.capture(
-        queue: queue,
-        index: 400,
-        position: Duration.zero,
-        paused: false,
-      );
-      expect(data.queue.length, kResumeQueueLimit);
-      expect(data.track.id, 'sc:t400');
-      // Хвост короче лимита — окно сдвигается назад, но текущий остаётся внутри.
-      final tail = ResumeData.capture(
-        queue: queue,
-        index: 495,
-        position: Duration.zero,
-        paused: false,
-      );
-      expect(tail.queue.length, kResumeQueueLimit);
-      expect(tail.track.id, 'sc:t495');
-    });
-
-    test('переживает запись и чтение', () {
-      final saved = ResumeData.capture(
-        queue: [_track('a'), _track('b')],
-        index: 1,
-        position: const Duration(seconds: 90),
-        paused: true,
-        source: const LibSource('pl_1'),
-      );
-      final read = ResumeData.fromJson(saved.toJson());
-      expect(read, isNotNull);
-      expect(read!.track.id, 'sc:b');
-      expect(read.position, const Duration(seconds: 90));
-      // Источник переживает запись целиком, а не одним id: пилюля в шапке
-      // плеера после перезапуска обязана назвать тот же список.
-      expect(read.source, isA<LibSource>());
-      expect(read.source?.id, 'pl_1');
-      expect(read.paused, isTrue);
-    });
-
-    test('битый номер трека не теряет снимок', () {
-      final json = ResumeData.capture(
-        queue: [_track('a')],
-        index: 0,
-        position: Duration.zero,
-        paused: true,
-      ).toJson();
-      json['index'] = 7;
-      expect(ResumeData.fromJson(json)?.track.id, 'sc:a');
-    });
-
-    test('пустая очередь снимком не считается', () {
-      expect(ResumeData.fromJson({'queue': <Object>[], 'index': 0}), isNull);
-    });
-
-    test('контроллер читает записанное и чистит', () {
-      final store = JsonStore.memory();
-      final c = ProviderContainer(
-        overrides: [
-          jsonStoreProvider.overrideWithValue(store),
-          dbProvider.overrideWithValue(testDb(store)),
-        ],
-      );
-      addTearDown(c.dispose);
-      expect(c.read(resumeProvider), isNull);
-      c
-          .read(resumeProvider.notifier)
-          .save(
-            ResumeData.capture(
-              queue: [_track('a')],
-              index: 0,
-              position: const Duration(seconds: 5),
-              paused: true,
-            ),
-          );
-      expect(store.read(kResumeKey), isNotNull);
-      expect(ResumeData.fromJson(store.read(kResumeKey))?.track.id, 'sc:a');
-      c.read(resumeProvider.notifier).clear();
-      expect(c.read(resumeProvider), isNull);
-      expect(store.read(kResumeKey), isNull);
-    });
-  });
-
-  group('очищенная очередь', () {
-    test('снимок помнит пометку и очередь до очистки после перезапуска', () {
-      final full = [_track('a'), _track('b'), _track('c')];
-      final data = ResumeData.capture(
-        queue: [_track('b')],
-        index: 0,
-        position: const Duration(seconds: 30),
-        paused: true,
-        fullQueue: full,
-      ).markedCleared(null);
-
-      final back = ResumeData.fromJson(data.toJson())!;
-      expect(back.cleared, isTrue);
-      expect(back.fullQueue?.map((t) => t.id), ['sc:a', 'sc:b', 'sc:c']);
-    });
-
-    test('«Продолжить» поднимает полную очередь на том же треке', () {
-      final data = ResumeData.capture(
-        queue: [_track('b')],
-        index: 0,
-        position: const Duration(seconds: 30),
-        paused: true,
-        fullQueue: [_track('a'), _track('b'), _track('c')],
-      );
-      final cont = data.forContinue();
-      expect(cont.queue.length, 3);
-      expect(cont.track.id, 'sc:b');
-      expect(cont.position, const Duration(seconds: 30));
-      // Развёрнутый снимок — обычная очередь, без пометок.
-      expect(cont.cleared, isFalse);
-      expect(cont.fullQueue, isNull);
-    });
-
-    test('без очистки снимок для «Продолжить» не меняется', () {
-      final data = ResumeData.capture(
-        queue: [_track('a'), _track('b')],
-        index: 1,
-        position: Duration.zero,
-        paused: false,
-      );
-      expect(identical(data.forContinue(), data), isTrue);
-      expect(data.toJson().containsKey('fullQueue'), isFalse);
-    });
-  });
 
   group('недавно слушали', () {
     test('идут в порядке «Истории», лимит соблюдается', () {

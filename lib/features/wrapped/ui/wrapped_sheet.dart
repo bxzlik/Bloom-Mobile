@@ -266,7 +266,6 @@ class _WrappedSheetState extends ConsumerState<_WrappedSheet>
           source: PlainSource(
             id: 'wrapped:${widget.period.id}',
             label: periodTitle(context.l, widget.period),
-            icon: PlainSourceIcon.chart,
           ),
         );
     Navigator.of(context).maybePop();

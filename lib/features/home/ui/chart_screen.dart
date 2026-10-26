@@ -37,7 +37,6 @@ class ChartScreen extends ConsumerWidget {
     final source = PlainSource(
       id: 'discover:charts',
       label: l.homeCharts,
-      icon: PlainSourceIcon.chart,
     );
     final playback = ref.read(playbackProvider.notifier);
 

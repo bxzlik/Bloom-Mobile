@@ -47,7 +47,7 @@ import '../../features/player/player_bg_store.dart';
 import '../../features/player/player_controller.dart';
 import '../../features/player/player_style_store.dart';
 import '../../features/player/player_view_store.dart';
-import '../../features/player/resume_store.dart';
+import '../../features/player/session_store.dart';
 import '../../features/player/slider_style_store.dart';
 import '../../features/player/sleep_timer_store.dart';
 import '../../features/player/speed_store.dart';
@@ -157,7 +157,7 @@ Future<void> hardReset(WidgetRef ref) async {
   ref.invalidate(userFontsProvider);
 
   ref.invalidate(playbackProvider);
-  ref.invalidate(resumeProvider);
+  ref.invalidate(sessionProvider);
   ref.invalidate(libraryProvider);
   ref.invalidate(playLogProvider);
   // Витрины главной — их кэш лежал там же и собран по стёртому топу.

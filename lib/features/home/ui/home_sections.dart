@@ -97,7 +97,6 @@ class DiscoverSection extends ConsumerWidget {
     final source = PlainSource(
       id: 'discover:${mode.name}',
       label: title,
-      icon: PlainSourceIcon.chart,
     );
     // Заголовок ведёт на полную страницу: чарт — списком, релизы — сеткой.
     // У SoundCloud новинки приходят треками — сетки для них нет, и заголовок
@@ -181,7 +180,6 @@ class RecentSection extends ConsumerWidget {
             source: PlainSource(
               id: 'recent',
               label: context.l.homeRecent,
-              icon: PlainSourceIcon.clock,
             ),
           ),
         ),
