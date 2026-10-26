@@ -30,6 +30,7 @@ import '../../../core/store/settings_store.dart';
 import '../../../providers/yandex/ym_auth.dart';
 import '../../lastfm/lastfm_store.dart';
 import '../../onboarding/onboarding_store.dart';
+import '../../pc/pc_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
@@ -151,6 +152,7 @@ class _IntegrationsGroup extends ConsumerWidget {
     final off = context.bloom.muted;
     final ymOn = ref.watch(ymAuthProvider.select((s) => s.authed));
     final lfmOn = ref.watch(lastfmProvider.select((s) => s.connected));
+    final pcName = ref.watch(pcProvider.select((s) => s.link?.name));
     return SettingsGroup(
       title: context.l.setGroupIntegrations,
       rows: [
@@ -181,6 +183,13 @@ class _IntegrationsGroup extends ConsumerWidget {
             color: lfmOn ? null : off,
           ),
           onTap: () => context.go('/settings/lastfm'),
+        ),
+        // Bloom на ПК — пара раздела «Интеграции → Телефон» там.
+        SettingsRow(
+          icon: SolarIconsOutline.monitor,
+          title: context.l.setPc,
+          value: pcName,
+          onTap: () => context.go('/settings/pc'),
         ),
       ],
     );

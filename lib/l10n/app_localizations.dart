@@ -5887,6 +5887,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not read the font file'**
   String get apFontReadErr;
+
+  /// phone only: Settings → Integrations row and page title — sync with Bloom on the computer (desktop: Integrations → Phone)
+  ///
+  /// In en, this message translates to:
+  /// **'Computer'**
+  String get setPc;
+
+  /// No description provided for @pcNotPaired.
+  ///
+  /// In en, this message translates to:
+  /// **'Not connected'**
+  String get pcNotPaired;
+
+  /// No description provided for @pcPairedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected to “{name}”'**
+  String pcPairedTo(String name);
+
+  /// when = a time today (12:05) or a date and time
+  ///
+  /// In en, this message translates to:
+  /// **'Synced {when}'**
+  String pcSyncedAt(String when);
+
+  /// No description provided for @pcSyncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing…'**
+  String get pcSyncing;
+
+  /// No description provided for @pcOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer isn\'t on the network'**
+  String get pcOffline;
+
+  /// No description provided for @pcRepair.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer no longer knows this phone — connect again'**
+  String get pcRepair;
+
+  /// No description provided for @pcFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t sync'**
+  String get pcFailed;
+
+  /// No description provided for @pcHowTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How to connect'**
+  String get pcHowTitle;
+
+  /// No description provided for @pcHowSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'On the computer: Bloom → Settings → Integrations → Phone'**
+  String get pcHowSubtitle;
+
+  /// No description provided for @pcStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'Open **Bloom** on the computer: **Settings → Integrations → Phone** and turn the mode on.'**
+  String get pcStep1;
+
+  /// No description provided for @pcStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'Press **Connect a phone** — a QR code and a six-digit code show up.'**
+  String get pcStep2;
+
+  /// No description provided for @pcStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'Here press **Scan the QR code** and point the camera at it — or **Type the code**.'**
+  String get pcStep3;
+
+  /// No description provided for @pcGuideNote.
+  ///
+  /// In en, this message translates to:
+  /// **'The phone and the computer must be on the same home network. Playlists, likes, follows, dislikes, history and the profile sync; settings stay each device\'s own.'**
+  String get pcGuideNote;
+
+  /// No description provided for @pcScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan the QR code'**
+  String get pcScan;
+
+  /// No description provided for @pcEnterCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Type the code'**
+  String get pcEnterCode;
+
+  /// No description provided for @pcSyncNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync now'**
+  String get pcSyncNow;
+
+  /// No description provided for @pcReconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect again'**
+  String get pcReconnect;
+
+  /// No description provided for @pcUnpair.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get pcUnpair;
+
+  /// No description provided for @pcUnpaired.
+  ///
+  /// In en, this message translates to:
+  /// **'Computer forgotten. It lists the phone until you disconnect it there too.'**
+  String get pcUnpaired;
+
+  /// No description provided for @pcScanHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Point the camera at the QR code on the computer\'s screen'**
+  String get pcScanHint;
+
+  /// No description provided for @pcNoCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'No access to the camera'**
+  String get pcNoCamera;
+
+  /// No description provided for @pcCodeSearching.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for the computer…'**
+  String get pcCodeSearching;
+
+  /// No description provided for @pcCodeNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No computer found. Open “Connect a phone” on it — the phone must be on the same network.'**
+  String get pcCodeNone;
+
+  /// No description provided for @pcCodeRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Search again'**
+  String get pcCodeRetry;
+
+  /// No description provided for @pcCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The code from the computer\'s screen'**
+  String get pcCodeHint;
+
+  /// No description provided for @pcConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get pcConnect;
+
+  /// No description provided for @pcPaired.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected to “{name}”'**
+  String pcPaired(String name);
+
+  /// No description provided for @pcSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced'**
+  String get pcSynced;
+
+  /// No description provided for @pcErrNotBloom.
+  ///
+  /// In en, this message translates to:
+  /// **'That\'s not a Bloom code'**
+  String get pcErrNotBloom;
+
+  /// No description provided for @pcErrUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer doesn\'t answer — is it on the same network?'**
+  String get pcErrUnreachable;
+
+  /// No description provided for @pcErrWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong code'**
+  String get pcErrWrong;
+
+  /// No description provided for @pcErrClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'“Connect a phone” is closed on the computer'**
+  String get pcErrClosed;
+
+  /// No description provided for @pcErrTooMany.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many tries — wait for a new code'**
+  String get pcErrTooMany;
+
+  /// No description provided for @pcErrFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t connect'**
+  String get pcErrFailed;
 }
 
 class _AppLocalizationsDelegate

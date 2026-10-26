@@ -29,6 +29,16 @@
 	     файла на iOS 13, а доступа к медиатеке ни то, ни другое не требует —
 	     см. `kPickMetadata` в lib/core/store/cover_store.dart. Вернёшь там
 	     метаданные — верни и ключ сюда, вместе с его переводами. -->
+	<!-- «Настройки → Компьютер»: камера читает QR-код сопряжения с экрана ПК,
+	     а сам ПК стоит в домашней сети (iOS 14+ спрашивает доступ к ней).
+	     Поиск ПК широковещательным пакетом на iOS требует права
+	     com.apple.developer.networking.multicast от Apple — его нет, поэтому
+	     здесь ПК находится по адресам из QR; сопряжение по коду ищет ПК тем же
+	     поиском и на iOS может его не увидеть. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Bloom reads the pairing QR code from your computer's screen.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Bloom syncs your library with Bloom on your computer at home.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<!-- «Скачать файлом»: без этой пары папка приложения не появляется в

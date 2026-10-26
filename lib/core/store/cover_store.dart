@@ -221,10 +221,15 @@ Future<String?> copyLocalFile(File source, {String prefix = 'img'}) async {
   }
 }
 
+/// Пользуется ли ещё чем-то в базе эта картинка. Ставит `main()`: картинка с
+/// другого устройства лежит под именем-хешем, и одну и ту же могут взять два
+/// плейлиста или плейлист и профиль.
+bool Function(String cover)? coverInUse;
+
 /// Убрать файл своей обложки — плейлист удалили или обложку сменили.
 Future<void> deleteCover(String? cover) async {
   final path = localCoverPath(cover);
-  if (path == null) return;
+  if (path == null || (coverInUse?.call(cover!) ?? false)) return;
   try {
     final file = File(path);
     if (file.existsSync()) await file.delete();

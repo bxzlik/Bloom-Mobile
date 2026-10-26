@@ -56,6 +56,9 @@ dependencies:
   audio_service: ^0.18.19
   file_picker: ^12.3.0
   sqlite3: ^3.5.2
+  # QR-код с экрана ПК при сопряжении («Настройки → Компьютер»): камера и
+  # распознавание на обеих платформах — своими силами это не пара строк.
+  mobile_scanner: ^7.4.2
 
 dev_dependencies:
   flutter_test:

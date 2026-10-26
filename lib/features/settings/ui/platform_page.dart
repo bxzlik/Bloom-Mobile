@@ -36,16 +36,20 @@ const Curve _kExpandCurve = Cubic(0.4, 0, 0.2, 1);
 class PlatformPage extends StatelessWidget {
   const PlatformPage({
     super.key,
-    required this.mark,
+    this.mark,
+    this.icon,
     required this.onBack,
     this.status,
     this.statusColor,
     this.body,
     this.actions = const [],
-  });
+  }) : assert((mark == null) != (icon == null));
 
   /// Чей это раздел: площадка или сервис-интеграция (Last.fm).
-  final BrandMark mark;
+  final BrandMark? mark;
+
+  /// Или значок вместо знака — у раздела без бренда («Компьютер»).
+  final IconData? icon;
   final VoidCallback onBack;
 
   /// Строка под знаком: подключено / не подключено / чем настроено.
@@ -89,7 +93,9 @@ class PlatformPage extends StatelessWidget {
                         tween: Tween(end: open ? _logoCompact : _logoFull),
                         duration: _kExpand,
                         curve: _kExpandCurve,
-                        builder: (_, size, _) => mark.logo(size: size),
+                        builder: (_, size, _) => icon != null
+                            ? Icon(icon, size: size * 0.8, color: t.text)
+                            : mark!.logo(size: size),
                       ),
                       if (status case final text?) ...[
                         const SizedBox(height: 18),

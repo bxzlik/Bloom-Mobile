@@ -3429,4 +3429,125 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get apFontReadErr => 'Could not read the font file';
+
+  @override
+  String get setPc => 'Computer';
+
+  @override
+  String get pcNotPaired => 'Not connected';
+
+  @override
+  String pcPairedTo(String name) {
+    return 'Connected to “$name”';
+  }
+
+  @override
+  String pcSyncedAt(String when) {
+    return 'Synced $when';
+  }
+
+  @override
+  String get pcSyncing => 'Syncing…';
+
+  @override
+  String get pcOffline => 'The computer isn\'t on the network';
+
+  @override
+  String get pcRepair =>
+      'The computer no longer knows this phone — connect again';
+
+  @override
+  String get pcFailed => 'Couldn\'t sync';
+
+  @override
+  String get pcHowTitle => 'How to connect';
+
+  @override
+  String get pcHowSubtitle =>
+      'On the computer: Bloom → Settings → Integrations → Phone';
+
+  @override
+  String get pcStep1 =>
+      'Open **Bloom** on the computer: **Settings → Integrations → Phone** and turn the mode on.';
+
+  @override
+  String get pcStep2 =>
+      'Press **Connect a phone** — a QR code and a six-digit code show up.';
+
+  @override
+  String get pcStep3 =>
+      'Here press **Scan the QR code** and point the camera at it — or **Type the code**.';
+
+  @override
+  String get pcGuideNote =>
+      'The phone and the computer must be on the same home network. Playlists, likes, follows, dislikes, history and the profile sync; settings stay each device\'s own.';
+
+  @override
+  String get pcScan => 'Scan the QR code';
+
+  @override
+  String get pcEnterCode => 'Type the code';
+
+  @override
+  String get pcSyncNow => 'Sync now';
+
+  @override
+  String get pcReconnect => 'Connect again';
+
+  @override
+  String get pcUnpair => 'Disconnect';
+
+  @override
+  String get pcUnpaired =>
+      'Computer forgotten. It lists the phone until you disconnect it there too.';
+
+  @override
+  String get pcScanHint =>
+      'Point the camera at the QR code on the computer\'s screen';
+
+  @override
+  String get pcNoCamera => 'No access to the camera';
+
+  @override
+  String get pcCodeSearching => 'Looking for the computer…';
+
+  @override
+  String get pcCodeNone =>
+      'No computer found. Open “Connect a phone” on it — the phone must be on the same network.';
+
+  @override
+  String get pcCodeRetry => 'Search again';
+
+  @override
+  String get pcCodeHint => 'The code from the computer\'s screen';
+
+  @override
+  String get pcConnect => 'Connect';
+
+  @override
+  String pcPaired(String name) {
+    return 'Connected to “$name”';
+  }
+
+  @override
+  String get pcSynced => 'Synced';
+
+  @override
+  String get pcErrNotBloom => 'That\'s not a Bloom code';
+
+  @override
+  String get pcErrUnreachable =>
+      'The computer doesn\'t answer — is it on the same network?';
+
+  @override
+  String get pcErrWrong => 'Wrong code';
+
+  @override
+  String get pcErrClosed => '“Connect a phone” is closed on the computer';
+
+  @override
+  String get pcErrTooMany => 'Too many tries — wait for a new code';
+
+  @override
+  String get pcErrFailed => 'Couldn\'t connect';
 }

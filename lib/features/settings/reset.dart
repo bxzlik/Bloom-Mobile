@@ -41,6 +41,7 @@ import '../../features/library/pl_auto_store.dart';
 import '../../features/lyrics/lyrics_store.dart';
 import '../../features/lyrics/lyrics_style_store.dart';
 import '../../features/offline/offline_store.dart';
+import '../../features/pc/pc_store.dart';
 import '../../features/player/mini_style_store.dart';
 import '../../features/player/play_button_store.dart';
 import '../../features/player/player_bg_store.dart';
@@ -190,6 +191,9 @@ Future<void> hardReset(WidgetRef ref) async {
   // `wrapped`: сам ключ уже стёрт, гасим стор, чтобы он не висел в памяти до
   // перезапуска.
   ref.invalidate(wrappedPrefsProvider);
+  // Связка с ПК жила в стёртой базе. Не invalidate: расписание кругов заведено
+  // в `main()` и пересобранный стор остался бы без него.
+  ref.read(pcProvider.notifier).unpair();
   await resetSettings(ref);
 
   logInfo('reset', 'полный сброс: библиотека, настройки и файлы стёрты');

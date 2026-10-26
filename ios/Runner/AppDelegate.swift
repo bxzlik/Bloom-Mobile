@@ -305,6 +305,8 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
         result([
           "version": info?["CFBundleShortVersionString"] as? String ?? "",
           "build": info?["CFBundleVersion"] as? String ?? "",
+          // Имя в списке устройств на ПК (с iOS 16 без особого права — просто «iPhone»).
+          "device": UIDevice.current.name,
         ])
       default:
         result(FlutterMethodNotImplemented)

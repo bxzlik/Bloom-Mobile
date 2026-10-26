@@ -21,6 +21,7 @@ import '../features/library/ui/tracklist_screen.dart';
 import '../features/onboarding/onboarding_store.dart';
 import '../features/onboarding/ui/onboarding_screen.dart';
 import '../features/profile/ui/profile_edit_screen.dart';
+import '../features/pc/ui/pc_screen.dart';
 import '../features/profile/ui/profile_screen.dart';
 import '../features/search/ui/search_screen.dart';
 import '../features/settings/ui/appearance_screen.dart';
@@ -252,6 +253,18 @@ final GoRouter bloomRouter = GoRouter(
                 GoRoute(
                   path: 'lastfm',
                   builder: (_, _) => const _Page(LastfmSettingsScreen()),
+                ),
+                GoRoute(
+                  path: 'pc',
+                  builder: (_, _) => const _Page(PcSettingsScreen()),
+                  routes: [
+                    // Камера во весь экран — поверх баров каркаса.
+                    GoRoute(
+                      path: 'scan',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, _) => const PcScanScreen(),
+                    ),
+                  ],
                 ),
                 GoRoute(
                   path: 'system',

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.StatFs
+import android.provider.Settings
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
@@ -129,12 +130,33 @@ class MainActivity : AudioServiceActivity() {
                 @Suppress("DEPRECATION")
                 info.versionCode.toLong()
             }
-            result.success(mapOf("version" to (info.versionName ?: ""), "build" to code.toString()))
+            result.success(
+                mapOf(
+                    "version" to (info.versionName ?: ""),
+                    "build" to code.toString(),
+                    "device" to deviceName(),
+                ),
+            )
         } catch (e: Exception) {
             // Своего пакета не нашли — такого не бывает, но экран просто
             // покажет прочерк вместо версии.
             result.success(null)
         }
+    }
+
+    /**
+     * Как телефон зовут в списке устройств на ПК: имя из «О телефоне», а где его
+     * нет — производитель и модель.
+     */
+    private fun deviceName(): String {
+        val own = try {
+            Settings.Global.getString(contentResolver, "device_name")
+        } catch (e: Exception) {
+            null
+        }
+        if (!own.isNullOrBlank()) return own
+        val maker = Build.MANUFACTURER.replaceFirstChar { it.uppercase() }
+        return if (Build.MODEL.startsWith(Build.MANUFACTURER, ignoreCase = true)) Build.MODEL else "$maker ${Build.MODEL}"
     }
 
     /** Сколько всего места на томе с данными приложения и сколько свободно. */

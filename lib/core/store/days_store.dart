@@ -49,6 +49,9 @@ class DaysController extends Notifier<DaysState> {
   @override
   DaysState build() => _read();
 
+  /// Перечитать — пришли дни другого устройства.
+  void reload() => state = _read();
+
   DaysState _read() {
     final rows = _db.select('SELECT day, app_ms FROM days');
     var ms = 0;

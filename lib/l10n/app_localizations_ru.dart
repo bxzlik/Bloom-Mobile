@@ -3494,4 +3494,122 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get apFontReadErr => 'Не удалось прочитать файл шрифта';
+
+  @override
+  String get setPc => 'Компьютер';
+
+  @override
+  String get pcNotPaired => 'Не подключён';
+
+  @override
+  String pcPairedTo(String name) {
+    return 'Подключён к «$name»';
+  }
+
+  @override
+  String pcSyncedAt(String when) {
+    return 'Синхронизировано $when';
+  }
+
+  @override
+  String get pcSyncing => 'Синхронизация…';
+
+  @override
+  String get pcOffline => 'Компьютер не в сети';
+
+  @override
+  String get pcRepair => 'Компьютер больше не узнаёт телефон — подключи заново';
+
+  @override
+  String get pcFailed => 'Не удалось синхронизировать';
+
+  @override
+  String get pcHowTitle => 'Как подключить';
+
+  @override
+  String get pcHowSubtitle =>
+      'На компьютере: Bloom → Настройки → Интеграции → Телефон';
+
+  @override
+  String get pcStep1 =>
+      'Открой **Bloom** на компьютере: **Настройки → Интеграции → Телефон** и включи режим.';
+
+  @override
+  String get pcStep2 =>
+      'Нажми **«Подключить телефон»** — появятся QR-код и шестизначный код.';
+
+  @override
+  String get pcStep3 =>
+      'Здесь нажми **«Сканировать QR-код»** и наведи камеру — или **«Ввести код»**.';
+
+  @override
+  String get pcGuideNote =>
+      'Телефон и компьютер должны быть в одной домашней сети. Синхронизируются плейлисты, лайки, подписки, дизлайки, история и профиль; настройки у каждого устройства свои.';
+
+  @override
+  String get pcScan => 'Сканировать QR-код';
+
+  @override
+  String get pcEnterCode => 'Ввести код';
+
+  @override
+  String get pcSyncNow => 'Синхронизировать сейчас';
+
+  @override
+  String get pcReconnect => 'Подключить заново';
+
+  @override
+  String get pcUnpair => 'Отключить';
+
+  @override
+  String get pcUnpaired =>
+      'Компьютер забыт. В его списке телефон останется, пока не отключишь его и там.';
+
+  @override
+  String get pcScanHint => 'Наведи камеру на QR-код на экране компьютера';
+
+  @override
+  String get pcNoCamera => 'Нет доступа к камере';
+
+  @override
+  String get pcCodeSearching => 'Ищу компьютер…';
+
+  @override
+  String get pcCodeNone =>
+      'Компьютер не найден. Открой на нём «Подключить телефон» — телефон должен быть в той же сети.';
+
+  @override
+  String get pcCodeRetry => 'Искать снова';
+
+  @override
+  String get pcCodeHint => 'Код с экрана компьютера';
+
+  @override
+  String get pcConnect => 'Подключить';
+
+  @override
+  String pcPaired(String name) {
+    return 'Подключено к «$name»';
+  }
+
+  @override
+  String get pcSynced => 'Синхронизировано';
+
+  @override
+  String get pcErrNotBloom => 'Это не код Bloom';
+
+  @override
+  String get pcErrUnreachable => 'Компьютер не отвечает — он в той же сети?';
+
+  @override
+  String get pcErrWrong => 'Неверный код';
+
+  @override
+  String get pcErrClosed => 'На компьютере закрыто окно «Подключить телефон»';
+
+  @override
+  String get pcErrTooMany => 'Слишком много попыток — подожди новый код';
+
+  @override
+  String get pcErrFailed => 'Не удалось подключить';
 }

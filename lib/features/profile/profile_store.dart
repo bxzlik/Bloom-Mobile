@@ -195,6 +195,9 @@ class ProfileController extends Notifier<UserProfile> {
     return UserProfile.fromJson(_db.getMap(_kCard));
   }
 
+  /// Перечитать из kv — пришёл профиль с ПК.
+  void reload() => state = UserProfile.fromJson(_db.getMap(_kCard));
+
   /// Записать профиль целиком: правка идёт черновиком в редакторе и приходит
   /// сюда одним куском по «Сохранить». Пишется уже приведённым — тем, что
   /// прочитается в следующий раз.

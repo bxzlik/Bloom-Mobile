@@ -306,6 +306,9 @@ class LibraryController extends Notifier<LibraryState> {
 
   void _refresh() => state = _read(state.tracks);
 
+  /// Перечитать всё, треки тоже: строки поменяла синхронизация с ПК.
+  void reload() => state = _read(const {});
+
   static String? _text(Object? v) => v is String && v.isNotEmpty ? v : null;
 
   static List<PlSourceRef> _sources(String? raw) {

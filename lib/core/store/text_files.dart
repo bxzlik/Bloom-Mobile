@@ -63,11 +63,22 @@ Future<String?> openTextFile() async {
 ///
 /// `null` — платформа не ответила (тесты, десктоп).
 Future<({String version, String build})?> appVersion() async {
+  final info = await _appInfo();
+  final version = info?['version'];
+  if (version is! String || version.isEmpty) return null;
+  return (version: version, build: '${info?['build'] ?? ''}');
+}
+
+/// Как зовут телефон — для списка подключённых устройств на ПК. Тот же ответ
+/// платформы, что [appVersion]; `null` — она не ответила.
+Future<String?> deviceName() async {
+  final name = (await _appInfo())?['device'];
+  return name is String && name.trim().isNotEmpty ? name.trim() : null;
+}
+
+Future<Map<String, Object?>?> _appInfo() async {
   try {
-    final info = await _channel.invokeMapMethod<String, Object?>('appInfo');
-    final version = info?['version'];
-    if (version is! String || version.isEmpty) return null;
-    return (version: version, build: '${info?['build'] ?? ''}');
+    return await _channel.invokeMapMethod<String, Object?>('appInfo');
   } on PlatformException {
     return null;
   } on MissingPluginException {

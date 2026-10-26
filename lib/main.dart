@@ -23,6 +23,7 @@ import 'features/lyrics/lyrics_cache.dart';
 import 'features/lyrics/lyrics_store.dart';
 import 'features/offline/offline_store.dart';
 import 'features/onboarding/onboarding_store.dart';
+import 'features/pc/pc_store.dart';
 import 'features/player/audio_handler.dart';
 import 'features/player/player_controller.dart';
 import 'features/player/session_store.dart';
@@ -108,6 +109,22 @@ Future<void> main() async {
   // Таймер живёт столько же, сколько процесс: разбудить закрытое приложение
   // нечем, зато при следующем запуске просроченный период виден по `lastRun`.
   container.read(plAutoProvider.notifier).startScheduler();
+  // Синхронизация с ПК, если он сопряжён: при запуске, по возвращении и
+  // время от времени — «Настройки → Компьютер».
+  container.read(pcProvider.notifier).start();
+  // Картинку с ПК могут делить два плейлиста или плейлист и профиль: файл
+  // удаляется, только когда на него никто не ссылается.
+  coverInUse = (cover) {
+    if (db.value(
+          'SELECT 1 FROM lists WHERE cover = ? UNION ALL SELECT 1 FROM tracks WHERE cover = ? LIMIT 1',
+          [cover, cover],
+        ) !=
+        null) {
+      return true;
+    }
+    final card = db.getMap('profile');
+    return card['avatar'] == cover || card['banner'] == cover;
+  };
 
   runApp(
     UncontrolledProviderScope(container: container, child: const BloomApp()),
