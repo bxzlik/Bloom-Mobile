@@ -58,9 +58,7 @@ class _LiveState extends ConsumerState<_Live> {
     final head =
         ref.watch(playheadProvider).value ??
         (position: Duration.zero, total: Duration.zero);
-    final playing =
-        ref.watch(playingProvider).value ??
-        ref.read(audioPlayerProvider).playing;
+    final playing = ref.watch(playingNowProvider);
 
     final total = head.total;
     final ms = total.inMilliseconds;

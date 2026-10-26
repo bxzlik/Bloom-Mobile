@@ -29,6 +29,7 @@ import '../../providers/soundcloud/sc_sources.dart';
 import '../../providers/yandex/yandex.dart' show kWaveStation;
 import '../../providers/yandex/ym_provider.dart' show ymNumericId;
 import '../../shared/util/taste.dart';
+import '../pc/pc_remote.dart';
 import '../player/play_source.dart';
 import '../player/player_controller.dart';
 import 'wave_engine.dart';
@@ -126,9 +127,18 @@ class WaveController extends Notifier<WaveRunState> {
 
   // ── Запуск ──────────────────────────────────────────────────────────────
 
+  /// Телефон — пульт ПК: волну подбирает и догружает ПК, своей здесь нет.
+  PcRemoteController? get _remote => ref.read(pcRemoteProvider) == null
+      ? null
+      : ref.read(pcRemoteProvider.notifier);
+
+  Future<WaveStartResult> _onPc(Future<void> sent) =>
+      sent.then((_) => WaveStartResult.ok);
+
   /// «Моя волна» с площадки из настройки. Выбран Яндекс без входа — с
   /// SoundCloud (см. [effectiveWaveSourceProvider]).
   Future<WaveStartResult> startPersonal() async {
+    if (_remote case final pc?) return _onPc(pc.wavePersonal());
     final src = ref.read(effectiveWaveSourceProvider);
     if (src == MusicSource.yandex) {
       return _begin(WaveMode.personal, const [
@@ -146,6 +156,7 @@ class WaveController extends Notifier<WaveRunState> {
   /// [seedFirst] — начать с самого трека, а дальше уйти в подобранное (тап по
   /// обложке в кольце на главной).
   Future<WaveStartResult> startByTrack(Track track, {bool seedFirst = false}) {
+    if (_remote case final pc?) return _onPc(pc.waveTrack(track));
     final s = seedOf(track);
     if (s == null) return Future.value(WaveStartResult.noSeed);
     return _begin(
@@ -159,6 +170,7 @@ class WaveController extends Notifier<WaveRunState> {
 
   /// «Похожие на очередь»: очередь заменяется похожими на то, что в ней.
   Future<WaveStartResult> startByQueue([List<Track>? tracks]) {
+    if (_remote case final pc?) return _onPc(pc.waveQueue());
     final source = (tracks == null || tracks.isEmpty) ? _queue.queue : tracks;
     if (source.isEmpty) return Future.value(WaveStartResult.queueEmpty);
     final seeds = queueSeeds(source, _view(extras: source));
@@ -172,6 +184,7 @@ class WaveController extends Notifier<WaveRunState> {
     Artist artist, {
     List<Track> seedTracks = const [],
   }) {
+    if (_remote case final pc?) return _onPc(pc.waveArtist(artist, seedTracks));
     final about = 'artist:${artistKey(artist.name)}';
     if (artist.source == MusicSource.yandex) {
       final id = ymNumericId(artist.id);

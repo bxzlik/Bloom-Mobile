@@ -19,6 +19,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../app/providers.dart';
+import '../../core/db/db.dart';
 import '../../core/entities/entities.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/log/bloom_log.dart';
@@ -31,6 +32,7 @@ import '../notifications/notif_store.dart';
 import '../offline/offline_store.dart';
 import '../wave/wave_controller.dart';
 import '../../core/store/play_log.dart';
+import '../pc/pc_remote.dart';
 import 'audio_handler.dart';
 import 'nightcore_ios.dart';
 import 'notification_permission.dart';
@@ -62,6 +64,18 @@ typedef Playhead = ({Duration position, Duration total});
 /// прыгает. Плюс длительность приходит без тика позиции (пауза, загрузка), и
 /// подписчик на одну только позицию про неё не узнаёт.
 final playheadProvider = StreamProvider<Playhead>((ref) {
+  // Пульт ПК: позиция с ПК, между его тиками идёт сама.
+  final remote = ref.watch(pcRemoteProvider);
+  if (remote != null) {
+    Playhead now() => remote.playheadAt(DateTime.now());
+    if (!remote.playing) return Stream.value(now());
+    Stream<Playhead> ticks() async* {
+      yield now();
+      yield* Stream.periodic(const Duration(milliseconds: 250), (_) => now());
+    }
+
+    return ticks();
+  }
   final player = ref.watch(audioPlayerProvider);
   final out = StreamController<Playhead>();
   var position = player.position;
@@ -93,9 +107,20 @@ final playheadProvider = StreamProvider<Playhead>((ref) {
 /// Идёт ли звук. Отдельным потоком, потому что `playing` меняется и мимо нас —
 /// кнопкой в шторке, гарнитурой, аудиофокусом.
 final playingProvider = StreamProvider<bool>((ref) {
+  final remote = ref.watch(pcRemoteProvider.select((r) => r?.playing));
+  if (remote != null) return Stream.value(remote);
   final player = ref.watch(audioPlayerProvider);
   return player.playingStream;
 });
+
+/// То же сразу, без ожидания первого значения потока: кнопкам и полоскам
+/// первый кадр уже нужен верный. Пульт ПК — состояние ПК.
+final playingNowProvider = Provider<bool>(
+  (ref) =>
+      ref.watch(playingProvider).value ??
+      ref.watch(pcRemoteProvider.select((r) => r?.playing)) ??
+      ref.read(audioPlayerProvider).playing,
+);
 
 class PlaybackState {
   final List<Track> queue;
@@ -291,7 +316,14 @@ class PlaybackController extends Notifier<PlaybackState>
       handler.player.positionStream.listen(_onPosition),
       // Сессия — на каждую смену play/pause: именно на паузе человек чаще
       // всего и уходит из приложения.
-      handler.player.playingStream.listen((_) => _stateDirty()),
+      handler.player.playingStream.listen((playing) {
+        _stateDirty();
+        // Только что звучало — отметка «играло здесь» встаёт на миг паузы.
+        if (!playing && BloomDb.now() - _audibleAt < 6000) {
+          _audibleAt = 0;
+          _markAudible();
+        }
+      }),
     ];
     // Плюс по таймеру, пока играет: процесс убивают без предупреждения, и без
     // тика «Продолжить» вернуло бы на позицию последнего нажатия паузы.
@@ -321,21 +353,42 @@ class PlaybackController extends Notifier<PlaybackState>
     // Сердечко в шторке: лайк могут поставить где угодно в приложении, а трек
     // сменить десятком путей — поэтому следим за обоими, а не за кнопками.
     ref.listen(libraryProvider.select((lib) => lib.favs), (_, _) => _syncFav());
-    listenSelf((prev, next) {
-      if (prev?.track?.id != next.track?.id) _syncFav();
-      // Перемешка меняет и порядок, к которому возвращаться.
-      if (!identical(prev?.queue, next.queue) ||
-          prev?.shuffle != next.shuffle) {
-        _queueDirty();
-      } else if (prev?.index != next.index ||
-          prev?.loading != next.loading ||
-          !identical(prev?.source, next.source) ||
-          prev?.repeat != next.repeat) {
-        _stateDirty();
-      }
+    // Пульт ПК: пока он есть, на экране — то, что играет там, а команды
+    // уходят туда (см. [_pc]). Своя очередь и сессия при этом стоят как были.
+    ref.listen(pcRemoteProvider, (_, remote) {
+      state = remote?.playback ?? _local;
+      _syncFav();
     });
-    return const PlaybackState();
+    _local = const PlaybackState();
+    return ref.read(pcRemoteProvider)?.playback ?? _local;
   }
+
+  /// Своё состояние — то, что играет на этом телефоне. Наружу ([state]) оно
+  /// выходит, только пока телефон не пульт ПК.
+  PlaybackState _local = const PlaybackState();
+
+  PlaybackState get _st => _local;
+
+  set _st(PlaybackState next) {
+    final prev = _local;
+    _local = next;
+    if (ref.read(pcRemoteProvider) == null) state = next;
+    if (prev.track?.id != next.track?.id) _syncFav();
+    // Перемешка меняет и порядок, к которому возвращаться.
+    if (!identical(prev.queue, next.queue) || prev.shuffle != next.shuffle) {
+      _queueDirty();
+    } else if (prev.index != next.index ||
+        prev.loading != next.loading ||
+        !identical(prev.source, next.source) ||
+        prev.repeat != next.repeat) {
+      _stateDirty();
+    }
+  }
+
+  /// Пульт ПК, если телефон сейчас он.
+  PcRemoteController? get _pc => ref.read(pcRemoteProvider) == null
+      ? null
+      : ref.read(pcRemoteProvider.notifier);
 
   /// Тик затухания перед сном. Не `null` — громкость сейчас крутится вниз.
   Timer? _fadeTick;
@@ -447,30 +500,26 @@ class PlaybackController extends Notifier<PlaybackState>
     _queueSave?.cancel();
     ref
         .read(sessionProvider.notifier)
-        .saveQueue(
-          state.queue,
-          state.shuffle ? _origQueue : null,
-          _preClearQueue,
-        );
+        .saveQueue(_st.queue, _st.shuffle ? _origQueue : null, _preClearQueue);
     _saveState();
   }
 
   void _saveState() {
     _stateSave?.cancel();
-    final track = state.track;
+    final track = _st.track;
     if (track == null) return;
     ref
         .read(sessionProvider.notifier)
         .saveState(
-          index: state.index,
+          index: _st.index,
           // Пока новый трек грузится (или не заиграл), позиция плеера ещё от
           // прошлого — пишем ту, с которой его ставили.
-          position: state.loading || _loadedId != track.id
+          position: _st.loading || _loadedId != track.id
               ? _loadingAt
               : _player.position,
-          source: state.source,
-          shuffle: state.shuffle,
-          repeat: state.repeat,
+          source: _st.source,
+          shuffle: _st.shuffle,
+          repeat: _st.repeat,
           ended: _queueEnded,
           playing: _player.playing,
         );
@@ -487,8 +536,23 @@ class PlaybackController extends Notifier<PlaybackState>
   /// прослушивания (0.9 длительности) и скробблинг Last.fm (30 с и половина —
   /// это требование самой площадки, а не наш выбор). Пока идёт загрузка нового
   /// трека, тики принадлежат ещё прошлому, поэтому оба ждут её конца.
+  /// Когда здесь последний раз шёл звук (kv [kConnectPlayed], как у ПК): по
+  /// нему Connect решает, где играть. Не чаще раза в 5 с.
+  int _audibleAt = 0;
+
+  void _markAudible() {
+    final now = BloomDb.now();
+    if (now - _audibleAt < 5000) return;
+    _audibleAt = now;
+    ref.read(dbProvider).set(kConnectPlayed, now);
+  }
+
   void _onPosition(Duration position) {
-    if (state.loading) return;
+    // Звук идёт по-настоящему, а не «собирается» на загрузке.
+    if (_player.playing && _player.processingState == ProcessingState.ready) {
+      _markAudible();
+    }
+    if (_st.loading) return;
     _maybeCredit(position);
     ref.read(lastfmProvider.notifier).onProgress(position, _player.duration);
   }
@@ -498,7 +562,7 @@ class PlaybackController extends Notifier<PlaybackState>
   /// наиграл (на десктопе от этого спасает то, что `curId` меняется только
   /// после успешного резолва).
   void _maybeCredit(Duration position) {
-    if (_credited || state.loading) return;
+    if (_credited || _st.loading) return;
     final total = _player.duration;
     if (total == null || total <= Duration.zero) return;
     if (position.inMilliseconds >= total.inMilliseconds * _creditAt) _credit();
@@ -509,7 +573,7 @@ class PlaybackController extends Notifier<PlaybackState>
   /// пролистнули или который не заиграл, прослушанным не считается.
   void _credit() {
     if (_credited) return;
-    final track = state.track;
+    final track = _st.track;
     if (track == null) return;
     _credited = true;
     // Журнал событий «трек X в момент T» — из него выводятся «История»,
@@ -530,20 +594,20 @@ class PlaybackController extends Notifier<PlaybackState>
   /// (она догружается сама).
   void _maybeAutoSimilar() {
     if (!ref.read(settingsProvider).autoSimilar) return;
-    final track = state.track;
-    if (track == null || state.repeat != PlayerRepeat.off) return;
-    if (state.index != state.queue.length - 1) return;
-    if (state.source is WaveSource && ref.read(waveProvider).active) return;
+    final track = _st.track;
+    if (track == null || _st.repeat != PlayerRepeat.off) return;
+    if (_st.index != _st.queue.length - 1) return;
+    if (_st.source is WaveSource && ref.read(waveProvider).active) return;
     if (_autoSimilarFor == track.id) return;
     _autoSimilarFor = track.id;
     _autoSimilarPending = true;
-    final source = state.source;
+    final source = _st.source;
     unawaited(
       ref
           .read(waveProvider.notifier)
           // Источник сменился, пока ждали сеть (запустили плейлист), — в чужую
           // очередь не пишем.
-          .continueQueue(isValid: () => identical(state.source, source))
+          .continueQueue(isValid: () => identical(_st.source, source))
           .catchError((Object _) => false)
           .then((ok) {
             // Трек уже сменился — это продолжение больше не наше.
@@ -565,7 +629,8 @@ class PlaybackController extends Notifier<PlaybackState>
   /// порядок очереди у нас и есть порядок воспроизведения, иначе флаг перемешки
   /// висел бы, а треки шли подряд.
   Future<void> playQueue(List<Track> tracks, int index, {PlaySource? source}) {
-    if (state.shuffle && tracks.length > 1) {
+    if (_pc case final pc?) return pc.playQueue(tracks, index, source: source);
+    if (_st.shuffle && tracks.length > 1) {
       return _start(
         shuffledQueue(tracks, index, _rnd),
         0,
@@ -580,7 +645,10 @@ class PlaybackController extends Notifier<PlaybackState>
   /// случайного трека, а не с первого. Порт `playShuffledFromSource`.
   Future<void> playQueueShuffled(List<Track> tracks, {PlaySource? source}) {
     if (tracks.isEmpty) return Future.value();
-    state = state.copyWith(shuffle: true);
+    if (_pc case final pc?) {
+      return pc.playQueue(tracks, 0, source: source, shuffle: true);
+    }
+    _st = _st.copyWith(shuffle: true);
     return _start(
       shuffledQueue(tracks, -1, _rnd),
       0,
@@ -604,7 +672,7 @@ class PlaybackController extends Notifier<PlaybackState>
     // урезанной: полную держим дальше, иначе первая же запись снимка её
     // потеряет и «Продолжить» вернёт один трек.
     _preClearQueue = preClear;
-    state = state.copyWith(
+    _st = _st.copyWith(
       queue: tracks,
       index: index,
       clearError: true,
@@ -624,28 +692,30 @@ class PlaybackController extends Notifier<PlaybackState>
   /// САМА выбирает порядок, и перетасовать её значило бы выбросить работу
   /// подбора. Флаг снимаем, как `host.shuffle = false` на десктопе.
   Future<void> playWave(List<Track> tracks, WaveSource source) {
-    state = state.copyWith(shuffle: false);
+    if (_pc case final pc?) return pc.playQueue(tracks, 0, source: source);
+    _st = _st.copyWith(shuffle: false);
     return _start(tracks, 0, source: source, orig: null);
   }
 
   /// Дописать пачку в конец очереди — догрузка волны. От [addToQueue]
   /// отличается тем, что треков много и уже стоящие в очереди пропускаются
   /// молча: подбор мог предложить то, что там уже есть.
-  void appendToQueue(List<Track> tracks) => _append(tracks);
+  void appendToQueue(List<Track> tracks) =>
+      _pc?.enqueue(tracks) ?? _append(tracks);
 
   /// Дописать и вернуть, сколько реально встало.
   int _append(List<Track> tracks) {
-    if (tracks.isEmpty || state.queue.isEmpty) return 0;
-    final have = {for (final t in state.queue) t.id};
+    if (tracks.isEmpty || _st.queue.isEmpty) return 0;
+    final have = {for (final t in _st.queue) t.id};
     final add = [
       for (final t in tracks)
         if (have.add(t.id)) t,
     ];
     if (add.isEmpty) return 0;
-    final q = [...state.queue, ...add];
+    final q = [..._st.queue, ...add];
     final orig = _origQueue;
     if (orig != null) _origQueue = [...orig, ...add];
-    state = state.copyWith(queue: q);
+    _st = _st.copyWith(queue: q);
     _handler.setQueue(q);
     return add.length;
   }
@@ -655,9 +725,10 @@ class PlaybackController extends Notifier<PlaybackState>
   /// снимаем без отката к снимку «до перемешки»: волна сама задаёт порядок, а
   /// откат выкинул бы только что дописанное. Возвращает, встало ли что-то.
   bool continueAsWave(List<Track> tracks, WaveSource source) {
+    if (_pc != null) return false; // ПК продолжает свою очередь сам
     if (_append(tracks) == 0) return false;
     _origQueue = null;
-    state = state.copyWith(source: source, shuffle: false);
+    _st = _st.copyWith(source: source, shuffle: false);
     return true;
   }
 
@@ -671,11 +742,15 @@ class PlaybackController extends Notifier<PlaybackState>
   /// [autoplay] `false` — сессия возвращается НА ПАУЗЕ: так работает
   /// «Восстановление очереди» при запуске приложения (`Настройки → Аудио`).
   Future<void> resumeSession(SessionData data, {bool autoplay = true}) async {
+    // «Продолжить» своё, пока пульт, — та же очередь, но играет на ПК.
+    if (_pc case final pc?) {
+      return pc.playQueue(data.queue, data.index, source: data.source);
+    }
     ref.read(waveProvider.notifier).adoptRestored(data.source);
     // Режимы ставим ДО очереди: `_start` их не трогает, а `_load` уже смотрит
     // на повтор. Очередь записана уже тасованной, так что перемешку
     // возвращаем флагом, а порядок до неё — из `orig`.
-    state = state.copyWith(shuffle: data.shuffle, repeat: data.repeat);
+    _st = _st.copyWith(shuffle: data.shuffle, repeat: data.repeat);
     await _start(
       data.queue,
       data.index,
@@ -689,7 +764,7 @@ class PlaybackController extends Notifier<PlaybackState>
       preClear: data.full.isEmpty ? null : data.full,
     );
     // Доиграла до конца — «далее» и «Авто похожие» ведут себя как тогда.
-    if (data.ended && state.track?.id == data.track.id) _queueEnded = true;
+    if (data.ended && _st.track?.id == data.track.id) _queueEnded = true;
   }
 
   /// Трек, который загрузили, но играть не начали (восстановление на паузе).
@@ -721,7 +796,7 @@ class PlaybackController extends Notifier<PlaybackState>
     bool autoplay = true,
     int skipped = 0,
   }) async {
-    final track = state.queue[index];
+    final track = _st.queue[index];
     // Уход с прошлого трека — единственный сигнал, по которому учится волна:
     // сколько его слушали, столько он и «понравился». Считаем до смены
     // состояния, пока позиция и длительность ещё от него.
@@ -729,7 +804,7 @@ class PlaybackController extends Notifier<PlaybackState>
     // Куда «поехал» показ — считаем ровно здесь, на реальном переключении:
     // слои анимации в плеере и миниплеере обязаны ехать в одну сторону, а к
     // моменту перерисовки прошлый номер в очереди уже потерян.
-    commitSwapDir(state.queue, index);
+    commitSwapDir(_st.queue, index);
     final gen = ++_generation;
     _loadingAt = startAt ?? Duration.zero;
     // Прошлый трек умолкает СРАЗУ, а не когда доедет ссылка на новый. Источник
@@ -738,7 +813,7 @@ class PlaybackController extends Notifier<PlaybackState>
     // написан новый. Не ждём: pause переставляет `playing` синхронно, а команду
     // платформе шлёт сам, и задерживать ради неё загрузку незачем.
     unawaited(_player.pause());
-    state = state.copyWith(index: index, loading: true, clearError: true);
+    _st = _st.copyWith(index: index, loading: true, clearError: true);
     // Текущим стал другой трек — зачёт для него начинается заново, а
     // отложенный старт прошлого больше не нужен.
     _credited = false;
@@ -817,7 +892,7 @@ class PlaybackController extends Notifier<PlaybackState>
         now: true,
       );
       _loadedId = track.id;
-      state = state.copyWith(loading: false);
+      _st = _st.copyWith(loading: false);
       _handler.setResolving(false);
       if (autoplay) {
         _fireTrackStart(track);
@@ -833,7 +908,7 @@ class PlaybackController extends Notifier<PlaybackState>
     } catch (e) {
       if (gen != _generation) return;
       final code = playErrorCode(e);
-      state = state.copyWith(loading: false, error: code);
+      _st = _st.copyWith(loading: false, error: code);
       _handler.setResolving(false);
       logError('player', 'трек не заиграл: ${track.id}', e);
       _skipUnplayable(track, code, autoplay: autoplay, skipped: skipped);
@@ -850,7 +925,7 @@ class PlaybackController extends Notifier<PlaybackState>
     required bool autoplay,
     required int skipped,
   }) {
-    final q = state.queue;
+    final q = _st.queue;
     // Куда идти дальше, решаем ДО слов: тост «пропускаем» на очереди из одного
     // трека обещал бы то, чего не будет.
     //
@@ -898,7 +973,7 @@ class PlaybackController extends Notifier<PlaybackState>
     markSwapDir(1);
     // Не ждём: цепочка скипов накручивала бы вложенные await на всю длину
     // очереди, а тому, кто позвал первый `_load`, ждать конца перебора незачем.
-    unawaited(_load((state.index + 1) % q.length, skipped: skipped + 1));
+    unawaited(_load((_st.index + 1) % q.length, skipped: skipped + 1));
   }
 
   /// «Трек пошёл» — тем, кто считает прослушивание.
@@ -922,7 +997,7 @@ class PlaybackController extends Notifier<PlaybackState>
   /// (перезапуск после `stop()`, перемотка в начало) уходом не считается, иначе
   /// волна засчитала бы его как пролистнутый.
   void _reportWaveTrackEnd(Track next) {
-    final prev = state.track;
+    final prev = _st.track;
     if (prev == null || prev.id == next.id) return;
     // Уходим с трека, который так и не заиграл (цепочка авто-скипов): слушать
     // его было нечего, а `_player.duration` всё ещё от прошлого — подбор
@@ -945,14 +1020,14 @@ class PlaybackController extends Notifier<PlaybackState>
       ref.read(sleepTimerProvider.notifier).cancel();
       return;
     }
-    if (state.repeat == PlayerRepeat.one) {
+    if (_st.repeat == PlayerRepeat.one) {
       _credited = false; // следующий круг засчитывается заново
       _player.seek(Duration.zero);
       unawaited(_player.play());
       return;
     }
-    final isLast = state.index >= state.queue.length - 1;
-    if (isLast && state.repeat == PlayerRepeat.off) {
+    final isLast = _st.index >= _st.queue.length - 1;
+    if (isLast && _st.repeat == PlayerRepeat.off) {
       _queueEnded = true;
       _player.seek(Duration.zero);
       _player.pause();
@@ -967,7 +1042,8 @@ class PlaybackController extends Notifier<PlaybackState>
   /// Дальше по очереди. Про перемешку тут ничего не знают: она уже переставила
   /// саму очередь (см. [toggleShuffle]), и «следующий» всегда следующий.
   Future<void> next() async {
-    final q = state.queue;
+    if (_pc case final pc?) return pc.next();
+    final q = _st.queue;
     if (q.isEmpty) {
       cancelSwapSilent();
       return;
@@ -975,12 +1051,12 @@ class PlaybackController extends Notifier<PlaybackState>
     // Последний трек и включены «Авто похожие»: вместо закольцовки ждём
     // продолжение — пачка перейдёт на себя сама. Если запрос для этого трека уже
     // отработал впустую, ведём себя как раньше.
-    final track = state.track;
+    final track = _st.track;
     if (track != null &&
-        state.index == q.length - 1 &&
-        state.repeat == PlayerRepeat.off &&
+        _st.index == q.length - 1 &&
+        _st.repeat == PlayerRepeat.off &&
         ref.read(settingsProvider).autoSimilar &&
-        !(state.source is WaveSource && ref.read(waveProvider).active) &&
+        !(_st.source is WaveSource && ref.read(waveProvider).active) &&
         (_autoSimilarFor != track.id || _autoSimilarPending)) {
       _autoSimilarAdvance = true;
       _maybeAutoSimilar();
@@ -990,13 +1066,14 @@ class PlaybackController extends Notifier<PlaybackState>
     // Направление задаём явно: на закольцовке (последний → первый) сравнение
     // номеров дало бы «назад».
     markSwapDir(1);
-    await _load((state.index + 1) % q.length);
+    await _load((_st.index + 1) % q.length);
   }
 
   /// Назад: первые 3 секунды — к предыдущему треку, дальше — в начало текущего
   /// (привычное поведение транспорта).
   Future<void> prev() async {
-    if (state.queue.isEmpty) {
+    if (_pc case final pc?) return pc.prev();
+    if (_st.queue.isEmpty) {
       cancelSwapSilent();
       return;
     }
@@ -1016,16 +1093,18 @@ class PlaybackController extends Notifier<PlaybackState>
   /// карточку, которую видит, и привести она обязана именно её. Отмотка в
   /// начало на середине трека выглядела бы там как сорвавшийся жест.
   Future<void> prevTrack() async {
-    final q = state.queue;
+    if (_pc case final pc?) return pc.jumpTo(state.index - 1);
+    final q = _st.queue;
     if (q.isEmpty) {
       cancelSwapSilent();
       return;
     }
     markSwapDir(-1);
-    await _load((state.index - 1 + q.length) % q.length);
+    await _load((_st.index - 1 + q.length) % q.length);
   }
 
   Future<void> toggle() async {
+    if (_pc case final pc?) return pc.toggle();
     if (_player.playing) {
       await _player.pause();
     } else {
@@ -1033,54 +1112,63 @@ class PlaybackController extends Notifier<PlaybackState>
     }
   }
 
-  Future<void> seek(Duration to) => _player.seek(to);
+  Future<void> seek(Duration to) => _pc?.seek(to) ?? _player.seek(to);
 
   void cycleRepeat() {
+    if (_pc case final pc?) {
+      unawaited(pc.cycleRepeat());
+      return;
+    }
     const order = [PlayerRepeat.off, PlayerRepeat.all, PlayerRepeat.one];
-    final nextMode = order[(order.indexOf(state.repeat) + 1) % order.length];
-    state = state.copyWith(repeat: nextMode);
+    final nextMode = order[(order.indexOf(_st.repeat) + 1) % order.length];
+    _st = _st.copyWith(repeat: nextMode);
   }
 
   /// Перемешка переставляет саму очередь, а не подсовывает случайный номер в
   /// [next] — иначе список в шторке очереди врал бы о том, что пойдёт дальше.
   /// Выключение возвращает запомненный порядок.
   void toggleShuffle() {
-    final q = state.queue;
-    if (state.shuffle) {
+    if (_pc case final pc?) {
+      unawaited(pc.toggleShuffle());
+      return;
+    }
+    final q = _st.queue;
+    if (_st.shuffle) {
       final orig = _origQueue;
       _origQueue = null;
       if (orig == null) {
-        state = state.copyWith(shuffle: false);
+        _st = _st.copyWith(shuffle: false);
         return;
       }
       // Играющий трек ищем в исходном порядке по id: он остаётся тем же, меняется
       // только его номер.
-      final current = state.track;
+      final current = _st.track;
       final at = current == null
           ? -1
           : orig.indexWhere((t) => t.id == current.id);
       final index = at < 0 ? 0 : at;
-      state = state.copyWith(queue: orig, index: index, shuffle: false);
+      _st = _st.copyWith(queue: orig, index: index, shuffle: false);
       _handler
         ..setQueue(orig)
-        ..setTrack(state.track, queueIndex: index);
+        ..setTrack(_st.track, queueIndex: index);
       return;
     }
     if (q.length <= 1) {
-      state = state.copyWith(shuffle: true);
+      _st = _st.copyWith(shuffle: true);
       return;
     }
     _origQueue = [...q];
-    final shuffled = shuffledQueue(q, state.index, _rnd);
-    state = state.copyWith(queue: shuffled, index: 0, shuffle: true);
+    final shuffled = shuffledQueue(q, _st.index, _rnd);
+    _st = _st.copyWith(queue: shuffled, index: 0, shuffle: true);
     _handler
       ..setQueue(shuffled)
-      ..setTrack(state.track, queueIndex: 0);
+      ..setTrack(_st.track, queueIndex: 0);
   }
 
   /// Перейти к треку очереди по номеру (экран очереди, список в шторке).
   Future<void> jumpTo(int index) async {
-    if (index < 0 || index >= state.queue.length) return;
+    if (_pc case final pc?) return pc.jumpTo(index);
+    if (index < 0 || index >= _st.queue.length) return;
     await _load(index);
   }
 
@@ -1088,21 +1176,25 @@ class PlaybackController extends Notifier<PlaybackState>
   /// считается ДО изъятия строки, поэтому при движении вниз он на единицу
   /// больше настоящего.
   void reorder(int from, int to) {
-    final q = [...state.queue];
+    if (_pc case final pc?) {
+      unawaited(pc.reorder(from, to));
+      return;
+    }
+    final q = [..._st.queue];
     if (from < 0 || from >= q.length) return;
     final target = (to > from ? to - 1 : to).clamp(0, q.length - 1);
     if (target == from) return;
     q.insert(target, q.removeAt(from));
 
-    final index = indexAfterReorder(state.index, from, target);
+    final index = indexAfterReorder(_st.index, from, target);
     // Порядок поменяли руками — снимок «до перемешки» устарел: выключение
     // перемешки должно вернуть то, что человек собрал последним, а не то, что
     // было до неё.
     if (_origQueue != null) _origQueue = q;
-    state = state.copyWith(queue: q, index: index);
+    _st = _st.copyWith(queue: q, index: index);
     _handler
       ..setQueue(q)
-      ..setTrack(state.track, queueIndex: index);
+      ..setTrack(_st.track, queueIndex: index);
   }
 
   /// Дописать трек в конец очереди — порт десктопного `addToQueue`
@@ -1122,24 +1214,25 @@ class PlaybackController extends Notifier<PlaybackState>
   /// Пустую очередь дополнять нечего — набор просто начинает играть, как и на
   /// десктопе; [source] тогда становится источником очереди.
   int queueTracks(List<Track> tracks, {PlaySource? source}) {
+    if (_pc case final pc?) return pc.enqueue(_dedup(tracks), source: source);
     final batch = _dedup(tracks);
     if (batch.isEmpty) return 0;
-    if (state.queue.isEmpty) {
+    if (_st.queue.isEmpty) {
       unawaited(playQueue(batch, 0, source: source));
       return batch.length;
     }
-    final have = {for (final t in state.queue) t.id};
+    final have = {for (final t in _st.queue) t.id};
     final add = [
       for (final t in batch)
         if (!have.contains(t.id)) t,
     ];
     if (add.isEmpty) return 0;
-    final q = [...state.queue, ...add];
+    final q = [..._st.queue, ...add];
     // Снимок «до перемешки» пополняем тоже: иначе выключение перемешки
     // откатило бы очередь к состоянию без добавленных треков.
     final orig = _origQueue;
     if (orig != null) _origQueue = [...orig, ...add];
-    state = state.copyWith(queue: q);
+    _st = _st.copyWith(queue: q);
     _handler.setQueue(q);
     return add.length;
   }
@@ -1148,15 +1241,18 @@ class PlaybackController extends Notifier<PlaybackState>
   /// скольких треков это что-то изменило: играющий из пачки выпадает, он уже
   /// звучит.
   int queueTracksNext(List<Track> tracks, {PlaySource? source}) {
+    if (_pc case final pc?) {
+      return pc.enqueue(_dedup(tracks), next: true, source: source);
+    }
     final batch = _dedup(tracks);
     if (batch.isEmpty) return 0;
-    if (state.queue.isEmpty) {
+    if (_st.queue.isEmpty) {
       unawaited(playQueue(batch, 0, source: source));
       return batch.length;
     }
-    final current = state.track;
-    final (q, index) = queueWithNextAll(state.queue, state.index, batch);
-    if (identical(q, state.queue)) return 0;
+    final current = _st.track;
+    final (q, index) = queueWithNextAll(_st.queue, _st.index, batch);
+    if (identical(q, _st.queue)) return 0;
     // Снимок «до перемешки» правим тем же способом: в нём тот же играющий трек,
     // просто в другом порядке.
     final orig = _origQueue;
@@ -1166,10 +1262,10 @@ class PlaybackController extends Notifier<PlaybackState>
           : orig.indexWhere((t) => t.id == current.id);
       _origQueue = queueWithNextAll(orig, at, batch).$1;
     }
-    state = state.copyWith(queue: q, index: index);
+    _st = _st.copyWith(queue: q, index: index);
     _handler
       ..setQueue(q)
-      ..setTrack(state.track, queueIndex: index);
+      ..setTrack(_st.track, queueIndex: index);
     return batch.where((t) => t.id != current?.id).length;
   }
 
@@ -1190,9 +1286,9 @@ class PlaybackController extends Notifier<PlaybackState>
   /// сейчас» (так же на десктопе). Текущий стрим доигрывает, а дальше очередь
   /// возьмёт трек уже с новой площадки.
   void replaceInQueue(String oldId, Track next) {
-    if (!state.queue.any((t) => t.id == oldId)) return;
+    if (!_st.queue.any((t) => t.id == oldId)) return;
     final q = [
-      for (final t in state.queue)
+      for (final t in _st.queue)
         if (t.id == oldId) next else t,
     ];
     final orig = _origQueue;
@@ -1202,18 +1298,19 @@ class PlaybackController extends Notifier<PlaybackState>
           if (t.id == oldId) next else t,
       ];
     }
-    state = state.copyWith(queue: q);
+    _st = _st.copyWith(queue: q);
     _handler.setQueue(q);
     // Подменили играющий — обновляем и то, что показано в шторке уведомления:
     // сам звук при этом не трогается.
-    if (state.track?.id == next.id) {
-      _handler.setTrack(state.track, queueIndex: state.index);
+    if (_st.track?.id == next.id) {
+      _handler.setTrack(_st.track, queueIndex: _st.index);
     }
   }
 
   /// Убрать трек из очереди (смахивание строки). Порт `removeFromQueue`.
   Future<void> removeAt(int index) async {
-    final q = [...state.queue];
+    if (_pc case final pc?) return pc.removeAt(index);
+    final q = [..._st.queue];
     if (index < 0 || index >= q.length) return;
     if (q.length == 1) {
       // Последний — очередь пуста, плеер сбрасываем. Её строки (и очередь до
@@ -1228,7 +1325,7 @@ class PlaybackController extends Notifier<PlaybackState>
       ref.read(waveProvider.notifier).endSession();
       return;
     }
-    final current = state.index;
+    final current = _st.index;
     final removed = q.removeAt(index);
     // Из снимка «до перемешки» смахнутый трек тоже убираем, иначе выключение
     // перемешки вернуло бы его в очередь.
@@ -1240,26 +1337,30 @@ class PlaybackController extends Notifier<PlaybackState>
     if (index == current) {
       // Удалили играющий — играем тот, что встал на его место (или последний).
       final next = index.clamp(0, q.length - 1);
-      state = state.copyWith(queue: q, index: next);
+      _st = _st.copyWith(queue: q, index: next);
       _handler.setQueue(q);
       await _load(next);
       return;
     }
     final shifted = index < current ? current - 1 : current;
-    state = state.copyWith(queue: q, index: shifted);
+    _st = _st.copyWith(queue: q, index: shifted);
     _handler
       ..setQueue(q)
-      ..setTrack(state.track, queueIndex: shifted);
+      ..setTrack(_st.track, queueIndex: shifted);
   }
 
   /// Очистить очередь, оставив играющий трек. Воспроизведение не рвём.
   void clearExceptCurrent() {
-    final track = state.track;
+    if (_pc case final pc?) {
+      unawaited(pc.clearExceptCurrent());
+      return;
+    }
+    final track = _st.track;
     if (track == null) return;
     // Повторная очистка не должна перетереть полную очередь урезанной.
-    _preClearQueue ??= state.queue.length > 1 ? state.queue : null;
+    _preClearQueue ??= _st.queue.length > 1 ? _st.queue : null;
     _origQueue = null;
-    state = state.copyWith(queue: [track], index: 0);
+    _st = _st.copyWith(queue: [track], index: 0);
     _handler
       ..setQueue([track])
       ..setTrack(track, queueIndex: 0);
@@ -1269,18 +1370,19 @@ class PlaybackController extends Notifier<PlaybackState>
 
   @override
   Future<void> commandPlay() async {
+    if (_pc case final pc?) return pc.play();
     // Идёт загрузка нового трека — играть нечего: источник в плеере ещё от
     // прошлого, и play() вернул бы в уши именно его. Загрузка доиграет до
     // старта сама.
-    if (state.loading) return;
+    if (_st.loading) return;
     // После stop() (смахнули шторку) источник у just_audio уже отпущен —
     // «играть» должно перезапустить трек, а не молча ничего не сделать.
-    final track = state.track;
+    final track = _st.track;
     if (_player.processingState == ProcessingState.idle && track != null) {
       // Трек так и не заиграл (восстановленная сессия без сети) — снова с той
       // же позиции, а не с начала.
       await _load(
-        state.index,
+        _st.index,
         startAt: _loadedId != track.id && _loadingAt > Duration.zero
             ? _loadingAt
             : null,
@@ -1295,7 +1397,7 @@ class PlaybackController extends Notifier<PlaybackState>
   }
 
   @override
-  Future<void> commandPause() => _player.pause();
+  Future<void> commandPause() => _pc?.pause() ?? _player.pause();
 
   @override
   Future<void> commandNext() => next();
@@ -1313,7 +1415,7 @@ class PlaybackController extends Notifier<PlaybackState>
   }
 
   void _syncFav() {
-    final id = state.track?.id;
+    final id = _st.track?.id;
     _handler.setFav(id != null && ref.read(libraryProvider).isFav(id));
   }
 
@@ -1323,7 +1425,7 @@ class PlaybackController extends Notifier<PlaybackState>
     _origQueue = null; // возвращать нечего: очереди больше нет
     // Очередь уходит, а режимы повтора и перемешивания — нет: это настройки
     // плеера, а не свойство конкретной очереди.
-    state = PlaybackState(repeat: state.repeat, shuffle: state.shuffle);
+    _st = PlaybackState(repeat: _st.repeat, shuffle: _st.shuffle);
     _handler
       ..setResolving(false)
       ..setQueue(const [])

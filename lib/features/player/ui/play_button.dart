@@ -109,18 +109,15 @@ class PlayButton extends ConsumerWidget {
 
     // Состояние берём у самого плеера, а не у `PlaybackState`: пауза из шторки
     // и с гарнитуры до него не доходит.
-    final player = ref.watch(audioPlayerProvider);
-    return StreamBuilder<bool>(
-      stream: player.playingStream,
-      initialData: player.playing,
-      builder: (context, snap) => shell(
-        Icon(
-          snap.data == true ? SolarIconsBold.pause : SolarIconsBold.play,
-          size: plain ? plainIconSize : iconSize,
-          color: color,
-        ),
-        tap: onTap,
+    return shell(
+      Icon(
+        ref.watch(playingNowProvider)
+            ? SolarIconsBold.pause
+            : SolarIconsBold.play,
+        size: plain ? plainIconSize : iconSize,
+        color: color,
       ),
+      tap: onTap,
     );
   }
 }

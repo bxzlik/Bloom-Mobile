@@ -35,6 +35,7 @@ import '../home/similar_to.dart';
 import '../profile/achievements.dart';
 import '../profile/level.dart';
 import '../profile/profile_store.dart';
+import 'pc_remote.dart';
 
 const String _kLink = 'sync.pc';
 const String _kAt = 'sync.at';
@@ -216,12 +217,14 @@ class PcController extends Notifier<PcState> {
       onDone: () => _liveLost('closed'),
       cancelOnError: true,
     );
+    ref.read(pcRemoteProvider.notifier).attach(client);
   }
 
   void _closeLive() {
     _retry?.cancel();
     _live?.cancel();
     _live = null;
+    ref.read(pcRemoteProvider.notifier).detach();
   }
 
   /// Связь оборвалась: ПК закрыли, сеть пропала, телефон отключили там.
@@ -229,6 +232,7 @@ class PcController extends Notifier<PcState> {
   /// случилось, и, если ПК на месте, снова откроет поток.
   void _liveLost(String why) {
     _live = null;
+    ref.read(pcRemoteProvider.notifier).detach();
     logInfo('sync', 'поток событий ПК оборвался: $why');
     if (!_shown || !state.paired) return;
     _retry?.cancel();
@@ -237,7 +241,11 @@ class PcController extends Notifier<PcState> {
 
   void _onEvent(PcEvent e) {
     final link = state.link;
-    if (e.name != 'sync' || link == null) return;
+    if (e.name != 'sync') {
+      ref.read(pcRemoteProvider.notifier).onEvent(e);
+      return;
+    }
+    if (link == null) return;
     final got = SyncLog(_db).got(link.device);
     final seq = e.data['seq'], play = e.data['play'];
     if ((seq is num && seq > got.seq) || (play is num && play > got.play)) {

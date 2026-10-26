@@ -286,17 +286,10 @@ class HeroPlayButton extends ConsumerWidget {
 
     // Состояние берём у самого плеера, а не у `PlaybackState`: пауза из шторки
     // и с гарнитуры до него не доходит.
-    final player = ref.watch(audioPlayerProvider);
-    return StreamBuilder<bool>(
-      stream: player.playingStream,
-      initialData: player.playing,
-      builder: (context, snap) {
-        final playing = snap.data == true;
-        return pill(
-          icon: playing ? SolarIconsBold.pause : SolarIconsBold.play,
-          text: playing ? context.l.commonPause : label ?? context.l.commonPlay,
-        );
-      },
+    final playing = ref.watch(playingNowProvider);
+    return pill(
+      icon: playing ? SolarIconsBold.pause : SolarIconsBold.play,
+      text: playing ? context.l.commonPause : label ?? context.l.commonPlay,
     );
   }
 }

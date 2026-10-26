@@ -498,12 +498,7 @@ class DurationPill extends ConsumerWidget {
     // Поток play/pause спрашиваем только у играющей строки — остальным он не
     // нужен и лишние подписки в длинном списке ни к чему.
     final child = active
-        ? StreamBuilder<bool>(
-            stream: ref.watch(audioPlayerProvider).playingStream,
-            initialData: ref.read(audioPlayerProvider).playing,
-            builder: (context, snap) =>
-                EqualizerBars(playing: snap.data ?? false),
-          )
+        ? EqualizerBars(playing: ref.watch(playingNowProvider))
         : Text(
             mmss(track.duration),
             style: theme.bodySmall?.copyWith(
@@ -552,16 +547,11 @@ class SetEqualizer extends ConsumerWidget {
       builder: (context, box) => ColoredBox(
         color: Colors.black.withValues(alpha: 0.32),
         child: Center(
-          child: StreamBuilder<bool>(
-            stream: ref.watch(audioPlayerProvider).playingStream,
-            initialData: ref.read(audioPlayerProvider).playing,
-            // Полоски заданы в пикселях строки трека — на крупной обложке
-            // плитки их надо увеличить, на мелкой (строка сета) оставить как
-            // есть.
-            builder: (context, snap) => EqualizerBars(
-              playing: snap.data ?? false,
-              scale: (box.maxWidth / 56).clamp(1.0, 3.0),
-            ),
+          // Полоски заданы в пикселях строки трека — на крупной обложке плитки
+          // их надо увеличить, на мелкой (строка сета) оставить как есть.
+          child: EqualizerBars(
+            playing: ref.watch(playingNowProvider),
+            scale: (box.maxWidth / 56).clamp(1.0, 3.0),
           ),
         ),
       ),

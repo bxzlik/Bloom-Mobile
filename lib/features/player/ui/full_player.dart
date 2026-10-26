@@ -380,7 +380,7 @@ class _Cover extends ConsumerWidget {
         // (`animation-play-state:paused`). Состояние берём у самого плеера, а
         // не у `PlaybackState`: там его нет, а пауза из шторки и с гарнитуры
         // обязана останавливать диск так же, как кнопка на экране.
-        final player = ref.watch(audioPlayerProvider);
+        final spinning = ref.watch(playingNowProvider);
         return Stack(
           children: [
             // Слои смены трека клипует сама рамка обложки, а картинки внутри
@@ -396,13 +396,8 @@ class _Cover extends ConsumerWidget {
                   // картинка: иначе приезжающая обложка встала бы ровно, а
                   // уезжающая продолжала крутиться — два разных движения в
                   // одном кадре.
-                  //
-                  // Начальное состояние берём у плеера (`playing`), дальше за
-                  // ним следит поток: он отдаёт значение не сразу, а первый
-                  // кадр диск уже обязан либо крутиться, либо стоять.
                   enabled: vinyl,
-                  spinning: player.playing,
-                  playing: player.playingStream,
+                  spinning: spinning,
                   child: TrackSwap(
                     id: track.id,
                     kind: anim.cover,
