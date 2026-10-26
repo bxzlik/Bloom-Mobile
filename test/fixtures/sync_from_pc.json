@@ -1,0 +1,235 @@
+{
+    "changes": [
+        {
+            "device": "c3f7bb396543428d94c4cece527d1067",
+            "key": "plmvoyly7j",
+            "kind": "list",
+            "mod": 1793001181807,
+            "row": {
+                "auto_refresh": 0,
+                "cover": "",
+                "created_at": 1793001181807,
+                "description": "",
+                "kind": "playlist",
+                "name": "Road",
+                "pinned": 0,
+                "side_pos": 1,
+                "sources": "[]",
+                "updated_at": 1793001181808
+            }
+        },
+        {
+            "device": "c3f7bb396543428d94c4cece527d1067",
+            "key": "plmvoyly7j\tsc:2",
+            "kind": "item",
+            "mod": 1793001181807,
+            "row": {
+                "added_at": 1793001181808,
+                "pos": -2
+            }
+        },
+        {
+            "device": "c3f7bb396543428d94c4cece527d1067",
+            "key": "plmvoyly7j\tsc:1",
+            "kind": "item",
+            "mod": 1793001181807,
+            "row": {
+                "added_at": 1793001181808,
+                "pos": -1
+            }
+        },
+        {
+            "device": "c3f7bb396543428d94c4cece527d1067",
+            "key": "lib\tsc:2",
+            "kind": "item",
+            "mod": 1793001181807,
+            "row": {
+                "added_at": 1793001181808,
+                "pos": -2
+            }
+        },
+        {
+            "device": "c3f7bb396543428d94c4cece527d1067",
+            "key": "lib\tsc:1",
+            "kind": "item",
+            "mod": 1793001181807,
+            "row": {
+                "added_at": 1793001181808,
+                "pos": -1
+            }
+        },
+        {
+            "device": "c3f7bb396543428d94c4cece527d1067",
+            "key": "fav\tsc:1",
+            "kind": "item",
+            "mod": 1793001181807,
+            "row": {
+                "added_at": 1793001181808,
+                "pos": -1
+            }
+        },
+        {
+            "device": "c3f7bb396543428d94c4cece527d1067",
+            "key": "lib\tsc:3",
+            "kind": "item",
+            "mod": 1793001181807,
+            "row": {
+                "added_at": 1793001181808,
+                "pos": -4
+            }
+        },
+        {
+            "device": "c3f7bb396543428d94c4cece527d1067",
+            "key": "sc:3",
+            "kind": "track",
+            "mod": 1793001181810,
+            "row": {
+                "album": "",
+                "artist": "A",
+                "cover": "",
+                "duration": 180,
+                "extra": "{\"edited\":true}",
+                "provider": "sc",
+                "title": "Mine",
+                "updated_at": 1793001181808
+            }
+        },
+        {
+            "device": "c3f7bb396543428d94c4cece527d1067",
+            "key": "lib\tsc:4",
+            "kind": "item",
+            "mod": 1793001181810,
+            "row": null
+        },
+        {
+            "device": "c3f7bb396543428d94c4cece527d1067",
+            "key": "lib\tytm:4",
+            "kind": "item",
+            "mod": 1793001181810,
+            "row": {
+                "added_at": 1793001181808,
+                "pos": -3
+            }
+        },
+        {
+            "device": "c3f7bb396543428d94c4cece527d1067",
+            "key": "sc:4\tytm:4",
+            "kind": "rekey",
+            "mod": 1793001181810,
+            "row": {
+            }
+        },
+        {
+            "device": "c3f7bb396543428d94c4cece527d1067",
+            "key": "sc:artist:9",
+            "kind": "follow",
+            "mod": 1793001181811,
+            "row": {
+                "at": 1,
+                "avatar": "",
+                "extra": "{}",
+                "name": "Nine",
+                "pinned": 0,
+                "provider": "sc",
+                "side_pos": 0
+            }
+        },
+        {
+            "device": "c3f7bb396543428d94c4cece527d1067",
+            "key": "sc:2",
+            "kind": "dislike",
+            "mod": 1793001181811,
+            "row": {
+                "at": 7
+            }
+        },
+        {
+            "device": "c3f7bb396543428d94c4cece527d1067",
+            "key": "profile",
+            "kind": "kv",
+            "mod": 1793001181811,
+            "row": {
+                "value": "[{\"nick\":\"pc\"}]"
+            }
+        },
+        {
+            "device": "c3f7bb396543428d94c4cece527d1067",
+            "key": "profile.since",
+            "kind": "kv",
+            "mod": 1793001181811,
+            "row": {
+                "value": "[5000]"
+            }
+        }
+    ],
+    "days": [
+        {
+            "app_ms": 100,
+            "day": "2026-10-01",
+            "device": "c3f7bb396543428d94c4cece527d1067"
+        }
+    ],
+    "device": "c3f7bb396543428d94c4cece527d1067",
+    "more": false,
+    "play": 2,
+    "plays": [
+        {
+            "device": "c3f7bb396543428d94c4cece527d1067",
+            "track": "sc:1",
+            "ts": 1000
+        },
+        {
+            "device": "c3f7bb396543428d94c4cece527d1067",
+            "track": "sc:2",
+            "ts": 2000
+        }
+    ],
+    "seq": 16,
+    "tracks": [
+        {
+            "album": "",
+            "artist": "A",
+            "cover": "",
+            "duration": 180,
+            "extra": "{}",
+            "id": "sc:1",
+            "provider": "sc",
+            "title": "One",
+            "updated_at": 1793001181811
+        },
+        {
+            "album": "",
+            "artist": "A",
+            "cover": "",
+            "duration": 180,
+            "extra": "{}",
+            "id": "sc:2",
+            "provider": "sc",
+            "title": "Two",
+            "updated_at": 1793001181812
+        },
+        {
+            "album": "",
+            "artist": "A",
+            "cover": "",
+            "duration": 180,
+            "extra": "{\"edited\":true}",
+            "id": "sc:3",
+            "provider": "sc",
+            "title": "Mine",
+            "updated_at": 1793001181808
+        },
+        {
+            "album": "",
+            "artist": "A",
+            "cover": "",
+            "duration": 180,
+            "extra": "{}",
+            "id": "ytm:4",
+            "provider": "sc",
+            "title": "sc:4",
+            "updated_at": 1793001181808
+        }
+    ],
+    "v": 1
+}

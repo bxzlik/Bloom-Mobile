@@ -74,7 +74,7 @@ class DaysController extends Notifier<DaysState> {
   void addUsage(int ms) {
     final today = _today();
     _db.exec(
-      'INSERT INTO days (day, app_ms) VALUES (?, ?) ON CONFLICT(day) DO UPDATE SET app_ms = app_ms + excluded.app_ms',
+      'INSERT INTO days (day, app_ms) VALUES (?, ?) ON CONFLICT(day, device) DO UPDATE SET app_ms = app_ms + excluded.app_ms',
       [today, ms],
     );
     state = DaysState(

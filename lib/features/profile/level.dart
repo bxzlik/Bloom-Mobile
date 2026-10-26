@@ -14,6 +14,7 @@ import '../../core/db/db.dart';
 import '../../core/store/days_store.dart';
 import '../../core/store/play_log.dart';
 import '../../core/store/play_stats.dart';
+import '../../core/sync/sync_log.dart';
 import '../home/for_you.dart';
 import '../home/similar_to.dart';
 import 'achievements.dart';
@@ -140,11 +141,13 @@ class StatsClearController extends Notifier<void> {
   /// остаётся, где был.
   void clear({required bool keepLevel}) {
     final banked = keepLevel ? ref.read(levelProvider).xp : 0;
-    ref.read(dbProvider).tx(() {
+    final db = ref.read(dbProvider);
+    db.tx(() {
       ref.read(playLogProvider.notifier).clear();
       ref.read(daysProvider.notifier).clear();
       ref.read(unlockedAchievementsProvider.notifier).clear();
       ref.read(levelBankedProvider.notifier)._bank(banked);
+      SyncLog(db).markCleared(banked);
     });
     // Витрины главной собраны по сидам из стёртого топа — пересобираем сразу
     // (на ПК их сбрасывает сигнал `Stats::cleared`).

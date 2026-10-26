@@ -10,6 +10,7 @@ library;
 import 'dart:convert';
 
 import '../entities/entities.dart';
+import '../sync/sync_log.dart';
 import 'db.dart';
 
 /// SQLite принимает до 32766 параметров; пачки поменьше держат запрос дешёвым.
@@ -134,6 +135,8 @@ class TrackStore {
         from,
       ]);
       db.exec('DELETE FROM loudness WHERE track_id = ?', [from]);
+      // Другие устройства переносят свои прослушивания и места тоже.
+      SyncLog(db).markRekey(from, to);
     });
     return true;
   }

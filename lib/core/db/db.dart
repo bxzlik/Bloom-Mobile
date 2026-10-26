@@ -130,6 +130,126 @@ const List<List<String>> kMigrations = [
     'CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT NOT NULL) WITHOUT ROWID',
     "INSERT INTO lists (id, kind, created_at, updated_at) VALUES ('lib', 'lib', 0, 0), ('fav', 'fav', 0, 0)",
   ],
+  // Синхронизация с ПК (подробно — в шаге 2 `kMigrations` ПК). Что слушатель
+  // изменил, отмечается в `changes`, одна строка на вещь: на другой стороне
+  // побеждает позднее изменение, удалённое хранит строку, чтобы не воскреснуть.
+  // Отмечают триггеры ниже — на любую запись; то, что пришло с другого
+  // устройства, отмечает [SyncLog] (device = его id; '' — это). seq только
+  // растёт: «после N» — курсор.
+  [
+    r'''CREATE TABLE changes (
+            seq INTEGER PRIMARY KEY AUTOINCREMENT,
+            kind TEXT NOT NULL,
+            key TEXT NOT NULL,
+            mod INTEGER NOT NULL,
+            device TEXT NOT NULL DEFAULT '',
+            UNIQUE (kind, key)
+        )''',
+    // В триггере нельзя INSERT OR REPLACE: запрос, который его вызвал,
+    // навязывает своё правило конфликта (каскад падает). Поэтому удалить + вставить.
+    'CREATE VIEW stamp (kind, key) AS SELECT kind, key FROM changes',
+    r'''CREATE TRIGGER stamp_now INSTEAD OF INSERT ON stamp BEGIN
+            DELETE FROM changes WHERE kind = NEW.kind AND key = NEW.key;
+            INSERT INTO changes (kind, key, mod) VALUES (NEW.kind, NEW.key, CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER));
+        END''',
+
+    // Что уже есть, уходит при первой синхронизации.
+    r"INSERT INTO changes (kind, key, mod) SELECT 'list', id, updated_at FROM lists WHERE kind NOT IN ('lib', 'fav')",
+    r"INSERT INTO changes (kind, key, mod) SELECT 'item', list_id || char(9) || track_id, added_at FROM list_tracks",
+    r"INSERT INTO changes (kind, key, mod) SELECT 'follow', id, at FROM follows",
+    r"INSERT INTO changes (kind, key, mod) SELECT 'dislike', track_id, at FROM dislikes",
+    r"INSERT INTO stamp SELECT 'kv', key FROM kv WHERE key IN ('profile', 'profile.since')",
+    r"INSERT INTO changes (kind, key, mod) SELECT 'track', id, updated_at FROM tracks WHERE extra ->> '$.edited'",
+
+    // Плейлисты (не «Все треки» и лайки: они есть на каждом устройстве).
+    // Один их updated_at сдвигается с каждым добавленным треком — не изменение.
+    r'''CREATE TRIGGER lists_ins AFTER INSERT ON lists WHEN NEW.kind NOT IN ('lib', 'fav') BEGIN
+            INSERT INTO stamp VALUES ('list', NEW.id);
+        END''',
+    r'''CREATE TRIGGER lists_upd AFTER UPDATE ON lists WHEN NEW.kind NOT IN ('lib', 'fav') AND (NEW.name IS NOT OLD.name
+            OR NEW.description IS NOT OLD.description OR NEW.cover IS NOT OLD.cover OR NEW.sources IS NOT OLD.sources
+            OR NEW.auto_refresh IS NOT OLD.auto_refresh OR NEW.side_pos IS NOT OLD.side_pos OR NEW.pinned IS NOT OLD.pinned) BEGIN
+            INSERT INTO stamp VALUES ('list', NEW.id);
+        END''',
+    r'''CREATE TRIGGER lists_del AFTER DELETE ON lists WHEN OLD.kind NOT IN ('lib', 'fav') BEGIN
+            INSERT INTO stamp VALUES ('list', OLD.id);
+        END''',
+    // Трек в списке: "list_id<TAB>track_id".
+    r'''CREATE TRIGGER list_tracks_ins AFTER INSERT ON list_tracks BEGIN
+            INSERT INTO stamp VALUES ('item', NEW.list_id || char(9) || NEW.track_id);
+        END''',
+    r'''CREATE TRIGGER list_tracks_upd AFTER UPDATE ON list_tracks WHEN NEW.list_id IS NOT OLD.list_id OR NEW.track_id IS NOT OLD.track_id
+            OR NEW.pos IS NOT OLD.pos OR NEW.added_at IS NOT OLD.added_at BEGIN
+            INSERT INTO stamp VALUES ('item', OLD.list_id || char(9) || OLD.track_id);
+            INSERT INTO stamp VALUES ('item', NEW.list_id || char(9) || NEW.track_id);
+        END''',
+    r'''CREATE TRIGGER list_tracks_del AFTER DELETE ON list_tracks BEGIN
+            INSERT INTO stamp VALUES ('item', OLD.list_id || char(9) || OLD.track_id);
+        END''',
+    r'''CREATE TRIGGER follows_ins AFTER INSERT ON follows BEGIN
+            INSERT INTO stamp VALUES ('follow', NEW.id);
+        END''',
+    r'''CREATE TRIGGER follows_upd AFTER UPDATE ON follows WHEN NEW.id IS NOT OLD.id OR NEW.provider IS NOT OLD.provider
+            OR NEW.name IS NOT OLD.name OR NEW.avatar IS NOT OLD.avatar OR NEW.extra IS NOT OLD.extra OR NEW.at IS NOT OLD.at
+            OR NEW.side_pos IS NOT OLD.side_pos OR NEW.pinned IS NOT OLD.pinned BEGIN
+            INSERT INTO stamp VALUES ('follow', OLD.id);
+            INSERT INTO stamp VALUES ('follow', NEW.id);
+        END''',
+    r'''CREATE TRIGGER follows_del AFTER DELETE ON follows BEGIN
+            INSERT INTO stamp VALUES ('follow', OLD.id);
+        END''',
+    r'''CREATE TRIGGER dislikes_ins AFTER INSERT ON dislikes BEGIN
+            INSERT INTO stamp VALUES ('dislike', NEW.track_id);
+        END''',
+    r'''CREATE TRIGGER dislikes_upd AFTER UPDATE ON dislikes WHEN NEW.track_id IS NOT OLD.track_id OR NEW.at IS NOT OLD.at BEGIN
+            INSERT INTO stamp VALUES ('dislike', OLD.track_id);
+            INSERT INTO stamp VALUES ('dislike', NEW.track_id);
+        END''',
+    r'''CREATE TRIGGER dislikes_del AFTER DELETE ON dislikes BEGIN
+            INSERT INTO stamp VALUES ('dislike', OLD.track_id);
+        END''',
+    // Карточка профиля, «с нами с» и последнее «Очистить статистику».
+    r'''CREATE TRIGGER kv_ins AFTER INSERT ON kv WHEN NEW.key IN ('profile', 'profile.since', 'stats.cleared') BEGIN
+            INSERT INTO stamp VALUES ('kv', NEW.key);
+        END''',
+    r'''CREATE TRIGGER kv_upd AFTER UPDATE ON kv WHEN NEW.key IN ('profile', 'profile.since', 'stats.cleared') AND NEW.value IS NOT OLD.value BEGIN
+            INSERT INTO stamp VALUES ('kv', NEW.key);
+        END''',
+    r'''CREATE TRIGGER kv_del AFTER DELETE ON kv WHEN OLD.key IN ('profile', 'profile.since', 'stats.cleared') BEGIN
+            INSERT INTO stamp VALUES ('kv', OLD.key);
+        END''',
+    // Теги, исправленные руками (данные площадки не уходят).
+    r'''CREATE TRIGGER tracks_edit AFTER UPDATE ON tracks WHEN NEW.id IS OLD.id AND (NEW.extra ->> '$.edited' OR OLD.extra ->> '$.edited')
+            AND (NEW.title IS NOT OLD.title OR NEW.artist IS NOT OLD.artist OR NEW.album IS NOT OLD.album
+                 OR NEW.cover IS NOT OLD.cover OR NEW.extra IS NOT OLD.extra) BEGIN
+            INSERT INTO stamp VALUES ('track', NEW.id);
+        END''',
+
+    // Прослушивания и дни принадлежат устройству, которое их сделало
+    // (device = его id, '' — это): сливать нечего, только копировать. id
+    // прослушивания — курсор.
+    r'''CREATE TABLE plays_v2 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts INTEGER NOT NULL,
+            track_id TEXT NOT NULL REFERENCES tracks(id) ON UPDATE CASCADE ON DELETE CASCADE,
+            device TEXT NOT NULL DEFAULT ''
+        )''',
+    'INSERT INTO plays_v2 (ts, track_id) SELECT ts, track_id FROM plays ORDER BY ts',
+    'DROP TABLE plays',
+    'ALTER TABLE plays_v2 RENAME TO plays',
+    'CREATE INDEX plays_ts ON plays(ts)',
+    'CREATE INDEX plays_track ON plays(track_id, ts)',
+    'CREATE INDEX plays_device ON plays(device, ts)',
+    r'''CREATE TABLE days_v2 (
+            day TEXT NOT NULL,
+            device TEXT NOT NULL DEFAULT '',
+            app_ms INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (day, device)
+        ) WITHOUT ROWID''',
+    'INSERT INTO days_v2 (day, app_ms) SELECT day, app_ms FROM days',
+    'DROP TABLE days',
+    'ALTER TABLE days_v2 RENAME TO days',
+  ],
 ];
 
 /// База открыта на запуске и подменяется в `main()`; в тестах — [BloomDb.memory].
@@ -147,6 +267,11 @@ class BloomDb {
 
   int _depth = 0; // открытые tx
   bool _failed = false; // вложенная tx ушла без commit
+
+  /// Закоммитилась ли последняя внешняя [tx] (а не откатилась из-за ошибки
+  /// в одном из запросов) — `Tx::commit()` ПК.
+  bool get committed => _committed;
+  bool _committed = true;
 
   /// `bloom.db` в служебном каталоге приложения.
   static Future<BloomDb> open() async {
@@ -219,6 +344,9 @@ class BloomDb {
         exec('DELETE FROM $t');
       }
       exec(kMigrations.first.last);
+      // Последним: стирание само себя отметило бы удалениями, и они ушли бы
+      // на ПК. Сброс — для этого устройства, с новым id оно возьмёт всё заново.
+      exec('DELETE FROM changes');
     });
   }
 
@@ -273,6 +401,7 @@ class BloomDb {
     try {
       final result = body();
       if (--_depth == 0) {
+        _committed = !_failed;
         if (_failed) {
           _db.execute('ROLLBACK');
           logWarn('db', 'transaction rolled back: a statement in it failed');
@@ -284,6 +413,7 @@ class BloomDb {
     } catch (_) {
       _failed = true;
       if (--_depth == 0) {
+        _committed = false;
         _db.execute('ROLLBACK');
         logWarn('db', 'transaction rolled back');
       }
