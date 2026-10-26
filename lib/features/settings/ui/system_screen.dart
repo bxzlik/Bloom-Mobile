@@ -10,9 +10,7 @@
 /// телефоне нет. Десктопное «Автовоспроизведение» из группы «Запуск» уехало в
 /// «Аудио» — так выбрал пользователь.
 ///
-/// Подтверждения — шторкой с красной кнопкой, а не системным `confirm()`, как
-/// на ПК: тот же приём, что в «Хранилище», и по той же причине — на телефоне
-/// промахнуться по строке в списке легко, по шторке нет.
+/// Подтверждения — общей шторкой с красной кнопкой ([confirmDanger]).
 library;
 
 import 'package:flutter/material.dart';
@@ -25,8 +23,8 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/log/bloom_log.dart';
 import '../../../core/store/library_store.dart';
 import '../../../core/store/text_files.dart';
-import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
+import '../../../shared/ui/danger_confirm.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../library/import_file.dart';
 import '../data_transfer.dart';
@@ -153,18 +151,16 @@ Future<void> _confirmReset(
   final l = context.l;
   final messenger = ScaffoldMessenger.of(context);
 
-  final yes = await showBloomSheetChild<bool>(
-    context: context,
-    child: _ConfirmBody(
-      icon: hard
-          ? SolarIconsOutline.trashBinMinimalistic
-          : SolarIconsOutline.restart,
-      title: hard ? l.sysHardResetTitle : l.sysResetTitle,
-      body: hard ? l.sysHardResetBody : l.sysResetBody,
-      button: hard ? l.sysHardResetBtn : l.sysResetBtn,
-    ),
+  final yes = await confirmDanger(
+    context,
+    icon: hard
+        ? SolarIconsOutline.trashBinMinimalistic
+        : SolarIconsOutline.restart,
+    title: hard ? l.sysHardResetTitle : l.sysResetTitle,
+    body: hard ? l.sysHardResetBody : l.sysResetBody,
+    button: hard ? l.sysHardResetBtn : l.sysResetBtn,
   );
-  if (yes != true) return;
+  if (!yes) return;
 
   if (hard) {
     await hardReset(ref);
@@ -172,73 +168,5 @@ Future<void> _confirmReset(
   } else {
     await resetSettings(ref);
     messenger.toast(l.sysResetDone, kind: ToastKind.success);
-  }
-}
-
-/// Тело шторки подтверждения: крупный значок, название, что произойдёт, и
-/// красная кнопка во всю ширину — тот же вид, что у очистки в «Хранилище».
-class _ConfirmBody extends StatelessWidget {
-  const _ConfirmBody({
-    required this.icon,
-    required this.title,
-    required this.body,
-    required this.button,
-  });
-
-  final IconData icon;
-  final String title;
-  final String body;
-  final String button;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 6, 20, 8),
-      child: Column(
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: t.danger.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 28, color: t.danger),
-          ),
-          const SizedBox(height: 16),
-          Text(title, style: theme.titleLarge),
-          const SizedBox(height: 10),
-          Text(
-            body,
-            textAlign: TextAlign.center,
-            style: theme.bodySmall?.copyWith(color: t.text2),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: Material(
-              color: const Color(0xFFE0494A),
-              borderRadius: BorderRadius.circular(t.radius),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () => Navigator.of(context).pop(true),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 17),
-                  child: Center(
-                    child: Text(
-                      button,
-                      style: theme.titleMedium?.copyWith(color: Colors.white),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

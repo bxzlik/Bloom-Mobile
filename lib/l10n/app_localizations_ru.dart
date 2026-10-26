@@ -3562,6 +3562,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pcUnpair => 'Отключить';
 
   @override
+  String get pcUnpairTitle => 'Отключить компьютер?';
+
+  @override
+  String pcUnpairBody(String name) {
+    return 'Синхронизация с «$name» прекратится. Подключиться снова можно только с компьютера: «Подключить телефон» на его экране.';
+  }
+
+  @override
   String get pcUnpaired =>
       'Компьютер забыт. В его списке телефон останется, пока не отключишь его и там.';
 

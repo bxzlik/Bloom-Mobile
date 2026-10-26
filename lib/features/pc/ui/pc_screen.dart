@@ -21,6 +21,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/sync/pc_client.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
+import '../../../shared/ui/danger_confirm.dart';
 import '../../../shared/ui/glass.dart';
 import '../../settings/ui/platform_page.dart';
 import '../pc_store.dart';
@@ -70,7 +71,16 @@ class PcSettingsScreen extends ConsumerWidget {
         if (link != null)
           PlatformButton(
             label: l.pcUnpair,
-            onTap: () {
+            // Обратно — только с экрана ПК, поэтому через подтверждение.
+            onTap: () async {
+              final yes = await confirmDanger(
+                context,
+                icon: SolarIconsOutline.monitor,
+                title: l.pcUnpairTitle,
+                body: l.pcUnpairBody(link.name),
+                button: l.pcUnpair,
+              );
+              if (!yes || !context.mounted) return;
               pc.unpair();
               showToast(context, l.pcUnpaired);
             },

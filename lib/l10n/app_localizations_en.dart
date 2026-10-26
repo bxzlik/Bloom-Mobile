@@ -3498,6 +3498,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pcUnpair => 'Disconnect';
 
   @override
+  String get pcUnpairTitle => 'Disconnect the computer?';
+
+  @override
+  String pcUnpairBody(String name) {
+    return 'Syncing with “$name” stops. To connect again you\'ll need the computer: Connect a phone on its screen.';
+  }
+
+  @override
   String get pcUnpaired =>
       'Computer forgotten. It lists the phone until you disconnect it there too.';
 

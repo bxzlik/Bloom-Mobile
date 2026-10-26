@@ -20,6 +20,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
+import '../../../shared/ui/danger_confirm.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../storage_stats.dart';
@@ -518,42 +519,8 @@ class _ClearBody extends StatelessWidget {
             style: theme.bodySmall?.copyWith(color: t.text2),
           ),
           const SizedBox(height: 20),
-          _ClearButton(enabled: enabled),
+          DangerSheetButton(label: l.statsClear, enabled: enabled),
         ],
-      ),
-    );
-  }
-}
-
-/// Красная кнопка во всю ширину шторки.
-class _ClearButton extends StatelessWidget {
-  const _ClearButton({required this.enabled});
-
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return SizedBox(
-      width: double.infinity,
-      child: Material(
-        color: enabled ? const Color(0xFFE0494A) : t.ovlBg,
-        borderRadius: BorderRadius.circular(t.radius),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: enabled ? () => Navigator.of(context).pop(true) : null,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 17),
-            child: Center(
-              child: Text(
-                context.l.statsClear,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: enabled ? Colors.white : t.muted,
-                ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

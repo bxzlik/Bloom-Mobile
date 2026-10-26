@@ -6002,6 +6002,18 @@ abstract class AppLocalizations {
   /// **'Disconnect'**
   String get pcUnpair;
 
+  /// No description provided for @pcUnpairTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect the computer?'**
+  String get pcUnpairTitle;
+
+  /// No description provided for @pcUnpairBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing with “{name}” stops. To connect again you\'ll need the computer: Connect a phone on its screen.'**
+  String pcUnpairBody(String name);
+
   /// No description provided for @pcUnpaired.
   ///
   /// In en, this message translates to:
