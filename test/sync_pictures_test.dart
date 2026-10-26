@@ -44,10 +44,12 @@ Map<String, Object?> _payload(String cover, String avatar) => {
 
 String _avatar(Map<String, Object?> p) {
   final row = ((p['changes'] as List)[1] as Map)['row'] as Map;
-  return ((jsonDecode(row['value'] as String) as List).first as Map)['avatar'] as String;
+  return ((jsonDecode(row['value'] as String) as List).first as Map)['avatar']
+      as String;
 }
 
-String _cover(Map<String, Object?> p) => (((p['changes'] as List).first as Map)['row'] as Map)['cover'] as String;
+String _cover(Map<String, Object?> p) =>
+    (((p['changes'] as List).first as Map)['row'] as Map)['cover'] as String;
 
 void main() {
   late Directory dir;
@@ -63,21 +65,32 @@ void main() {
     final name = pictureName(_png);
     expect(validPictureName(name), isTrue);
     expect(name.endsWith('.png'), isTrue);
-    expect(pictureName(Uint8List.fromList([0xFF, 0xD8, 0xFF, 1, 2])).endsWith('.jpg'), isTrue);
+    expect(
+      pictureName(
+        Uint8List.fromList([0xFF, 0xD8, 0xFF, 1, 2]),
+      ).endsWith('.jpg'),
+      isTrue,
+    );
     expect(validPictureName('../x.png'), isFalse);
   });
 
-  test('own pictures go out as img:<name>, a platform picture as it is, a lost file as ""', () {
-    File('${dir.path}/cover_1.png').writeAsBytesSync(_png);
-    final p = _payload('local:cover_1.png', 'local:missing.png');
-    final names = SyncPictures(db, dir.path).toWire(p);
-    final name = pictureName(_png);
-    expect(names, {name});
-    expect(_cover(p), 'img:$name');
-    expect(_avatar(p), '');
-    expect(((p['tracks'] as List).first as Map)['cover'], 'https://i1.sndcdn.com/a.jpg');
-    expect((p['changes'] as List)[2], containsPair('row', null));
-  });
+  test(
+    'own pictures go out as img:<name>, a platform picture as it is, a lost file as ""',
+    () {
+      File('${dir.path}/cover_1.png').writeAsBytesSync(_png);
+      final p = _payload('local:cover_1.png', 'local:missing.png');
+      final names = SyncPictures(db, dir.path).toWire(p);
+      final name = pictureName(_png);
+      expect(names, {name});
+      expect(_cover(p), 'img:$name');
+      expect(_avatar(p), '');
+      expect(
+        ((p['tracks'] as List).first as Map)['cover'],
+        'https://i1.sndcdn.com/a.jpg',
+      );
+      expect((p['changes'] as List)[2], containsPair('row', null));
+    },
+  );
 
   test('incoming: a picture we have becomes ours, one we lack becomes ""', () {
     final name = pictureName(_png);
@@ -118,11 +131,21 @@ void main() {
     expect(o.port, 49410);
     expect((o.secret, o.print), ('abc', 'def'));
     expect(PairOffer.parse('https://example.com'), isNull);
-    expect(PairOffer.parse('{"bloom":"pair","v":2,"a":["1"],"p":1,"s":"","f":""}'), isNull);
+    expect(
+      PairOffer.parse('{"bloom":"pair","v":2,"a":["1"],"p":1,"s":"","f":""}'),
+      isNull,
+    );
   });
 
   test('a link keeps where the PC answered first', () {
-    const link = PcLink(device: 'd', name: 'PC', token: 't', print: 'f', addresses: ['a', 'b'], port: 1);
+    const link = PcLink(
+      device: 'd',
+      name: 'PC',
+      token: 't',
+      print: 'f',
+      addresses: ['a', 'b'],
+      port: 1,
+    );
     final moved = link.at('b', 2);
     expect(moved.addresses, ['b', 'a']);
     expect(moved.port, 2);

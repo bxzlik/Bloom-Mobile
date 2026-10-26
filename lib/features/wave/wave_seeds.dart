@@ -69,11 +69,7 @@ List<WaveSeed> queueSeeds(List<Track> tracks, WaveLibrary view) {
 /// «Моя волна» с площадки [provider] (код базы): два самых слушаемых, два
 /// самых свежих лайка и ещё один из них же. [rotation] сдвигает выбор на
 /// каждой новой волне — иначе она вечно стояла бы на тех же двух из топа.
-List<WaveSeed> personalSeeds(
-  WaveLibrary view,
-  String provider,
-  int rotation,
-) {
+List<WaveSeed> personalSeeds(WaveLibrary view, String provider, int rotation) {
   bool usable(Track t) =>
       t.source.code == provider &&
       !view.disliked.contains(t.id) &&

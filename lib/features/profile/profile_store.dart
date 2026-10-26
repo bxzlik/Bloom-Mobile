@@ -131,7 +131,8 @@ class UserProfile {
       status: text('status', kStatusMax),
       bannerColor: colorOf(json['bannerColor']) ?? _kBannerColor,
       bannerColor2: colorOf(json['bannerColor2']) ?? _kBannerColor2,
-      bannerMode: BannerColorMode.values.asNameMap()[json['bannerMode']] ??
+      bannerMode:
+          BannerColorMode.values.asNameMap()[json['bannerMode']] ??
           BannerColorMode.auto,
       bannerAngle: (angle % 360 + 360) % 360,
       avatar: file('avatar'),

@@ -144,9 +144,7 @@ void main() {
         _track('ytm:b', source: MusicSource.ytmusic),
       ];
       final view = _library(tracks, plays: {'sc:1': 9, 'ytm:a': 2});
-      expect(personalSeeds(view, 'ytm', 0), [
-        const WaveSeed('ytm', 'track:a'),
-      ]);
+      expect(personalSeeds(view, 'ytm', 0), [const WaveSeed('ytm', 'track:a')]);
       expect(personalSeeds(view, 'sc', 0), [_sc(1)]);
     });
 

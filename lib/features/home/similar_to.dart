@@ -176,11 +176,7 @@ MusicProvider? _providerOf(RecsInput input, MusicSource source) {
 
 /// Артист [name] на площадке трека [via] — `Artists::find` ПК: известна его
 /// страница по треку — она, иначе поиск по имени.
-Future<Artist?> _resolveArtist(
-  RecsInput input,
-  String name,
-  Track via,
-) async {
+Future<Artist?> _resolveArtist(RecsInput input, String name, Track via) async {
   final link = firstArtistLink(via);
   if (link.name == name && link.id != null) {
     return Artist(

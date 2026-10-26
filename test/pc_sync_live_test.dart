@@ -78,7 +78,11 @@ void main() {
         duration: Duration(seconds: 180),
         source: MusicSource.soundcloud,
       );
-      a.lib.createPlaylist('Live A', tracks: [track], cover: 'local:cover_1.png');
+      a.lib.createPlaylist(
+        'Live A',
+        tracks: [track],
+        cover: 'local:cover_1.png',
+      );
       a.db.set('profile', {
         'name': 'Phone A',
         'bio': '',
@@ -91,14 +95,22 @@ void main() {
         'bannerAngle': 135,
       });
       final ts = DateTime.now().millisecondsSinceEpoch - 60000;
-      a.db.exec('INSERT INTO plays (ts, track_id) VALUES (?, ?)', [ts, track.id]);
+      a.db.exec('INSERT INTO plays (ts, track_id) VALUES (?, ?)', [
+        ts,
+        track.id,
+      ]);
 
       final ra = await a.sync();
       expect(ra.sent, greaterThan(0));
 
       // ── на ПК — свой плейлист, сделанный через его API ключом устройства
       final pcLink = a.link;
-      final pc = PcClient(pcLink.addresses.first, pcLink.port, print: pcLink.print, token: pcLink.token);
+      final pc = PcClient(
+        pcLink.addresses.first,
+        pcLink.port,
+        print: pcLink.print,
+        token: pcLink.token,
+      );
       await pc.json('POST', '/v1/library/create', body: {'name': 'Made on PC'});
 
       // ── B: всё пришло, картинка тем же файлом
@@ -114,11 +126,19 @@ void main() {
       expect(card['avatar'], 'local:$name');
       expect(card['status'], 'live');
       expect(
-        b.db.value('SELECT count(*) FROM plays WHERE track_id = ? AND ts = ? AND device = ?', [track.id, ts, a.db.get('sync.device')]),
+        b.db.value(
+          'SELECT count(*) FROM plays WHERE track_id = ? AND ts = ? AND device = ?',
+          [track.id, ts, a.db.get('sync.device')],
+        ),
         1,
       );
       expect(b.list('Made on PC'), isNotNull);
-      expect(b.db.value("SELECT count(*) FROM list_tracks lt JOIN lists l ON l.id = lt.list_id WHERE l.name = 'Live A'"), 1);
+      expect(
+        b.db.value(
+          "SELECT count(*) FROM list_tracks lt JOIN lists l ON l.id = lt.list_id WHERE l.name = 'Live A'",
+        ),
+        1,
+      );
 
       // ── A: забирает плейлист ПК, своё назад не приходит
       final again = await a.sync();

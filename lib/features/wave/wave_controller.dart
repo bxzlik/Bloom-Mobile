@@ -145,10 +145,7 @@ class WaveController extends Notifier<WaveRunState> {
   ///
   /// [seedFirst] — начать с самого трека, а дальше уйти в подобранное (тап по
   /// обложке в кольце на главной).
-  Future<WaveStartResult> startByTrack(
-    Track track, {
-    bool seedFirst = false,
-  }) {
+  Future<WaveStartResult> startByTrack(Track track, {bool seedFirst = false}) {
     final s = seedOf(track);
     if (s == null) return Future.value(WaveStartResult.noSeed);
     return _begin(
@@ -244,10 +241,9 @@ class WaveController extends Notifier<WaveRunState> {
         _save();
       }
       if (native) {
-        _provider(seeds.first.provider)?.stationFeedback(
-          seeds.first.station,
-          'radioStarted',
-        );
+        _provider(
+          seeds.first.provider,
+        )?.stationFeedback(seeds.first.station, 'radioStarted');
       }
       return WaveStartResult.ok;
     } finally {
@@ -367,11 +363,9 @@ class WaveController extends Notifier<WaveRunState> {
     if (run == null) return;
     final s = run.seeds.first;
     if (run.native && track.source.code == s.provider) {
-      _provider(s.provider)?.stationFeedback(
-        s.station,
-        'trackStarted',
-        track: track,
-      );
+      _provider(
+        s.provider,
+      )?.stationFeedback(s.station, 'trackStarted', track: track);
     }
     unawaited(_refill());
   }

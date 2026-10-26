@@ -70,7 +70,12 @@ class PcState {
 
   bool get paired => link != null;
 
-  PcState copyWith({PcLink? link, bool unlink = false, PcStatus? status, int? lastSync}) => PcState(
+  PcState copyWith({
+    PcLink? link,
+    bool unlink = false,
+    PcStatus? status,
+    int? lastSync,
+  }) => PcState(
     link: unlink ? null : (link ?? this.link),
     status: status ?? this.status,
     lastSync: lastSync ?? this.lastSync,
@@ -120,7 +125,11 @@ class PcController extends Notifier<PcState> {
       final now = BloomDb.now();
       _db.set(_kLink, round.link.toJson());
       _db.set(_kAt, now);
-      state = state.copyWith(link: round.link, status: PcStatus.ok, lastSync: now);
+      state = state.copyWith(
+        link: round.link,
+        status: PcStatus.ok,
+        lastSync: now,
+      );
       _reread(round.touched, '${_db.get('stats.cleared')}' != '$clearedBefore');
     } on PcUnreachable {
       state = state.copyWith(status: PcStatus.offline);
@@ -132,7 +141,9 @@ class PcController extends Notifier<PcState> {
       state = state.copyWith(status: PcStatus.repair);
     } on PcHttpError catch (e) {
       logWarn('sync', 'ПК ответил ${e.status} ${e.code}');
-      state = state.copyWith(status: e.status == 401 ? PcStatus.repair : PcStatus.failed);
+      state = state.copyWith(
+        status: e.status == 401 ? PcStatus.repair : PcStatus.failed,
+      );
     } catch (e, st) {
       logError('sync', 'круг с ПК сломался: $e', st);
       state = state.copyWith(status: PcStatus.failed);
@@ -156,7 +167,8 @@ class PcController extends Notifier<PcState> {
   }
 
   /// ПК с открытым окном «Подключить телефон» — для ввода кода.
-  Future<List<FoundPc>> findForCode() => findPcs(wait: const Duration(seconds: 2));
+  Future<List<FoundPc>> findForCode() =>
+      findPcs(wait: const Duration(seconds: 2));
 
   Future<PairResult> pairCode(FoundPc pc, String code) => _pair(
     () async => pairPc(
@@ -206,10 +218,13 @@ class PcController extends Notifier<PcState> {
   void _reread(Set<String> touched, bool cleared) {
     bool any(List<String> kinds) => kinds.any(touched.contains);
     // Дизлайки волна перечитывает сама вслед за библиотекой.
-    if (any(['list', 'item', 'follow', 'track', 'rekey', 'dislike']) || cleared) {
+    if (any(['list', 'item', 'follow', 'track', 'rekey', 'dislike']) ||
+        cleared) {
       ref.read(libraryProvider.notifier).reload();
     }
-    if (any(['plays', 'rekey', 'track']) || cleared) ref.read(playLogProvider.notifier).reload();
+    if (any(['plays', 'rekey', 'track']) || cleared) {
+      ref.read(playLogProvider.notifier).reload();
+    }
     if (any(['days']) || cleared) ref.read(daysProvider.notifier).reload();
     if (any(['kv'])) {
       ref.read(profileProvider.notifier).reload();

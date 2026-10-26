@@ -134,9 +134,7 @@ class SessionStore extends Notifier<SessionData?> {
       full: _full,
       index: index,
       position: found
-          ? Duration(
-              milliseconds: (((s['pos'] as num?) ?? 0) * 1000).round(),
-            )
+          ? Duration(milliseconds: (((s['pos'] as num?) ?? 0) * 1000).round())
           : Duration.zero,
       savedAt: DateTime.fromMillisecondsSinceEpoch(
         (s['at'] as num?)?.toInt() ?? 0,

@@ -102,9 +102,7 @@ List<Track> pickBatch(
 
   final run = ctx.run;
   if (run != null && run.native) {
-    fill(
-      cands.where((c) => !queued.contains(c.id) && !ctx.isDisliked(c.id)),
-    );
+    fill(cands.where((c) => !queued.contains(c.id) && !ctx.isDisliked(c.id)));
     return out;
   }
 
@@ -169,8 +167,14 @@ List<Track> pickBatch(
 
   // «Моя волна»: один свой после каждых четырёх новых.
   if (personal) {
-    final fresh = [for (final c in kept) if (!c.library) c];
-    final own = [for (final c in kept) if (c.library) c];
+    final fresh = [
+      for (final c in kept)
+        if (!c.library) c,
+    ];
+    final own = [
+      for (final c in kept)
+        if (c.library) c,
+    ];
     kept = [];
     var f = 0, o = 0;
     for (var step = 0; f < fresh.length || o < own.length; step++) {
@@ -219,5 +223,7 @@ List<T> spreadSeeds<T>(List<T> all) {
       ? 8
       : 10;
   if (want >= n) return all;
-  return [for (var i = 0; i < want; i++) all[min(n - 1, (i * n / want).round())]];
+  return [
+    for (var i = 0; i < want; i++) all[min(n - 1, (i * n / want).round())],
+  ];
 }

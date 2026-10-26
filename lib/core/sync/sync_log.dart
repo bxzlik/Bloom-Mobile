@@ -64,7 +64,8 @@ class SyncLog {
     if (have is String && have.isNotEmpty) return have;
     final rnd = Random.secure();
     final id = [
-      for (var i = 0; i < 16; i++) rnd.nextInt(256).toRadixString(16).padLeft(2, '0'),
+      for (var i = 0; i < 16; i++)
+        rnd.nextInt(256).toRadixString(16).padLeft(2, '0'),
     ].join();
     db.set(_kDevice, id);
     return id;
@@ -250,7 +251,11 @@ class SyncLog {
         final ts = _int(v['ts']);
         final track = moves.of(_str(v['track']));
         final by = _str(v['device']);
-        if (by.isEmpty || by == me || track.isEmpty || _isLocal(track) || ts < clearedAt) {
+        if (by.isEmpty ||
+            by == me ||
+            track.isEmpty ||
+            _isLocal(track) ||
+            ts < clearedAt) {
           continue;
         }
         db.exec(
@@ -267,7 +272,10 @@ class SyncLog {
       for (final v in (payload['days'] as List?) ?? const []) {
         if (v is! Map) continue;
         final day = _str(v['day']), by = _str(v['device']);
-        if (day.isEmpty || by.isEmpty || by == me || day.compareTo(clearedDay) < 0) {
+        if (day.isEmpty ||
+            by.isEmpty ||
+            by == me ||
+            day.compareTo(clearedDay) < 0) {
           continue;
         }
         db.exec(
@@ -366,7 +374,10 @@ class SyncLog {
         if (row != null) tracks.add(key);
         return (row: row, list: null);
       case 'kv':
-        return (row: _one('SELECT value FROM kv WHERE key = ?', [key]), list: null);
+        return (
+          row: _one('SELECT value FROM kv WHERE key = ?', [key]),
+          list: null,
+        );
       case 'track':
         if (_isLocal(key)) return null;
         return (
@@ -418,7 +429,10 @@ class SyncLog {
     switch (kind) {
       case 'list':
         if (gone) {
-          db.exec("DELETE FROM lists WHERE id = ? AND kind NOT IN ('lib', 'fav')", [key]);
+          db.exec(
+            "DELETE FROM lists WHERE id = ? AND kind NOT IN ('lib', 'fav')",
+            [key],
+          );
           return false;
         }
         final lk = _str(r!['kind']);
@@ -448,7 +462,10 @@ class SyncLog {
         final l = _before(key), t = _after(key);
         if (_isLocal(t)) return null;
         if (gone) {
-          db.exec('DELETE FROM list_tracks WHERE list_id = ? AND track_id = ?', [l, t]);
+          db.exec(
+            'DELETE FROM list_tracks WHERE list_id = ? AND track_id = ?',
+            [l, t],
+          );
           return false;
         }
         if (!_exists('lists', l) || !_exists('tracks', t)) return null;

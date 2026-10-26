@@ -34,10 +34,7 @@ class ChartScreen extends ConsumerWidget {
       DiscoverTracks(:final tracks) => tracks,
       _ => const <Track>[],
     };
-    final source = PlainSource(
-      id: 'discover:charts',
-      label: l.homeCharts,
-    );
+    final source = PlainSource(id: 'discover:charts', label: l.homeCharts);
     final playback = ref.read(playbackProvider.notifier);
 
     return Scaffold(

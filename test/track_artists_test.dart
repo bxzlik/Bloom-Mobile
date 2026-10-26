@@ -119,9 +119,7 @@ bool _enabled(WidgetTester tester, String name) {
 void main() {
   testWidgets('несколько артистов — шторка с аватарками', (tester) async {
     final sc = _FakeSoundCloud({
-      'Kanye West': [
-        _artist('Kanye West', avatar: 'https://cdn/ye.jpg'),
-      ],
+      'Kanye West': [_artist('Kanye West', avatar: 'https://cdn/ye.jpg')],
       'Ty Dolla Sign': [_artist('Ty Dolla Sign', avatar: 'https://cdn/ty.jpg')],
     });
     await _pump(tester, _track('Kanye West & Ty Dolla Sign'), sc);

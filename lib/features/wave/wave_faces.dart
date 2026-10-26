@@ -142,7 +142,10 @@ Future<List<Track>> _radioFaces(
   // Сиды по кругу: иначе всё кольцо собралось бы из похожих на один трек.
   final out = <Track>[];
   final seen = _Seen();
-  final deepest = pages.fold(0, (m, p) => p.tracks.length > m ? p.tracks.length : m);
+  final deepest = pages.fold(
+    0,
+    (m, p) => p.tracks.length > m ? p.tracks.length : m,
+  );
   for (var i = 0; i < deepest && out.length < limit; i++) {
     for (final page in pages) {
       if (i >= page.tracks.length) continue;

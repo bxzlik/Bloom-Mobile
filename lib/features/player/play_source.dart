@@ -67,7 +67,9 @@ sealed class PlaySource {
         return WaveSource(
           label: name,
           mode:
-              WaveMode.values.where((m) => m.name == json['mode']).firstOrNull ??
+              WaveMode.values
+                  .where((m) => m.name == json['mode'])
+                  .firstOrNull ??
               WaveMode.personal,
         );
       case final String kind when kind.isNotEmpty:

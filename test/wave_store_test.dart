@@ -115,7 +115,9 @@ void main() {
   });
 
   test('курсоров не больше трёхсот — старые уходят первыми', () async {
-    final wave = _container(JsonStore.memory()).read(waveStoreProvider.notifier);
+    final wave = _container(
+      JsonStore.memory(),
+    ).read(waveStoreProvider.notifier);
     wave.saveCursors({const WaveSeed('sc', 'track:old'): '20'});
     await Future<void>.delayed(const Duration(milliseconds: 2));
     wave.saveCursors({

@@ -72,40 +72,47 @@ List<Track> _page(int n, {int from = 0}) => [
 void main() {
   group('что отсеивается', () {
     test('играющий, стоящий в очереди и уже услышанный в волне', () {
-      final out = pickBatch([_page(4)], _ctx(
-        run: _run(played: ['sc:3']),
-        currentId: 'sc:0',
-        queue: [_t('sc:1', artist: 'A1')],
-      ));
+      final out = pickBatch(
+        [_page(4)],
+        _ctx(
+          run: _run(played: ['sc:3']),
+          currentId: 'sc:0',
+          queue: [_t('sc:1', artist: 'A1')],
+        ),
+      );
       expect(_ids(out), ['sc:2']);
     });
 
     test('дизлайк — про сам трек, соседей того же артиста не трогает', () {
       final out = pickBatch([
-        [_t('sc:1', artist: 'A'), _t('sc:2', artist: 'B'), _t('sc:3', artist: 'A')],
+        [
+          _t('sc:1', artist: 'A'),
+          _t('sc:2', artist: 'B'),
+          _t('sc:3', artist: 'A'),
+        ],
       ], _ctx(disliked: {'sc:1'}));
       expect(_ids(out), containsAll(['sc:2', 'sc:3']));
       expect(_ids(out), isNot(contains('sc:1')));
     });
 
     test('находка, которая уже в библиотеке, находкой не считается', () {
-      final out = pickBatch([_page(3)], _ctx(library: [_t('sc:1', artist: 'A1')]));
+      final out = pickBatch([
+        _page(3),
+      ], _ctx(library: [_t('sc:1', artist: 'A1')]));
       expect(_ids(out), isNot(contains('sc:1')));
     });
 
     test('слушанное за неделю и показанное за две не повторяем', () {
-      final out = pickBatch(
-        [_page(4)],
-        _ctx(recent: {'sc:0'}, shown: {'sc:1'}),
-      );
+      final out = pickBatch([
+        _page(4),
+      ], _ctx(recent: {'sc:0'}, shown: {'sc:1'}));
       expect(_ids(out)..sort(), ['sc:2', 'sc:3']);
     });
 
     test('отсеялось всё — лучше повтор, чем тишина, но не дизлайк', () {
-      final out = pickBatch(
-        [_page(3)],
-        _ctx(recent: {'sc:0'}, shown: {'sc:1'}, disliked: {'sc:2'}),
-      );
+      final out = pickBatch([
+        _page(3),
+      ], _ctx(recent: {'sc:0'}, shown: {'sc:1'}, disliked: {'sc:2'}));
       expect(_ids(out)..sort(), ['sc:0', 'sc:1']);
     });
   });
@@ -138,7 +145,10 @@ void main() {
     });
 
     test('бонус считается по каждому имени трека', () {
-      final page = [_t('sc:0', artist: 'X0'), _t('sc:9', artist: 'Other feat. Liked')];
+      final page = [
+        _t('sc:0', artist: 'X0'),
+        _t('sc:9', artist: 'Other feat. Liked'),
+      ];
       final out = pickBatch([page], _ctx(run: _run(bonus: {'liked': 12})));
       expect(out.first.id, 'sc:9');
     });
@@ -189,12 +199,13 @@ void main() {
 
   group('«Моя волна»', () {
     test('свой трек — через каждые четыре новых', () {
-      final lib = [
-        for (var i = 100; i < 110; i++) _t('sc:$i', artist: 'L$i'),
-      ];
+      final lib = [for (var i = 100; i < 110; i++) _t('sc:$i', artist: 'L$i')];
       final out = pickBatch(
         [_page(16)],
-        _ctx(run: _run(mode: WaveMode.personal), library: lib),
+        _ctx(
+          run: _run(mode: WaveMode.personal),
+          library: lib,
+        ),
       );
       final own = {for (final t in lib) t.id};
       expect(own.contains(out[4].id), isTrue);
@@ -223,10 +234,9 @@ void main() {
     });
 
     test('в других волнах своих треков нет', () {
-      final out = pickBatch(
-        [_page(8)],
-        _ctx(library: [_t('sc:100', artist: 'L')]),
-      );
+      final out = pickBatch([
+        _page(8),
+      ], _ctx(library: [_t('sc:100', artist: 'L')]));
       expect(_ids(out), isNot(contains('sc:100')));
     });
   });
@@ -275,11 +285,18 @@ void main() {
       final out = pickBatch(
         [
           [
-            _t('sc:11', name: 'Artist - Ночь', artist: 'reupload', seconds: 200),
+            _t(
+              'sc:11',
+              name: 'Artist - Ночь',
+              artist: 'reupload',
+              seconds: 200,
+            ),
             _t('sc:12', name: 'День', artist: 'Artist', seconds: 240),
           ],
         ],
-        _ctx(queue: [_t('sc:10', name: 'Ночь', artist: 'Artist', seconds: 200)]),
+        _ctx(
+          queue: [_t('sc:10', name: 'Ночь', artist: 'Artist', seconds: 200)],
+        ),
       );
       expect(_ids(out), ['sc:12']);
     });

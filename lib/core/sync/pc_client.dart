@@ -15,11 +15,11 @@ import 'package:crypto/crypto.dart';
 /// Порт поиска ПК — первый порт домашней сети ПК (`kPort` в Devices.cpp).
 const int kFindPort = 49410;
 
-String _b64url(List<int> bytes) =>
-    base64Url.encode(bytes).replaceAll('=', '');
+String _b64url(List<int> bytes) => base64Url.encode(bytes).replaceAll('=', '');
 
 /// Отпечаток сертификата — как `f` в QR ПК: SHA-256 DER, base64url без `=`.
-String certPrint(X509Certificate cert) => _b64url(sha256.convert(cert.der).bytes);
+String certPrint(X509Certificate cert) =>
+    _b64url(sha256.convert(cert.der).bytes);
 
 /// Что показывает QR на экране ПК:
 /// `{"bloom":"pair","v":1,"a":[адреса],"p":порт,"s":секрет,"f":отпечаток}`.
@@ -47,7 +47,10 @@ class PairOffer {
     if (doc is! Map || doc['bloom'] != 'pair' || doc['v'] != 1) return null;
     final a = doc['a'], p = doc['p'], s = doc['s'], f = doc['f'];
     if (a is! List || p is! int || s is! String || f is! String) return null;
-    final addresses = [for (final x in a) if (x is String && x.isNotEmpty) x];
+    final addresses = [
+      for (final x in a)
+        if (x is String && x.isNotEmpty) x,
+    ];
     if (addresses.isEmpty) return null;
     return PairOffer(addresses: addresses, port: p, secret: s, print: f);
   }
@@ -79,7 +82,11 @@ class PcLink {
     name: name,
     token: token,
     print: print,
-    addresses: [address, for (final a in addresses) if (a != address) a],
+    addresses: [
+      address,
+      for (final a in addresses)
+        if (a != address) a,
+    ],
     port: port,
   );
 
@@ -96,7 +103,11 @@ class PcLink {
     if (json is! Map) return null;
     final d = json['device'], n = json['name'], t = json['token'];
     final f = json['f'], a = json['a'], p = json['p'];
-    if (d is! String || t is! String || f is! String || a is! List || p is! num) {
+    if (d is! String ||
+        t is! String ||
+        f is! String ||
+        a is! List ||
+        p is! num) {
       return null;
     }
     return PcLink(
@@ -104,7 +115,10 @@ class PcLink {
       name: n is String ? n : '',
       token: t,
       print: f,
-      addresses: [for (final x in a) if (x is String) x],
+      addresses: [
+        for (final x in a)
+          if (x is String) x,
+      ],
       port: p.toInt(),
     );
   }
@@ -182,10 +196,14 @@ class PcClient {
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 4)
       // Сертификат ПК самоподписанный: цепочку не проверяем, сверяем отпечаток.
-      ..badCertificateCallback = (cert, _, _) => print == null || certPrint(cert) == print;
+      ..badCertificateCallback = (cert, _, _) =>
+          print == null || certPrint(cert) == print;
     try {
       final req = await client
-          .openUrl(method, Uri(scheme: 'https', host: address, port: port, path: path))
+          .openUrl(
+            method,
+            Uri(scheme: 'https', host: address, port: port, path: path),
+          )
           .timeout(timeout);
       // Сервер ПК знает только Content-Length, не chunked.
       req.contentLength = body?.length ?? 0;
@@ -208,7 +226,9 @@ class PcClient {
         var code = '';
         try {
           final doc = jsonDecode(utf8.decode(data));
-          if (doc is Map && doc['error'] is String) code = doc['error'] as String;
+          if (doc is Map && doc['error'] is String) {
+            code = doc['error'] as String;
+          }
         } catch (_) {}
         throw PcHttpError(res.statusCode, code);
       }
@@ -238,7 +258,11 @@ Future<PcLink?> pairPc({
   // Кто отвечает: без ключа ПК скажет 401 — значит, он там.
   Future<String?> probe(String a) async {
     try {
-      await PcClient(a, port, print: print).send('GET', '/v1', timeout: const Duration(seconds: 4));
+      await PcClient(
+        a,
+        port,
+        print: print,
+      ).send('GET', '/v1', timeout: const Duration(seconds: 4));
       return a;
     } on PcHttpError {
       return a;
@@ -250,12 +274,11 @@ Future<PcLink?> pairPc({
   final alive = (await Future.wait(addresses.map(probe))).nonNulls;
   if (alive.isEmpty) return null;
   final client = PcClient(alive.first, port, print: print);
-  final res = await client.json('POST', '/v1/pair', body: {
-    'secret': ?secret,
-    'code': ?code,
-    'name': name,
-    'device': device,
-  });
+  final res = await client.json(
+    'POST',
+    '/v1/pair',
+    body: {'secret': ?secret, 'code': ?code, 'name': name, 'device': device},
+  );
   final pc = res['pc'];
   final token = res['token'];
   if (token is! String || pc is! Map || pc['device'] is! String) {
@@ -266,7 +289,11 @@ Future<PcLink?> pairPc({
     name: pc['name'] is String ? pc['name'] as String : '',
     token: token,
     print: print ?? client.seen!,
-    addresses: [alive.first, for (final a in addresses) if (a != alive.first) a],
+    addresses: [
+      alive.first,
+      for (final a in addresses)
+        if (a != alive.first) a,
+    ],
     port: port,
   );
 }
@@ -292,7 +319,10 @@ Future<List<FoundPc>> findPcs({
       if (d == null) return;
       try {
         final o = jsonDecode(utf8.decode(d.data));
-        if (o is Map && o['bloom'] == 'here' && o['p'] is int && o['d'] is String) {
+        if (o is Map &&
+            o['bloom'] == 'here' &&
+            o['p'] is int &&
+            o['d'] is String) {
           found[o['d'] as String] = FoundPc(
             address: d.address.address,
             port: o['p'] as int,

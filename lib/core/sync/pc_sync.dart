@@ -26,7 +26,12 @@ const int _kSkewMs = 2000;
 
 /// Чем кончился круг.
 class SyncRound {
-  const SyncRound({required this.link, required this.touched, required this.sent, required this.took});
+  const SyncRound({
+    required this.link,
+    required this.touched,
+    required this.sent,
+    required this.took,
+  });
 
   /// Связка с адресом, по которому ПК ответил (его стоит сохранить).
   final PcLink link;
@@ -70,13 +75,24 @@ Future<SyncRound> syncWithPc(PcLink link, BloomDb db, String coversDir) async {
     final names = pictures.toWire(out);
     _shift(out, skew);
     if (names.isNotEmpty) {
-      final ask = await client.json('POST', '/v1/sync/pictures', body: {'names': names.toList()});
+      final ask = await client.json(
+        'POST',
+        '/v1/sync/pictures',
+        body: {'names': names.toList()},
+      );
       for (final name in (ask['missing'] as List?) ?? const []) {
         final bytes = name is String ? pictures.read(name) : null;
-        if (bytes != null) await client.send('PUT', '/v1/sync/picture/$name', body: bytes);
+        if (bytes != null) {
+          await client.send('PUT', '/v1/sync/picture/$name', body: bytes);
+        }
       }
     }
-    final res = await client.json('POST', '/v1/sync/push', body: out, timeout: const Duration(seconds: 60));
+    final res = await client.json(
+      'POST',
+      '/v1/sync/push',
+      body: out,
+      timeout: const Duration(seconds: 60),
+    );
     sent += (out['changes'] as List).length + (out['plays'] as List).length;
     cursor = res['got'] is Map ? res['got'] as Map : const {};
     if (out['more'] != true) break;
@@ -108,21 +124,34 @@ Future<SyncRound> syncWithPc(PcLink link, BloomDb db, String coversDir) async {
     if (!log.apply(payload, touched: touched)) {
       throw const PcHttpError(0, 'refused');
     }
-    took += ((payload['changes'] as List?) ?? const []).length + ((payload['plays'] as List?) ?? const []).length;
+    took +=
+        ((payload['changes'] as List?) ?? const []).length +
+        ((payload['plays'] as List?) ?? const []).length;
     if (payload['more'] != true) break;
   }
-  logInfo('sync', 'с ПК «${link.name}»: отдал $sent, взял $took · ${touched.join(' ')}');
+  logInfo(
+    'sync',
+    'с ПК «${link.name}»: отдал $sent, взял $took · ${touched.join(' ')}',
+  );
   return SyncRound(link: link, touched: touched, sent: sent, took: took);
 }
 
 /// Где ПК сейчас: адрес, где он ответил в последний раз, потом остальные
 /// разом, потом поиск в сети по отпечатку.
-Future<({PcClient client, PcLink link, Map<String, Object?> hello, int skew})> reachPc(PcLink link) async {
-  Future<({PcClient client, Map<String, Object?> hello, int skew})?> hello(String address, int port) async {
+Future<({PcClient client, PcLink link, Map<String, Object?> hello, int skew})>
+reachPc(PcLink link) async {
+  Future<({PcClient client, Map<String, Object?> hello, int skew})?> hello(
+    String address,
+    int port,
+  ) async {
     final c = PcClient(address, port, print: link.print, token: link.token);
     try {
       final t0 = DateTime.now().millisecondsSinceEpoch;
-      final h = await c.json('GET', '/v1/sync', timeout: const Duration(seconds: 5));
+      final h = await c.json(
+        'GET',
+        '/v1/sync',
+        timeout: const Duration(seconds: 5),
+      );
       final t1 = DateTime.now().millisecondsSinceEpoch;
       final skew = _int(h['now']) - (t0 + t1) ~/ 2;
       return (client: c, hello: h, skew: skew.abs() < _kSkewMs ? 0 : skew);
@@ -137,20 +166,43 @@ Future<({PcClient client, PcLink link, Map<String, Object?> hello, int skew})> r
 
   if (link.addresses.isNotEmpty) {
     final first = await hello(link.addresses.first, link.port);
-    if (first != null) return (client: first.client, link: link, hello: first.hello, skew: first.skew);
+    if (first != null) {
+      return (
+        client: first.client,
+        link: link,
+        hello: first.hello,
+        skew: first.skew,
+      );
+    }
   }
   final rest = link.addresses.skip(1).toList();
   if (rest.isNotEmpty) {
-    final tries = await Future.wait([for (final a in rest) hello(a, link.port)]);
+    final tries = await Future.wait([
+      for (final a in rest) hello(a, link.port),
+    ]);
     for (var i = 0; i < rest.length; i++) {
       final r = tries[i];
-      if (r != null) return (client: r.client, link: link.at(rest[i], link.port), hello: r.hello, skew: r.skew);
+      if (r != null) {
+        return (
+          client: r.client,
+          link: link.at(rest[i], link.port),
+          hello: r.hello,
+          skew: r.skew,
+        );
+      }
     }
   }
   for (final pc in await findPcs(print: link.print, to: link.addresses)) {
     if (pc.device != link.device) continue;
     final r = await hello(pc.address, pc.port);
-    if (r != null) return (client: r.client, link: link.at(pc.address, pc.port), hello: r.hello, skew: r.skew);
+    if (r != null) {
+      return (
+        client: r.client,
+        link: link.at(pc.address, pc.port),
+        hello: r.hello,
+        skew: r.skew,
+      );
+    }
   }
   throw const PcUnreachable();
 }

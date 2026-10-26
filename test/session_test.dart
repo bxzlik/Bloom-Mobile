@@ -195,24 +195,32 @@ void main() {
     test('свои вида переживают запись', () {
       expect((back(const LibSource('all')) as LibSource).listId, 'all');
       expect((back(const LibSource('history')) as LibSource).listId, 'history');
-      final set = back(
-        const SetSource(
-          Playlist(
-            id: 'sc:set:7',
-            title: 'Сет',
-            cover: 'c',
-            source: MusicSource.soundcloud,
-            isAlbum: true,
-          ),
-        ),
-      ) as SetSource;
+      final set =
+          back(
+                const SetSource(
+                  Playlist(
+                    id: 'sc:set:7',
+                    title: 'Сет',
+                    cover: 'c',
+                    source: MusicSource.soundcloud,
+                    isAlbum: true,
+                  ),
+                ),
+              )
+              as SetSource;
       expect(set.set.title, 'Сет');
       expect(set.set.isAlbum, isTrue);
-      final artist = back(
-        const ArtistSource(
-          Artist(id: 'sc:artist:1', name: 'X', source: MusicSource.soundcloud),
-        ),
-      ) as ArtistSource;
+      final artist =
+          back(
+                const ArtistSource(
+                  Artist(
+                    id: 'sc:artist:1',
+                    name: 'X',
+                    source: MusicSource.soundcloud,
+                  ),
+                ),
+              )
+              as ArtistSource;
       expect(artist.artist.name, 'X');
       final wave =
           back(const WaveSource(label: 'Волна', mode: WaveMode.artist))

@@ -324,7 +324,8 @@ class PlaybackController extends Notifier<PlaybackState>
     listenSelf((prev, next) {
       if (prev?.track?.id != next.track?.id) _syncFav();
       // Перемешка меняет и порядок, к которому возвращаться.
-      if (!identical(prev?.queue, next.queue) || prev?.shuffle != next.shuffle) {
+      if (!identical(prev?.queue, next.queue) ||
+          prev?.shuffle != next.shuffle) {
         _queueDirty();
       } else if (prev?.index != next.index ||
           prev?.loading != next.loading ||
@@ -674,10 +675,7 @@ class PlaybackController extends Notifier<PlaybackState>
     // Режимы ставим ДО очереди: `_start` их не трогает, а `_load` уже смотрит
     // на повтор. Очередь записана уже тасованной, так что перемешку
     // возвращаем флагом, а порядок до неё — из `orig`.
-    state = state.copyWith(
-      shuffle: data.shuffle,
-      repeat: data.repeat,
-    );
+    state = state.copyWith(shuffle: data.shuffle, repeat: data.repeat);
     await _start(
       data.queue,
       data.index,

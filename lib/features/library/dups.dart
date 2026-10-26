@@ -39,8 +39,7 @@ List<List<Track>> dupGroups(
   }
   return [
     for (final group in byKey.values)
-      if (group.length > 1)
-        sortDupGroup(group, plays: plays, addedAt: addedAt),
+      if (group.length > 1) sortDupGroup(group, plays: plays, addedAt: addedAt),
   ];
 }
 

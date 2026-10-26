@@ -173,7 +173,10 @@ void main() {
     test('самое слушаемое за окно — с площадок, где есть радио', () {
       final input = _input(
         // Яндекса нет (не вошли), своим файлам спросить не у кого.
-        providers: [_Fake(), _Fake(source: MusicSource.ytmusic)],
+        providers: [
+          _Fake(),
+          _Fake(source: MusicSource.ytmusic),
+        ],
         plays: {'sc:1': 5, 'ym:2': 4, 'sc:3': 3, 'ytm:4': 9, 'lf:5': 9},
       );
       expect(pickForYouSeeds(input), ['ytm:4', 'sc:1', 'sc:3']);
@@ -233,7 +236,10 @@ void main() {
             ],
           },
         );
-        final input = _input(providers: [provider], plays: {'sc:1': 3, 'sc:2': 2});
+        final input = _input(
+          providers: [provider],
+          plays: {'sc:1': 3, 'sc:2': 2},
+        );
         final out = await buildForYou(input);
 
         expect(out.map((t) => t.id), ['sc:10', 'sc:20', 'sc:11', 'sc:22']);
@@ -331,90 +337,104 @@ void main() {
       expect(res.items.length, 5);
     });
 
-    test('трек-сид: свои артисты не лезут — и аккаунт целиком, и имена', () async {
-      final seed = _t(
-        'sc:1',
-        name: 'Сид',
-        artist: 'Simon & Garfunkel',
-        artistId: 'sc:artist:7',
-      );
-      final provider = _Fake(
-        similar: {
-          'sc:1': [
-            _t('sc:40', artist: 'Simon'),
-            _t('sc:41', artist: 'X feat. Garfunkel'),
-            _t('sc:42', artist: 'Simon & Garfunkel'),
-            for (var i = 0; i < 4; i++) _t('sc:5$i', artist: 'Y$i'),
-          ],
-        },
-      );
-      final res = await buildSimilarTo(
-        _input(
-          providers: [provider],
-          plays: {'sc:1': 4},
-          tracks: [seed],
-          now: dayWith(even: false),
-        ),
-      );
-      expect(_ids(res!), ['sc:50', 'sc:51', 'sc:52', 'sc:53']);
-    });
-
-    test('треков меньше четырёх — витрины нет, сколько бы ни было артистов', () async {
-      final seed = _t('sc:1', name: 'Сид', artist: 'Сам', artistId: 'sc:artist:7');
-      final provider = _Fake(
-        similar: {
-          'sc:1': [for (var i = 0; i < 3; i++) _t('sc:5$i', artist: 'Y$i')],
-        },
-        pages: {
-          'sc:artist:7': ArtistPageData(
-            artist: const Artist(
-              id: 'sc:artist:7',
-              name: 'Сам',
-              source: MusicSource.soundcloud,
-            ),
-            similarArtists: [
-              for (var i = 0; i < 6; i++)
-                Artist(
-                  id: 'sc:artist:8$i',
-                  name: 'Сосед $i',
-                  avatar: 'https://a/$i.jpg',
-                  source: MusicSource.soundcloud,
-                ),
+    test(
+      'трек-сид: свои артисты не лезут — и аккаунт целиком, и имена',
+      () async {
+        final seed = _t(
+          'sc:1',
+          name: 'Сид',
+          artist: 'Simon & Garfunkel',
+          artistId: 'sc:artist:7',
+        );
+        final provider = _Fake(
+          similar: {
+            'sc:1': [
+              _t('sc:40', artist: 'Simon'),
+              _t('sc:41', artist: 'X feat. Garfunkel'),
+              _t('sc:42', artist: 'Simon & Garfunkel'),
+              for (var i = 0; i < 4; i++) _t('sc:5$i', artist: 'Y$i'),
             ],
+          },
+        );
+        final res = await buildSimilarTo(
+          _input(
+            providers: [provider],
+            plays: {'sc:1': 4},
+            tracks: [seed],
+            now: dayWith(even: false),
           ),
-        },
-      );
-      final input = _input(
-        providers: [provider],
-        plays: {'sc:1': 4},
-        tracks: [seed],
-        now: dayWith(even: false),
-      );
-      expect(await buildSimilarTo(input), isNull);
-    });
+        );
+        expect(_ids(res!), ['sc:50', 'sc:51', 'sc:52', 'sc:53']);
+      },
+    );
 
-    test('жидкий ответ добирается похожими на лучший трек чужого артиста', () async {
-      final seed = _t('sc:1', name: 'Сид', artist: 'Сам');
-      final provider = _Fake(
-        similar: {
-          'sc:1': [
-            _t('sc:2', artist: 'Сам'),
-            _t('sc:3', artist: 'Друг'),
-            _t('sc:4', artist: 'Ещё'),
-          ],
-          'sc:3': [for (var i = 0; i < 3; i++) _t('sc:6$i', artist: 'Z$i')],
-        },
-      );
-      final res = await buildSimilarTo(
-        _input(
+    test(
+      'треков меньше четырёх — витрины нет, сколько бы ни было артистов',
+      () async {
+        final seed = _t(
+          'sc:1',
+          name: 'Сид',
+          artist: 'Сам',
+          artistId: 'sc:artist:7',
+        );
+        final provider = _Fake(
+          similar: {
+            'sc:1': [for (var i = 0; i < 3; i++) _t('sc:5$i', artist: 'Y$i')],
+          },
+          pages: {
+            'sc:artist:7': ArtistPageData(
+              artist: const Artist(
+                id: 'sc:artist:7',
+                name: 'Сам',
+                source: MusicSource.soundcloud,
+              ),
+              similarArtists: [
+                for (var i = 0; i < 6; i++)
+                  Artist(
+                    id: 'sc:artist:8$i',
+                    name: 'Сосед $i',
+                    avatar: 'https://a/$i.jpg',
+                    source: MusicSource.soundcloud,
+                  ),
+              ],
+            ),
+          },
+        );
+        final input = _input(
           providers: [provider],
           plays: {'sc:1': 4},
           tracks: [seed],
           now: dayWith(even: false),
-        ),
-      );
-      expect(_ids(res!), ['sc:3', 'sc:4', 'sc:60', 'sc:61', 'sc:62']);
-    });
+        );
+        expect(await buildSimilarTo(input), isNull);
+      },
+    );
+
+    test(
+      'жидкий ответ добирается похожими на лучший трек чужого артиста',
+      () async {
+        final seed = _t('sc:1', name: 'Сид', artist: 'Сам');
+        final provider = _Fake(
+          similar: {
+            'sc:1': [
+              _t('sc:2', artist: 'Сам'),
+              _t('sc:3', artist: 'Друг'),
+              _t('sc:4', artist: 'Ещё'),
+            ],
+            'sc:3': [for (var i = 0; i < 3; i++) _t('sc:6$i', artist: 'Z$i')],
+          },
+        );
+        final res = await buildSimilarTo(
+          _input(
+            providers: [provider],
+            plays: {'sc:1': 4},
+            tracks: [seed],
+            now: dayWith(even: false),
+          ),
+        );
+        expect(_ids(res!), ['sc:3', 'sc:4', 'sc:60', 'sc:61', 'sc:62']);
+      },
+    );
 
     test('без перезаливов «Для вас» и слышанного', () async {
       final provider = _Fake(

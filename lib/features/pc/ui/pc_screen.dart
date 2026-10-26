@@ -53,7 +53,10 @@ class PcSettingsScreen extends ConsumerWidget {
             label: link == null ? l.pcScan : l.pcReconnect,
             onTap: () => context.go('/settings/pc/scan'),
           ),
-          PlatformButton(label: l.pcEnterCode, onTap: () => _enterCode(context)),
+          PlatformButton(
+            label: l.pcEnterCode,
+            onTap: () => _enterCode(context),
+          ),
         ],
         if (link != null && s.status != PcStatus.repair)
           PlatformButton(
@@ -110,8 +113,10 @@ class PcSettingsScreen extends ConsumerWidget {
     final at = DateTime.fromMillisecondsSinceEpoch(ms);
     final now = DateTime.now();
     final locale = Localizations.localeOf(context).toLanguageTag();
-    final today = at.year == now.year && at.month == now.month && at.day == now.day;
-    return (today ? DateFormat.Hm(locale) : DateFormat.MMMd(locale).add_Hm()).format(at);
+    final today =
+        at.year == now.year && at.month == now.month && at.day == now.day;
+    return (today ? DateFormat.Hm(locale) : DateFormat.MMMd(locale).add_Hm())
+        .format(at);
   }
 }
 
@@ -162,7 +167,10 @@ class _HowTo extends StatelessWidget {
                             children: markupSpans(
                               step,
                               base,
-                              base?.copyWith(color: t.text, fontWeight: FontWeight.w700),
+                              base?.copyWith(
+                                color: t.text,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ),
@@ -185,15 +193,16 @@ class _HowTo extends StatelessWidget {
   }
 }
 
-String pairMessage(AppLocalizations l, PairResult r, String name) => switch (r) {
-  PairResult.ok => l.pcPaired(name),
-  PairResult.notBloom => l.pcErrNotBloom,
-  PairResult.unreachable => l.pcErrUnreachable,
-  PairResult.wrong => l.pcErrWrong,
-  PairResult.closed => l.pcErrClosed,
-  PairResult.tooMany => l.pcErrTooMany,
-  PairResult.failed => l.pcErrFailed,
-};
+String pairMessage(AppLocalizations l, PairResult r, String name) =>
+    switch (r) {
+      PairResult.ok => l.pcPaired(name),
+      PairResult.notBloom => l.pcErrNotBloom,
+      PairResult.unreachable => l.pcErrUnreachable,
+      PairResult.wrong => l.pcErrWrong,
+      PairResult.closed => l.pcErrClosed,
+      PairResult.tooMany => l.pcErrTooMany,
+      PairResult.failed => l.pcErrFailed,
+    };
 
 // ── Сканер ─────────────────────────────────────────────────────────────────
 
@@ -236,7 +245,11 @@ class _PcScanScreenState extends ConsumerState<PcScanScreen> {
     final r = await ref.read(pcProvider.notifier).pairQr(text);
     if (!mounted) return;
     final name = ref.read(pcProvider).link?.name ?? '';
-    showToast(context, pairMessage(l, r, name), kind: r == PairResult.ok ? ToastKind.success : ToastKind.error);
+    showToast(
+      context,
+      pairMessage(l, r, name),
+      kind: r == PairResult.ok ? ToastKind.success : ToastKind.error,
+    );
     if (r == PairResult.ok) {
       context.go('/settings/pc');
     } else {
@@ -269,7 +282,10 @@ class _PcScanScreenState extends ConsumerState<PcScanScreen> {
               width: 240,
               height: 240,
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.white.withValues(alpha: 0.85), width: 2),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  width: 2,
+                ),
                 borderRadius: BorderRadius.circular(t.radius + 10),
               ),
               child: _busy
@@ -277,7 +293,10 @@ class _PcScanScreenState extends ConsumerState<PcScanScreen> {
                       child: SizedBox(
                         width: 28,
                         height: 28,
-                        child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: Colors.white,
+                        ),
                       ),
                     )
                   : null,
@@ -290,7 +309,10 @@ class _PcScanScreenState extends ConsumerState<PcScanScreen> {
                   alignment: Alignment.centerLeft,
                   child: IconButton(
                     onPressed: () => context.go('/settings/pc'),
-                    icon: const Icon(SolarIconsOutline.altArrowLeft, color: Colors.white),
+                    icon: const Icon(
+                      SolarIconsOutline.altArrowLeft,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
                 const Spacer(),
@@ -314,10 +336,8 @@ class _PcScanScreenState extends ConsumerState<PcScanScreen> {
 // ── Код ────────────────────────────────────────────────────────────────────
 
 /// Шторка «Ввести код»: найти ПК с открытым окном сопряжения, потом шесть цифр.
-Future<void> _enterCode(BuildContext context) => showBloomSheetChild<void>(
-  context: context,
-  child: const _CodeSheet(),
-);
+Future<void> _enterCode(BuildContext context) =>
+    showBloomSheetChild<void>(context: context, child: const _CodeSheet());
 
 class _CodeSheet extends ConsumerStatefulWidget {
   const _CodeSheet();
@@ -361,7 +381,11 @@ class _CodeSheetState extends ConsumerState<_CodeSheet> {
     final r = await ref.read(pcProvider.notifier).pairCode(pc, code);
     if (!mounted) return;
     if (r == PairResult.ok) {
-      showToast(context, pairMessage(l, r, ref.read(pcProvider).link?.name ?? pc.name), kind: ToastKind.success);
+      showToast(
+        context,
+        pairMessage(l, r, ref.read(pcProvider).link?.name ?? pc.name),
+        kind: ToastKind.success,
+      );
       Navigator.of(context).pop();
       return;
     }
@@ -420,7 +444,12 @@ class _CodeSheetState extends ConsumerState<_CodeSheet> {
     // Обычно ПК один; если окно открыто на двух — берём первый ответивший.
     final pc = found.first;
     return Padding(
-      padding: EdgeInsets.fromLTRB(kSheetEdge, 4, kSheetEdge, 12 + MediaQuery.viewInsetsOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(
+        kSheetEdge,
+        4,
+        kSheetEdge,
+        12 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -449,22 +478,35 @@ class _CodeSheetState extends ConsumerState<_CodeSheet> {
               textAlign: TextAlign.center,
               maxLength: 7,
               cursorColor: t.accent,
-              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9 ]'))],
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9 ]')),
+              ],
               onChanged: (v) {
                 if (v.replaceAll(' ', '').length == 6) _connect(pc);
               },
-              style: theme.headlineSmall?.copyWith(color: t.text, letterSpacing: 6),
+              style: theme.headlineSmall?.copyWith(
+                color: t.text,
+                letterSpacing: 6,
+              ),
               decoration: InputDecoration(
                 counterText: '',
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 16),
                 hintText: '••• •••',
-                hintStyle: theme.headlineSmall?.copyWith(color: t.muted, letterSpacing: 6),
+                hintStyle: theme.headlineSmall?.copyWith(
+                  color: t.muted,
+                  letterSpacing: 6,
+                ),
               ),
             ),
           ),
           note(_error ?? l.pcCodeHint, color: _error != null ? t.danger : null),
-          PlatformButton(label: l.pcConnect, height: 48, busy: _busy, onTap: () => _connect(pc)),
+          PlatformButton(
+            label: l.pcConnect,
+            height: 48,
+            busy: _busy,
+            onTap: () => _connect(pc),
+          ),
         ],
       ),
     );

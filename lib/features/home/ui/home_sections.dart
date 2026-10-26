@@ -94,10 +94,7 @@ class DiscoverSection extends ConsumerWidget {
     final block = result.block;
     final charts = mode == DiscoverMode.charts;
     final title = charts ? context.l.homeCharts : context.l.homeNewReleases;
-    final source = PlainSource(
-      id: 'discover:${mode.name}',
-      label: title,
-    );
+    final source = PlainSource(id: 'discover:${mode.name}', label: title);
     // Заголовок ведёт на полную страницу: чарт — списком, релизы — сеткой.
     // У SoundCloud новинки приходят треками — сетки для них нет, и заголовок
     // остаётся обычным, как на ПК.
@@ -177,10 +174,7 @@ class RecentSection extends ConsumerWidget {
             track: tracks[i],
             queue: tracks,
             index: i,
-            source: PlainSource(
-              id: 'recent',
-              label: context.l.homeRecent,
-            ),
+            source: PlainSource(id: 'recent', label: context.l.homeRecent),
           ),
         ),
       ],

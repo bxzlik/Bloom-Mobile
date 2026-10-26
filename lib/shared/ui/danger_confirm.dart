@@ -19,7 +19,12 @@ Future<bool> confirmDanger(
 }) async =>
     await showBloomSheetChild<bool>(
       context: context,
-      child: DangerConfirmBody(icon: icon, title: title, body: body, button: button),
+      child: DangerConfirmBody(
+        icon: icon,
+        title: title,
+        body: body,
+        button: button,
+      ),
     ) ==
     true;
 
@@ -76,7 +81,11 @@ class DangerConfirmBody extends StatelessWidget {
 /// Красная кнопка во всю ширину шторки: закрывает её с `true`. Погашенная
 /// ([enabled] = false) — когда делать нечего (пустой кеш).
 class DangerSheetButton extends StatelessWidget {
-  const DangerSheetButton({super.key, required this.label, this.enabled = true});
+  const DangerSheetButton({
+    super.key,
+    required this.label,
+    this.enabled = true,
+  });
 
   final String label;
   final bool enabled;

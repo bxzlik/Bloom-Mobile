@@ -82,12 +82,7 @@ Map<String, Object?> _wire(Map<String, Object?> m) =>
 
 /// Одна синхронизация телефона с ПК: сделанное на телефоне — наверх, потом
 /// вниз всё, чего у телефона нет. Возвращает число кругов.
-int _sync(
-  _Device pc,
-  _Device phone, {
-  int limit = 2000,
-  Set<String>? touched,
-}) {
+int _sync(_Device pc, _Device phone, {int limit = 2000, Set<String>? touched}) {
   var rounds = 0;
   for (var more = true; more; rounds++) {
     final at = pc.log.got(phone.id);
@@ -117,7 +112,10 @@ int _sync(
 void main() {
   test('правки слушателя отмечаются, служебные — нет', () {
     final d = _Device();
-    final pl = d.lib.createPlaylist('P', tracks: [_track('sc:1'), _track('sc:2')]);
+    final pl = d.lib.createPlaylist(
+      'P',
+      tracks: [_track('sc:1'), _track('sc:2')],
+    );
     expect(d.marks('list'), 1);
     expect(d.marks('item'), 4); // в плейлисте и в «Всех треках»
     final top = d.db.value('SELECT max(seq) FROM changes');
@@ -178,14 +176,23 @@ void main() {
       expect(d.ids(kFavList), {'sc:1', 'ytm:5'});
       expect(d.ids(kLibList).contains('lf:x'), isPc);
       expect(d.ordered(pl.id), pc.ordered(pl.id));
-      expect(d.db.value('SELECT name FROM lists WHERE id = ?', [pl.id]), 'Road');
-      expect(d.db.value("SELECT name FROM follows WHERE id = 'sc:artist:9'"), 'Nine');
+      expect(
+        d.db.value('SELECT name FROM lists WHERE id = ?', [pl.id]),
+        'Road',
+      );
+      expect(
+        d.db.value("SELECT name FROM follows WHERE id = 'sc:artist:9'"),
+        'Nine',
+      );
       expect(d.db.value("SELECT at FROM dislikes WHERE track_id = 'sc:2'"), 7);
       expect(d.db.getMap('profile')['nick'], 'pc');
       expect(d.db.get('profile.since'), 3000);
       expect(d.plays, isPc ? 4 : 3); // прослушивание файла остаётся на ПК
       expect(d.count('SELECT sum(app_ms) FROM days'), 140);
-      expect(d.count("SELECT count(*) FROM tracks WHERE id LIKE 'lf:%'"), isPc ? 1 : 0);
+      expect(
+        d.count("SELECT count(*) FROM tracks WHERE id LIKE 'lf:%'"),
+        isPc ? 1 : 0,
+      );
     }
     final touched = <String>{};
     _sync(pc, phone, touched: touched);
@@ -295,19 +302,49 @@ void main() {
     phone.lib.toggleFav(_track('sc:4')); // переехал на ПК в ytm:4
     final touched = <String>{};
     expect(phone.log.apply(payload, touched: touched), isTrue);
-    expect(touched, containsAll(['list', 'item', 'follow', 'dislike', 'kv', 'track', 'rekey', 'plays', 'days']));
+    expect(
+      touched,
+      containsAll([
+        'list',
+        'item',
+        'follow',
+        'dislike',
+        'kv',
+        'track',
+        'rekey',
+        'plays',
+        'days',
+      ]),
+    );
 
-    final road = phone.db.value("SELECT id FROM lists WHERE name = 'Road'") as String;
+    final road =
+        phone.db.value("SELECT id FROM lists WHERE name = 'Road'") as String;
     expect(phone.ordered(road), ['sc:2', 'sc:1']);
     expect(phone.ids(kFavList), {'sc:1', 'ytm:4'});
     expect(phone.ids(kLibList), containsAll(['sc:1', 'sc:2', 'sc:3', 'ytm:4']));
     expect(phone.ids(kLibList), isNot(contains('sc:4')));
-    expect(phone.db.value("SELECT name FROM follows WHERE id = 'sc:artist:9'"), 'Nine');
-    expect(phone.db.value("SELECT at FROM dislikes WHERE track_id = 'sc:2'"), 7);
+    expect(
+      phone.db.value("SELECT name FROM follows WHERE id = 'sc:artist:9'"),
+      'Nine',
+    );
+    expect(
+      phone.db.value("SELECT at FROM dislikes WHERE track_id = 'sc:2'"),
+      7,
+    );
     expect(phone.db.getMap('profile')['nick'], 'pc');
     expect(phone.db.get('profile.since'), 5000);
-    expect(phone.count('SELECT count(*) FROM plays WHERE device = ?', [payload['device']]), 2);
-    expect(phone.count('SELECT app_ms FROM days WHERE device = ?', [payload['device']]), 100);
+    expect(
+      phone.count('SELECT count(*) FROM plays WHERE device = ?', [
+        payload['device'],
+      ]),
+      2,
+    );
+    expect(
+      phone.count('SELECT app_ms FROM days WHERE device = ?', [
+        payload['device'],
+      ]),
+      100,
+    );
     expect(TrackStore(phone.db).getOne('sc:3')!.name, 'Mine');
     expect(phone.log.got(payload['device'] as String).seq, payload['seq']);
 

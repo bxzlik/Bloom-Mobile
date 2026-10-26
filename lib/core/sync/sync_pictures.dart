@@ -63,7 +63,8 @@ class SyncPictures {
   Set<String> wanted(Map<String, Object?> payload) {
     final names = <String>{};
     _each(payload, (ref, _) {
-      if (ref.startsWith(_wire) && validPictureName(ref.substring(_wire.length))) {
+      if (ref.startsWith(_wire) &&
+          validPictureName(ref.substring(_wire.length))) {
         names.add(ref.substring(_wire.length));
       }
       return ref;
@@ -169,18 +170,27 @@ void _each(
   if (changes is List) {
     for (final c in changes) {
       if (c is! Map || c['row'] is! Map) continue;
-      final row = Map<String, Object?>.of((c['row'] as Map).cast<String, Object?>());
+      final row = Map<String, Object?>.of(
+        (c['row'] as Map).cast<String, Object?>(),
+      );
       final kind = c['kind'];
       if (kind == 'list' || kind == 'track') {
-        row['cover'] = fn(row['cover'] is String ? row['cover'] as String : '', false);
+        row['cover'] = fn(
+          row['cover'] is String ? row['cover'] as String : '',
+          false,
+        );
       } else if (kind == 'kv' && c['key'] == 'profile') {
         // kv держит значение обёрнутым в массив (`BloomDb.set`).
         Object? wrapped;
         try {
           wrapped = jsonDecode(row['value'] as String? ?? '');
         } catch (_) {}
-        if (wrapped is! List || wrapped.isEmpty || wrapped.first is! Map) continue;
-        final card = Map<String, Object?>.of((wrapped.first as Map).cast<String, Object?>());
+        if (wrapped is! List || wrapped.isEmpty || wrapped.first is! Map) {
+          continue;
+        }
+        final card = Map<String, Object?>.of(
+          (wrapped.first as Map).cast<String, Object?>(),
+        );
         for (final k in const ['avatar', 'banner']) {
           card[k] = fn(card[k] is String ? card[k] as String : '', true);
         }
