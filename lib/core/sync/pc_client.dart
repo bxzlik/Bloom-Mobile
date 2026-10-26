@@ -2,7 +2,8 @@
 /// (`src/devices/Devices.cpp`): сопряжение по QR или коду, TLS с закреплённым
 /// сертификатом ПК, поиск ПК в сети, когда его адрес сменился.
 ///
-/// ПК сам сервер не ищет и ничего телефону не шлёт: каждый круг ведёт телефон.
+/// Каждый круг ведёт телефон; ПК только подсказывает потоком событий
+/// ([PcClient.events]), что у него появилось новое.
 library;
 
 import 'dart:async';
@@ -187,38 +188,51 @@ class PcClient {
     return doc is Map<String, Object?> ? doc : <String, Object?>{};
   }
 
+  HttpClient _client() => HttpClient()
+    ..connectionTimeout = const Duration(seconds: 4)
+    // Сертификат ПК самоподписанный: цепочку не проверяем, сверяем отпечаток.
+    ..badCertificateCallback = (cert, _, _) =>
+        print == null || certPrint(cert) == print;
+
+  Future<HttpClientResponse> _open(
+    HttpClient client,
+    String method,
+    String path,
+    List<int>? body,
+    Duration timeout,
+  ) async {
+    final req = await client
+        .openUrl(
+          method,
+          Uri(scheme: 'https', host: address, port: port, path: path),
+        )
+        .timeout(timeout);
+    // Сервер ПК знает только Content-Length, не chunked.
+    req.contentLength = body?.length ?? 0;
+    if (token != null) req.headers.set('Authorization', 'Bearer $token');
+    if (body != null) {
+      req.headers.contentType = path.startsWith('/v1/sync/picture/')
+          ? ContentType.binary
+          : ContentType.json;
+      req.add(body);
+    }
+    final res = await req.close().timeout(timeout);
+    final cert = res.certificate;
+    if (cert == null) throw const PcPrintMismatch();
+    seen = certPrint(cert);
+    if (print != null && seen != print) throw const PcPrintMismatch();
+    return res;
+  }
+
   Future<Uint8List> send(
     String method,
     String path, {
     List<int>? body,
     Duration timeout = const Duration(seconds: 20),
   }) async {
-    final client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 4)
-      // Сертификат ПК самоподписанный: цепочку не проверяем, сверяем отпечаток.
-      ..badCertificateCallback = (cert, _, _) =>
-          print == null || certPrint(cert) == print;
+    final client = _client();
     try {
-      final req = await client
-          .openUrl(
-            method,
-            Uri(scheme: 'https', host: address, port: port, path: path),
-          )
-          .timeout(timeout);
-      // Сервер ПК знает только Content-Length, не chunked.
-      req.contentLength = body?.length ?? 0;
-      if (token != null) req.headers.set('Authorization', 'Bearer $token');
-      if (body != null) {
-        req.headers.contentType = path.startsWith('/v1/sync/picture/')
-            ? ContentType.binary
-            : ContentType.json;
-        req.add(body);
-      }
-      final res = await req.close().timeout(timeout);
-      final cert = res.certificate;
-      if (cert == null) throw const PcPrintMismatch();
-      seen = certPrint(cert);
-      if (print != null && seen != print) throw const PcPrintMismatch();
+      final res = await _open(client, method, path, body, timeout);
       final out = BytesBuilder(copy: false);
       await res.forEach(out.add).timeout(timeout);
       final data = out.takeBytes();
@@ -240,7 +254,66 @@ class PcClient {
       client.close(force: true);
     }
   }
+
+  /// Поток событий ПК (`GET /v1/events`, SSE): держится, пока его слушают.
+  /// Кончается, когда ПК закрыл соединение, или ошибкой, если ПК молчит дольше
+  /// [silence] (сам он шлёт пинг раз в 15 с) — значит, связь пропала молча.
+  Stream<PcEvent> events({
+    Duration silence = const Duration(seconds: 40),
+  }) async* {
+    final client = _client();
+    try {
+      final HttpClientResponse res;
+      try {
+        res = await _open(
+          client,
+          'GET',
+          '/v1/events',
+          null,
+          const Duration(seconds: 5),
+        );
+      } on HandshakeException {
+        throw const PcPrintMismatch();
+      }
+      if (res.statusCode >= 300) {
+        await res.drain<void>();
+        throw PcHttpError(res.statusCode, '');
+      }
+      var name = '';
+      final data = StringBuffer();
+      await for (final line
+          in res
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())
+              .timeout(silence)) {
+        if (line.isEmpty) {
+          if (name.isNotEmpty) {
+            Object? doc;
+            try {
+              doc = jsonDecode(data.toString());
+            } catch (_) {}
+            yield (
+              name: name,
+              data: doc is Map<String, Object?> ? doc : <String, Object?>{},
+            );
+          }
+          name = '';
+          data.clear();
+        } else if (line.startsWith('event:')) {
+          name = line.substring(6).trim();
+        } else if (line.startsWith('data:')) {
+          data.write(line.substring(5).trimLeft());
+        }
+        // `:` — пинг, остальное SSE нам не нужно.
+      }
+    } finally {
+      client.close(force: true);
+    }
+  }
 }
+
+/// Событие из потока ПК: `player`, `position`, `queue`, `sync`…
+typedef PcEvent = ({String name, Map<String, Object?> data});
 
 /// Сопряжение: [secret] из QR (сертификат сверен с его `f` до отправки) или
 /// [code] с экрана ПК (сертификат, увиденный сейчас, закрепляется). Адрес — тот

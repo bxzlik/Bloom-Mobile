@@ -309,6 +309,27 @@ class SyncLog {
         : (seq: 0, play: 0);
   }
 
+  /// Докуда дошло бы [outgoing] для [peer] — `SyncLog::head` ПК. С [ownOnly] —
+  /// только сделанное здесь: больше курсора ПК — значит, есть что отдать.
+  ({int seq, int play}) head(String peer, {bool ownOnly = false}) {
+    final own = ownOnly ? 1 : 0;
+    // С конца: просмотр встаёт на первой же подходящей строке.
+    return (
+      seq: _int(
+        db.value(
+          "SELECT seq FROM changes WHERE device != ? AND (? = 0 OR device = '') ORDER BY seq DESC LIMIT 1",
+          [peer, own],
+        ),
+      ),
+      play: _int(
+        db.value(
+          "SELECT id FROM plays WHERE device != ? AND (? = 0 OR device = '') AND track_id NOT LIKE 'lf:%' ORDER BY id DESC LIMIT 1",
+          [peer, own],
+        ),
+      ),
+    );
+  }
+
   /// Для записей, которые триггеры не видят одним изменением: трек переехал
   /// на другой id и «Очистить статистику» ([banked] — XP, оставленные уровню).
   void markRekey(String from, String to) =>

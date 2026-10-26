@@ -31,10 +31,14 @@ class SyncRound {
     required this.touched,
     required this.sent,
     required this.took,
+    required this.pushed,
   });
 
   /// Связка с адресом, по которому ПК ответил (его стоит сохранить).
   final PcLink link;
+
+  /// Докуда ПК принял наше — сравнивается с [SyncLog.head] (`ownOnly`).
+  final ({int seq, int play}) pushed;
 
   /// Виды, изменившиеся здесь ([SyncLog.apply]).
   final Set<String> touched;
@@ -133,7 +137,13 @@ Future<SyncRound> syncWithPc(PcLink link, BloomDb db, String coversDir) async {
     'sync',
     'с ПК «${link.name}»: отдал $sent, взял $took · ${touched.join(' ')}',
   );
-  return SyncRound(link: link, touched: touched, sent: sent, took: took);
+  return SyncRound(
+    link: link,
+    touched: touched,
+    sent: sent,
+    took: took,
+    pushed: (seq: _int(cursor['seq']), play: _int(cursor['play'])),
+  );
 }
 
 /// Где ПК сейчас: адрес, где он ответил в последний раз, потом остальные

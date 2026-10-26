@@ -388,6 +388,10 @@ class BloomDb {
   /// Сколько строк задела последняя запись — `changes()` на ПК.
   int get changes => _db.updatedRows;
 
+  /// Записи в таблицы с rowid (`changes`, `plays`…), на следующем витке
+  /// цикла событий. Таблицы WITHOUT ROWID сюда не попадают.
+  Stream<SqliteUpdate> get updates => _db.updates;
+
   /// Подготовленный запрос — для пачек: один разбор SQL на тысячу строк.
   PreparedStatement prepare(String sql) => _db.prepare(sql);
 
