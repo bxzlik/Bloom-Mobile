@@ -1,6 +1,6 @@
 /// Синхронизация в базе — [SyncLog], порт `SyncLog` ПК. Два «устройства» —
 /// две базы; посылки идут между ними через JSON, как по сети. Те же сценарии
-/// гоняет dbtest ПК (`bloomdocs/tools/dbtest`), а формат двух кодов сверяют
+/// гоняет dbtest ПК (`docs/tools/dbtest`), а формат двух кодов сверяют
 /// посылки: `fixtures/sync_from_pc.json` пишет dbtest, обратную — этот тест
 /// (`%TEMP%/bloom_sync_from_phone.json`, её применяет dbtest).
 library;
