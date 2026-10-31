@@ -140,83 +140,17 @@ class PlatformPage extends StatelessWidget {
                   action,
                   const SizedBox(height: 10),
                 ],
-                PlatformButton(
+                BloomButton(
                   label: context.l.commonBack,
-                  muted: true,
+                  tone: ButtonTone.line,
+                  pill: false,
+                  height: 54,
                   onTap: onBack,
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Кнопка страницы площадки: во всю ширину, со скруглением темы.
-///
-/// [muted] — второстепенная («Назад»): без заливки, одной рамкой, текст
-/// приглушён. Главная кнопка красится не акцентом, а обычной плашкой `pill`:
-/// на этих страницах она стоит внизу большим прямоугольником, и белое пятно
-/// в пол-экрана перетягивало бы на себя всё внимание.
-class PlatformButton extends StatelessWidget {
-  const PlatformButton({
-    super.key,
-    required this.label,
-    required this.onTap,
-    this.muted = false,
-    this.busy = false,
-    this.height = 54,
-  });
-
-  final String label;
-  final VoidCallback? onTap;
-  final bool muted;
-  final bool busy;
-  final double height;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final enabled = !busy && onTap != null;
-    final color = muted || !enabled ? t.muted : t.text;
-
-    return SizedBox(
-      height: height,
-      width: double.infinity,
-      child: Pressable(
-        onTap: enabled ? onTap : null,
-        scale: 0.97,
-        child: GlassBox(
-          color: muted ? Colors.transparent : null,
-          // Прозрачной кнопке стекло не нужно: размывать под ней нечего, а
-          // плёнка заливки сделала бы её похожей на главную.
-          enabled: !muted,
-          borderRadius: BorderRadius.circular(t.radius),
-          borderSide: muted ? BorderSide(color: t.ovlLine2) : BorderSide.none,
-          child: Center(
-            child: busy
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.2,
-                      color: t.text,
-                    ),
-                  )
-                : Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.titleSmall?.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-          ),
-        ),
       ),
     );
   }

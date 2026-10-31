@@ -109,133 +109,161 @@ class SliverBottomBarsInset extends StatelessWidget {
   );
 }
 
-/// Главное действие блока: значок и подпись по центру, во всю ширину, сплошной
-/// заливкой акцентом.
-///
-/// От [WideButton] (`custom_widgets.dart`) отличается именно заливкой: та
-/// стеклянная и служит второстепенным действиям, эта — тому, ради чего на блок
-/// смотрят («Проверить обновления», «Готово» в заметках). Скругление берётся из
-/// темы, чтобы совпадать с карточкой рядом.
-class AccentWideButton extends StatelessWidget {
-  const AccentWideButton({
-    super.key,
-    required this.label,
-    required this.icon,
-    required this.onTap,
-    this.busy = false,
-  });
+/// What a [BloomButton] is painted with.
+enum ButtonTone {
+  /// Just the label, in its color.
+  text,
 
-  final String label;
-  final BloomGlyph icon;
-  final VoidCallback onTap;
+  /// Block plate, glass when it's on.
+  plate,
 
-  /// Действие идёт: вместо значка крутилка, тап не проходит.
-  final bool busy;
+  /// Main action: accent fill.
+  accent,
 
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
+  /// Irreversible action: red fill.
+  danger,
 
-    return Pressable(
-      onTap: busy ? null : onTap,
-      scale: 0.98,
-      child: Container(
-        height: 54,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: t.accent,
-          borderRadius: BorderRadius.circular(t.radius),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Крутилка ровно того же размера, что значок: ряд не дёргается,
-            // когда действие начинается и кончается.
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: busy
-                  ? CircularProgressIndicator(
-                      strokeWidth: 2.2,
-                      color: t.accentText,
-                    )
-                  : BloomIcon(icon, size: 20, color: t.accentText),
-            ),
-            const SizedBox(width: 10),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.titleSmall?.copyWith(
-                  color: t.accentText,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  /// Secondary: a line, no fill.
+  line,
 }
 
-/// Text button: [filled] is an accent pill, otherwise just the label in
-/// [color]. Height is set at the place, 40 when not.
+/// The one button with a label. Fills the width it is given (shrinks to the
+/// label in a row); height and corners are set at the place.
 class BloomButton extends StatelessWidget {
   const BloomButton({
     super.key,
     required this.label,
     required this.onTap,
     this.icon,
-    this.filled = false,
+    this.tone = ButtonTone.text,
     this.color,
+    this.busy = false,
     this.height = 40,
+    this.pill = true,
+    this.overlay = false,
   });
 
   final String label;
   final VoidCallback? onTap;
   final BloomGlyph? icon;
-  final bool filled;
+  final ButtonTone tone;
+
+  /// Label color of a [ButtonTone.text] button; accent when not set.
   final Color? color;
+
+  /// The action runs: a spinner in place of the icon (or the label), no taps.
+  final bool busy;
   final double height;
+
+  /// Round ends; otherwise the theme radius, to sit flush with blocks.
+  final bool pill;
+
+  /// Plate on a sheet: takes the overlay glass setting.
+  final bool overlay;
+
+  static const _danger = Color(0xFFE0494A);
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final ink = filled ? t.accentText : color ?? t.accent;
+    final live = onTap != null && !busy;
+    final idle = onTap == null;
+    final (Color? fill, Color ink) = switch (tone) {
+      ButtonTone.text => (null, idle ? t.muted : color ?? t.accent),
+      ButtonTone.plate => (null, idle ? t.muted : t.text),
+      ButtonTone.line => (null, t.text2),
+      ButtonTone.accent => idle ? (t.pill, t.muted) : (t.accent, t.accentText),
+      ButtonTone.danger => idle ? (t.ovlBg, t.muted) : (_danger, Colors.white),
+    };
+    final radius = BorderRadius.circular(pill ? 999 : t.radius);
+    final spinner = SizedBox.square(
+      dimension: 18,
+      child: CircularProgressIndicator(strokeWidth: 2, color: ink),
+    );
+    final glyph = icon;
+    final content = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (glyph != null) ...[
+          busy ? spinner : BloomIcon(glyph, size: 18, color: ink),
+          const SizedBox(width: 8),
+        ],
+        if (busy && glyph == null)
+          spinner
+        else
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: bloomText(size: 14, weight: 600, color: ink),
+            ),
+          ),
+      ],
+    );
+    final box = SizedBox(
+      height: height,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Center(child: content),
+      ),
+    );
+
+    return Pressable(
+      onTap: live ? onTap : null,
+      child: switch (tone) {
+        ButtonTone.plate => GlassBox(
+          borderRadius: radius,
+          overlay: overlay,
+          child: box,
+        ),
+        ButtonTone.line => DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            border: Border.all(color: t.ovlLine2),
+          ),
+          child: box,
+        ),
+        _ => DecoratedBox(
+          decoration: BoxDecoration(color: fill, borderRadius: radius),
+          child: box,
+        ),
+      },
+    );
+  }
+}
+
+/// Small pill with a value or a short action: tinted [color] when [active],
+/// a quiet film otherwise.
+class BloomTag extends StatelessWidget {
+  const BloomTag({
+    super.key,
+    required this.text,
+    this.active = true,
+    this.color,
+    this.onTap,
+  });
+
+  final String text;
+  final bool active;
+  final Color? color;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final c = color ?? t.accent;
     return Pressable(
       onTap: onTap,
-      child: Opacity(
-        opacity: onTap == null ? 0.4 : 1,
-        child: Container(
-          height: height,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          alignment: Alignment.center,
-          decoration: filled
-              ? ShapeDecoration(
-                  color: color ?? t.accent,
-                  shape: const StadiumBorder(),
-                )
-              : null,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon case final glyph?) ...[
-                BloomIcon(glyph, size: 18, color: ink),
-                const SizedBox(width: 8),
-              ],
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: bloomText(size: 14, weight: 600, color: ink),
-                ),
-              ),
-            ],
-          ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: active ? c.withValues(alpha: 0.14) : t.ovlBg,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          text,
+          style: bloomText(size: 13, weight: 700, color: active ? c : t.text2),
         ),
       ),
     );

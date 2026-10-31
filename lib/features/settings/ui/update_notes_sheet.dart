@@ -121,9 +121,12 @@ class _NoteBody extends StatelessWidget {
               UpdateNoteSection(page: pages[i]),
             ],
           const SizedBox(height: 22),
-          AccentWideButton(
+          BloomButton(
             label: l.commonDone,
             icon: Bi.checkCircle,
+            tone: ButtonTone.accent,
+            pill: false,
+            height: 54,
             onTap: () => Navigator.of(context).pop(),
           ),
         ],

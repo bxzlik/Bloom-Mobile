@@ -29,8 +29,6 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/detail_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
-import '../../../shared/ui/glass.dart';
-import '../../../shared/ui/pressable.dart';
 
 class ArtistScreen extends ConsumerStatefulWidget {
   const ArtistScreen({
@@ -343,7 +341,16 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                   index: i,
                   source: _source,
                 )
-              : _MoreButton(busy: _loadingMore, onTap: _moreTracks),
+              : Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
+                  child: BloomButton(
+                    label: context.l.commonLoadMore,
+                    tone: ButtonTone.plate,
+                    height: 44,
+                    busy: _loadingMore,
+                    onTap: _moreTracks,
+                  ),
+                ),
         ),
       ),
     );
@@ -471,46 +478,6 @@ class _FollowButton extends ConsumerWidget {
           on ? context.l.followedToast(artist.name) : context.l.unfollowedToast,
         );
       },
-    );
-  }
-}
-
-class _MoreButton extends StatelessWidget {
-  const _MoreButton({required this.busy, required this.onTap});
-
-  final bool busy;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
-      child: Pressable(
-        onTap: busy ? null : onTap,
-        scale: 0.97,
-        child: GlassBox(
-          borderRadius: BorderRadius.circular(999),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Center(
-              child: busy
-                  ? SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: t.iconFg,
-                      ),
-                    )
-                  : Text(
-                      context.l.commonLoadMore,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

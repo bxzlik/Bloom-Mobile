@@ -106,12 +106,15 @@ class _SoundCloudSettingsScreenState
       status: saved == null ? l.scStatusAuto : l.scStatusManual,
       body: _open ? _buildForm(saved) : null,
       actions: [
-        PlatformButton(
+        BloomButton(
           label: _open
               ? l.commonHide
               : saved == null
               ? l.scSetup
               : l.scReconfigure,
+          tone: ButtonTone.plate,
+          pill: false,
+          height: 54,
           onTap: () => setState(() => _open = !_open),
         ),
       ],
@@ -176,8 +179,10 @@ class _SoundCloudSettingsScreenState
         Row(
           children: [
             Expanded(
-              child: PlatformButton(
+              child: BloomButton(
                 label: changed ? l.commonSave : l.commonClear,
+                tone: ButtonTone.plate,
+                pill: false,
                 height: 48,
                 onTap: changed
                     ? _save
@@ -188,8 +193,10 @@ class _SoundCloudSettingsScreenState
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: PlatformButton(
+              child: BloomButton(
                 label: l.scCheckConnection,
+                tone: ButtonTone.plate,
+                pill: false,
                 height: 48,
                 busy: _checking,
                 onTap: _check,

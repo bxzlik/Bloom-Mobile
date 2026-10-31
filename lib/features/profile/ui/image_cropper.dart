@@ -273,7 +273,7 @@ class _CropPageState extends State<_CropPage> {
                       Expanded(
                         child: BloomButton(
                           label: context.l.commonApply,
-                          filled: true,
+                          tone: ButtonTone.accent,
                           onTap: image == null ? null : _apply,
                         ),
                       ),

@@ -330,7 +330,7 @@ Future<void> _showSwitchPlatformSheet(
         children: [
           for (var i = 0; i < targets.length; i++) ...[
             if (i > 0) sheetDivider(),
-            _PlatformRow(
+            PlatformRow(
               source: targets[i],
               onTap: () {
                 Navigator.of(sheetContext).pop();
@@ -346,9 +346,9 @@ Future<void> _showSwitchPlatformSheet(
   );
 }
 
-/// Строка выбора площадки: её значок и название.
-class _PlatformRow extends StatelessWidget {
-  const _PlatformRow({required this.source, required this.onTap});
+/// Platform row of a sheet: its logo and name.
+class PlatformRow extends StatelessWidget {
+  const PlatformRow({super.key, required this.source, required this.onTap});
 
   final MusicSource source;
   final VoidCallback onTap;

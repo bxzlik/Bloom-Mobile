@@ -175,7 +175,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                       Expanded(
                         child: BloomButton(
                           label: context.l.commonDone,
-                          filled: true,
+                          tone: ButtonTone.accent,
                           onTap: () => Navigator.of(context).pop(_color),
                         ),
                       ),

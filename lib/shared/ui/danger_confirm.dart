@@ -7,9 +7,9 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../app/theme/tokens.dart';
+import 'atoms.dart';
 import 'bloom_icon.dart';
 import 'bloom_sheet.dart';
-import 'pressable.dart';
 
 /// Шторка «значок, что будет, красная кнопка»; `true` — нажали кнопку.
 Future<bool> confirmDanger(
@@ -93,30 +93,11 @@ class DangerSheetButton extends StatelessWidget {
   final bool enabled;
 
   @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return SizedBox(
-      width: double.infinity,
-      child: Pressable(
-        onTap: enabled ? () => Navigator.of(context).pop(true) : null,
-        scale: 0.98,
-        child: Material(
-          color: enabled ? const Color(0xFFE0494A) : t.ovlBg,
-          borderRadius: BorderRadius.circular(t.radius),
-          clipBehavior: Clip.antiAlias,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 17),
-            child: Center(
-              child: Text(
-                label,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: enabled ? Colors.white : t.muted,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => BloomButton(
+    label: label,
+    tone: ButtonTone.danger,
+    pill: false,
+    height: 54,
+    onTap: enabled ? () => Navigator.of(context).pop(true) : null,
+  );
 }

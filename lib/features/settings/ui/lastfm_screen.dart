@@ -130,23 +130,38 @@ class _LastfmSettingsScreenState extends ConsumerState<LastfmSettingsScreen>
       body: s.connected ? _connectedBody(s) : _loginBody(s),
       actions: [
         if (s.connected)
-          PlatformButton(label: l.lfmLogout, onTap: _logout)
+          BloomButton(
+            label: l.lfmLogout,
+            tone: ButtonTone.plate,
+            pill: false,
+            height: 54,
+            onTap: _logout,
+          )
         else ...[
           // Пока доступ подтверждают в браузере, главной кнопкой становится
           // «Готово»: вход уже начат, повторно открывать браузер незачем.
           if (s.oauthPending)
-            PlatformButton(
+            BloomButton(
               label: l.lfmDone,
+              tone: ButtonTone.plate,
+              pill: false,
+              height: 54,
               busy: s.busy,
               onTap: () => _finish(),
             ),
-          PlatformButton(
+          BloomButton(
             label: l.lfmLogin,
+            tone: ButtonTone.plate,
+            pill: false,
+            height: 54,
             busy: s.busy && !s.oauthPending,
             onTap: () => ref.read(lastfmProvider.notifier).startOAuth(),
           ),
-          PlatformButton(
+          BloomButton(
             label: _keysOpen ? l.commonHide : l.lfmKeys,
+            tone: ButtonTone.plate,
+            pill: false,
+            height: 54,
             onTap: () => setState(() => _keysOpen = !_keysOpen),
           ),
         ],
@@ -207,7 +222,13 @@ class _LastfmSettingsScreenState extends ConsumerState<LastfmSettingsScreen>
             onToggle: () => setState(() => _secretVisible = !_secretVisible),
           ),
           const SizedBox(height: 10),
-          PlatformButton(label: l.lfmSaveKeys, height: 48, onTap: _saveKeys),
+          BloomButton(
+            label: l.lfmSaveKeys,
+            tone: ButtonTone.plate,
+            pill: false,
+            height: 48,
+            onTap: _saveKeys,
+          ),
         ],
         if (s.note case final note?) ...[
           const SizedBox(height: 14),

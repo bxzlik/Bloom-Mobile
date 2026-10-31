@@ -18,7 +18,6 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
-import '../../../shared/ui/pressable.dart';
 import '../speed_store.dart';
 
 /// Полоса: толщина дорожки и радиус бегунка. От них же считается отступ, на
@@ -86,7 +85,15 @@ class _SpeedSheet extends ConsumerWidget {
                     Expanded(
                       child: Text(l.playerSpeedCustom, style: theme.bodySmall),
                     ),
-                    _CurrentPill(rate: speed.rate, onReset: ctrl.reset),
+                    Semantics(
+                      button: true,
+                      label: context.l.playerSpeedReset,
+                      child: BloomTag(
+                        text: speedLabel(speed.rate),
+                        active: speed.rate != 1,
+                        onTap: ctrl.reset,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -160,72 +167,20 @@ class _PresetCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final radius = BorderRadius.circular(t.radius * 0.8);
-    return Pressable(
-      onTap: onTap,
-      child: Material(
-        color: active ? t.accent : t.ovlBg,
-        borderRadius: radius,
-        clipBehavior: Clip.antiAlias,
-        child: Container(
-          height: 52,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            border: Border.all(color: active ? t.accent : t.ovlLine),
-            borderRadius: radius,
-          ),
-          child: Text(
-            speedLabel(value),
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.3,
-              color: active ? t.accentText : t.text,
-            ),
-          ),
-        ),
+  Widget build(BuildContext context) => OptionTile(
+    active: active,
+    onTap: onTap,
+    height: 52,
+    builder: (ink) => Text(
+      speedLabel(value),
+      style: TextStyle(
+        fontSize: 17,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.3,
+        color: ink,
       ),
-    );
-  }
-}
-
-/// Пилюля текущего значения. Тап по ней — сброс на 1× (десктопный `sp-cur`).
-class _CurrentPill extends StatelessWidget {
-  const _CurrentPill({required this.rate, required this.onReset});
-
-  final double rate;
-  final VoidCallback onReset;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final on = rate != 1;
-    return Semantics(
-      button: true,
-      label: context.l.playerSpeedReset,
-      child: Pressable(
-        onTap: onReset,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-          decoration: BoxDecoration(
-            color: on ? t.accent.withValues(alpha: 0.14) : t.ovlBg,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Text(
-            speedLabel(rate),
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.2,
-              color: on ? t.accent : t.text2,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+    ),
+  );
 }
 
 /// Засечки под полосой — каждые 0.25×, совпавшие с пресетами крупнее.

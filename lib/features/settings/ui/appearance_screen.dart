@@ -1411,8 +1411,12 @@ Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
             ),
           ),
           // «+» — как кнопка `tp-add` рядом со строкой темы на ПК.
-          _RoundButton(
+          CircleIconButton(
             icon: Bi.addCircle,
+            size: 40,
+            iconSize: 22,
+            background: Colors.white.withValues(alpha: 0.08),
+            color: context.bloom.text,
             onTap: () => _createTheme(context, ref),
           ),
         ],
@@ -1669,7 +1673,7 @@ class _ThemeCreatorState extends State<_ThemeCreator> {
               Expanded(
                 child: BloomButton(
                   label: context.l.commonSave,
-                  filled: true,
+                  tone: ButtonTone.accent,
                   onTap: () => Navigator.of(context).pop(
                     _ThemeDraft(
                       name: _name.text.trim(),
@@ -1727,31 +1731,6 @@ class _ColorSlot extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Круглая кнопка шапки шторки — «+» у выбора темы.
-class _RoundButton extends StatelessWidget {
-  const _RoundButton({required this.icon, required this.onTap});
-
-  final BloomGlyph icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Pressable(
-      onTap: onTap,
-      child: Material(
-        color: Colors.white.withValues(alpha: 0.08),
-        shape: const CircleBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.all(9),
-          child: BloomIcon(icon, size: 22, color: t.text),
-        ),
       ),
     );
   }

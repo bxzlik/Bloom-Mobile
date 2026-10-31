@@ -262,7 +262,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
                   child: BloomButton(
                     label: context.l.commonSave,
-                    filled: true,
+                    tone: ButtonTone.accent,
                     height: 56,
                     onTap: _save,
                   ),
@@ -573,7 +573,7 @@ class _ImageSheetState extends State<_ImageSheet> {
           BloomButton(
             label: context.l.commonUpload,
             icon: Bi.uploadMinimalistic,
-            filled: true,
+            tone: ButtonTone.accent,
             height: 52,
             onTap: () => _run(widget.onPick),
           ),

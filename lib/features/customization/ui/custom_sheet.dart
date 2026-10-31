@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
+import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/pressable.dart';
 
@@ -282,31 +283,14 @@ class CustSheetFooterButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Padding(
-      padding: const EdgeInsets.all(kCustSheetEdge),
-      child: Pressable(
-        onTap: onTap,
-        scale: 0.97,
-        child: Material(
-          color: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(t.radius),
-            side: BorderSide(color: t.ovlLine),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: SizedBox(
-            height: 49,
-            child: Center(
-              child: Text(
-                label,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(kCustSheetEdge),
+    child: BloomButton(
+      label: label,
+      tone: ButtonTone.line,
+      pill: false,
+      height: 49,
+      onTap: onTap,
+    ),
+  );
 }

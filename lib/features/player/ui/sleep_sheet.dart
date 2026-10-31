@@ -17,8 +17,6 @@ import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
-import '../../../shared/ui/glass.dart';
-import '../../../shared/ui/pressable.dart';
 import '../sleep_timer_store.dart';
 
 /// Полоса своего времени: те же толщина дорожки и бегунок, что у скорости, —
@@ -59,11 +57,11 @@ class _SleepSheet extends ConsumerWidget {
                       child: Text(l.playerSleep, style: theme.titleLarge),
                     ),
                     if (running)
-                      _StatusPill(
+                      BloomTag(
                         text: l.playerSleepLeft(sleepLabel(sleep.remaining)),
                       )
                     else if (sleep.mode == SleepMode.endOfTrack)
-                      _StatusPill(text: l.playerSleepEndOfTrack),
+                      BloomTag(text: l.playerSleepEndOfTrack),
                   ],
                 ),
               ),
@@ -107,7 +105,7 @@ class _SleepSheet extends ConsumerWidget {
                     Expanded(
                       child: Text(l.playerSleepCustom, style: theme.bodySmall),
                     ),
-                    _CurrentPill(
+                    BloomTag(
                       text: l.playerSleepMinutes(sleep.choice.inMinutes),
                       active: running,
                     ),
@@ -169,18 +167,24 @@ class _SleepSheet extends ConsumerWidget {
                       // конца трека» продлевать нечего.
                       if (running) ...[
                         Expanded(
-                          child: _WideButton(
+                          child: BloomButton(
+                            label: l.playerSleepExtend,
                             icon: Bi.alarmAdd,
-                            text: l.playerSleepExtend,
+                            tone: ButtonTone.plate,
+                            overlay: true,
+                            height: 44,
                             onTap: ctrl.extend,
                           ),
                         ),
                         const SizedBox(width: 10),
                       ],
                       Expanded(
-                        child: _WideButton(
+                        child: BloomButton(
+                          label: l.playerSleepCancel,
                           icon: Bi.alarmTurnOff,
-                          text: l.playerSleepCancel,
+                          tone: ButtonTone.plate,
+                          overlay: true,
+                          height: 44,
                           onTap: ctrl.cancel,
                         ),
                       ),
@@ -220,52 +224,36 @@ class _PresetCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final radius = BorderRadius.circular(t.radius * 0.8);
-    final color = active ? t.accentText : t.text;
-    return Pressable(
-      onTap: onTap,
-      child: Material(
-        color: active ? t.accent : t.ovlBg,
-        borderRadius: radius,
-        clipBehavior: Clip.antiAlias,
-        child: Container(
-          height: 56,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            border: Border.all(color: active ? t.accent : t.ovlLine),
-            borderRadius: radius,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$minutes',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
-                  height: 1.1,
-                  color: color,
-                ),
-              ),
-              Text(
-                context.l.playerSleepMin,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.2,
-                  height: 1.2,
-                  color: color.withValues(alpha: active ? 0.75 : 0.55),
-                ),
-              ),
-            ],
+  Widget build(BuildContext context) => OptionTile(
+    active: active,
+    onTap: onTap,
+    height: 56,
+    builder: (ink) => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$minutes',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.3,
+            height: 1.1,
+            color: ink,
           ),
         ),
-      ),
-    );
-  }
+        Text(
+          context.l.playerSleepMin,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.2,
+            height: 1.2,
+            color: ink.withValues(alpha: active ? 0.75 : 0.55),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 /// «До конца трека» — широкая плашка под рядом пресетов.
@@ -276,161 +264,31 @@ class _EndOfTrackCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final radius = BorderRadius.circular(t.radius * 0.8);
-    final color = active ? t.accentText : t.text;
-    return Pressable(
-      onTap: onTap,
-      scale: 0.98,
-      child: Material(
-        color: active ? t.accent : t.ovlBg,
-        borderRadius: radius,
-        clipBehavior: Clip.antiAlias,
-        child: Container(
-          height: 52,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            border: Border.all(color: active ? t.accent : t.ovlLine),
-            borderRadius: radius,
-          ),
-          child: Row(
-            children: [
-              BloomIcon(Bi.musicNote, size: 20, color: color),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  context.l.playerSleepEndOfTrack,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                    color: color,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Пилюля выбранного времени у подписи «Своё время» — как `_CurrentPill` у
-/// скорости, но без сброса по тапу: у таймера для этого есть своя кнопка.
-class _CurrentPill extends StatelessWidget {
-  const _CurrentPill({required this.text, required this.active});
-
-  final String text;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-      decoration: BoxDecoration(
-        color: active ? t.accent.withValues(alpha: 0.14) : t.ovlBg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w800,
-          letterSpacing: -0.2,
-          color: active ? t.accent : t.text2,
-        ),
-      ),
-    );
-  }
-}
-
-/// Остаток (или «до конца трека») в шапке шторки.
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: t.accent.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w800,
-          letterSpacing: -0.2,
-          color: t.accent,
-        ),
-      ),
-    );
-  }
-}
-
-/// Пилюля-кнопка под полосой: «+5 минут» и «Выключить таймер».
-class _WideButton extends StatelessWidget {
-  const _WideButton({
-    required this.icon,
-    required this.text,
-    required this.onTap,
-  });
-
-  final BloomGlyph icon;
-  final String text;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final radius = BorderRadius.circular(999);
-    return GlassBox(
-      borderRadius: radius,
-      // Шторка — оверлей, и стекло у неё своей настройки.
-      overlay: true,
-      child: Pressable(
-        onTap: onTap,
-        scale: 0.97,
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: radius,
-          clipBehavior: Clip.antiAlias,
-          child: Container(
-            height: 44,
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                BloomIcon(icon, size: 18, color: t.text),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    text,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.2,
-                      color: t.text,
-                    ),
-                  ),
-                ),
-              ],
+  Widget build(BuildContext context) => OptionTile(
+    active: active,
+    onTap: onTap,
+    height: 52,
+    scale: 0.98,
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    alignment: Alignment.centerLeft,
+    builder: (ink) => Row(
+      children: [
+        BloomIcon(Bi.musicNote, size: 20, color: ink),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            context.l.playerSleepEndOfTrack,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.2,
+              color: ink,
             ),
           ),
         ),
-      ),
-    );
-  }
+      ],
+    ),
+  );
 }
 
 /// Тумблер «Плавное затухание» — строка целиком нажимается, как «Nightcore» в

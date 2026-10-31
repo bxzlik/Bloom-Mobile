@@ -26,9 +26,9 @@ import 'package:flutter/material.dart';
 import '../../app/theme/bloom_theme.dart';
 import '../../app/theme/tokens.dart';
 import '../../core/l10n/l10n.dart';
+import 'atoms.dart';
 import 'bloom_icon.dart';
 import 'glass.dart';
-import 'pressable.dart';
 
 /// Вид тоста: от него зависят значок и цвет полосы (те же четыре, что на ПК).
 enum ToastKind { info, success, warn, error }
@@ -349,8 +349,8 @@ class BloomToastCard extends StatelessWidget {
                         ),
                         if (action) ...[
                           const SizedBox(width: 10),
-                          _ActionPill(
-                            label: label,
+                          BloomTag(
+                            text: label,
                             color: t.accent,
                             onTap: onAction!,
                           ),
@@ -375,36 +375,6 @@ class BloomToastCard extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Кнопка тоста — пилюля в акценте, а не голый текст: у капсулы правый край
-/// скруглён, и текст без подложки жался бы к дуге.
-class _ActionPill extends StatelessWidget {
-  const _ActionPill({
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Pressable(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-      decoration: ShapeDecoration(
-        color: color.withValues(alpha: 0.14),
-        shape: const StadiumBorder(),
-      ),
-      child: Text(
-        label,
-        style: bloomText(size: 12.5, weight: 700, color: color),
-      ),
-    ),
-  );
 }
 
 /// Появление: тост не просто выезжает снекбаром, а всплывает — проявляется и

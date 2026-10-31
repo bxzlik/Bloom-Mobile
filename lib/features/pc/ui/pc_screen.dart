@@ -50,18 +50,27 @@ class PcSettingsScreen extends ConsumerWidget {
       body: link == null ? const _HowTo() : null,
       actions: [
         if (link == null || s.status == PcStatus.repair) ...[
-          PlatformButton(
+          BloomButton(
             label: link == null ? l.pcScan : l.pcReconnect,
+            tone: ButtonTone.plate,
+            pill: false,
+            height: 54,
             onTap: () => context.go('/settings/pc/scan'),
           ),
-          PlatformButton(
+          BloomButton(
             label: l.pcEnterCode,
+            tone: ButtonTone.plate,
+            pill: false,
+            height: 54,
             onTap: () => _enterCode(context),
           ),
         ],
         if (link != null && s.status != PcStatus.repair)
-          PlatformButton(
+          BloomButton(
             label: l.pcSyncNow,
+            tone: ButtonTone.plate,
+            pill: false,
+            height: 54,
             busy: s.status == PcStatus.syncing,
             onTap: () async {
               await pc.sync(force: true);
@@ -73,9 +82,11 @@ class PcSettingsScreen extends ConsumerWidget {
             },
           ),
         if (link != null)
-          PlatformButton(
+          BloomButton(
             label: l.pcUnpair,
-            // Обратно — только с экрана ПК, поэтому через подтверждение.
+            tone: ButtonTone.plate,
+            pill: false,
+            height: 54,
             onTap: () async {
               final yes = await confirmDanger(
                 context,
@@ -438,7 +449,13 @@ class _CodeSheetState extends ConsumerState<_CodeSheet> {
           children: [
             note(l.pcCodeNone),
             const SizedBox(height: 8),
-            PlatformButton(label: l.pcCodeRetry, height: 48, onTap: _search),
+            BloomButton(
+              label: l.pcCodeRetry,
+              tone: ButtonTone.plate,
+              pill: false,
+              height: 48,
+              onTap: _search,
+            ),
           ],
         ),
       );
@@ -503,8 +520,10 @@ class _CodeSheetState extends ConsumerState<_CodeSheet> {
             ),
           ),
           note(_error ?? l.pcCodeHint, color: _error != null ? t.danger : null),
-          PlatformButton(
+          BloomButton(
             label: l.pcConnect,
+            tone: ButtonTone.plate,
+            pill: false,
             height: 48,
             busy: _busy,
             onTap: () => _connect(pc),

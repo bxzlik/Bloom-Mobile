@@ -998,3 +998,50 @@ class SheetCoverHeader extends StatelessWidget {
     );
   }
 }
+
+/// Choice tile of a sheet grid: accent when picked, the sheet's plate
+/// otherwise. [builder] lays out the content in the given ink.
+class OptionTile extends StatelessWidget {
+  const OptionTile({
+    super.key,
+    required this.active,
+    required this.onTap,
+    required this.builder,
+    this.height,
+    this.padding = EdgeInsets.zero,
+    this.alignment = Alignment.center,
+    this.scale = 0.94,
+  });
+
+  final bool active;
+  final VoidCallback onTap;
+  final Widget Function(Color ink) builder;
+  final double? height;
+  final EdgeInsets padding;
+  final Alignment alignment;
+  final double scale;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return Pressable(
+      onTap: onTap,
+      scale: scale,
+      child: Container(
+        height: height,
+        padding: padding,
+        alignment: alignment,
+        decoration: BoxDecoration(
+          // The sheet's own plate, not the page film: under a sheet lies a
+          // blurred backdrop and the film would show on it as a spot.
+          color: active ? t.accent : sheetPanelColor(context),
+          border: Border.all(
+            color: active ? t.accent : sheetLineColor(context),
+          ),
+          borderRadius: BorderRadius.circular(t.radius * 0.8),
+        ),
+        child: builder(active ? t.accentText : t.text),
+      ),
+    );
+  }
+}

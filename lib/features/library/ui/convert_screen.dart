@@ -29,6 +29,7 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
+import '../../../shared/ui/track_actions.dart';
 import '../convert_playlist.dart';
 
 /// Шторка выбора площадки, за которой открывается сам перенос.
@@ -60,7 +61,7 @@ Future<void> showConvertSheet(
         children: [
           for (var i = 0; i < targets.length; i++) ...[
             if (i > 0) sheetDivider(),
-            _TargetRow(
+            PlatformRow(
               source: targets[i],
               onTap: () {
                 final root = Navigator.of(sheetContext, rootNavigator: true);
@@ -77,32 +78,6 @@ Future<void> showConvertSheet(
               },
             ),
           ],
-        ],
-      ),
-    ),
-  );
-}
-
-class _TargetRow extends StatelessWidget {
-  const _TargetRow({required this.source, required this.onTap});
-
-  final MusicSource source;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Pressable(
-    onTap: onTap,
-    scale: 0.98,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-      child: Row(
-        children: [
-          PlatformLogo(source, size: 22),
-          const SizedBox(width: 16),
-          Text(
-            source.label10n(context.l),
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
         ],
       ),
     ),
@@ -294,8 +269,10 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
             16,
             12 + bottomBarsInset(context),
           ),
-          child: _CreateButton(
+          child: BloomButton(
             label: l.cvCreate(result),
+            tone: ButtonTone.accent,
+            height: 48,
             onTap: result == 0 ? null : _create,
           ),
         ),
@@ -619,40 +596,6 @@ class _DecisionRow extends StatelessWidget {
             if (picked)
               BloomIcon(Bi.checkCircleBold, size: 18, color: t.accent),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CreateButton extends StatelessWidget {
-  const _CreateButton({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final enabled = onTap != null;
-
-    return Pressable(
-      onTap: onTap,
-      scale: 0.97,
-      child: Material(
-        color: enabled ? t.accent : t.pill,
-        borderRadius: BorderRadius.circular(999),
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Center(
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: enabled ? t.accentText : t.muted,
-              ),
-            ),
-          ),
         ),
       ),
     );

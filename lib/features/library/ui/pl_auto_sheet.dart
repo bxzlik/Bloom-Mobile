@@ -505,26 +505,11 @@ class _Footer extends StatelessWidget {
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
-            child: Pressable(
+            child: BloomButton(
+              label: context.l.paRefreshNow,
+              tone: ButtonTone.accent,
+              height: 46,
               onTap: canRun ? onRun : null,
-              scale: 0.97,
-              child: Material(
-                // Кнопка стоит на фоне шторки: погашенная — плашка темы.
-                color: canRun ? t.accent : t.pill,
-                borderRadius: BorderRadius.circular(999),
-                clipBehavior: Clip.antiAlias,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  child: Center(
-                    child: Text(
-                      context.l.paRefreshNow,
-                      style: theme.titleMedium?.copyWith(
-                        color: canRun ? t.accentText : t.muted,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
             ),
           ),
         ],

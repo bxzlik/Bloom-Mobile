@@ -66,15 +66,21 @@ class _VersionScreenState extends ConsumerState<VersionScreen> {
         _StatusCard(about: about),
         const SizedBox(height: 14),
         if (about.phase == UpdatePhase.available)
-          AccentWideButton(
+          BloomButton(
             label: l.aboutOpenRelease,
             icon: Bi.download,
+            tone: ButtonTone.accent,
+            pill: false,
+            height: 54,
             onTap: () => _openRelease(about.releaseUrl),
           )
         else
-          AccentWideButton(
+          BloomButton(
             label: l.aboutRecheck,
             icon: Bi.refresh,
+            tone: ButtonTone.accent,
+            pill: false,
+            height: 54,
             busy: about.phase == UpdatePhase.checking,
             onTap: () => ref.read(aboutProvider.notifier).check(),
           ),

@@ -27,7 +27,6 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
-import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/pressable.dart';
 import '../../detail/detail_nav.dart';
 import '../../library/import_url.dart' show likesTitle;
@@ -174,8 +173,10 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
           _SectionHead(
             title: context.l.pvPlaylistsTitle(sets.length),
             actions: [
-              _MiniButton(
+              BloomButton(
                 label: context.l.pvImportAll,
+                tone: ButtonTone.plate,
+                height: 32,
                 busy: _importing,
                 onTap: _importPlaylists,
               ),
@@ -187,13 +188,16 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
           _SectionHead(
             title: context.l.pvLikesTitle(likes.length),
             actions: [
-              _MiniButton(
+              BloomButton(
                 label: context.l.commonAddToLibrary,
-                accent: true,
+                tone: ButtonTone.accent,
+                height: 32,
                 onTap: _importLikes,
               ),
-              _MiniButton(
+              BloomButton(
                 label: context.l.pvToPlaylist,
+                tone: ButtonTone.plate,
+                height: 32,
                 onTap: _likesAsPlaylist,
               ),
             ],
@@ -210,21 +214,11 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
           if (shown < likes.length)
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
-              child: Pressable(
+              child: BloomButton(
+                label: context.l.commonShowMore,
+                tone: ButtonTone.plate,
+                height: 44,
                 onTap: () => setState(() => _likesShown += _likesStep),
-                scale: 0.97,
-                child: GlassBox(
-                  borderRadius: BorderRadius.circular(999),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Center(
-                      child: Text(
-                        context.l.commonShowMore,
-                        style: theme.titleMedium,
-                      ),
-                    ),
-                  ),
-                ),
               ),
             ),
         ],
@@ -344,38 +338,16 @@ class _HeroState extends ConsumerState<_Hero> {
                 Row(
                   children: [
                     Expanded(
-                      child: Pressable(
+                      child: BloomButton(
+                        label: context.l.commonTracks,
+                        icon: Bi.playBold,
+                        tone: ButtonTone.accent,
+                        height: 46,
                         onTap: () => openArtist(
                           context,
                           artist.id,
                           initial: artist,
                           flight: flight,
-                        ),
-                        scale: 0.97,
-                        child: Material(
-                          color: t.accent,
-                          borderRadius: BorderRadius.circular(999),
-                          clipBehavior: Clip.antiAlias,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                BloomIcon(
-                                  Bi.playBold,
-                                  size: 16,
-                                  color: t.accentText,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  context.l.commonTracks,
-                                  style: theme.titleMedium?.copyWith(
-                                    color: t.accentText,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
                         ),
                       ),
                     ),
@@ -475,50 +447,6 @@ class _SectionHead extends StatelessWidget {
           ),
           for (final a in actions) ...[const SizedBox(width: 8), a],
         ],
-      ),
-    );
-  }
-}
-
-/// Мелкая пилюля-действие в заголовке секции.
-class _MiniButton extends StatelessWidget {
-  const _MiniButton({
-    required this.label,
-    required this.onTap,
-    this.accent = false,
-    this.busy = false,
-  });
-
-  final String label;
-  final VoidCallback onTap;
-  final bool accent;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final fg = accent ? t.accentText : t.text2;
-    return Pressable(
-      onTap: busy ? null : onTap,
-      child: GlassBox(
-        color: accent ? t.accent : null,
-        enabled: !accent,
-        borderRadius: BorderRadius.circular(999),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: busy
-              ? SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: fg),
-                )
-              : Text(
-                  label,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(color: fg),
-                ),
-        ),
       ),
     );
   }

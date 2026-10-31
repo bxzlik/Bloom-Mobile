@@ -340,28 +340,18 @@ class _FilmButton extends StatelessWidget {
   final Color? color;
 
   @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: label,
-      child: Pressable(
-        onTap: onTap,
-        child: Material(
-          color: _film(context),
-          shape: const CircleBorder(),
-          clipBehavior: Clip.antiAlias,
-          child: SizedBox.square(
-            dimension: _filmSide,
-            child: BloomIcon(
-              icon,
-              size: 20,
-              color: color ?? context.bloom.text,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: label,
+    child: CircleIconButton(
+      icon: icon,
+      size: _filmSide,
+      iconSize: 20,
+      background: _film(context),
+      color: color ?? context.bloom.text,
+      onTap: onTap,
+    ),
+  );
 }
 
 /// The title on the progress: the played part a shade lighter; a tap or a

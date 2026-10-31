@@ -416,47 +416,24 @@ class _ModeButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final color = active ? t.accent : t.iconFg;
-    final radius = BorderRadius.circular(t.radius * 0.8);
-
-    return Pressable(
-      onTap: onTap,
-      child: Material(
-        // Невыбранный красится плашкой шторки, а не плёнкой страницы: под
-        // шторкой лежит размытый фон, и токен-плёнка вышла бы на нём пятном.
-        color: active
-            ? t.accent.withValues(alpha: 0.14)
-            : sheetPanelColor(context),
-        borderRadius: radius,
-        clipBehavior: Clip.antiAlias,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: active ? t.accent : sheetLineColor(context),
-            ),
-            borderRadius: radius,
-          ),
-          child: Column(
-            children: [
-              BloomIcon(_importIcon(value), size: 22, color: color),
-              const SizedBox(height: 8),
-              Text(
-                _importLabel(context.l, value),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(color: color),
-              ),
-            ],
-          ),
+  Widget build(BuildContext context) => OptionTile(
+    active: active,
+    onTap: onTap,
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    builder: (ink) => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        BloomIcon(_importIcon(value), size: 22, color: ink),
+        const SizedBox(height: 8),
+        Text(
+          _importLabel(context.l, value),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(color: ink),
         ),
-      ),
-    );
-  }
+      ],
+    ),
+  );
 }
 
 /// Тело шторки очистки: кольцо с объёмом, название, что пропадёт, кнопка.
