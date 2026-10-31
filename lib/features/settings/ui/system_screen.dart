@@ -16,13 +16,13 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/log/bloom_log.dart';
 import '../../../core/store/library_store.dart';
 import '../../../core/store/text_files.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/danger_confirm.dart';
 import '../../../shared/ui/subpage_header.dart';
@@ -49,13 +49,13 @@ class SystemSettingsScreen extends ConsumerWidget {
           dividerInset: 52,
           rows: [
             SettingsLinkRow(
-              icon: SolarIconsOutline.export,
+              icon: Bi.export,
               title: l.sysExportTitle,
               subtitle: l.sysExportSub,
               onTap: () => _exportAll(context, ref),
             ),
             SettingsLinkRow(
-              icon: SolarIconsOutline.import,
+              icon: Bi.import,
               title: l.sysImportTitle,
               subtitle: l.sysImportSub,
               onTap: () => _import(context, ref),
@@ -74,7 +74,7 @@ class SystemSettingsScreen extends ConsumerWidget {
             dividerInset: 52,
             rows: [
               SettingsLinkRow(
-                icon: SolarIconsOutline.documentText,
+                icon: Bi.documentText,
                 title: l.sysLogTitle,
                 subtitle: count == 0
                     ? l.sysLogEmptySub
@@ -89,7 +89,7 @@ class SystemSettingsScreen extends ConsumerWidget {
         // на десктопе.
         Row(
           children: [
-            Icon(SolarIconsOutline.dangerTriangle, size: 13, color: t.danger),
+            BloomIcon(Bi.dangerTriangle, size: 13, color: t.danger),
             const SizedBox(width: 6),
             SettingsCaption(l.sysDangerZone.toUpperCase()),
           ],
@@ -99,14 +99,14 @@ class SystemSettingsScreen extends ConsumerWidget {
           dividerInset: 52,
           rows: [
             SettingsLinkRow(
-              icon: SolarIconsOutline.restart,
+              icon: Bi.restart,
               title: l.sysResetTitle,
               subtitle: l.sysResetSub,
               danger: true,
               onTap: () => _confirmReset(context, ref, hard: false),
             ),
             SettingsLinkRow(
-              icon: SolarIconsOutline.trashBinMinimalistic,
+              icon: Bi.trashBinMinimalistic,
               title: l.sysHardResetTitle,
               subtitle: l.sysHardResetSub,
               danger: true,
@@ -153,9 +153,7 @@ Future<void> _confirmReset(
 
   final yes = await confirmDanger(
     context,
-    icon: hard
-        ? SolarIconsOutline.trashBinMinimalistic
-        : SolarIconsOutline.restart,
+    icon: hard ? Bi.trashBinMinimalistic : Bi.restart,
     title: hard ? l.sysHardResetTitle : l.sysResetTitle,
     body: hard ? l.sysHardResetBody : l.sysResetBody,
     button: hard ? l.sysHardResetBtn : l.sysResetBtn,

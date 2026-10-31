@@ -8,7 +8,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../app/theme/tokens.dart';
 import '../../core/l10n/l10n.dart';
@@ -26,6 +25,7 @@ import '../../features/wave/wave_actions.dart';
 import '../../features/wave/wave_store.dart';
 import '../util/artists.dart';
 import 'atoms.dart';
+import 'bloom_icon.dart';
 import 'bloom_sheet.dart';
 import 'bloom_toast.dart';
 import 'platform_logo.dart';
@@ -87,7 +87,7 @@ Future<void> showTrackActions(
       // над самой записью трека.
       [
         SheetAction(
-          icon: SolarIconsOutline.playlistMinimalistic,
+          icon: Bi.playlistMinimalistic,
           label: context.l.taToQueue,
           onTap: () => messenger.toast(
             player.addToQueue(track)
@@ -96,7 +96,7 @@ Future<void> showTrackActions(
           ),
         ),
         SheetAction(
-          icon: SolarIconsOutline.skipNext,
+          icon: Bi.skipNext,
           label: context.l.taPlayNext,
           onTap: () {
             player.playNext(track);
@@ -106,14 +106,14 @@ Future<void> showTrackActions(
       ],
       [
         SheetAction(
-          icon: isFav ? SolarIconsBold.heart : SolarIconsOutline.heart,
+          icon: isFav ? Bi.heartBold : Bi.heart,
           label: isFav
               ? context.l.taRemoveFromFavorites
               : context.l.taAddToFavorites,
           onTap: () => ref.read(libraryProvider.notifier).toggleFav(track),
         ),
         SheetAction(
-          icon: SolarIconsOutline.addCircle,
+          icon: Bi.addCircle,
           label: context.l.taAddToPlaylist,
           chevron: true,
           onTap: () => showAddToPlaylistSheet(context, ref, track),
@@ -125,9 +125,7 @@ Future<void> showTrackActions(
         // открывается и ради неё одной.
         if (canOffline || (canSaveFiles && hasCover))
           SheetAction(
-            icon: isOffline
-                ? SolarIconsBold.checkCircle
-                : SolarIconsOutline.download,
+            icon: isOffline ? Bi.checkCircleBold : Bi.download,
             label: context.l.taDownload,
             chevron: true,
             onTap: () =>
@@ -139,12 +137,12 @@ Future<void> showTrackActions(
         // открывался бы ради отказа.
         if (canStartWaveFrom(ref, track))
           SheetAction(
-            icon: SolarIconsOutline.playStream,
+            icon: Bi.playStream,
             label: context.l.waveFromTrack,
             onTap: () => startWaveFromTrack(context, ref, track),
           ),
         SheetAction(
-          icon: isDisliked ? SolarIconsBold.dislike : SolarIconsOutline.dislike,
+          icon: isDisliked ? Bi.dislikeBold : Bi.dislike,
           label: isDisliked ? context.l.waveUndislike : context.l.waveDislike,
           onTap: () => toggleWaveDislike(context, ref, track),
         ),
@@ -152,7 +150,7 @@ Future<void> showTrackActions(
         // у локальных файлов пункта нет (см. `canSwitchPlatform`).
         if (canSwitchPlatform(lib, ref, track))
           SheetAction(
-            icon: SolarIconsOutline.refreshSquare,
+            icon: Bi.refreshSquare,
             label: context.l.spSwitch,
             chevron: true,
             onTap: () => _showSwitchPlatformSheet(context, ref, track),
@@ -163,13 +161,13 @@ Future<void> showTrackActions(
         // там, где выбирать не из чего, значит уводить наугад.
         if (canOpenArtist)
           SheetAction(
-            icon: SolarIconsOutline.userRounded,
+            icon: Bi.userRounded,
             label: context.l.taGoToArtist,
             chevron: artists.length > 1,
             onTap: () => openTrackArtist(context, ref, track),
           ),
         SheetAction(
-          icon: SolarIconsOutline.infoCircle,
+          icon: Bi.infoCircle,
           label: context.l.tiTitle,
           chevron: true,
           onTap: () =>
@@ -181,7 +179,7 @@ Future<void> showTrackActions(
         // десктопе: после них строка со своего места исчезает.
         if (fromPlaylist case final playlistId?)
           SheetAction(
-            icon: SolarIconsOutline.closeCircle,
+            icon: Bi.closeCircle,
             label: context.l.taRemoveFromPlaylist,
             danger: true,
             onTap: () =>
@@ -189,7 +187,7 @@ Future<void> showTrackActions(
           ),
         if (inQueueAt >= 0)
           SheetAction(
-            icon: SolarIconsOutline.closeCircle,
+            icon: Bi.closeCircle,
             label: context.l.taRemoveFromQueue,
             danger: true,
             onTap: () => unawaited(player.removeAt(inQueueAt)),
@@ -198,7 +196,7 @@ Future<void> showTrackActions(
         // ничего не стоит, они приехали из поиска.
         if (inLib)
           SheetAction(
-            icon: SolarIconsOutline.trashBinMinimalistic,
+            icon: Bi.trashBinMinimalistic,
             label: context.l.taDeleteTrack,
             danger: true,
             onTap: () => _deleteTrack(messenger, l10n, ref, track),
@@ -247,7 +245,7 @@ Future<void> _showDownloadSheet(
     if (canOffline && canSaveFiles)
       Builder(
         builder: (sheetContext) => _SimpleRow(
-          icon: SolarIconsOutline.downloadMinimalistic,
+          icon: Bi.downloadMinimalistic,
           label: l10n.fdDownloadFile,
           color: context.bloom.text,
           onTap: () {
@@ -259,7 +257,7 @@ Future<void> _showDownloadSheet(
     if (canSaveFiles && hasCover)
       Builder(
         builder: (sheetContext) => _SimpleRow(
-          icon: SolarIconsOutline.gallery,
+          icon: Bi.gallery,
           label: l10n.fdDownloadCover,
           color: context.bloom.text,
           onTap: () {
@@ -273,9 +271,7 @@ Future<void> _showDownloadSheet(
         builder: (sheetContext) => _SimpleRow(
           // Дискета у офлайна и галочка у скачанного — те же значки, что на
           // ПК (голой галочки у Solar нет, поэтому в кружке).
-          icon: isOffline
-              ? SolarIconsBold.checkCircle
-              : SolarIconsOutline.diskette,
+          icon: isOffline ? Bi.checkCircleBold : Bi.diskette,
           label: isOffline ? l10n.taRemoveOffline : l10n.taListenOffline,
           color: isOffline ? context.bloom.accent : context.bloom.text,
           onTap: () {
@@ -424,7 +420,7 @@ Future<void> showAddTracksToPlaylistSheet(
             // можно только «Удалить трек» из шторки действий, насквозь.
             if (outside.isNotEmpty) ...[
               _SimpleRow(
-                icon: SolarIconsOutline.download,
+                icon: Bi.download,
                 label: context.l.commonAddToLibrary,
                 color: t.accent,
                 onTap: () {
@@ -443,7 +439,7 @@ Future<void> showAddTracksToPlaylistSheet(
               sheetDivider(),
             ],
             _SimpleRow(
-              icon: SolarIconsOutline.addSquare,
+              icon: Bi.addSquare,
               label: context.l.commonNewPlaylist,
               color: t.accent,
               onTap: () {
@@ -474,7 +470,7 @@ class _SimpleRow extends StatelessWidget {
     required this.onTap,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final String label;
   final Color color;
   final VoidCallback onTap;
@@ -487,7 +483,7 @@ class _SimpleRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         child: Row(
           children: [
-            Icon(icon, size: 22, color: color),
+            BloomIcon(icon, size: 22, color: color),
             const SizedBox(width: 16),
             Text(
               label,
@@ -542,8 +538,7 @@ class _PlaylistRow extends ConsumerWidget {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
-            if (has)
-              Icon(SolarIconsBold.checkCircle, size: 18, color: t.accent),
+            if (has) BloomIcon(Bi.checkCircleBold, size: 18, color: t.accent),
           ],
         ),
       ),

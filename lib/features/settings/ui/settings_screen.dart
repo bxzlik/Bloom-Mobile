@@ -21,13 +21,13 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../providers/yandex/ym_auth.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../lastfm/lastfm_store.dart';
 import '../../onboarding/onboarding_store.dart';
 import '../../pc/pc_store.dart';
@@ -56,22 +56,22 @@ class SettingsScreen extends StatelessWidget {
             title: context.l.setGroupApp,
             rows: [
               SettingsRow(
-                icon: SolarIconsOutline.smartphone,
+                icon: Bi.smartphone,
                 title: context.l.setSystem,
                 onTap: () => context.go('/settings/system'),
               ),
               SettingsRow(
-                icon: SolarIconsOutline.tuning,
+                icon: Bi.tuning,
                 title: context.l.setAudio,
                 onTap: () => context.go('/settings/audio'),
               ),
               SettingsRow(
-                icon: SolarIconsOutline.database,
+                icon: Bi.database,
                 title: context.l.setStorage,
                 onTap: () => context.go('/settings/storage'),
               ),
               SettingsRow(
-                icon: SolarIconsOutline.transferHorizontal,
+                icon: Bi.transferHorizontal,
                 title: context.l.setSwipes,
                 onTap: () => context.go('/settings/swipes'),
               ),
@@ -90,24 +90,24 @@ class SettingsScreen extends StatelessWidget {
             title: context.l.setGroupInterface,
             rows: [
               SettingsRow(
-                icon: SolarIconsOutline.paintRoller,
+                icon: Bi.paintRoller,
                 title: context.l.setAppearance,
                 onTap: () => context.go('/settings/appearance'),
               ),
               SettingsRow(
-                icon: SolarIconsOutline.playCircle,
+                icon: Bi.playCircle,
                 title: context.l.setPlayer,
                 onTap: () => context.go('/settings/player'),
               ),
               // Тот же значок, каким мини-плеер помечен как поверхность в
               // «Смене трека»: строка и там и тут про одну карточку.
               SettingsRow(
-                icon: SolarIconsOutline.minimizeSquare,
+                icon: Bi.minimizeSquare,
                 title: context.l.setMiniPlayer,
                 onTap: () => context.go('/settings/miniplayer'),
               ),
               SettingsRow(
-                icon: SolarIconsOutline.gallery,
+                icon: Bi.gallery,
                 title: context.l.stCustom,
                 onTap: () => context.go('/settings/customization'),
               ),
@@ -122,7 +122,7 @@ class SettingsScreen extends StatelessWidget {
                 title: 'DEBUG',
                 rows: [
                   SettingsRow(
-                    icon: SolarIconsOutline.magicStick,
+                    icon: Bi.magicStick,
                     title: context.l.onbReplay,
                     onTap: () {
                       ref.read(onboardedProvider.notifier).reset();
@@ -186,7 +186,7 @@ class _IntegrationsGroup extends ConsumerWidget {
         ),
         // Bloom на ПК — пара раздела «Интеграции → Телефон» там.
         SettingsRow(
-          icon: SolarIconsOutline.monitor,
+          icon: Bi.monitor,
           title: context.l.setPc,
           value: pcName,
           onTap: () => context.go('/settings/pc'),
@@ -233,7 +233,7 @@ class SettingsRow extends StatelessWidget {
     this.trailing,
   });
 
-  final IconData? icon;
+  final BloomGlyph? icon;
   final Widget? leading;
   final String title;
   final VoidCallback? onTap;
@@ -261,7 +261,7 @@ class SettingsRow extends StatelessWidget {
               width: 24,
               child:
                   leading ??
-                  Icon(icon, size: 20, color: ready ? t.iconFg : t.muted),
+                  BloomIcon(icon, size: 20, color: ready ? t.iconFg : t.muted),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -281,8 +281,7 @@ class SettingsRow extends StatelessWidget {
               ),
               const SizedBox(width: 10),
             ],
-            trailing ??
-                Icon(SolarIconsOutline.altArrowRight, size: 16, color: t.text2),
+            trailing ?? BloomIcon(Bi.altArrowRight, size: 16, color: t.text2),
           ],
         ),
       ),
@@ -307,7 +306,7 @@ class LanguageSettingsRow extends ConsumerWidget {
                 Localizations.localeOf(context))
             .languageCode;
     return SettingsRow(
-      icon: SolarIconsOutline.global,
+      icon: Bi.global,
       title: context.l.setLanguage,
       trailing: LanguageFlag(code: code),
       onTap: () => _pickLanguage(context, ref, code),
@@ -386,7 +385,7 @@ class _LanguageTile extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
-                if (active) Icon(Icons.check, size: 20, color: t.accent),
+                if (active) BloomIcon(Bi.check, size: 20, color: t.accent),
               ],
             ),
           ),
@@ -419,7 +418,7 @@ class _VersionSettingsRowState extends ConsumerState<VersionSettingsRow> {
   Widget build(BuildContext context) {
     final version = ref.watch(aboutProvider.select((s) => s.version));
     return SettingsRow(
-      icon: SolarIconsOutline.infoCircle,
+      icon: Bi.infoCircle,
       title: context.l.aboutVersion,
       // Платформа не ответила (так бывает в тестах и на десктопе) — прочерк
       // честнее нуля.

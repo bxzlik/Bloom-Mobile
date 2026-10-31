@@ -8,12 +8,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../wave_store.dart';
 
@@ -91,7 +91,7 @@ class _Header extends ConsumerWidget {
           ),
           // Снять все метки разом. Пустой список чистить нечего — кнопка гаснет.
           CircleIconButton(
-            icon: SolarIconsOutline.trashBinMinimalistic,
+            icon: Bi.trashBinMinimalistic,
             iconSize: 20,
             onTap: count == 0
                 ? null
@@ -157,7 +157,7 @@ class _Row extends ConsumerWidget {
           const SizedBox(width: 8),
           // Снять метку — трек снова может попасть в подбор.
           CircleIconButton(
-            icon: SolarIconsOutline.closeCircle,
+            icon: Bi.closeCircle,
             iconSize: 18,
             onTap: () =>
                 ref.read(waveStoreProvider.notifier).undislike(track.id),

@@ -8,12 +8,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../pl_auto_store.dart';
 
@@ -213,8 +213,8 @@ class _Hero extends ConsumerWidget {
               color: t.sysAllTint,
               borderRadius: BorderRadius.circular(t.radius),
             ),
-            child: Icon(
-              SolarIconsOutline.refresh,
+            child: BloomIcon(
+              Bi.refresh,
               size: 24,
               color: state.running ? t.accent : t.sysAllIco,
             ),
@@ -469,7 +469,7 @@ class _CandidateRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: selected
-                    ? Icon(Icons.check_rounded, size: 15, color: t.accentText)
+                    ? BloomIcon(Bi.check, size: 15, color: t.accentText)
                     : null,
               ),
           ],

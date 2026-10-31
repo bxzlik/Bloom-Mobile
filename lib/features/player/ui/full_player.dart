@@ -8,7 +8,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
@@ -19,6 +18,7 @@ import '../../../features/customization/custom_store.dart';
 import '../../../features/customization/ui/image_thumb.dart';
 import '../../../features/settings/swipe_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/marquee_text.dart';
@@ -302,7 +302,7 @@ class _Header extends ConsumerWidget {
     return Row(
       children: [
         CircleIconButton(
-          icon: SolarIconsOutline.altArrowDown,
+          icon: Bi.altArrowDown,
           iconSize: 23,
           background: fill,
           borderColor: line,
@@ -330,7 +330,7 @@ class _Header extends ConsumerWidget {
         ),
         const SizedBox(width: _headerGap),
         CircleIconButton(
-          icon: SolarIconsOutline.menuDots,
+          icon: Bi.menuDots,
           background: fill,
           borderColor: line,
           glass: true,
@@ -833,11 +833,7 @@ class _Transport extends ConsumerWidget {
     // кнопка всегда repeat, сверху справа — «список» для всей очереди и «1» для
     // одного трека.
     final repeatMark = switch (state.repeat) {
-      PlayerRepeat.all => Icon(
-        SolarIconsOutline.list,
-        size: 9,
-        color: t.accentText,
-      ),
+      PlayerRepeat.all => BloomIcon(Bi.list, size: 9, color: t.accentText),
       PlayerRepeat.one => Text(
         '1',
         style: TextStyle(
@@ -856,17 +852,13 @@ class _Transport extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _FlatIcon(
-            icon: SolarIconsOutline.repeat,
+            icon: Bi.repeat,
             size: 24,
             active: state.repeat != PlayerRepeat.off,
             onTap: ctrl.cycleRepeat,
             mark: repeatMark,
           ),
-          _FlatIcon(
-            icon: SolarIconsBold.skipPrevious,
-            size: 30,
-            onTap: ctrl.prev,
-          ),
+          _FlatIcon(icon: Bi.skipPreviousBold, size: 30, onTap: ctrl.prev),
           PlayButton(
             size: 68,
             iconSize: 28,
@@ -875,9 +867,9 @@ class _Transport extends ConsumerWidget {
             loading: state.loading,
             onTap: ctrl.toggle,
           ),
-          _FlatIcon(icon: SolarIconsBold.skipNext, size: 30, onTap: ctrl.next),
+          _FlatIcon(icon: Bi.skipNextBold, size: 30, onTap: ctrl.next),
           _FlatIcon(
-            icon: SolarIconsOutline.shuffle,
+            icon: Bi.shuffle,
             size: 24,
             active: state.shuffle,
             onTap: ctrl.toggleShuffle,
@@ -907,8 +899,8 @@ class _SleepButton extends ConsumerWidget {
       label: context.l.playerSleep,
       child: _FlatIcon(
         icon: sleep.mode == SleepMode.endOfTrack
-            ? SolarIconsBold.moonSleep
-            : SolarIconsOutline.moonSleep,
+            ? Bi.moonSleepBold
+            : Bi.moonSleep,
         size: 25,
         label: sleep.mode == SleepMode.timer
             ? sleepLabel(sleep.remaining)
@@ -935,7 +927,7 @@ class _PlayOnButton extends ConsumerWidget {
       button: true,
       label: context.l.pcPlayOn,
       child: _FlatIcon(
-        icon: SolarIconsOutline.monitorSmartphone,
+        icon: Bi.monitorSmartphone,
         size: 25,
         active: onPc,
         onTap: () => _showPlayOn(context, ref, onPc),
@@ -948,19 +940,19 @@ class _PlayOnButton extends ConsumerWidget {
     final pc = ref.read(pcProvider).link?.name ?? '';
     final remote = ref.read(pcRemoteProvider.notifier);
     Widget? mark(bool on) =>
-        on ? Icon(SolarIconsBold.checkCircle, size: 18, color: t.accent) : null;
+        on ? BloomIcon(Bi.checkCircleBold, size: 18, color: t.accent) : null;
     showBloomSheet(
       context: context,
       groups: [
         [
           SheetAction(
-            icon: SolarIconsOutline.monitor,
+            icon: Bi.monitor,
             label: pc.isEmpty ? context.l.setPc : pc,
             trailing: mark(onPc),
             onTap: onPc ? null : remote.playOnPc,
           ),
           SheetAction(
-            icon: SolarIconsOutline.smartphone,
+            icon: Bi.smartphone,
             label: context.l.pcThisPhone,
             trailing: mark(!onPc),
             onTap: onPc ? remote.playHere : null,
@@ -982,7 +974,7 @@ class _FlatIcon extends StatelessWidget {
     this.color,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final VoidCallback? onTap;
   final double size;
   final bool active;
@@ -1016,7 +1008,7 @@ class _FlatIcon extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             if (label == null)
-              Icon(icon, size: size, color: color)
+              BloomIcon(icon, size: size, color: color)
             else
               SizedBox(
                 width: _labelWidth,
@@ -1094,7 +1086,7 @@ class _Tools extends ConsumerWidget {
         _ToolPill(
           children: [
             _FlatIcon(
-              icon: isFav ? SolarIconsBold.heart : SolarIconsOutline.heart,
+              icon: isFav ? Bi.heartBold : Bi.heart,
               size: 25,
               color: isFav ? t.sysFavIco : null,
               onTap: () => ref.read(libraryProvider.notifier).toggleFav(track),
@@ -1103,13 +1095,13 @@ class _Tools extends ConsumerWidget {
             // сидят на одном коде 0xec4a и рисуются знаком «±» из
             // калькуляторной группы.
             _FlatIcon(
-              icon: SolarIconsOutline.addCircle,
+              icon: Bi.addCircle,
               size: 25,
               onTap: () => showAddToPlaylistSheet(context, ref, track),
             ),
             if (lyricsFound || lyricsOpen)
               _FlatIcon(
-                icon: SolarIconsOutline.text,
+                icon: Bi.text,
                 size: 25,
                 active: lyricsOpen,
                 onTap: () =>
@@ -1121,7 +1113,7 @@ class _Tools extends ConsumerWidget {
           children: [
             const _PlayOnButton(),
             _FlatIcon(
-              icon: SolarIconsOutline.speedometerMiddle,
+              icon: Bi.speedometerMiddle,
               size: 25,
               label: rate == 1 ? null : speedLabel(rate),
               active: rate != 1,

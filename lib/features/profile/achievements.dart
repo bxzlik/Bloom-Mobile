@@ -13,10 +13,10 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../core/db/db.dart';
 import '../../core/l10n/l10n.dart';
+import '../../shared/ui/bloom_icon.dart';
 import 'stats.dart';
 
 enum AchTier { bronze, silver, gold }
@@ -52,7 +52,7 @@ class AchDef {
   });
 
   final String id;
-  final IconData icon;
+  final BloomGlyph icon;
 
   /// Название и подпись резолвятся при отрисовке: таблица собирается один раз
   /// на весь процесс и обязана пережить смену языка.
@@ -70,7 +70,7 @@ class AchDef {
 final List<AchDef> kAchievements = [
   AchDef(
     id: 'listener',
-    icon: SolarIconsBold.play,
+    icon: Bi.playBold,
     name: (l) => l.achListenerName,
     description: (l) => l.achListenerDesc,
     unit: AchUnit.count,
@@ -79,7 +79,7 @@ final List<AchDef> kAchievements = [
   ),
   AchDef(
     id: 'time',
-    icon: SolarIconsBold.headphonesRound,
+    icon: Bi.headphonesRoundBold,
     name: (l) => l.achTimeName,
     description: (l) => l.achTimeDesc,
     unit: AchUnit.time,
@@ -88,7 +88,7 @@ final List<AchDef> kAchievements = [
   ),
   AchDef(
     id: 'streak',
-    icon: SolarIconsBold.fire,
+    icon: Bi.fireBold,
     name: (l) => l.achStreakName,
     description: (l) => l.achStreakDesc,
     unit: AchUnit.count,
@@ -97,7 +97,7 @@ final List<AchDef> kAchievements = [
   ),
   AchDef(
     id: 'marathon',
-    icon: SolarIconsBold.medalStar,
+    icon: Bi.medalStarBold,
     name: (l) => l.achMarathonName,
     description: (l) => l.achMarathonDesc,
     unit: AchUnit.count,
@@ -106,7 +106,7 @@ final List<AchDef> kAchievements = [
   ),
   AchDef(
     id: 'veteran',
-    icon: SolarIconsBold.crownStar,
+    icon: Bi.crownStarBold,
     name: (l) => l.achVeteranName,
     description: (l) => l.achVeteranDesc,
     unit: AchUnit.time,
@@ -115,7 +115,7 @@ final List<AchDef> kAchievements = [
   ),
   AchDef(
     id: 'devotee',
-    icon: SolarIconsBold.calendar,
+    icon: Bi.calendarBold,
     name: (l) => l.achDevoteeName,
     description: (l) => l.achDevoteeDesc,
     unit: AchUnit.count,

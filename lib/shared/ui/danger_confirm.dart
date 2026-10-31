@@ -7,12 +7,13 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../app/theme/tokens.dart';
+import 'bloom_icon.dart';
 import 'bloom_sheet.dart';
 
 /// Шторка «значок, что будет, красная кнопка»; `true` — нажали кнопку.
 Future<bool> confirmDanger(
   BuildContext context, {
-  required IconData icon,
+  required BloomGlyph icon,
   required String title,
   required String body,
   required String button,
@@ -39,7 +40,7 @@ class DangerConfirmBody extends StatelessWidget {
     required this.button,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final String title;
   final String body;
   final String button;
@@ -60,7 +61,7 @@ class DangerConfirmBody extends StatelessWidget {
               color: t.danger.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 28, color: t.danger),
+            child: BloomIcon(icon, size: 28, color: t.danger),
           ),
           const SizedBox(height: 16),
           Text(title, textAlign: TextAlign.center, style: theme.titleLarge),

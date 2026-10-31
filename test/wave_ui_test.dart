@@ -19,9 +19,10 @@ import 'package:bloom/features/wave/wave_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'support/glyphs.dart';
 import 'package:bloom/core/db/db.dart';
 import 'support/test_db.dart';
-import 'package:solar_icons/solar_icons.dart';
+import 'package:bloom/shared/ui/bloom_icon.dart';
 
 Track _track(String id, {String? cover}) => Track(
   id: id,
@@ -219,11 +220,11 @@ void main() {
 
       // Короткое нажатие — это запуск волны, а не настройка: сидов в пустой
       // библиотеке нет, поэтому оно ничего и не откроет.
-      await tester.tap(find.byIcon(SolarIconsBold.play));
+      await tester.tap(findGlyph(Bi.playBold));
       await settle(tester);
       expect(find.text('Дизлайки'), findsNothing);
 
-      await tester.longPress(find.byIcon(SolarIconsBold.play));
+      await tester.longPress(findGlyph(Bi.playBold));
       await settle(tester);
       expect(find.text('Дизлайки'), findsOneWidget);
     });
@@ -271,7 +272,7 @@ void main() {
       expect(find.text('Artist sc:1'), findsOneWidget);
 
       // Крестик в строке — второй круглый значок после «очистить всё» в шапке.
-      await tester.tap(find.byIcon(SolarIconsOutline.closeCircle));
+      await tester.tap(findGlyph(Bi.closeCircle));
       await tester.pumpAndSettle();
 
       expect(container.read(waveStoreProvider).isDisliked('sc:1'), isFalse);

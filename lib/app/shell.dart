@@ -13,7 +13,6 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../core/l10n/l10n.dart';
 import '../features/customization/ui/app_background.dart';
@@ -34,6 +33,7 @@ import '../features/wrapped/ui/wrapped_sheet.dart';
 import '../features/wrapped/wrapped_format.dart';
 import '../features/wrapped/wrapped_store.dart';
 import '../shared/ui/atoms.dart';
+import '../shared/ui/bloom_icon.dart';
 import '../shared/ui/bloom_mark.dart';
 import '../shared/ui/bloom_toast.dart';
 import '../shared/ui/cover_hero.dart';
@@ -351,30 +351,21 @@ class _BranchCrossfadeState extends State<BranchCrossfade>
   }
 }
 
-/// Описание таба: пара «в покое / активный» — либо глифы Solar (outline+bold),
-/// либо пара SVG для иконок, чей глиф в шрифте нарисован не тем.
+/// A tab: its icon at rest and its bold one while open.
 class _NavSpec {
   const _NavSpec({
     required this.label,
-    this.icon,
-    this.activeIcon,
-    this.svg,
-    this.activeSvg,
+    required this.icon,
+    required this.activeIcon,
     this.motion = _NavMotion.wiggle,
     this.avatar = false,
-  }) : assert(
-         (icon != null && activeIcon != null) ||
-             (svg != null && activeSvg != null),
-         'у таба должна быть пара глифов или пара SVG',
-       );
+  });
 
   /// Подпись резолвится при отрисовке, а не при сборке списка: таблица табов
   /// статическая и переживает смену языка.
   final String Function(AppLocalizations l) label;
-  final IconData? icon;
-  final IconData? activeIcon;
-  final String? svg;
-  final String? activeSvg;
+  final BloomGlyph icon;
+  final BloomGlyph activeIcon;
 
   /// Чем иконка отвечает на выбор своей вкладки — см. [_NavMotion].
   final _NavMotion motion;
@@ -454,36 +445,32 @@ class _NavBar extends StatelessWidget {
   onLongPress;
 
   /// Неактивный таб — outline, активный — bold (правило Solar).
-  ///
-  /// У Библиотеки — настоящие Solar-SVG (те же файлы, что в anibloom): глиф
-  /// `library` в шрифте залит сплошным ящиком, а у `folder` сверху справа
-  /// торчит планка, которая в размере таба читается как «минус».
   static final _items = <NavTab, _NavSpec>{
     NavTab.home: _NavSpec(
       label: (l) => l.navHome,
-      icon: SolarIconsOutline.homeAngle_2,
-      activeIcon: SolarIconsBold.homeAngle_2,
+      icon: Bi.homeAngle2,
+      activeIcon: Bi.homeAngle2Bold,
     ),
     NavTab.search: _NavSpec(
       label: (l) => l.navSearch,
-      icon: SolarIconsOutline.magnifier,
-      activeIcon: SolarIconsBold.magnifier,
+      icon: Bi.magnifier,
+      activeIcon: Bi.magnifierBold,
     ),
     NavTab.library: _NavSpec(
       label: (l) => l.navLibrary,
-      svg: 'assets/icons/library-linear.svg',
-      activeSvg: 'assets/icons/library-bold.svg',
+      icon: Bi.library,
+      activeIcon: Bi.libraryBold,
     ),
     NavTab.profile: _NavSpec(
       label: (l) => l.navProfile,
-      icon: SolarIconsOutline.user,
-      activeIcon: SolarIconsBold.user,
+      icon: Bi.user,
+      activeIcon: Bi.userBold,
       avatar: true,
     ),
     NavTab.settings: _NavSpec(
       label: (l) => l.navSettings,
-      icon: SolarIconsOutline.settings,
-      activeIcon: SolarIconsBold.settings,
+      icon: Bi.settings,
+      activeIcon: Bi.settingsBold,
       motion: _NavMotion.spin,
     ),
   };
@@ -1016,9 +1003,8 @@ class _NavItemState extends State<_NavItem> with TickerProviderStateMixin {
     final glyphs = Stack(
       alignment: Alignment.center,
       children: [
-        if (line > 0) _layer(spec.icon, spec.svg, color, line, size),
-        if (fill > 0)
-          _layer(spec.activeIcon, spec.activeSvg, color, fill, size),
+        if (line > 0) _layer(spec.icon, color, line, size),
+        if (fill > 0) _layer(spec.activeIcon, color, fill, size),
       ],
     );
 
@@ -1026,18 +1012,11 @@ class _NavItemState extends State<_NavItem> with TickerProviderStateMixin {
     return _TabAvatar(size: size, morph: m, fallback: glyphs);
   }
 
-  Widget _layer(
-    IconData? glyph,
-    String? svg,
-    Color color,
-    double opacity,
-    double size,
-  ) => Opacity(
-    opacity: opacity.clamp(0, 1),
-    child: svg != null
-        ? SvgIcon(svg, size: size, color: color)
-        : Icon(glyph, size: size, color: color),
-  );
+  Widget _layer(BloomGlyph glyph, Color color, double opacity, double size) =>
+      Opacity(
+        opacity: opacity.clamp(0, 1),
+        child: BloomIcon(glyph, size: size, color: color),
+      );
 }
 
 /// Аватар вместо глифа у таба профиля — если он поставлен.

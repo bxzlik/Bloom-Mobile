@@ -8,12 +8,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/bloom_theme.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../notif_store.dart';
 import 'notif_sheet.dart';
 
@@ -30,7 +30,7 @@ class NotifBell extends ConsumerWidget {
       clipBehavior: Clip.none,
       children: [
         CircleIconButton(
-          icon: SolarIconsOutline.bell,
+          icon: Bi.bell,
           tooltip: context.l.notifCenterTitle,
           onTap: () {
             ref.read(notifCenterProvider.notifier).markAllRead();

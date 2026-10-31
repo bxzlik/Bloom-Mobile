@@ -9,12 +9,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../media_store.dart';
@@ -199,10 +199,7 @@ class _PresetAddFormState extends State<_PresetAddForm> {
             ),
           ],
         ),
-        SheetPickRow(
-          icon: SolarIconsOutline.import,
-          label: context.l.custImport,
-        ),
+        SheetPickRow(icon: Bi.import, label: context.l.custImport),
       ],
     );
   }
@@ -297,7 +294,7 @@ class _PresetCard extends ConsumerWidget {
             CustSheetBlock(
               children: [
                 CustSheetRow(
-                  icon: SolarIconsOutline.checkCircle,
+                  icon: Bi.checkCircle,
                   label: l10n.custPresetApply,
                   onTap: close(sheet, () {
                     ref.read(presetsProvider.notifier).apply(preset.id);
@@ -309,7 +306,7 @@ class _PresetCard extends ConsumerWidget {
                 ),
                 const CustSheetDivider(),
                 CustSheetRow(
-                  icon: SolarIconsOutline.export,
+                  icon: Bi.export,
                   label: l10n.custPresetExport,
                   onTap: close(sheet, () async {
                     final content = await encodePresets([
@@ -379,9 +376,7 @@ class _PresetThumbState extends State<PresetThumb>
   Widget build(BuildContext context) {
     final t = context.bloom;
     if (widget.srcs.isEmpty) {
-      return Center(
-        child: Icon(SolarIconsOutline.box, size: 26, color: t.muted),
-      );
+      return Center(child: BloomIcon(Bi.box, size: 26, color: t.muted));
     }
     final image = coverImage(widget.srcs[_index % widget.srcs.length]);
     return AnimatedSwitcher(

@@ -16,11 +16,11 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/platform_logo.dart';
@@ -49,7 +49,7 @@ class PlatformPage extends StatelessWidget {
   final BrandMark? mark;
 
   /// Или значок вместо знака — у раздела без бренда («Компьютер»).
-  final IconData? icon;
+  final BloomGlyph? icon;
   final VoidCallback onBack;
 
   /// Строка под знаком: подключено / не подключено / чем настроено.
@@ -94,7 +94,7 @@ class PlatformPage extends StatelessWidget {
                         duration: _kExpand,
                         curve: _kExpandCurve,
                         builder: (_, size, _) => icon != null
-                            ? Icon(icon, size: size * 0.8, color: t.text)
+                            ? BloomIcon(icon, size: size * 0.8, color: t.text)
                             : mark!.logo(size: size),
                       ),
                       if (status case final text?) ...[
@@ -229,14 +229,14 @@ class PlatformCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
-    this.icon = SolarIconsOutline.questionCircle,
+    this.icon = Bi.questionCircle,
   });
 
   final BrandMark mark;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  final IconData icon;
+  final BloomGlyph icon;
 
   @override
   Widget build(BuildContext context) {
@@ -279,7 +279,7 @@ class PlatformCard extends StatelessWidget {
               const SizedBox(width: 12),
               Padding(
                 padding: const EdgeInsets.only(top: 2),
-                child: Icon(icon, size: 20, color: t.muted),
+                child: BloomIcon(icon, size: 20, color: t.muted),
               ),
             ],
           ),

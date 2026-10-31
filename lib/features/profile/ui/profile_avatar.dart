@@ -10,10 +10,10 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/store/cover_store.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../profile_store.dart';
 
@@ -42,8 +42,8 @@ class ProfileAvatar extends StatelessWidget {
         ? ColoredBox(
             color: t.coverEmpty,
             child: Center(
-              child: Icon(
-                SolarIconsBold.user,
+              child: BloomIcon(
+                Bi.userBold,
                 size: size * 0.46,
                 color: t.text.withValues(alpha: 0.22),
               ),

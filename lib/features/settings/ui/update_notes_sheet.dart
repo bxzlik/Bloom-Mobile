@@ -13,11 +13,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../update_notes_store.dart';
@@ -122,7 +122,7 @@ class _NoteBody extends StatelessWidget {
           const SizedBox(height: 22),
           AccentWideButton(
             label: l.commonDone,
-            icon: SolarIconsOutline.checkCircle,
+            icon: Bi.checkCircle,
             onTap: () => Navigator.of(context).pop(),
           ),
         ],
@@ -337,7 +337,7 @@ class _HistoryRow extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Icon(SolarIconsOutline.altArrowRight, size: 16, color: t.text2),
+            BloomIcon(Bi.altArrowRight, size: 16, color: t.text2),
           ],
         ),
       ),

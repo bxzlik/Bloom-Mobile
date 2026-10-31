@@ -12,7 +12,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
@@ -20,6 +19,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../providers/soundcloud/models.dart';
 import '../../../providers/soundcloud/soundcloud.dart' as sc;
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/platform_logo.dart';
 import 'platform_page.dart';
@@ -161,11 +161,7 @@ class _SoundCloudSettingsScreenState
                 // тогда, когда смотришь на пустое поле.
                 IconButton(
                   onPressed: _guide,
-                  icon: Icon(
-                    SolarIconsOutline.questionCircle,
-                    size: 20,
-                    color: t.muted,
-                  ),
+                  icon: BloomIcon(Bi.questionCircle, size: 20, color: t.muted),
                 ),
               ],
             ),
@@ -200,8 +196,8 @@ class _SoundCloudSettingsScreenState
           const SizedBox(height: 14),
           Row(
             children: [
-              Icon(
-                r.ok ? SolarIconsBold.checkCircle : SolarIconsBold.closeCircle,
+              BloomIcon(
+                r.ok ? Bi.checkCircleBold : Bi.closeCircleBold,
                 size: 18,
                 color: r.ok ? kPlatformOk : t.danger,
               ),

@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 
 import '../../app/theme/tokens.dart';
+import 'bloom_icon.dart';
 
 /// Доля ширины строки, после которой действие сработает.
 const double kSwipeThreshold = 0.32;
@@ -36,7 +37,7 @@ class SwipePanel {
     this.dismiss = false,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
 
   /// Что сделать, когда порог пройден.
   final VoidCallback onFire;
@@ -224,7 +225,7 @@ class _Panel extends StatelessWidget {
                 child: AnimatedScale(
                   duration: const Duration(milliseconds: 140),
                   scale: armed ? 1.15 : 1,
-                  child: Icon(
+                  child: BloomIcon(
                     panel.icon,
                     size: 22,
                     color: panel.danger ? Colors.white : t.text,

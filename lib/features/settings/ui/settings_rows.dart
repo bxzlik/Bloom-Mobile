@@ -7,10 +7,10 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 
 /// Строка с тумблером. Вложенную настройку экран не гасит, а просто не строит,
 /// пока выключен её «родитель» — как «Автовоспроизведение» в «Аудио».
@@ -30,7 +30,7 @@ class SettingsToggleRow extends StatelessWidget {
   final ValueChanged<bool> onChanged;
 
   /// Значок слева. Без него строка начинается с текста — как в «Интерфейсе».
-  final IconData? icon;
+  final BloomGlyph? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +60,7 @@ class SettingsLinkRow extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  final IconData? icon;
+  final BloomGlyph? icon;
 
   /// Опасное действие — название и значок красные.
   final bool danger;
@@ -73,8 +73,8 @@ class SettingsLinkRow extends StatelessWidget {
       title: title,
       subtitle: subtitle,
       color: danger ? t.danger : null,
-      trailing: Icon(
-        SolarIconsOutline.altArrowRight,
+      trailing: BloomIcon(
+        Bi.altArrowRight,
         size: 16,
         color: danger ? t.danger : t.text2,
       ),
@@ -99,7 +99,7 @@ class SettingsRowShell extends StatelessWidget {
   final String title;
   final String subtitle;
   final Widget trailing;
-  final IconData? icon;
+  final BloomGlyph? icon;
 
   /// Цвет названия и значка; `null` — обычный текст темы.
   final Color? color;
@@ -119,7 +119,7 @@ class SettingsRowShell extends StatelessWidget {
             if (icon != null) ...[
               SizedBox(
                 width: 24,
-                child: Icon(icon, size: 20, color: color ?? t.iconFg),
+                child: BloomIcon(icon, size: 20, color: color ?? t.iconFg),
               ),
               const SizedBox(width: 14),
             ],

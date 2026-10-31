@@ -12,7 +12,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
@@ -20,6 +19,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/store/library_store.dart';
 import '../../../core/store/play_stats.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../dups.dart';
 
@@ -115,7 +115,7 @@ class _Bar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 10, 4),
       child: Row(
         children: [
-          Icon(SolarIconsOutline.copy, size: 18, color: t.accent),
+          BloomIcon(Bi.copy, size: 18, color: t.accent),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -140,7 +140,7 @@ class _Bar extends StatelessWidget {
             ),
           IconButton(
             onPressed: onExit,
-            icon: Icon(SolarIconsOutline.closeCircle, size: 22, color: t.text2),
+            icon: BloomIcon(Bi.closeCircle, size: 22, color: t.text2),
           ),
         ],
       ),
@@ -269,11 +269,7 @@ class _Row extends StatelessWidget {
           else
             IconButton(
               onPressed: onDelete,
-              icon: Icon(
-                SolarIconsOutline.closeCircle,
-                size: 20,
-                color: t.danger,
-              ),
+              icon: BloomIcon(Bi.closeCircle, size: 20, color: t.danger),
             ),
         ],
       ),
@@ -294,7 +290,7 @@ class _Empty extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 48),
       child: Column(
         children: [
-          Icon(SolarIconsOutline.checkCircle, size: 30, color: t.accent),
+          BloomIcon(Bi.checkCircle, size: 30, color: t.accent),
           const SizedBox(height: 10),
           Text(context.l.dupsNone, style: theme.titleMedium),
           const SizedBox(height: 4),

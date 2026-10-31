@@ -29,7 +29,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
@@ -45,6 +44,7 @@ import '../../../features/player/ui/play_button.dart';
 import '../../../features/player/ui/slider_shapes.dart';
 import '../../../features/player/ui/vinyl_disc.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/subpage_header.dart';
@@ -114,7 +114,7 @@ class PlayerSettingsScreen extends ConsumerWidget {
             SettingsValueRow(
               title: l.pvBgRow,
               value: _playerBgLabel(l, bg),
-              glyph: Icon(_playerBgIcon(bg)),
+              glyph: BloomIcon(_playerBgIcon(bg)),
               onTap: () => _openPlayerBg(context, ref),
             ),
             // Только под «Обложкой»: настраивать нечего, пока за плеером стоит
@@ -123,7 +123,7 @@ class PlayerSettingsScreen extends ConsumerWidget {
               SettingsValueRow(
                 title: l.pvBgFxRow,
                 value: _coverFxLabel(l, coverFx),
-                glyph: Icon(_coverFxIcon(coverFx)),
+                glyph: BloomIcon(_coverFxIcon(coverFx)),
                 onTap: () => _openCoverFx(context, ref),
               ),
           ],
@@ -168,10 +168,10 @@ class PlayerSettingsScreen extends ConsumerWidget {
                 ]),
                 // Значок — поверхность, а не вид перехода: их в строке два
                 // (обложка и подпись), одним значком не показать.
-                glyph: Icon(
+                glyph: BloomIcon(
                   surface == TrackAnimSurface.player
-                      ? SolarIconsOutline.maximizeSquare
-                      : SolarIconsOutline.minimizeSquare,
+                      ? Bi.maximizeSquare
+                      : Bi.minimizeSquare,
                 ),
                 onTap: () => _openAnim(context, surface),
               ),
@@ -185,7 +185,7 @@ class PlayerSettingsScreen extends ConsumerWidget {
             SettingsValueRow(
               title: l.pvLyricsRow,
               value: _modeLabel(l, lyrics.mode),
-              glyph: const Icon(SolarIconsOutline.magicStick),
+              glyph: const BloomIcon(Bi.magicStick),
               onTap: () => _openLyrics(context),
             ),
           ],
@@ -335,7 +335,7 @@ class _PlayShapePreview extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(SolarIconsBold.skipPrevious, size: 30, color: t.iconFg),
+            BloomIcon(Bi.skipPreviousBold, size: 30, color: t.iconFg),
             const SizedBox(width: 26),
             const PlayButton(
               size: 68,
@@ -345,7 +345,7 @@ class _PlayShapePreview extends StatelessWidget {
               live: false,
             ),
             const SizedBox(width: 26),
-            Icon(SolarIconsBold.skipNext, size: 30, color: t.iconFg),
+            BloomIcon(Bi.skipNextBold, size: 30, color: t.iconFg),
           ],
         ),
       ),
@@ -413,7 +413,7 @@ class _PlayShapeTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 if (selected)
-                  Icon(SolarIconsBold.checkCircle, size: 20, color: t.accent),
+                  BloomIcon(Bi.checkCircleBold, size: 20, color: t.accent),
               ],
             ),
           ),
@@ -836,7 +836,7 @@ class _StyleTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 if (selected)
-                  Icon(SolarIconsBold.checkCircle, size: 20, color: t.accent),
+                  BloomIcon(Bi.checkCircleBold, size: 20, color: t.accent),
               ],
             ),
           ),
@@ -966,7 +966,7 @@ class _AlignTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 if (selected)
-                  Icon(SolarIconsBold.checkCircle, size: 20, color: t.accent),
+                  BloomIcon(Bi.checkCircleBold, size: 20, color: t.accent),
               ],
             ),
           ),
@@ -1237,7 +1237,7 @@ class _SliderTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 if (selected)
-                  Icon(SolarIconsBold.checkCircle, size: 20, color: t.accent),
+                  BloomIcon(Bi.checkCircleBold, size: 20, color: t.accent),
               ],
             ),
           ),
@@ -1726,13 +1726,13 @@ String _playerBgSub(AppLocalizations l, PlayerBg bg) => switch (bg) {
   PlayerBg.none => l.pvBgNoneSub,
 };
 
-IconData _playerBgIcon(PlayerBg bg) => switch (bg) {
-  PlayerBg.cover => SolarIconsOutline.gallery,
+BloomGlyph _playerBgIcon(PlayerBg bg) => switch (bg) {
+  PlayerBg.cover => Bi.gallery,
   // Тот же значок, каким «Фон» помечен на плитке картинки в библиотеке
   // («Кастомизация»): строка и там и тут про одно и то же место.
-  PlayerBg.app => SolarIconsOutline.galleryWide,
-  PlayerBg.color => SolarIconsOutline.palette,
-  PlayerBg.none => SolarIconsOutline.forbiddenCircle,
+  PlayerBg.app => Bi.galleryWide,
+  PlayerBg.color => Bi.palette,
+  PlayerBg.none => Bi.forbiddenCircle,
 };
 
 /// Шторка «Фон плеера». Шапки нет: строка, из которой сюда пришли, осталась
@@ -1773,12 +1773,12 @@ String _coverFxSub(AppLocalizations l, CoverBgFx fx) => switch (fx) {
   CoverBgFx.original => l.pvBgFxOriginalSub,
 };
 
-IconData _coverFxIcon(CoverBgFx fx) => switch (fx) {
+BloomGlyph _coverFxIcon(CoverBgFx fx) => switch (fx) {
   // Луна — то же затемнение, каким «Ночной режим» помечен где угодно; капля —
   // размытие; палочка со звёздами — «как есть, без обработки».
-  CoverBgFx.dim => SolarIconsOutline.moon,
-  CoverBgFx.blur => SolarIconsOutline.waterdrop,
-  CoverBgFx.original => SolarIconsOutline.magicStick,
+  CoverBgFx.dim => Bi.moon,
+  CoverBgFx.blur => Bi.waterdrop,
+  CoverBgFx.original => Bi.magicStick,
 };
 
 /// Шторка «Эффект фона обложки» — устроена как шторка самого фона: варианты

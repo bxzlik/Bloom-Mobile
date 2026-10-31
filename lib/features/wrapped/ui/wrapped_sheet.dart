@@ -27,7 +27,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme/tokens.dart';
@@ -37,6 +36,7 @@ import '../../../core/l10n/source_label.dart';
 import '../../../core/providers/artist_lookup.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
@@ -1139,7 +1139,7 @@ class _SourcesSlide extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               top.source == MusicSource.local
-                  ? Icon(SolarIconsOutline.folder, size: 44, color: t.text)
+                  ? BloomIcon(Bi.folder, size: 44, color: t.text)
                   : PlatformLogo(top.source, size: 46),
               const SizedBox(height: 12),
               _Num(

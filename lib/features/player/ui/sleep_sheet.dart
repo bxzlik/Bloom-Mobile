@@ -11,11 +11,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/glass.dart';
 import '../sleep_timer_store.dart';
@@ -169,7 +169,7 @@ class _SleepSheet extends ConsumerWidget {
                       if (running) ...[
                         Expanded(
                           child: _WideButton(
-                            icon: SolarIconsOutline.alarmAdd,
+                            icon: Bi.alarmAdd,
                             text: l.playerSleepExtend,
                             onTap: ctrl.extend,
                           ),
@@ -178,7 +178,7 @@ class _SleepSheet extends ConsumerWidget {
                       ],
                       Expanded(
                         child: _WideButton(
-                          icon: SolarIconsOutline.alarmTurnOff,
+                          icon: Bi.alarmTurnOff,
                           text: l.playerSleepCancel,
                           onTap: ctrl.cancel,
                         ),
@@ -294,7 +294,7 @@ class _EndOfTrackCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(SolarIconsOutline.musicNote, size: 20, color: color),
+              BloomIcon(Bi.musicNote, size: 20, color: color),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -381,7 +381,7 @@ class _WideButton extends StatelessWidget {
     required this.onTap,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final String text;
   final VoidCallback onTap;
 
@@ -406,7 +406,7 @@ class _WideButton extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 18, color: t.text),
+                BloomIcon(icon, size: 18, color: t.text),
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(

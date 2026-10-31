@@ -8,6 +8,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 
 /// Строка настройки: название, под ним выбранное, справа — ЗНАЧОК ВЫБРАННОГО.
@@ -131,7 +132,7 @@ Future<void> pickOneSheet<T>({
   String? subtitle,
   required List<T> values,
   required T current,
-  required IconData Function(T) icon,
+  required BloomGlyph Function(T) icon,
   required String Function(T) label,
 
   /// Пояснение под названием варианта. `null` — вариантам хватает подписи.
@@ -185,7 +186,7 @@ class SheetOptionTile extends StatelessWidget {
     this.enabled = true,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final String label;
 
   /// Пояснение под названием. `null` — строка в одну строку, как у мини-плеера.
@@ -245,7 +246,7 @@ class SheetOptionTile extends StatelessWidget {
                           : Colors.white.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(t.radius * 0.6),
                     ),
-                    child: Icon(
+                    child: BloomIcon(
                       icon,
                       size: 20,
                       color: active ? t.accent : t.iconFg,
@@ -279,7 +280,7 @@ class SheetOptionTile extends StatelessWidget {
                   if (check)
                     _CheckBox(on: active)
                   else if (active)
-                    Icon(Icons.check, size: 20, color: t.accent),
+                    BloomIcon(Bi.check, size: 20, color: t.accent),
                 ],
               ),
             ),
@@ -308,7 +309,7 @@ class _CheckBox extends StatelessWidget {
         borderRadius: BorderRadius.circular(7),
         border: Border.all(color: on ? t.accent : t.ovlLine2, width: 1.5),
       ),
-      child: on ? Icon(Icons.check, size: 15, color: t.accentText) : null,
+      child: on ? BloomIcon(Bi.check, size: 15, color: t.accentText) : null,
     );
   }
 }

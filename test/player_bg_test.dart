@@ -19,6 +19,7 @@ import 'package:bloom/shared/ui/atoms.dart';
 import 'package:bloom/shared/ui/glass.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:bloom/shared/ui/bloom_icon.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloom/core/db/db.dart';
 import 'support/test_db.dart';
@@ -308,7 +309,7 @@ void main() {
             home: Scaffold(
               body: GlassGroup(
                 child: CircleIconButton(
-                  icon: Icons.close,
+                  icon: Bi.close,
                   background: const Color(0x11FFFFFF),
                   glass: glass,
                 ),

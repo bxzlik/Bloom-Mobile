@@ -9,11 +9,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
-import '../../../shared/ui/atoms.dart' show SvgIcon;
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../level.dart';
 
@@ -44,9 +43,7 @@ class LevelBadge extends ConsumerWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Настоящий Solar-SVG, как на ПК: глиф `shield` из шрифта пакета
-          // нарисован с перекрестьем, и цифра на нём не читается.
-          SvgIcon('assets/icons/shield-bold.svg', size: size, color: t.accent),
+          BloomIcon(Bi.shieldMinimalisticBold, size: size, color: t.accent),
           // Щит тяжелее сверху: число чуть выше середины.
           Transform.translate(
             offset: Offset(0, -size * 0.03),
@@ -172,26 +169,26 @@ class LevelSheet extends ConsumerWidget {
           ),
         ),
         _Source(
-          icon: SolarIconsOutline.headphonesRound,
+          icon: Bi.headphonesRound,
           title: l.levelPlays,
           sub: l.levelPlaysSub(kXpPerPlay),
           xp: fmt(lv.plays),
         ),
         _Source(
-          icon: SolarIconsOutline.calendar,
+          icon: Bi.calendar,
           title: l.levelDays,
           sub: l.levelDaysSub(kXpPerDay),
           xp: fmt(lv.days),
         ),
         _Source(
-          icon: SolarIconsOutline.medalStar,
+          icon: Bi.medalStar,
           title: l.levelAch,
           sub: l.levelAchSub(kTierXp[0], kTierXp[1], kTierXp[2]),
           xp: fmt(lv.ach),
         ),
         if (lv.banked > 0)
           _Source(
-            icon: SolarIconsOutline.chart,
+            icon: Bi.chart,
             title: l.levelBanked,
             sub: l.levelBankedSub,
             xp: fmt(lv.banked),
@@ -230,7 +227,7 @@ class _Source extends StatelessWidget {
     required this.xp,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final String title;
   final String sub;
   final String xp;
@@ -245,7 +242,7 @@ class _Source extends StatelessWidget {
         height: 56,
         child: Row(
           children: [
-            Icon(icon, size: 20, color: t.iconFg),
+            BloomIcon(icon, size: 20, color: t.iconFg),
             const SizedBox(width: 14),
             Expanded(
               child: Column(

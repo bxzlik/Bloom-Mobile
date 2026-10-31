@@ -29,13 +29,13 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/fonts.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/color_picker.dart';
@@ -112,7 +112,7 @@ class AppearanceScreen extends ConsumerWidget {
             // строка показывает значение, крутят его в шторке.
             if (settings.autoAccent || settings.autoTheme)
               _ValueRow(
-                icon: SolarIconsOutline.sun2,
+                icon: Bi.sun2,
                 title: context.l.apAutoAccentLevel,
                 value: '${(settings.autoAccentL * 100).round()} %',
                 onTap: () => _pickIntValue(
@@ -203,8 +203,8 @@ class AppearanceScreen extends ConsumerWidget {
                   for (final tab in settings.navBarTabs)
                     _navTabLabel(context.l, tab),
                 ].join(' · '),
-                trailing: Icon(
-                  SolarIconsOutline.altArrowRight,
+                trailing: BloomIcon(
+                  Bi.altArrowRight,
                   size: 20,
                   color: t.iconFgSb,
                 ),
@@ -215,8 +215,8 @@ class AppearanceScreen extends ConsumerWidget {
               child: _SettingsRow(
                 title: context.l.apNavMarkRow,
                 subtitle: _navIndicatorLabel(context.l, settings.navIndicator),
-                trailing: Icon(
-                  SolarIconsOutline.altArrowRight,
+                trailing: BloomIcon(
+                  Bi.altArrowRight,
                   size: 20,
                   color: t.iconFgSb,
                 ),
@@ -227,8 +227,8 @@ class AppearanceScreen extends ConsumerWidget {
               child: _SettingsRow(
                 title: context.l.apNavLabelsRow,
                 subtitle: _navLabelsLabel(context.l, settings.navLabels),
-                trailing: Icon(
-                  SolarIconsOutline.altArrowRight,
+                trailing: BloomIcon(
+                  Bi.altArrowRight,
                   size: 20,
                   color: t.iconFgSb,
                 ),
@@ -303,7 +303,7 @@ List<Widget> _coverAsBgRows(BuildContext context, WidgetRef ref) {
 
   return [
     _ValueRow(
-      icon: SolarIconsOutline.waterdrop,
+      icon: Bi.waterdrop,
       title: l.custBlur,
       value: '${fx.blur}px',
       onTap: () => _pickIntValue(
@@ -316,7 +316,7 @@ List<Widget> _coverAsBgRows(BuildContext context, WidgetRef ref) {
       ),
     ),
     _ValueRow(
-      icon: SolarIconsOutline.moon,
+      icon: Bi.moon,
       title: l.custDim,
       value: '${fx.dim}%',
       onTap: () => _pickIntValue(
@@ -403,7 +403,7 @@ List<Widget> _transparencyGroup(BuildContext context, WidgetRef ref) {
         ),
         if (tr.on) ...[
           _ValueRow(
-            icon: SolarIconsOutline.eye,
+            icon: Bi.eye,
             title: l.apTrLevel,
             value: '${tr.transparencyPercent}%',
             onTap: () => _pickIntValue(
@@ -416,7 +416,7 @@ List<Widget> _transparencyGroup(BuildContext context, WidgetRef ref) {
             ),
           ),
           _ValueRow(
-            icon: SolarIconsOutline.sun2,
+            icon: Bi.sun2,
             title: l.apTrBrightness,
             value: '${tr.glassStr}%',
             onTap: () => _pickIntValue(
@@ -429,7 +429,7 @@ List<Widget> _transparencyGroup(BuildContext context, WidgetRef ref) {
             ),
           ),
           _ValueRow(
-            icon: SolarIconsOutline.waterdrop,
+            icon: Bi.waterdrop,
             title: l.apTrBlur,
             value: '${tr.glassBlur}px',
             onTap: () => _pickIntValue(
@@ -507,7 +507,7 @@ class _ValueRow extends StatelessWidget {
     required this.onTap,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final String title;
   final String value;
   final VoidCallback onTap;
@@ -527,7 +527,7 @@ class _ValueRow extends StatelessWidget {
             color: Colors.white.withValues(alpha: 0.08),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, size: 20, color: t.text),
+          child: BloomIcon(icon, size: 20, color: t.text),
         ),
       ),
     );
@@ -921,7 +921,7 @@ class _NavTabRow extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (tab.fixed)
-                  Icon(SolarIconsOutline.lock, size: 20, color: t.iconFgSb)
+                  BloomIcon(Bi.lock, size: 20, color: t.iconFgSb)
                 else
                   BloomSwitch(value: on, onChanged: onChanged),
                 const SizedBox(width: 14),
@@ -934,8 +934,8 @@ class _NavTabRow extends StatelessWidget {
                       horizontal: 4,
                       vertical: 6,
                     ),
-                    child: Icon(
-                      SolarIconsOutline.hamburgerMenu,
+                    child: BloomIcon(
+                      Bi.hamburgerMenu,
                       size: 20,
                       color: t.iconFgSb,
                     ),
@@ -1233,11 +1233,7 @@ class _FontCard extends ConsumerWidget {
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(12, 2, 0, 8),
-                    child: Icon(
-                      SolarIconsOutline.addCircle,
-                      size: 22,
-                      color: t.muted,
-                    ),
+                    child: BloomIcon(Bi.addCircle, size: 22, color: t.muted),
                   ),
                 ),
               ),
@@ -1415,10 +1411,8 @@ class _FontTileState extends State<_FontTile> {
                     behavior: HitTestBehavior.opaque,
                     child: Padding(
                       padding: const EdgeInsets.all(4),
-                      child: Icon(
-                        _armed
-                            ? SolarIconsBold.trashBinMinimalistic
-                            : SolarIconsOutline.closeCircle,
+                      child: BloomIcon(
+                        _armed ? Bi.trashBinMinimalisticBold : Bi.closeCircle,
                         size: 14,
                         color: _armed ? t.danger : t.text2,
                       ),
@@ -1456,7 +1450,7 @@ Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
           ),
           // «+» — как кнопка `tp-add` рядом со строкой темы на ПК.
           _RoundButton(
-            icon: SolarIconsOutline.addCircle,
+            icon: Bi.addCircle,
             onTap: () => _createTheme(context, ref),
           ),
         ],
@@ -1704,7 +1698,7 @@ class _ThemeCreatorState extends State<_ThemeCreator> {
               Expanded(
                 child: TextButton.icon(
                   onPressed: _random,
-                  icon: Icon(SolarIconsOutline.magicStick, size: 16),
+                  icon: BloomIcon(Bi.magicStick, size: 16),
                   label: Text(
                     context.l.thRandom,
                     maxLines: 1,
@@ -1782,7 +1776,7 @@ class _ColorSlot extends StatelessWidget {
 class _RoundButton extends StatelessWidget {
   const _RoundButton({required this.icon, required this.onTap});
 
-  final IconData icon;
+  final BloomGlyph icon;
   final VoidCallback onTap;
 
   @override
@@ -1796,7 +1790,7 @@ class _RoundButton extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(9),
-          child: Icon(icon, size: 22, color: t.text),
+          child: BloomIcon(icon, size: 22, color: t.text),
         ),
       ),
     );
@@ -1893,7 +1887,7 @@ class _AutoThemeCard extends StatelessWidget {
               ),
             ),
             if (active)
-              Icon(SolarIconsBold.checkCircle, size: 18, color: preview.accent),
+              BloomIcon(Bi.checkCircleBold, size: 18, color: preview.accent),
           ],
         ),
       ),
@@ -1971,8 +1965,8 @@ class _PresetCardState extends State<_PresetCard> {
                 _ThemeDots(preset: preset, size: 24, ring: preview.bg),
                 const Spacer(),
                 if (active)
-                  Icon(
-                    SolarIconsBold.checkCircle,
+                  BloomIcon(
+                    Bi.checkCircleBold,
                     size: 18,
                     color: preview.accent,
                   ),
@@ -1985,10 +1979,8 @@ class _PresetCardState extends State<_PresetCard> {
                     behavior: HitTestBehavior.opaque,
                     child: Padding(
                       padding: const EdgeInsets.only(left: 8),
-                      child: Icon(
-                        _armed
-                            ? SolarIconsBold.trashBinMinimalistic
-                            : SolarIconsOutline.closeCircle,
+                      child: BloomIcon(
+                        _armed ? Bi.trashBinMinimalisticBold : Bi.closeCircle,
                         size: 18,
                         color: _armed ? preview.danger : preview.muted,
                       ),

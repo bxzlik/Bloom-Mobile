@@ -8,7 +8,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme/tokens.dart';
@@ -19,6 +18,7 @@ import '../../../features/customization/ui/app_background.dart';
 import '../../../features/player/play_source.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
@@ -151,14 +151,12 @@ class _SetScreenState extends ConsumerState<SetScreen> {
               onPlay: queue.isEmpty ? null : _play,
               trailing: [
                 GlassIconButton(
-                  icon: SolarIconsOutline.shuffle,
+                  icon: Bi.shuffle,
                   size: 46,
                   onTap: queue.isEmpty ? null : _shuffle,
                 ),
                 GlassIconButton(
-                  icon: saved
-                      ? SolarIconsBold.checkCircle
-                      : SolarIconsOutline.addCircle,
+                  icon: saved ? Bi.checkCircleBold : Bi.addCircle,
                   size: 46,
                   background: saved ? t.accent : null,
                   color: saved ? t.accentText : null,
@@ -318,19 +316,19 @@ class _SetScreenState extends ConsumerState<SetScreen> {
       groups: [
         [
           SheetAction(
-            icon: SolarIconsBold.play,
+            icon: Bi.playBold,
             label: context.l.commonPlay,
             onTap: _tracks.isEmpty ? null : _play,
           ),
           SheetAction(
-            icon: SolarIconsOutline.shuffle,
+            icon: Bi.shuffle,
             label: context.l.commonShuffle,
             onTap: _tracks.isEmpty ? null : _shuffle,
           ),
         ],
         [
           SheetAction(
-            icon: saved ? SolarIconsBold.checkCircle : SolarIconsOutline.import,
+            icon: saved ? Bi.checkCircleBold : Bi.import,
             label: saved
                 ? context.l.commonAlreadyInLibrary
                 : context.l.setSaveToLibrary,

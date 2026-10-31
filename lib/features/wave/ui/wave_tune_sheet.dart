@@ -13,13 +13,13 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/l10n/source_label.dart';
 import '../../../providers/yandex/ym_auth.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
@@ -199,7 +199,7 @@ class _DislikesRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         child: Row(
           children: [
-            Icon(SolarIconsOutline.dislike, size: 22, color: t.text),
+            BloomIcon(Bi.dislike, size: 22, color: t.text),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
@@ -214,7 +214,7 @@ class _DislikesRow extends StatelessWidget {
               ).textTheme.bodyMedium?.copyWith(color: t.muted),
             ),
             const SizedBox(width: 6),
-            Icon(SolarIconsOutline.altArrowRight, size: 18, color: t.muted),
+            BloomIcon(Bi.altArrowRight, size: 18, color: t.muted),
           ],
         ),
       ),

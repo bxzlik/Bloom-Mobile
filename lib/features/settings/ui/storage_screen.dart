@@ -13,11 +13,11 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/danger_confirm.dart';
@@ -148,7 +148,7 @@ class _CacheRow extends ConsumerWidget {
           children: [
             SizedBox(
               width: 24,
-              child: Icon(_icon(kind), size: 20, color: t.iconFg),
+              child: BloomIcon(_icon(kind), size: 20, color: t.iconFg),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -164,7 +164,7 @@ class _CacheRow extends ConsumerWidget {
                 ],
               ),
             ),
-            Icon(SolarIconsOutline.altArrowRight, size: 16, color: t.text2),
+            BloomIcon(Bi.altArrowRight, size: 16, color: t.text2),
           ],
         ),
       ),
@@ -194,8 +194,8 @@ class _ClearAllRow extends ConsumerWidget {
           children: [
             SizedBox(
               width: 24,
-              child: Icon(
-                SolarIconsOutline.trashBinMinimalistic,
+              child: BloomIcon(
+                Bi.trashBinMinimalistic,
                 size: 20,
                 color: empty ? t.muted : t.danger,
               ),
@@ -209,7 +209,7 @@ class _ClearAllRow extends ConsumerWidget {
                 ),
               ),
             ),
-            Icon(SolarIconsOutline.altArrowRight, size: 16, color: t.text2),
+            BloomIcon(Bi.altArrowRight, size: 16, color: t.text2),
           ],
         ),
       ),
@@ -239,7 +239,7 @@ class _ImportRow extends ConsumerWidget {
           children: [
             SizedBox(
               width: 24,
-              child: Icon(_importIcon(mode), size: 20, color: t.iconFg),
+              child: BloomIcon(_importIcon(mode), size: 20, color: t.iconFg),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -255,7 +255,7 @@ class _ImportRow extends ConsumerWidget {
                 ],
               ),
             ),
-            Icon(SolarIconsOutline.altArrowRight, size: 16, color: t.text2),
+            BloomIcon(Bi.altArrowRight, size: 16, color: t.text2),
           ],
         ),
       ),
@@ -306,7 +306,7 @@ Future<void> _openClearAllSheet(
   final yes = await showBloomSheetChild<bool>(
     context: context,
     child: _ClearBody(
-      icon: SolarIconsOutline.trashBinMinimalistic,
+      icon: Bi.trashBinMinimalistic,
       title: l.stClearAll,
       subtitle: stats == null ? l.stCounting : l.stFiles(stats.count),
       body: l.stClearAllBody,
@@ -437,7 +437,7 @@ class _ModeButton extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Icon(_importIcon(value), size: 22, color: color),
+              BloomIcon(_importIcon(value), size: 22, color: color),
               const SizedBox(height: 8),
               Text(
                 _importLabel(context.l, value),
@@ -468,7 +468,7 @@ class _ClearBody extends StatelessWidget {
     this.danger = false,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final String title;
   final String subtitle;
   final String body;
@@ -499,7 +499,7 @@ class _ClearBody extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 22, color: t.iconFg),
+                BloomIcon(icon, size: 22, color: t.iconFg),
                 const SizedBox(height: 6),
                 Text(
                   formatSize(l, bytes),
@@ -604,10 +604,10 @@ class _RingPainter extends CustomPainter {
       old.fill != fill;
 }
 
-IconData _icon(CacheKind kind) => switch (kind) {
-  CacheKind.offline => SolarIconsOutline.download,
-  CacheKind.lyrics => SolarIconsOutline.microphone3,
-  CacheKind.custom => SolarIconsOutline.palette,
+BloomGlyph _icon(CacheKind kind) => switch (kind) {
+  CacheKind.offline => Bi.download,
+  CacheKind.lyrics => Bi.microphone3,
+  CacheKind.custom => Bi.palette,
 };
 
 String _title(AppLocalizations l, CacheKind kind) => switch (kind) {
@@ -634,9 +634,8 @@ String _meta(AppLocalizations l, CacheStat stat) => stat.isEmpty
     ? l.stFiles(0)
     : '${l.stFiles(stat.count)} · ${formatSize(l, stat.bytes)}';
 
-IconData _importIcon(LocalImportMode mode) => mode == LocalImportMode.inPlace
-    ? SolarIconsOutline.folder
-    : SolarIconsOutline.download;
+BloomGlyph _importIcon(LocalImportMode mode) =>
+    mode == LocalImportMode.inPlace ? Bi.folder : Bi.download;
 
 String _importLabel(AppLocalizations l, LocalImportMode mode) =>
     mode == LocalImportMode.inPlace ? l.ltImportInPlace : l.ltImportCopy;

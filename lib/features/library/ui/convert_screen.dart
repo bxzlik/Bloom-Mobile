@@ -14,7 +14,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme/tokens.dart';
@@ -24,6 +23,7 @@ import '../../../core/l10n/source_label.dart';
 import '../../../core/providers/match.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
@@ -433,7 +433,7 @@ class _ItemRow extends StatelessWidget {
                     ),
                   ),
                   if (canChoose || item.status != ConvertStatus.same)
-                    Icon(Icons.chevron_right, size: 20, color: t.muted),
+                    BloomIcon(Bi.altArrowRight, size: 20, color: t.muted),
                 ],
               ),
             ),
@@ -484,7 +484,7 @@ class _ItemRow extends StatelessWidget {
             SheetPanel(
               children: [
                 _DecisionRow(
-                  icon: SolarIconsOutline.undoLeftRound,
+                  icon: Bi.undoLeftRound,
                   label: l.cvKeepOriginal,
                   picked: decision is KeepOriginal,
                   onTap: () {
@@ -494,7 +494,7 @@ class _ItemRow extends StatelessWidget {
                 ),
                 sheetDivider(),
                 _DecisionRow(
-                  icon: SolarIconsOutline.closeCircle,
+                  icon: Bi.closeCircle,
                   label: l.cvSkip,
                   picked: decision is SkipTrack,
                   danger: true,
@@ -584,7 +584,7 @@ class _DecisionRow extends StatelessWidget {
     this.danger = false,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final String label;
   final bool picked;
   final VoidCallback onTap;
@@ -601,7 +601,7 @@ class _DecisionRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         child: Row(
           children: [
-            Icon(icon, size: 22, color: color),
+            BloomIcon(icon, size: 22, color: color),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
@@ -612,7 +612,7 @@ class _DecisionRow extends StatelessWidget {
               ),
             ),
             if (picked)
-              Icon(SolarIconsBold.checkCircle, size: 18, color: t.accent),
+              BloomIcon(Bi.checkCircleBold, size: 18, color: t.accent),
           ],
         ),
       ),

@@ -12,11 +12,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
-import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/subpage_header.dart';
@@ -48,20 +47,14 @@ class SwipesScreen extends ConsumerWidget {
 }
 
 /// Значок самого места — центр плашки-превью.
-///
-/// У библиотеки он не из шрифта Solar, а тот же SVG, что у её вкладки в
-/// таб-баре (глиф `library` в шрифте залит сплошным ящиком, см. `shell.dart`).
 Widget _zoneIcon(BuildContext context, SwipeZone zone) {
   final color = context.bloom.muted;
-  if (zone == SwipeZone.library) {
-    return SvgIcon('assets/icons/library-linear.svg', size: 20, color: color);
-  }
-  return Icon(
+  return BloomIcon(
     switch (zone) {
-      SwipeZone.queue => SolarIconsOutline.playlistMinimalistic,
-      SwipeZone.mini => SolarIconsOutline.musicNote,
-      SwipeZone.player => SolarIconsOutline.play,
-      SwipeZone.library => SolarIconsOutline.playlistMinimalistic,
+      SwipeZone.queue => Bi.playlistMinimalistic,
+      SwipeZone.mini => Bi.musicNote,
+      SwipeZone.player => Bi.play,
+      SwipeZone.library => Bi.library,
     },
     size: 18,
     color: color,
@@ -100,11 +93,11 @@ class _Preview extends StatelessWidget {
 class _PreviewIcon extends StatelessWidget {
   const _PreviewIcon({required this.icon});
 
-  final IconData icon;
+  final BloomGlyph icon;
 
   @override
   Widget build(BuildContext context) =>
-      Icon(icon, size: 22, color: context.bloom.muted);
+      BloomIcon(icon, size: 22, color: context.bloom.muted);
 }
 
 /// Две строки места: что делает движение влево и что вправо.
@@ -148,10 +141,8 @@ class _SideRow extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
         child: Row(
           children: [
-            Icon(
-              isLeft
-                  ? SolarIconsOutline.arrowLeft
-                  : SolarIconsOutline.arrowRight,
+            BloomIcon(
+              isLeft ? Bi.arrowLeft : Bi.arrowRight,
               size: 20,
               color: t.muted,
             ),
@@ -174,7 +165,7 @@ class _SideRow extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 14),
-            Icon(swipeActionIcon(action), size: 20, color: t.muted),
+            BloomIcon(swipeActionIcon(action), size: 20, color: t.muted),
           ],
         ),
       ),
@@ -265,7 +256,7 @@ class _ActionTile extends StatelessWidget {
                   ),
                 ),
                 if (selected)
-                  Icon(SolarIconsBold.checkCircle, size: 20, color: t.accent),
+                  BloomIcon(Bi.checkCircleBold, size: 20, color: t.accent),
               ],
             ),
           ),
@@ -285,7 +276,7 @@ class _TileIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final icon = Icon(swipeActionIcon(action), size: 22, color: t.text);
+    final icon = BloomIcon(swipeActionIcon(action), size: 22, color: t.text);
     if (!selected) return SizedBox(width: 38, child: Center(child: icon));
     return Container(
       width: 38,

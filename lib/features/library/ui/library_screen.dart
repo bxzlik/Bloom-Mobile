@@ -25,13 +25,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/history_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
@@ -408,7 +408,7 @@ class _SystemTiles extends ConsumerWidget {
           _SystemTile(
             title: context.l.commonAllTracks,
             count: lib.inLib.length,
-            icon: SolarIconsOutline.musicNote,
+            icon: Bi.musicNote,
             color: t.sysAllTint.withValues(alpha: 1),
             onTap: () => context.go('/library/list/all'),
           ),
@@ -416,7 +416,7 @@ class _SystemTiles extends ConsumerWidget {
           _SystemTile(
             title: context.l.commonFavorites,
             count: lib.favs.length,
-            icon: SolarIconsBold.heart,
+            icon: Bi.heartBold,
             color: t.sysFavIco,
             onTap: () => context.go('/library/list/fav'),
           ),
@@ -426,7 +426,7 @@ class _SystemTiles extends ConsumerWidget {
             // С 3.0 лимита в 200 нет — счётчик снова что-то значит (на ПК
             // подпись «Истории» в сайдбаре вернули по той же причине).
             count: ref.watch(historyProvider).length,
-            icon: SolarIconsOutline.clockCircle,
+            icon: Bi.clockCircle,
             color: t.sysHistIco,
             onTap: () => context.go('/library/list/history'),
           ),
@@ -449,7 +449,7 @@ class _SystemTile extends StatelessWidget {
 
   /// Сколько треков в разделе; `null` — не показывать (см. «Историю»).
   final int? count;
-  final IconData icon;
+  final BloomGlyph icon;
 
   /// Сплошной цвет раздела. Значок и текст на нём — белые.
   final Color color;
@@ -491,7 +491,7 @@ class _SystemTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(icon, size: 28, color: Colors.white),
+                BloomIcon(icon, size: 28, color: Colors.white),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -585,7 +585,7 @@ class _Chips extends ConsumerWidget {
           // и без него круг растянулся бы в овал на всю высоту ряда.
           Center(
             child: CircleIconButton(
-              icon: SolarIconsOutline.addCircle,
+              icon: Bi.addCircle,
               size: _kLibChipHeight,
               iconSize: _kLibIcon + 2,
               background: fill,
@@ -601,7 +601,7 @@ class _Chips extends ConsumerWidget {
           const SizedBox(width: 8),
           Center(
             child: CircleIconButton(
-              icon: SolarIconsOutline.refresh,
+              icon: Bi.refresh,
               size: _kLibChipHeight,
               iconSize: _kLibIcon,
               tooltip: context.l.libAutoRefreshTooltip,
@@ -615,7 +615,7 @@ class _Chips extends ConsumerWidget {
           const SizedBox(width: 8),
           Center(
             child: CircleIconButton(
-              icon: SolarIconsOutline.sort,
+              icon: Bi.sort,
               size: _kLibChipHeight,
               iconSize: _kLibIcon,
               tooltip: context.l.commonSort,
@@ -656,7 +656,7 @@ Future<void> _showSortSheet(BuildContext context, WidgetRef ref) {
             label: sort.label(context.l),
             onTap: () => ref.read(libOrderProvider.notifier).setSort(sort),
             trailing: sort == active
-                ? Icon(SolarIconsBold.checkCircle, size: 18, color: t.accent)
+                ? BloomIcon(Bi.checkCircleBold, size: 18, color: t.accent)
                 : null,
           ),
       ],
@@ -687,7 +687,7 @@ Future<void> _showArtistMenu(
     groups: [
       [
         SheetAction(
-          icon: SolarIconsOutline.pin,
+          icon: Bi.pin,
           label: pinned ? context.l.commonUnpin : context.l.commonPin,
           onTap: () => ref
               .read(libraryProvider.notifier)
@@ -696,7 +696,7 @@ Future<void> _showArtistMenu(
       ],
       [
         SheetAction(
-          icon: SolarIconsBold.userCheckRounded,
+          icon: Bi.userCheckRoundedBold,
           label: context.l.commonUnfollow,
           danger: true,
           onTap: () {
@@ -823,7 +823,7 @@ class _SetTileState extends ConsumerState<_SetTile> {
             Row(
               children: [
                 if (widget.pinned) ...[
-                  Icon(SolarIconsBold.pin, size: 13, color: t.accent),
+                  BloomIcon(Bi.pinBold, size: 13, color: t.accent),
                   const SizedBox(width: 4),
                 ],
                 Expanded(
@@ -893,7 +893,7 @@ class _ArtistTileState extends ConsumerState<_ArtistTile> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (widget.pinned) ...[
-                  Icon(SolarIconsBold.pin, size: 13, color: t.accent),
+                  BloomIcon(Bi.pinBold, size: 13, color: t.accent),
                   const SizedBox(width: 4),
                 ],
                 Flexible(

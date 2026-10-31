@@ -9,13 +9,12 @@
 /// Папок в мобилке нет, поэтому видов два: плейлист и артист.
 library;
 
-import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../core/l10n/l10n.dart';
 import '../../core/store/json_store.dart' show jsonStoreProvider;
 import '../../core/store/library_store.dart' show UserPlaylist;
+import '../../shared/ui/bloom_icon.dart';
 
 enum LibSort { manual, nameAsc, nameDesc, type }
 
@@ -54,11 +53,11 @@ extension LibSortMeta on LibSort {
     LibSort.type => l.libSortType,
   };
 
-  IconData get icon => switch (this) {
-    LibSort.manual => SolarIconsOutline.reorder,
-    LibSort.nameAsc => SolarIconsOutline.sortFromTopToBottom,
-    LibSort.nameDesc => SolarIconsOutline.sortFromBottomToTop,
-    LibSort.type => SolarIconsOutline.library,
+  BloomGlyph get icon => switch (this) {
+    LibSort.manual => Bi.reorder,
+    LibSort.nameAsc => Bi.sortFromTopToBottom,
+    LibSort.nameDesc => Bi.sortFromBottomToTop,
+    LibSort.type => Bi.library,
   };
 
   /// Идентификатор для диска — те же строки, что в `localStorage` на ПК.

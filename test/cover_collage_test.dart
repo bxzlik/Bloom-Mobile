@@ -7,13 +7,15 @@ import 'package:bloom/app/theme/bloom_theme.dart';
 import 'package:bloom/app/theme/tokens.dart';
 import 'package:bloom/shared/ui/cover_collage.dart';
 import 'package:flutter/material.dart';
+import 'package:bloom/shared/ui/bloom_icon.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'support/glyphs.dart';
 
 /// Заглушка раздела — со значком, как в жизни: по нему и видно, сколько раз она
 /// нарисовалась.
-const Widget _fallback = Icon(Icons.history);
+const Widget _fallback = BloomIcon(Bi.history);
 
-Finder get _fallbacks => find.byIcon(Icons.history);
+Finder get _fallbacks => findGlyph(Bi.history);
 
 Future<void> _pump(WidgetTester tester, List<String?> covers) =>
     tester.pumpWidget(

@@ -14,13 +14,13 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../app/theme/tokens.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/store/cover_store.dart';
 import '../../features/player/player_controller.dart';
 import 'atoms.dart';
+import 'bloom_icon.dart';
 import 'bloom_mark.dart';
 import 'cover_hero.dart';
 import 'glass.dart';
@@ -89,12 +89,11 @@ class DetailHero extends StatelessWidget {
       bar: Row(
         children: [
           GlassIconButton(
-            icon: SolarIconsOutline.arrowLeft,
+            icon: Bi.arrowLeft,
             onTap: () => Navigator.of(context).maybePop(),
           ),
           const Spacer(),
-          if (onMenu != null)
-            GlassIconButton(icon: SolarIconsOutline.menuDots, onTap: onMenu),
+          if (onMenu != null) GlassIconButton(icon: Bi.menuDots, onTap: onMenu),
         ],
       ),
       body: Column(
@@ -223,7 +222,7 @@ class HeroPlayButton extends ConsumerWidget {
         ref.watch(playbackProvider.select((s) => s.sourceId == id));
 
     Widget pill({
-      required IconData icon,
+      required BloomGlyph icon,
       required String text,
       bool on = true,
     }) {
@@ -259,7 +258,7 @@ class HeroPlayButton extends ConsumerWidget {
                 key: ValueKey(text),
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(icon, size: 18, color: t.accentText),
+                  BloomIcon(icon, size: 18, color: t.accentText),
                   const SizedBox(width: 8),
                   Text(
                     text,
@@ -278,7 +277,7 @@ class HeroPlayButton extends ConsumerWidget {
     // Играет не этот список — обычная кнопка, подписки на плеер ей не нужно.
     if (!mine) {
       return pill(
-        icon: SolarIconsBold.play,
+        icon: Bi.playBold,
         text: label ?? context.l.commonPlay,
         on: onPlay != null,
       );
@@ -288,7 +287,7 @@ class HeroPlayButton extends ConsumerWidget {
     // и с гарнитуры до него не доходит.
     final playing = ref.watch(playingNowProvider);
     return pill(
-      icon: playing ? SolarIconsBold.pause : SolarIconsBold.play,
+      icon: playing ? Bi.pauseBold : Bi.playBold,
       text: playing ? context.l.commonPause : label ?? context.l.commonPlay,
     );
   }

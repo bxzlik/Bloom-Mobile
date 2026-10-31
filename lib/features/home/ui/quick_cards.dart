@@ -9,12 +9,12 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/history_store.dart';
 import '../../../core/store/library_store.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/glass.dart';
 import 'cover_fan.dart';
 
@@ -34,7 +34,7 @@ class QuickCards extends ConsumerWidget {
           Expanded(
             child: _QuickCard(
               covers: lib.favTracks.map((tr) => tr.cover),
-              icon: SolarIconsBold.heart,
+              icon: Bi.heartBold,
               tint: t.sysFavTint,
               iconColor: t.sysFavIco,
               title: context.l.commonFavorites,
@@ -48,7 +48,7 @@ class QuickCards extends ConsumerWidget {
               covers: history.map((item) => item.track.cover),
               // Значки — те же, что у плиток библиотеки: залитое сердце и
               // КОНТУРНЫЕ часы. Bold-часы здесь превращались в глухой кружок.
-              icon: SolarIconsOutline.clockCircle,
+              icon: Bi.clockCircle,
               tint: t.sysHistTint,
               iconColor: t.sysHistIco,
               title: context.l.commonHistory,
@@ -75,7 +75,7 @@ class _QuickCard extends StatelessWidget {
   });
 
   final Iterable<String?> covers;
-  final IconData icon;
+  final BloomGlyph icon;
 
   /// Заливка раздела — та же, что у плиток библиотеки. Видна только у
   /// раздела без обложек: на ней его значок.
@@ -136,7 +136,7 @@ class _QuickCard extends StatelessWidget {
                                 t.radius * 0.72,
                               ),
                             ),
-                            child: Icon(icon, size: 20, color: iconColor),
+                            child: BloomIcon(icon, size: 20, color: iconColor),
                           ),
                         ),
                       )

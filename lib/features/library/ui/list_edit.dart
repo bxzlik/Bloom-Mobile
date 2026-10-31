@@ -18,7 +18,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
@@ -27,6 +26,7 @@ import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../features/offline/offline_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/sticky_hero.dart';
@@ -521,7 +521,7 @@ class _EditHero extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   GlassIconButton(
-                    icon: SolarIconsOutline.gallery,
+                    icon: Bi.gallery,
                     size: 66,
                     iconSize: 28,
                     onTap: onCover,
@@ -529,7 +529,7 @@ class _EditHero extends StatelessWidget {
                   if (onCoverRemove case final remove?) ...[
                     const SizedBox(width: 14),
                     GlassIconButton(
-                      icon: SolarIconsOutline.trashBinMinimalistic,
+                      icon: Bi.trashBinMinimalistic,
                       size: 52,
                       iconSize: 23,
                       onTap: remove,
@@ -547,17 +547,9 @@ class _EditHero extends StatelessWidget {
       // это единственное, что показывает, чем кончится второй тап.
       bar: Row(
         children: [
-          _BarButton(
-            icon: Icons.close_rounded,
-            armed: cancelArmed,
-            onTap: onCancel,
-          ),
+          _BarButton(icon: Bi.close, armed: cancelArmed, onTap: onCancel),
           const Spacer(),
-          _BarButton(
-            icon: Icons.check_rounded,
-            armed: doneArmed,
-            onTap: onDone,
-          ),
+          _BarButton(icon: Bi.check, armed: doneArmed, onTap: onDone),
         ],
       ),
       body: Column(
@@ -583,11 +575,7 @@ class _EditHero extends StatelessWidget {
                   radius: 22,
                   child: const Padding(
                     padding: EdgeInsets.all(4),
-                    child: Icon(
-                      SolarIconsOutline.pen,
-                      size: 21,
-                      color: Colors.white,
-                    ),
+                    child: BloomIcon(Bi.pen, size: 21, color: Colors.white),
                   ),
                 ),
               ],
@@ -626,7 +614,7 @@ class _SourcesButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(SolarIconsOutline.link, size: 18, color: Colors.white),
+              const BloomIcon(Bi.link, size: 18, color: Colors.white),
               const SizedBox(width: 9),
               Text(
                 context.l.psTitle,
@@ -657,7 +645,11 @@ class _SourcesButton extends StatelessWidget {
                   ),
                 ),
               ],
-              const Icon(Icons.chevron_right, size: 20, color: Colors.white70),
+              const BloomIcon(
+                Bi.altArrowRight,
+                size: 20,
+                color: Colors.white70,
+              ),
             ],
           ),
         ),
@@ -674,7 +666,7 @@ class _BarButton extends StatelessWidget {
     required this.onTap,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final bool armed;
   final VoidCallback onTap;
 
@@ -851,9 +843,7 @@ class _Check extends StatelessWidget {
         border: Border.all(color: on ? t.accent : t.muted, width: 1.6),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: on
-          ? Icon(Icons.check_rounded, size: 15, color: t.accentText)
-          : null,
+      child: on ? BloomIcon(Bi.check, size: 15, color: t.accentText) : null,
     );
   }
 }
@@ -898,8 +888,8 @@ class _EditBar extends StatelessWidget {
         children: [
           _BarIcon(
             icon: allSelected
-                ? SolarIconsBold.checklistMinimalistic
-                : SolarIconsOutline.checklistMinimalistic,
+                ? Bi.checklistMinimalisticBold
+                : Bi.checklistMinimalistic,
             color: allSelected ? t.accent : null,
             onTap: onToggleAll,
           ),
@@ -923,16 +913,16 @@ class _EditBar extends StatelessWidget {
           ),
           const Spacer(),
           if (some) ...[
-            _BarIcon(icon: SolarIconsOutline.plus, onTap: onAdd),
+            _BarIcon(icon: Bi.add, onTap: onAdd),
             if (canFav)
               _BarIcon(
-                icon: favOn ? SolarIconsBold.heart : SolarIconsOutline.heart,
+                icon: favOn ? Bi.heartBold : Bi.heart,
                 color: favOn ? t.sysFavIco : null,
                 onTap: onFav,
               ),
             const SizedBox(width: 4),
             _BarIcon(
-              icon: SolarIconsOutline.trashBinMinimalistic,
+              icon: Bi.trashBinMinimalistic,
               color: t.danger,
               background: t.danger.withValues(alpha: 0.16),
               onTap: onRemove,
@@ -975,7 +965,7 @@ class _RenameBarState extends State<_RenameBar> {
     return _BarShell(
       child: Row(
         children: [
-          _BarIcon(icon: Icons.close_rounded, onTap: widget.onCancel),
+          _BarIcon(icon: Bi.close, onTap: widget.onCancel),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -993,7 +983,7 @@ class _RenameBarState extends State<_RenameBar> {
           ),
           const SizedBox(width: 8),
           _BarIcon(
-            icon: Icons.check_rounded,
+            icon: Bi.check,
             onTap: () => widget.onDone(_controller.text),
           ),
         ],
@@ -1036,7 +1026,7 @@ class _BarIcon extends StatelessWidget {
     this.background,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final VoidCallback? onTap;
   final Color? color;
 
@@ -1055,7 +1045,7 @@ class _BarIcon extends StatelessWidget {
         child: SizedBox(
           width: 44,
           height: 44,
-          child: Icon(
+          child: BloomIcon(
             icon,
             size: 23,
             color: onTap == null ? t.muted : (color ?? t.text),

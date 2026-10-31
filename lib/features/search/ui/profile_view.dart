@@ -13,7 +13,6 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme/tokens.dart';
@@ -24,6 +23,7 @@ import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../providers/soundcloud/sc_provider.dart' show scLikesOf;
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
@@ -357,8 +357,8 @@ class _HeroState extends ConsumerState<_Hero> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(
-                                  SolarIconsBold.play,
+                                BloomIcon(
+                                  Bi.playBold,
                                   size: 16,
                                   color: t.accentText,
                                 ),
@@ -378,8 +378,8 @@ class _HeroState extends ConsumerState<_Hero> {
                     const SizedBox(width: 10),
                     GlassIconButton(
                       icon: following
-                          ? SolarIconsBold.userCheckRounded
-                          : SolarIconsOutline.userPlusRounded,
+                          ? Bi.userCheckRoundedBold
+                          : Bi.userPlusRounded,
                       size: 46,
                       background: following ? t.accent : null,
                       color: following ? t.accentText : null,

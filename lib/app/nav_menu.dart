@@ -19,7 +19,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../core/entities/entities.dart';
 import '../core/l10n/l10n.dart';
@@ -32,6 +31,7 @@ import '../features/player/session_store.dart';
 import '../features/settings/transparency_store.dart';
 import '../features/wave/wave_actions.dart';
 import '../shared/ui/atoms.dart';
+import '../shared/ui/bloom_icon.dart';
 import '../shared/ui/glass.dart';
 import 'router.dart';
 import 'theme/tokens.dart';
@@ -315,13 +315,13 @@ class _HomeMenu extends ConsumerWidget {
     return _Panel(
       children: [
         _Row(
-          icon: SolarIconsBold.soundwave,
+          icon: Bi.soundwaveBold,
           label: l.waveTitle,
           onTap: () => startPersonalWave(host, hostRef),
         ),
         if (paused != null)
           _Row(
-            icon: SolarIconsBold.play,
+            icon: Bi.playBold,
             label: l.commonContinue,
             // Подпись — имя трека: иначе непонятно, что именно продолжится.
             sub: paused.name,
@@ -335,7 +335,7 @@ class _HomeMenu extends ConsumerWidget {
             },
           ),
         _Row(
-          icon: SolarIconsOutline.magnifier,
+          icon: Bi.magnifier,
           label: l.searchHint,
           onTap: () =>
               host.go(searchLocation(hostRef.read(settingsProvider).navTabs)),
@@ -363,7 +363,7 @@ class _LibraryMenu extends ConsumerWidget {
     return _Panel(
       children: [
         _Row(
-          icon: SolarIconsOutline.addCircle,
+          icon: Bi.addCircle,
           label: context.l.commonCreatePlaylist,
           onTap: () => showCreatePlaylistSheet(host, hostRef),
         ),
@@ -440,7 +440,7 @@ class _Row extends StatelessWidget {
     required this.onTap,
   }) : assert(icon != null || leading != null, 'пункту нужен значок');
 
-  final IconData? icon;
+  final BloomGlyph? icon;
   final Widget? leading;
   final String label;
   final String? sub;
@@ -467,7 +467,7 @@ class _Row extends StatelessWidget {
             SizedBox(
               width: _kCover,
               height: _kCover,
-              child: leading ?? Icon(icon, size: 22, color: t.text),
+              child: leading ?? BloomIcon(icon, size: 22, color: t.text),
             ),
             const SizedBox(width: 12),
             Expanded(

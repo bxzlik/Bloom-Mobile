@@ -14,6 +14,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../custom_store.dart';
 import '../media_store.dart';
@@ -224,7 +225,7 @@ class _CtxTile extends ConsumerWidget {
                     ),
                   ),
                 Center(
-                  child: Icon(
+                  child: BloomIcon(
                     customCtxIcon(ctx),
                     size: 22,
                     // Поверх картинки значок белый с тенью — читается на любом
@@ -379,7 +380,7 @@ class _PlusTool extends StatelessWidget {
         child: SizedBox(
           width: 44,
           height: 38,
-          child: Icon(Icons.add_rounded, size: 22, color: t.text2),
+          child: BloomIcon(Bi.add, size: 22, color: t.text2),
         ),
       ),
     );

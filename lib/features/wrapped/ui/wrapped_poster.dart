@@ -21,6 +21,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../periods.dart';
@@ -176,7 +177,11 @@ class _ShareButton extends StatelessWidget {
                 ),
               )
             else
-              const Icon(Icons.ios_share, size: 17, color: Color(0xFF111111)),
+              const BloomIcon(
+                Bi.downloadMinimalistic,
+                size: 17,
+                color: Color(0xFF111111),
+              ),
             const SizedBox(width: 9),
             Text(
               label,

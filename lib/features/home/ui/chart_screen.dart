@@ -9,12 +9,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../customization/ui/app_background.dart';
@@ -60,14 +60,14 @@ class ChartScreen extends ConsumerWidget {
                   // обложка, а фон страницы, и светлое стекло `GlassIconButton`
                   // читалось на нём парой заплаток рядом с шапкой.
                   CircleIconButton(
-                    icon: SolarIconsBold.play,
+                    icon: Bi.playBold,
                     onTap: tracks.isEmpty
                         ? null
                         : () => playback.playQueue(tracks, 0, source: source),
                   ),
                   const SizedBox(width: 8),
                   CircleIconButton(
-                    icon: SolarIconsOutline.shuffle,
+                    icon: Bi.shuffle,
                     onTap: tracks.isEmpty
                         ? null
                         : () => playback.playQueueShuffled(

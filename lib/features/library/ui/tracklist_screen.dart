@@ -16,7 +16,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
@@ -34,6 +33,7 @@ import '../../../features/player/player_controller.dart';
 import '../../../features/settings/data_transfer.dart';
 import '../../../features/settings/swipe_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
@@ -71,17 +71,17 @@ const double kHistoryHeaderHeight = 33;
 /// Порядок значений — порядок пунктов в шторке, как в десктопном `SortPage`:
 /// сперва сортировки, под чертой «По умолчанию» и «Скачанные».
 enum TrackSort {
-  name(SolarIconsOutline.sortByAlphabet),
-  artist(SolarIconsOutline.userRounded),
-  duration(SolarIconsOutline.sortByTime),
-  date(SolarIconsOutline.calendar),
-  plays(SolarIconsOutline.play),
-  album(SolarIconsOutline.album),
-  manual(SolarIconsOutline.playlistMinimalistic),
-  downloaded(SolarIconsOutline.diskette);
+  name(Bi.sortAlphabetically),
+  artist(Bi.userRounded),
+  duration(Bi.sortByTime),
+  date(Bi.calendar),
+  plays(Bi.play),
+  album(Bi.album),
+  manual(Bi.playlistMinimalistic),
+  downloaded(Bi.diskette);
 
   const TrackSort(this.icon);
-  final IconData icon;
+  final BloomGlyph icon;
 
   /// [desc] у «Скачанных» значит вывернутый отбор — «Не скачанные».
   String label(AppLocalizations l, {bool desc = false}) => switch (this) {
@@ -737,7 +737,7 @@ class _Hero extends ConsumerWidget {
           Row(
             children: [
               GlassIconButton(
-                icon: SolarIconsOutline.arrowLeft,
+                icon: Bi.arrowLeft,
                 onTap: () => context.go('/library'),
               ),
               const SizedBox(width: 8),
@@ -751,15 +751,13 @@ class _Hero extends ConsumerWidget {
                 const SizedBox(width: 8),
               ],
               GlassIconButton(
-                icon: searchOpen
-                    ? SolarIconsOutline.closeCircle
-                    : SolarIconsOutline.magnifier,
+                icon: searchOpen ? Bi.closeCircle : Bi.magnifier,
                 onTap: onToggleSearch,
               ),
               if (playlist != null) ...[
                 const SizedBox(width: 8),
                 GlassIconButton(
-                  icon: SolarIconsOutline.menuDots,
+                  icon: Bi.menuDots,
                   onTap: () =>
                       showPlaylistMenu(context, ref, playlist!, tracks),
                 ),
@@ -843,7 +841,7 @@ class _AddLocalButtonState extends ConsumerState<_AddLocalButton> {
   @override
   Widget build(BuildContext context) {
     if (!_busy) {
-      return GlassIconButton(icon: Icons.add_rounded, onTap: _add);
+      return GlassIconButton(icon: Bi.add, onTap: _add);
     }
     return GlassSurface(
       shape: BorderRadius.circular(kHeaderControl / 2),
@@ -884,7 +882,7 @@ class _SortButton extends StatelessWidget {
     // плейлист выглядит поломкой.
     final on = sort != TrackSort.manual;
     return GlassIconButton(
-      icon: SolarIconsOutline.tuning_2,
+      icon: Bi.tuning2,
       background: on ? t.accent : null,
       color: on ? t.accentText : null,
       onTap: () => showSortSheet(context, sort, desc, onSort),
@@ -911,14 +909,14 @@ Future<void> showSortSheet(
     onTap: () => onSort(s),
     trailing: s != sort
         ? null
-        : Icon(
+        : BloomIcon(
             switch (s) {
               _ when s.directional =>
-                desc ? SolarIconsBold.altArrowDown : SolarIconsBold.altArrowUp,
+                desc ? Bi.altArrowDownBold : Bi.altArrowUpBold,
               // Вывернутый отбор «Скачанных» — «Не скачанные»: галочка тут
               // читалась бы как «скачано», поэтому крестик.
-              TrackSort.downloaded when desc => SolarIconsBold.closeCircle,
-              _ => SolarIconsBold.checkCircle,
+              TrackSort.downloaded when desc => Bi.closeCircleBold,
+              _ => Bi.checkCircleBold,
             },
             size: 18,
             color: t.accent,
@@ -957,11 +955,7 @@ class _InlineSearch extends StatelessWidget {
           height: kHeaderControl,
           child: Row(
             children: [
-              const Icon(
-                SolarIconsOutline.magnifier,
-                size: 21,
-                color: Colors.white,
-              ),
+              const BloomIcon(Bi.magnifier, size: 21, color: Colors.white),
               const SizedBox(width: 10),
               Expanded(
                 child: TextField(
@@ -1026,7 +1020,7 @@ class _Actions extends ConsumerWidget {
         ),
         const SizedBox(width: 10),
         GlassIconButton(
-          icon: SolarIconsOutline.shuffle,
+          icon: Bi.shuffle,
           size: 46,
           onTap: enabled
               ? () => ref
@@ -1036,11 +1030,7 @@ class _Actions extends ConsumerWidget {
         ),
         if (listId != 'history') ...[
           const SizedBox(width: 10),
-          GlassIconButton(
-            icon: SolarIconsOutline.penNewSquare,
-            size: 46,
-            onTap: onEdit,
-          ),
+          GlassIconButton(icon: Bi.penNewSquare, size: 46, onTap: onEdit),
         ],
       ],
     );
@@ -1098,19 +1088,19 @@ Future<void> showPlaylistMenu(
     groups: [
       [
         SheetAction(
-          icon: SolarIconsBold.play,
+          icon: Bi.playBold,
           label: context.l.commonPlay,
           onTap: tracks.isEmpty ? null : play,
         ),
         SheetAction(
-          icon: SolarIconsOutline.shuffle,
+          icon: Bi.shuffle,
           label: context.l.commonShuffle,
           onTap: tracks.isEmpty ? null : () => play(shuffle: true),
         ),
         // Очередью список дополняют целиком — те же два пункта, что у трека,
         // только про весь плейлист (десктопные `lib.plmenu.toQueue`/`playNext`).
         SheetAction(
-          icon: SolarIconsOutline.playlistMinimalistic,
+          icon: Bi.playlistMinimalistic,
           label: context.l.tlToQueue,
           onTap: tracks.isEmpty
               ? null
@@ -1126,7 +1116,7 @@ Future<void> showPlaylistMenu(
                 },
         ),
         SheetAction(
-          icon: SolarIconsOutline.skipNext,
+          icon: Bi.skipNext,
           label: context.l.tlPlayNext,
           onTap: tracks.isEmpty
               ? null
@@ -1145,7 +1135,7 @@ Future<void> showPlaylistMenu(
         // ответит, что уже качает другой список.
         if (ref.read(offlineProvider).batch?.sourceId == playlist.id)
           SheetAction(
-            icon: SolarIconsOutline.closeCircle,
+            icon: Bi.closeCircle,
             label: context.l.tlStopSaving,
             onTap: () => ref.read(offlineProvider.notifier).cancelBatch(),
           )
@@ -1153,9 +1143,7 @@ Future<void> showPlaylistMenu(
         // треки; когда всё на устройстве — пункт становится «убрать».
         else if (offlineStatus.total > 0) ...[
           SheetAction(
-            icon: offlineStatus.all
-                ? SolarIconsBold.checkCircle
-                : SolarIconsOutline.diskette,
+            icon: offlineStatus.all ? Bi.checkCircleBold : Bi.diskette,
             label: offlineStatus.all
                 ? context.l.tlRemoveOffline
                 : context.l.tlListenOffline(
@@ -1173,7 +1161,7 @@ Future<void> showPlaylistMenu(
           ),
           if (canSaveFiles)
             SheetAction(
-              icon: SolarIconsOutline.downloadMinimalistic,
+              icon: Bi.downloadMinimalistic,
               label: context.l.tlDownloadFiles(offlineStatus.total),
               onTap: () =>
                   saveListFiles(messenger, l10n, ref, playlist.id, tracks),
@@ -1183,19 +1171,19 @@ Future<void> showPlaylistMenu(
         // и с плитки библиотеки, где шапки нет.
         if (playlist.sources.isNotEmpty)
           SheetAction(
-            icon: SolarIconsOutline.refresh,
+            icon: Bi.refresh,
             label: context.l.tlRefreshTracks,
             onTap: () => refreshOnePlaylist(messenger, l10n, ref, playlist),
           ),
         SheetAction(
-          icon: SolarIconsOutline.pin,
+          icon: Bi.pin,
           label: playlist.pinned ? context.l.commonUnpin : context.l.commonPin,
           onTap: () => ref
               .read(libraryProvider.notifier)
               .setPinned(libKeyOfPlaylist(playlist.id), !playlist.pinned),
         ),
         SheetAction(
-          icon: SolarIconsOutline.import,
+          icon: Bi.import,
           label: context.l.tlMergeWith,
           chevron: true,
           onTap: () => showMergeSheet(context, ref, playlist),
@@ -1204,7 +1192,7 @@ Future<void> showPlaylistMenu(
         // переносить нечего.
         if (tracks.isNotEmpty)
           SheetAction(
-            icon: SolarIconsOutline.arrowRight,
+            icon: Bi.arrowRight,
             label: context.l.tlConvert,
             chevron: true,
             onTap: () => showConvertSheet(context, ref, playlist, tracks),
@@ -1213,7 +1201,7 @@ Future<void> showPlaylistMenu(
         // сам плейлист, иначе режим включился бы там, где его не видно.
         if (tracks.isNotEmpty)
           SheetAction(
-            icon: SolarIconsOutline.copy,
+            icon: Bi.copy,
             label: context.l.tlFindDups,
             onTap: () {
               context.go('/library/list/${playlist.id}');
@@ -1223,7 +1211,7 @@ Future<void> showPlaylistMenu(
         // Файл переноса на один плейлист — тем же форматом, что «Настройки →
         // Система → Экспорт»: обратно его читает тот же импорт.
         SheetAction(
-          icon: SolarIconsOutline.export,
+          icon: Bi.export,
           label: context.l.tlExportPlaylist,
           onTap: () => _exportPlaylist(messenger, l10n, ref, playlist),
         ),
@@ -1232,7 +1220,7 @@ Future<void> showPlaylistMenu(
       ],
       [
         SheetAction(
-          icon: SolarIconsOutline.trashBinMinimalistic,
+          icon: Bi.trashBinMinimalistic,
           label: context.l.tlDeletePlaylist,
           danger: true,
           onTap: () {
@@ -1259,7 +1247,7 @@ Future<void> showPlaylistMenu(
         // прятать её за одинаковыми словами.
         if (tracks.isNotEmpty)
           SheetAction(
-            icon: SolarIconsOutline.trashBinTrash,
+            icon: Bi.trashBinTrash,
             label: context.l.tlDeletePlaylistWithTracks,
             danger: true,
             onTap: () {

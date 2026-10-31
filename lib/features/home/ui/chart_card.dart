@@ -9,11 +9,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/chart_trend.dart';
 import '../../../shared/ui/track_actions.dart';
 import '../../player/play_source.dart';
@@ -250,8 +250,8 @@ class TilePlayButton extends StatelessWidget {
             : Padding(
                 // Треугольник визуально левее центра — сдвигаем, как на ПК.
                 padding: const EdgeInsets.only(left: 2),
-                child: Icon(
-                  SolarIconsBold.play,
+                child: BloomIcon(
+                  Bi.playBold,
                   size: 14,
                   color: const Color(0xFF111111),
                 ),

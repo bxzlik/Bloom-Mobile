@@ -14,11 +14,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/sync/pc_client.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/danger_confirm.dart';
@@ -37,7 +37,7 @@ class PcSettingsScreen extends ConsumerWidget {
     final link = s.link;
 
     return PlatformPage(
-      icon: SolarIconsOutline.monitor,
+      icon: Bi.monitor,
       onBack: () => context.go('/settings'),
       status: _status(context, s),
       statusColor: switch (s.status) {
@@ -78,7 +78,7 @@ class PcSettingsScreen extends ConsumerWidget {
             onTap: () async {
               final yes = await confirmDanger(
                 context,
-                icon: SolarIconsOutline.monitor,
+                icon: Bi.monitor,
                 title: l.pcUnpairTitle,
                 body: l.pcUnpairBody(link.name),
                 button: l.pcUnpair,
@@ -309,10 +309,7 @@ class _PcScanScreenState extends ConsumerState<PcScanScreen> {
                   alignment: Alignment.centerLeft,
                   child: IconButton(
                     onPressed: () => context.go('/settings/pc'),
-                    icon: const Icon(
-                      SolarIconsOutline.altArrowLeft,
-                      color: Colors.white,
-                    ),
+                    icon: const BloomIcon(Bi.altArrowLeft, color: Colors.white),
                   ),
                 ),
                 const Spacer(),
@@ -456,7 +453,7 @@ class _CodeSheetState extends ConsumerState<_CodeSheet> {
         children: [
           Row(
             children: [
-              Icon(SolarIconsOutline.monitor, size: 20, color: t.iconFg),
+              BloomIcon(Bi.monitor, size: 20, color: t.iconFg),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(

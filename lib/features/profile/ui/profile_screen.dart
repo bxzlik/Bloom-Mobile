@@ -14,12 +14,12 @@ import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/glass.dart';
@@ -207,7 +207,7 @@ class _StatsCard extends ConsumerWidget {
 
     return ProfileEntryCard(
       value: '${s.totalPlays}',
-      icon: SolarIconsOutline.musicNote,
+      icon: Bi.musicNote,
       side: _time(context, s.listenSec),
       // Первую неделю месяца число чередуется с «Итогами месяца». Цель нажатия
       // при этом не меняется — сами итоги открывает кнопка внизу шторки.
@@ -241,7 +241,7 @@ class _AchCard extends ConsumerWidget {
 
     return ProfileEntryCard(
       value: '$done',
-      icon: SolarIconsOutline.medalStar,
+      icon: Bi.medalStar,
       side: '$total',
       tile: Container(
         width: 56,
@@ -250,7 +250,7 @@ class _AchCard extends ConsumerWidget {
           color: medal.withValues(alpha: done > 0 ? 0.16 : 0.06),
           borderRadius: BorderRadius.circular(t.radius * 0.6),
         ),
-        child: Icon(SolarIconsBold.medalStar, size: 28, color: medal),
+        child: BloomIcon(Bi.medalStarBold, size: 28, color: medal),
       ),
       onTap: () => showAchievementsSheet(context),
     );
@@ -322,12 +322,12 @@ class _Banner extends StatelessWidget {
                   // вкладке. Внутри главной она на месте.
                   if (Navigator.of(context).canPop())
                     GlassIconButton(
-                      icon: SolarIconsOutline.arrowLeft,
+                      icon: Bi.arrowLeft,
                       onTap: () => context.go('/home'),
                     ),
                   const Spacer(),
                   GlassIconButton(
-                    icon: SolarIconsOutline.pen,
+                    icon: Bi.pen,
                     onTap: () => context.go('${profileBase(context)}/edit'),
                   ),
                 ],
@@ -367,7 +367,7 @@ class _Since extends ConsumerWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(SolarIconsOutline.calendar, size: 15, color: t.muted),
+        BloomIcon(Bi.calendar, size: 15, color: t.muted),
         const SizedBox(width: 7),
         Text(
           context.l.profileSince(date),

@@ -6,11 +6,11 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/store/cover_store.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/cover_collage.dart';
 
@@ -67,16 +67,16 @@ class ListHeroBackground extends StatelessWidget {
       );
     }
 
-    final (Color tint, Color color, IconData icon) = switch (listId) {
-      'fav' => (t.sysFavTint, t.sysFavIco, SolarIconsBold.heart),
-      'history' => (t.sysHistTint, t.sysHistIco, SolarIconsOutline.clockCircle),
-      _ => (t.sysAllTint, t.sysAllIco, SolarIconsOutline.musicNote),
+    final (Color tint, Color color, BloomGlyph icon) = switch (listId) {
+      'fav' => (t.sysFavTint, t.sysFavIco, Bi.heartBold),
+      'history' => (t.sysHistTint, t.sysHistIco, Bi.clockCircle),
+      _ => (t.sysAllTint, t.sysAllIco, Bi.musicNote),
     };
     return ColoredBox(
       // Тинт раздела мешаем с поверхностью темы: как плёнка он показывал бы
       // сквозь шапку картинку-фон, а шапка обязана быть своего цвета.
       color: Color.alphaBlend(tint, t.blockColor),
-      child: Center(child: Icon(icon, size: 64, color: color)),
+      child: Center(child: BloomIcon(icon, size: 64, color: color)),
     );
   }
 }

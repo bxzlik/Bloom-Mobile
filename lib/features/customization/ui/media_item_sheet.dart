@@ -16,10 +16,10 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../custom_store.dart';
 import '../media_store.dart';
@@ -70,7 +70,7 @@ class _MediaItemBody extends ConsumerWidget {
                 icon: customCtxIcon(ctx),
                 label: _ctxLabel(context, ctx),
                 trailing: targets.of(ctx) == item.id
-                    ? Icon(Icons.check, size: 20, color: context.bloom.text)
+                    ? BloomIcon(Bi.check, size: 20, color: context.bloom.text)
                     : null,
                 onTap: () => ref
                     .read(customProvider.notifier)
@@ -89,8 +89,8 @@ class _MediaItemBody extends ConsumerWidget {
                 if (m != CoverMode.values.first) const SizedBox(height: 8),
                 _ModeRow(
                   icon: switch (m) {
-                    CoverMode.always => SolarIconsOutline.infinity,
-                    CoverMode.fallback => SolarIconsOutline.shieldCheck,
+                    CoverMode.always => Bi.infinite,
+                    CoverMode.fallback => Bi.shieldCheck,
                   },
                   label: switch (m) {
                     CoverMode.always => context.l.custCoverModeAlways,
@@ -171,7 +171,7 @@ class _ModeRow extends StatelessWidget {
     required this.onTap,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final String label;
   final bool on;
   final VoidCallback onTap;
@@ -194,7 +194,7 @@ class _ModeRow extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Row(
                 children: [
-                  Icon(icon, size: 22, color: color),
+                  BloomIcon(icon, size: 22, color: color),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Text(
@@ -206,7 +206,7 @@ class _ModeRow extends StatelessWidget {
                       ).textTheme.titleMedium?.copyWith(color: color),
                     ),
                   ),
-                  if (on) Icon(Icons.check, size: 20, color: t.text),
+                  if (on) BloomIcon(Bi.check, size: 20, color: t.text),
                 ],
               ),
             ),

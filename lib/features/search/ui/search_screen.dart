@@ -13,7 +13,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme/tokens.dart';
@@ -26,6 +25,7 @@ import '../../../features/detail/detail_nav.dart';
 import '../../../features/player/play_source.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/glass.dart';
@@ -60,11 +60,11 @@ SearchResults _resolvedToResults(ResolvedUrl resolved) => switch (resolved) {
 };
 
 enum SearchFilter {
-  all(SolarIconsOutline.widget_4),
-  tracks(SolarIconsOutline.musicNote),
-  playlists(SolarIconsOutline.playlistMinimalistic),
-  albums(SolarIconsOutline.vinyl),
-  artists(SolarIconsOutline.user);
+  all(Bi.widget4),
+  tracks(Bi.musicNote),
+  playlists(Bi.playlistMinimalistic),
+  albums(Bi.vinyl),
+  artists(Bi.user);
 
   const SearchFilter(this.icon);
 
@@ -76,7 +76,7 @@ enum SearchFilter {
     SearchFilter.artists => l.commonArtists,
   };
 
-  final IconData icon;
+  final BloomGlyph icon;
 }
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -202,7 +202,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 // страницей главной — стрелка на месте.
                 if (Navigator.of(context).canPop()) ...[
                   CircleIconButton(
-                    icon: SolarIconsOutline.arrowLeft,
+                    icon: Bi.arrowLeft,
                     onTap: () => Navigator.of(context).maybePop(),
                   ),
                   const SizedBox(width: 10),
@@ -311,7 +311,7 @@ class _SearchField extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
-            Icon(SolarIconsOutline.magnifier, size: 21, color: t.muted),
+            BloomIcon(Bi.magnifier, size: 21, color: t.muted),
             const SizedBox(width: 10),
             Expanded(
               child: TextField(
@@ -343,8 +343,8 @@ class _SearchField extends StatelessWidget {
                   ? const SizedBox.shrink()
                   : GestureDetector(
                       onTap: onClear,
-                      child: Icon(
-                        SolarIconsOutline.closeCircle,
+                      child: BloomIcon(
+                        Bi.closeCircle,
                         size: 18,
                         color: t.muted,
                       ),
@@ -589,7 +589,7 @@ Future<void> _removeRecent(
     groups: [
       [
         SheetAction(
-          icon: SolarIconsOutline.closeCircle,
+          icon: Bi.closeCircle,
           label: context.l.searchRemoveRecent,
           danger: true,
           onTap: () => ref.read(recentItemsProvider.notifier).remove(item),
@@ -622,7 +622,7 @@ class _RecentRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Row(
           children: [
-            Icon(SolarIconsOutline.clockCircle, size: 20, color: t.muted),
+            BloomIcon(Bi.clockCircle, size: 20, color: t.muted),
             const SizedBox(width: 12),
             Expanded(
               child: Padding(
@@ -643,11 +643,7 @@ class _RecentRow extends StatelessWidget {
               onTap: onRemove,
               child: Padding(
                 padding: const EdgeInsets.all(8),
-                child: Icon(
-                  SolarIconsOutline.closeCircle,
-                  size: 18,
-                  color: t.muted,
-                ),
+                child: BloomIcon(Bi.closeCircle, size: 18, color: t.muted),
               ),
             ),
           ],
@@ -684,7 +680,7 @@ class _PlatformButton extends ConsumerWidget {
           height: kHeaderControl,
           child: Center(
             child: provider == null
-                ? Icon(SolarIconsOutline.widget_4, size: 23, color: t.iconFg)
+                ? BloomIcon(Bi.widget4, size: 23, color: t.iconFg)
                 : PlatformLogo(provider.source, size: 23),
           ),
         ),
@@ -716,7 +712,7 @@ Future<void> _pickSource(
             children: [
               _SourceRow(
                 label: context.l.searchSourceAll,
-                icon: SolarIconsOutline.widget_4,
+                icon: Bi.widget4,
                 active: activeId == kAllProviders,
                 onTap: () => Navigator.of(context).pop(kAllProviders),
               ),
@@ -753,7 +749,7 @@ class _SourceRow extends StatelessWidget {
   final bool active;
   final VoidCallback onTap;
   final MusicSource? source;
-  final IconData? icon;
+  final BloomGlyph? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -782,7 +778,7 @@ class _SourceRow extends StatelessWidget {
                   child: Center(
                     child: source != null
                         ? PlatformLogo(source!, size: 28)
-                        : Icon(icon, size: 24, color: t.iconFg),
+                        : BloomIcon(icon, size: 24, color: t.iconFg),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -793,7 +789,7 @@ class _SourceRow extends StatelessWidget {
                   ),
                 ),
                 if (active)
-                  Icon(SolarIconsBold.checkCircle, size: 22, color: t.accent),
+                  BloomIcon(Bi.checkCircleBold, size: 22, color: t.accent),
               ],
             ),
           ),
@@ -857,7 +853,7 @@ class _Chip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              Icon(filter.icon, size: 18, color: fg),
+              BloomIcon(filter.icon, size: 18, color: fg),
               const SizedBox(width: 8),
               Text(
                 filter.label(context.l),

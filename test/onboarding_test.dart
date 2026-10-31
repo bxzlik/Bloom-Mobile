@@ -19,9 +19,10 @@ import 'package:bloom/features/profile/profile_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'support/glyphs.dart';
 import 'package:bloom/core/db/db.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
+import 'package:bloom/shared/ui/bloom_icon.dart';
 
 ProviderContainer _container([JsonStore? store]) {
   final c = ProviderContainer(
@@ -175,7 +176,7 @@ void main() {
 
       expect(find.text('Расскажи о себе'), findsOneWidget);
 
-      await tester.tap(find.byIcon(SolarIconsOutline.altArrowLeft));
+      await tester.tap(findGlyph(Bi.altArrowLeft));
       await _settle(tester);
       expect(find.text('Bloom'), findsOneWidget);
     });

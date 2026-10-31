@@ -13,12 +13,12 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../merge.dart';
@@ -218,14 +218,14 @@ class _MergeBodyState extends ConsumerState<_MergeBody> {
         SheetPanel(
           children: [
             _SwitchRow(
-              icon: SolarIconsOutline.copy,
+              icon: Bi.copy,
               label: context.l.mgDedup,
               value: _dedup,
               onChanged: (v) => setState(() => _dedup = v),
             ),
             sheetDivider(),
             _SwitchRow(
-              icon: SolarIconsOutline.trashBinMinimalistic,
+              icon: Bi.trashBinMinimalistic,
               label: context.l.mgDeleteSources,
               value: _deleteSources,
               danger: true,
@@ -317,7 +317,7 @@ class _SwitchRow extends StatelessWidget {
     this.danger = false,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final String label;
   final bool value;
   final ValueChanged<bool> onChanged;
@@ -336,7 +336,7 @@ class _SwitchRow extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 6, 12, 6),
         child: Row(
           children: [
-            Icon(icon, size: 22, color: color),
+            BloomIcon(icon, size: 22, color: color),
             const SizedBox(width: 16),
             Expanded(
               child: Text(

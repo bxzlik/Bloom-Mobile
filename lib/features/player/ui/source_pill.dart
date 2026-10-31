@@ -18,13 +18,13 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/marquee_text.dart';
 import '../../detail/detail_nav.dart';
 import '../play_source.dart';
@@ -163,7 +163,7 @@ class SourcePill extends ConsumerWidget {
                     // Цветом в имя источника, а не акцентом: значок стоит
                     // прямо за именем и читается его частью — акцент рядом
                     // выдёргивал на себя больше внимания, чем сам источник.
-                    Icon(SolarIconsOutline.shuffle, size: 14, color: t.text),
+                    BloomIcon(Bi.shuffle, size: 14, color: t.text),
                   ],
                   if (count > 0) ...[
                     // Волосяной разделитель перед счётчиком — порт того же
@@ -267,32 +267,20 @@ class _SourceIcon extends ConsumerWidget {
 
     switch (source) {
       case null:
-        return _tint(t, radius, t.ovlBg, t.muted, SolarIconsBold.musicNote);
+        return _tint(t, radius, t.ovlBg, t.muted, Bi.musicNoteBold);
       case LibSource(:final listId):
         switch (listId) {
           case 'all':
-            return _tint(
-              t,
-              radius,
-              t.sysAllTint,
-              t.sysAllIco,
-              SolarIconsOutline.musicNote,
-            );
+            return _tint(t, radius, t.sysAllTint, t.sysAllIco, Bi.musicNote);
           case 'fav':
-            return _tint(
-              t,
-              radius,
-              t.sysFavTint,
-              t.sysFavIco,
-              SolarIconsBold.heart,
-            );
+            return _tint(t, radius, t.sysFavTint, t.sysFavIco, Bi.heartBold);
           case 'history':
             return _tint(
               t,
               radius,
               t.sysHistTint,
               t.sysHistIco,
-              SolarIconsOutline.clockCircle,
+              Bi.clockCircle,
             );
         }
         // Плейлист: своя обложка → коллаж из первых треков, как на его плитке.
@@ -309,7 +297,7 @@ class _SourceIcon extends ConsumerWidget {
       case WaveSource():
         // Волна — не список, обложки у неё нет: значок берёт акцент темы, как
         // и её карточка на главной.
-        return _tint(t, radius, t.ovlBg, t.accent, SolarIconsBold.playStream);
+        return _tint(t, radius, t.ovlBg, t.accent, Bi.playStreamBold);
       case SetSource(:final set):
         return Cover(url: set.cover, size: _iconSize, radius: radius);
       case ArtistSource(:final artist):
@@ -324,28 +312,28 @@ class _SourceIcon extends ConsumerWidget {
             radius,
             t.ovlBg,
             t.text2,
-            SolarIconsOutline.magnifier,
+            Bi.magnifier,
           ),
           PlainSourceIcon.clock => _tint(
             t,
             radius,
             t.sysHistTint,
             t.sysHistIco,
-            SolarIconsOutline.clockCircle,
+            Bi.clockCircle,
           ),
           PlainSourceIcon.chart => _tint(
             t,
             radius,
             t.sysAllTint,
             t.sysAllIco,
-            SolarIconsOutline.chart_2,
+            Bi.chart2,
           ),
           PlainSourceIcon.note => _tint(
             t,
             radius,
             t.ovlBg,
             t.muted,
-            SolarIconsBold.musicNote,
+            Bi.musicNoteBold,
           ),
         };
     }
@@ -356,7 +344,7 @@ class _SourceIcon extends ConsumerWidget {
     double radius,
     Color tint,
     Color color,
-    IconData icon,
+    BloomGlyph icon,
   ) => Container(
     width: _iconSize,
     height: _iconSize,
@@ -364,6 +352,6 @@ class _SourceIcon extends ConsumerWidget {
       color: tint,
       borderRadius: BorderRadius.circular(radius),
     ),
-    child: Icon(icon, size: _iconSize * 0.54, color: color),
+    child: BloomIcon(icon, size: _iconSize * 0.54, color: color),
   );
 }

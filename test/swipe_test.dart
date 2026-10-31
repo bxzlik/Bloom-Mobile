@@ -11,6 +11,7 @@ import 'package:bloom/features/settings/swipe_store.dart';
 import 'package:bloom/shared/ui/swipe_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:bloom/shared/ui/bloom_icon.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloom/core/db/db.dart';
 import 'support/test_db.dart';
@@ -209,7 +210,10 @@ void main() {
       await _pumpRow(
         tester,
         log,
-        right: SwipePanel(icon: Icons.delete, onFire: () => log.add('fire')),
+        right: SwipePanel(
+          icon: Bi.trashBinTrash,
+          onFire: () => log.add('fire'),
+        ),
       );
 
       await tester.drag(find.byKey(_rowKey), const Offset(-40, 0));
@@ -224,7 +228,10 @@ void main() {
       await _pumpRow(
         tester,
         log,
-        right: SwipePanel(icon: Icons.delete, onFire: () => log.add('fire')),
+        right: SwipePanel(
+          icon: Bi.trashBinTrash,
+          onFire: () => log.add('fire'),
+        ),
       );
 
       await tester.drag(
@@ -243,7 +250,7 @@ void main() {
       await _pumpRow(
         tester,
         log,
-        left: SwipePanel(icon: Icons.add, onFire: () => log.add('queue')),
+        left: SwipePanel(icon: Bi.add, onFire: () => log.add('queue')),
       );
 
       await tester.drag(find.byKey(_rowKey), const Offset(_rowWidth * 0.5, 0));
@@ -258,7 +265,10 @@ void main() {
       await _pumpRow(
         tester,
         log,
-        right: SwipePanel(icon: Icons.delete, onFire: () => log.add('fire')),
+        right: SwipePanel(
+          icon: Bi.trashBinTrash,
+          onFire: () => log.add('fire'),
+        ),
       );
 
       final gesture = await tester.startGesture(
@@ -282,7 +292,7 @@ void main() {
         tester,
         log,
         right: SwipePanel(
-          icon: Icons.delete,
+          icon: Bi.trashBinTrash,
           danger: true,
           onFire: () => log.add('fire'),
         ),

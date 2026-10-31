@@ -21,6 +21,7 @@ import '../../core/store/cover_store.dart';
 import '../../features/settings/transparency_store.dart';
 import '../util/format.dart';
 import 'atoms.dart';
+import 'bloom_icon.dart';
 import 'glass.dart';
 
 /// Пункт шторки.
@@ -34,7 +35,7 @@ class SheetAction {
     this.trailing,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final String label;
 
   /// Шторка закрывается ДО вызова: почти каждый пункт открывает диалог или
@@ -601,7 +602,7 @@ class _SheetTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(action.icon, size: 22, color: color),
+            BloomIcon(action.icon, size: 22, color: color),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
@@ -615,7 +616,7 @@ class _SheetTile extends StatelessWidget {
             ),
             ?action.trailing,
             if (action.chevron)
-              Icon(Icons.chevron_right, size: 20, color: t.muted),
+              BloomIcon(Bi.altArrowRight, size: 20, color: t.muted),
           ],
         ),
       ),
@@ -893,7 +894,7 @@ class _ConfirmButton extends StatelessWidget {
                     ),
                   ),
                 )
-              : Icon(Icons.check_rounded, size: 24, color: t.accentText),
+              : BloomIcon(Bi.check, size: 24, color: t.accentText),
         ),
       ),
     );

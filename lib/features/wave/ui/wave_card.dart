@@ -14,11 +14,11 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../wave_actions.dart';
 import '../wave_controller.dart';
 import '../wave_faces.dart';
@@ -196,8 +196,8 @@ class _PlayButton extends StatelessWidget {
                     color: t.accentText,
                   ),
                 )
-              : Icon(
-                  SolarIconsBold.play,
+              : BloomIcon(
+                  Bi.playBold,
                   size: diameter * 0.36,
                   color: t.accentText,
                 ),

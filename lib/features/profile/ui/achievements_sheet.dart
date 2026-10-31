@@ -14,10 +14,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../achievements.dart';
 import '../stats.dart';
@@ -50,7 +50,7 @@ class AchievementsSheet extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
           child: Row(
             children: [
-              Icon(SolarIconsOutline.medalStar, size: 16, color: t.iconFg),
+              BloomIcon(Bi.medalStar, size: 16, color: t.iconFg),
               const SizedBox(width: 8),
               Text(context.l.profileAchievements, style: theme.titleSmall),
               const Spacer(),
@@ -108,7 +108,7 @@ class _AchCard extends StatelessWidget {
                   color: medal.withValues(alpha: a.unlocked ? 0.16 : 0.06),
                   borderRadius: BorderRadius.circular(t.radius * 0.7),
                 ),
-                child: Icon(
+                child: BloomIcon(
                   a.def.icon,
                   size: 22,
                   color: a.unlocked ? medal : t.muted,

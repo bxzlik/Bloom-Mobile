@@ -11,7 +11,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme/tokens.dart';
@@ -24,6 +23,7 @@ import '../../../features/player/play_source.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../features/wave/wave_actions.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
@@ -198,7 +198,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
               onPlay: queue.isEmpty ? null : _play,
               trailing: [
                 GlassIconButton(
-                  icon: SolarIconsOutline.shuffle,
+                  icon: Bi.shuffle,
                   size: 46,
                   onTap: queue.isEmpty ? null : _shuffle,
                 ),
@@ -374,12 +374,12 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
       groups: [
         [
           SheetAction(
-            icon: SolarIconsBold.play,
+            icon: Bi.playBold,
             label: context.l.commonPlay,
             onTap: queue.isEmpty ? null : _play,
           ),
           SheetAction(
-            icon: SolarIconsOutline.shuffle,
+            icon: Bi.shuffle,
             label: context.l.commonShuffle,
             onTap: queue.isEmpty ? null : _shuffle,
           ),
@@ -387,7 +387,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
           // по тем трекам, что страница уже загрузила.
           if (canStartWaveFromArtist(ref, artist, _waveSeeds))
             SheetAction(
-              icon: SolarIconsOutline.playStream,
+              icon: Bi.playStream,
               label: context.l.waveFromArtist,
               onTap: () => startWaveFromArtist(
                 context,
@@ -399,9 +399,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         ],
         [
           SheetAction(
-            icon: following
-                ? SolarIconsBold.userCheckRounded
-                : SolarIconsOutline.userPlusRounded,
+            icon: following ? Bi.userCheckRoundedBold : Bi.userPlusRounded,
             label: following
                 ? context.l.commonUnfollow
                 : context.l.commonFollow,
@@ -417,7 +415,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
             },
           ),
           SheetAction(
-            icon: SolarIconsOutline.import,
+            icon: Bi.import,
             label: context.l.artistTracksToNewPlaylist,
             onTap: forImport.isEmpty
                 ? null
@@ -461,9 +459,7 @@ class _FollowButton extends ConsumerWidget {
     final t = context.bloom;
     final following = ref.watch(libraryProvider).isFollowing(artist.id);
     return GlassIconButton(
-      icon: following
-          ? SolarIconsBold.userCheckRounded
-          : SolarIconsOutline.userPlusRounded,
+      icon: following ? Bi.userCheckRoundedBold : Bi.userPlusRounded,
       size: 46,
       background: following ? t.accent : null,
       color: following ? t.accentText : null,

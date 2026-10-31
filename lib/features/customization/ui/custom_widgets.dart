@@ -6,18 +6,18 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../custom_store.dart';
 
 /// Значок контекста — один на плитки страницы и строки шторки картинки.
-IconData customCtxIcon(CustomCtx ctx) => switch (ctx) {
-  CustomCtx.bg => SolarIconsOutline.smartphone,
-  CustomCtx.cover => SolarIconsOutline.vinyl,
-  CustomCtx.slider => SolarIconsOutline.tuning,
+BloomGlyph customCtxIcon(CustomCtx ctx) => switch (ctx) {
+  CustomCtx.bg => Bi.smartphone,
+  CustomCtx.cover => Bi.vinyl,
+  CustomCtx.slider => Bi.tuning,
 };
 
 /// Страница раздела: шапка сверху, содержимое под ней.
@@ -136,7 +136,7 @@ class SheetAddForm extends StatelessWidget {
   final int? maxLength;
 
   /// Пункт под полем.
-  final IconData icon;
+  final BloomGlyph icon;
   final String label;
 
   @override
@@ -153,7 +153,7 @@ class SheetAddForm extends StatelessWidget {
 class SheetPickRow extends StatelessWidget {
   const SheetPickRow({super.key, required this.icon, required this.label});
 
-  final IconData icon;
+  final BloomGlyph icon;
   final String label;
 
   @override
@@ -168,7 +168,7 @@ class SheetPickRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
             child: Row(
               children: [
-                Icon(icon, size: 22, color: t.text),
+                BloomIcon(icon, size: 22, color: t.text),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(

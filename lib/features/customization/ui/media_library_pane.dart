@@ -10,12 +10,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../custom_store.dart';
@@ -55,7 +55,7 @@ Future<void> showAddMediaSheet(BuildContext context, WidgetRef ref) async {
     context: context,
     child: SheetAddForm(
       hint: 'https://example.com/image.gif',
-      icon: SolarIconsOutline.gallery,
+      icon: Bi.gallery,
       label: l10n.custAttachPhoto,
     ),
   );
@@ -99,11 +99,7 @@ class _MediaCard extends ConsumerWidget {
                   // Битая ссылка не должна ломать сетку — остаётся пустая
                   // плитка, которую видно и можно открыть, чтобы удалить.
                   errorBuilder: (_, _, _) => Center(
-                    child: Icon(
-                      SolarIconsOutline.gallery,
-                      size: 22,
-                      color: t.muted,
-                    ),
+                    child: BloomIcon(Bi.gallery, size: 22, color: t.muted),
                   ),
                 ),
               // Куда картинка применена — значками поверх неё. Пустой список
@@ -178,10 +174,10 @@ class _UsageBadge extends StatelessWidget {
 
   final List<CustomCtx> usage;
 
-  static const Map<CustomCtx, IconData> _icons = {
-    CustomCtx.bg: SolarIconsOutline.galleryWide,
-    CustomCtx.cover: SolarIconsOutline.album,
-    CustomCtx.slider: SolarIconsOutline.sliderMinimalisticHorizontal,
+  static const Map<CustomCtx, BloomGlyph> _icons = {
+    CustomCtx.bg: Bi.galleryWide,
+    CustomCtx.cover: Bi.album,
+    CustomCtx.slider: Bi.sliderMinimalisticHorizontal,
   };
 
   @override
@@ -194,7 +190,7 @@ class _UsageBadge extends StatelessWidget {
         children: [
           for (final ctx in usage) ...[
             if (ctx != usage.first) const SizedBox(width: 8),
-            Icon(_icons[ctx], size: 15, color: Colors.white),
+            BloomIcon(_icons[ctx], size: 15, color: Colors.white),
           ],
         ],
       ),

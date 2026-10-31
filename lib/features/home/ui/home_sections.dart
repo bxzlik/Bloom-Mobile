@@ -5,7 +5,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
@@ -13,6 +12,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/store/history_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../library/lib_order_store.dart';
@@ -51,8 +51,8 @@ class HomeSectionHeader extends StatelessWidget {
         if (onTap != null)
           Padding(
             padding: const EdgeInsets.only(left: 2, top: 2),
-            child: Icon(
-              SolarIconsOutline.altArrowRight,
+            child: BloomIcon(
+              Bi.altArrowRight,
               size: 22,
               color: context.bloom.text.withValues(alpha: 0.55),
             ),

@@ -22,11 +22,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../app/theme/bloom_theme.dart';
 import '../../app/theme/tokens.dart';
 import '../../core/l10n/l10n.dart';
+import 'bloom_icon.dart';
 import 'glass.dart';
 
 /// Вид тоста: от него зависят значок и цвет полосы (те же четыре, что на ПК).
@@ -506,18 +506,18 @@ class _Badge extends StatelessWidget {
               // лежит в круге, круг в круге читался бы мишенью (на ПК то же —
               // `CheckBare`).
               : kind == ToastKind.success
-              ? Icon(Icons.check_rounded, size: 18, color: color)
-              : Icon(_glyph(kind), size: 17, color: color),
+              ? BloomIcon(Bi.check, size: 18, color: color)
+              : BloomIcon(_glyph(kind), size: 17, color: color),
         ),
       ],
     ),
   );
 
-  static IconData _glyph(ToastKind kind) => switch (kind) {
-    ToastKind.info => SolarIconsOutline.infoCircle,
-    ToastKind.warn => SolarIconsOutline.danger,
-    ToastKind.error => SolarIconsOutline.dangerCircle,
-    ToastKind.success => Icons.check_rounded,
+  static BloomGlyph _glyph(ToastKind kind) => switch (kind) {
+    ToastKind.info => Bi.infoCircle,
+    ToastKind.warn => Bi.danger,
+    ToastKind.error => Bi.dangerCircle,
+    ToastKind.success => Bi.check,
   };
 }
 

@@ -12,9 +12,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../play_button_store.dart';
 import '../player_controller.dart';
 
@@ -99,8 +99,8 @@ class PlayButton extends ConsumerWidget {
 
     if (!live) {
       return shell(
-        Icon(
-          SolarIconsBold.play,
+        BloomIcon(
+          Bi.playBold,
           size: plain ? plainIconSize : iconSize,
           color: color,
         ),
@@ -110,10 +110,8 @@ class PlayButton extends ConsumerWidget {
     // Состояние берём у самого плеера, а не у `PlaybackState`: пауза из шторки
     // и с гарнитуры до него не доходит.
     return shell(
-      Icon(
-        ref.watch(playingNowProvider)
-            ? SolarIconsBold.pause
-            : SolarIconsBold.play,
+      BloomIcon(
+        ref.watch(playingNowProvider) ? Bi.pauseBold : Bi.playBold,
         size: plain ? plainIconSize : iconSize,
         color: color,
       ),

@@ -26,7 +26,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
@@ -34,6 +33,7 @@ import '../../../core/entities/entities.dart';
 import '../../../features/settings/swipe_store.dart';
 import '../../../features/wave/wave_actions.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/track_actions.dart';
@@ -347,25 +347,17 @@ class _QueueHeader extends StatelessWidget {
                     // в перемешанном порядке, и надо понимать, почему.
                     if (shuffle) ...[
                       const SizedBox(width: 8),
-                      Icon(
-                        SolarIconsOutline.shuffle,
-                        size: 14,
-                        color: t.accent,
-                      ),
+                      BloomIcon(Bi.shuffle, size: 14, color: t.accent),
                     ],
                   ],
                 ),
               ],
             ),
           ),
-          CircleIconButton(
-            icon: SolarIconsOutline.playStream,
-            iconSize: 20,
-            onTap: onWave,
-          ),
+          CircleIconButton(icon: Bi.playStream, iconSize: 20, onTap: onWave),
           const SizedBox(width: 8),
           CircleIconButton(
-            icon: SolarIconsOutline.trashBinMinimalistic,
+            icon: Bi.trashBinMinimalistic,
             iconSize: 20,
             // Как на десктопе: чистим всё, КРОМЕ играющего — обрывать
             // воспроизведение кнопка не должна.

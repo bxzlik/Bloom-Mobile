@@ -8,10 +8,10 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../app/theme/tokens.dart';
 import 'atoms.dart';
+import 'bloom_icon.dart';
 import 'glass.dart';
 
 class SubPageHeader extends StatelessWidget {
@@ -24,7 +24,7 @@ class SubPageHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        CircleIconButton(icon: SolarIconsOutline.arrowLeft, onTap: onBack),
+        CircleIconButton(icon: Bi.arrowLeft, onTap: onBack),
         const SizedBox(width: 10),
         Expanded(
           child: GlassBox(

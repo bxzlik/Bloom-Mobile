@@ -16,13 +16,13 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/library_store.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
@@ -231,7 +231,7 @@ class _SourceRow extends StatelessWidget {
             iconSize: 18,
             color: t.muted,
             tooltip: context.l.psRemove,
-            icon: const Icon(Icons.close_rounded),
+            icon: const BloomIcon(Bi.close),
           ),
         ],
       ),
@@ -322,8 +322,8 @@ class _AddRow extends StatelessWidget {
                             strokeWidth: 2,
                             color: filled ? t.accentText : t.muted,
                           )
-                        : Icon(
-                            SolarIconsOutline.addCircle,
+                        : BloomIcon(
+                            Bi.addCircle,
                             size: 16,
                             color: filled ? t.accentText : t.muted,
                           ),

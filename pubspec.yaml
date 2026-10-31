@@ -49,7 +49,8 @@ dependencies:
   just_audio: ^0.10.6
   flutter_riverpod: ^2.6.1
   go_router: ^17.4.0
-  solar_icons: ^0.1.0
+  # BloomIcon's paths.
+  path_parsing: ^1.1.0
   flutter_svg: ^2.3.0
   path_provider: ^2.1.6
   image_picker: ^1.2.3
@@ -104,9 +105,6 @@ flutter:
     # Знак bloom (та же звезда, что в иконке приложения) — шапка, пустые
     # состояния, заглушки обложек.
     - assets/brand/
-    # Настоящие Solar-SVG: library и user-circle в шрифте solar_icons
-    # нарисованы криво (ящик и диск), поэтому эти две берём картинками.
-    - assets/icons/
     # Логотипы площадок и сервисов — те же файлы, что в десктопном Bloom.
     - assets/platform/
 

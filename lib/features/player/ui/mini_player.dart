@@ -19,7 +19,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
@@ -28,6 +27,7 @@ import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../features/customization/custom_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/marquee_text.dart';
 import '../mini_style_store.dart';
 import '../play_error.dart';
@@ -297,7 +297,7 @@ class _MiniButton extends ConsumerWidget {
         // Перемотка — Bold, как в транспорте плеера: рядом с ней стоит play, и
         // тонкий контур возле сплошного знака читается как чужая иконка.
         return CircleIconButton(
-          icon: SolarIconsBold.skipPrevious,
+          icon: Bi.skipPreviousBold,
           size: _size,
           iconSize: 20,
           background: Colors.transparent,
@@ -305,7 +305,7 @@ class _MiniButton extends ConsumerWidget {
         );
       case MiniButton.next:
         return CircleIconButton(
-          icon: SolarIconsBold.skipNext,
+          icon: Bi.skipNextBold,
           size: _size,
           iconSize: 20,
           background: Colors.transparent,
@@ -316,7 +316,7 @@ class _MiniButton extends ConsumerWidget {
           libraryProvider.select((lib) => lib.isFav(track.id)),
         );
         return CircleIconButton(
-          icon: fav ? SolarIconsBold.heart : SolarIconsOutline.heart,
+          icon: fav ? Bi.heartBold : Bi.heart,
           size: _size,
           iconSize: 20,
           background: Colors.transparent,

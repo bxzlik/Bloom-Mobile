@@ -23,13 +23,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show LengthLimitingTextInputFormatter;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/color_picker.dart';
@@ -359,18 +359,13 @@ class _BannerHeader extends StatelessWidget {
                 // Взведённая — красная корзина: без модалки видно, что
                 // следующий тап бросит правку.
                 GlassIconButton(
-                  icon: armed
-                      ? SolarIconsBold.trashBinMinimalistic
-                      : SolarIconsOutline.altArrowLeft,
+                  icon: armed ? Bi.trashBinMinimalisticBold : Bi.altArrowLeft,
                   color: armed ? t.danger : null,
                   onTap: onBack,
                 ),
                 const Spacer(),
                 // Та же кнопка, что в макете: картинка профиля.
-                GlassIconButton(
-                  icon: SolarIconsOutline.gallery,
-                  onTap: onAvatar,
-                ),
+                GlassIconButton(icon: Bi.gallery, onTap: onAvatar),
               ],
             ),
           ),
@@ -582,7 +577,7 @@ class _ImageSheetState extends State<_ImageSheet> {
             width: double.infinity,
             child: FilledButton.icon(
               onPressed: () => _run(widget.onPick),
-              icon: const Icon(SolarIconsOutline.uploadMinimalistic, size: 20),
+              icon: const BloomIcon(Bi.uploadMinimalistic, size: 20),
               label: Text(context.l.commonUpload),
             ),
           ),

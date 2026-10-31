@@ -15,11 +15,11 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/platform_logo.dart';
@@ -327,8 +327,8 @@ class _KeyField extends StatelessWidget {
             ),
             IconButton(
               onPressed: onToggle,
-              icon: Icon(
-                obscure ? SolarIconsOutline.eyeClosed : SolarIconsOutline.eye,
+              icon: BloomIcon(
+                obscure ? Bi.eyeClosed : Bi.eye,
                 size: 20,
                 color: t.muted,
               ),

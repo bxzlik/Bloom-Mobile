@@ -8,12 +8,12 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../app/theme/tokens.dart';
 import '../../core/entities/entities.dart';
 import '../../core/l10n/l10n.dart';
 import '../util/format.dart';
+import 'bloom_icon.dart';
 import 'bloom_sheet.dart';
 
 /// [addedAt] — когда трек попал в библиотеку: шапка тут та же, что в шторке
@@ -205,7 +205,7 @@ class _ExplicitMark extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
       child: Row(
         children: [
-          Icon(SolarIconsOutline.dangerCircle, size: 16, color: t.muted),
+          BloomIcon(Bi.dangerCircle, size: 16, color: t.muted),
           const SizedBox(width: 8),
           Text(
             context.l.tiExplicit,

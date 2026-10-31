@@ -15,13 +15,13 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
@@ -202,7 +202,7 @@ class _AddBodyState extends ConsumerState<_AddBody> {
       SheetPanel(
         children: [
           _Row(
-            icon: SolarIconsOutline.import,
+            icon: Bi.import,
             label: context.l.cpImport,
             chevron: true,
             onTap: () => setState(() => _importView = true),
@@ -232,30 +232,30 @@ class _AddBodyState extends ConsumerState<_AddBody> {
       SheetPanel(
         children: [
           _Row(
-            icon: SolarIconsOutline.folderPathConnect,
+            icon: Bi.folderPathConnect,
             label: context.l.cpDestination(_targetLabel(playlists)),
             chevron: true,
             onTap: () => setState(() => _targetOpen = !_targetOpen),
           ),
           if (_targetOpen) ...[
             sheetDivider(),
-            for (final option in <(ImportTarget, String, IconData, String?)>[
+            for (final option in <(ImportTarget, String, BloomGlyph, String?)>[
               (
                 const ImportTarget.create(),
                 context.l.commonCreatePlaylist,
-                SolarIconsOutline.addCircle,
+                Bi.addCircle,
                 null,
               ),
               (
                 const ImportTarget(ImportTargetKind.library),
                 context.l.commonAllTracks,
-                SolarIconsOutline.musicNote,
+                Bi.musicNote,
                 null,
               ),
               (
                 const ImportTarget(ImportTargetKind.favorites),
                 context.l.commonFavorites,
-                SolarIconsBold.heart,
+                Bi.heartBold,
                 null,
               ),
               // Плейлисты стоят с обложками — как в шторке «Добавить в
@@ -265,7 +265,7 @@ class _AddBodyState extends ConsumerState<_AddBody> {
                 (
                   ImportTarget(ImportTargetKind.playlist, playlistId: p.id),
                   p.name,
-                  SolarIconsOutline.playlistMinimalistic,
+                  Bi.playlistMinimalistic,
                   p.cover ?? '',
                 ),
             ])
@@ -287,13 +287,13 @@ class _AddBodyState extends ConsumerState<_AddBody> {
       SheetPanel(
         children: [
           _Row(
-            icon: SolarIconsOutline.file,
+            icon: Bi.file,
             label: context.l.cpFromFile,
             onTap: () => Navigator.of(context).pop(const _FileRequested()),
           ),
           sheetDivider(),
           _Row(
-            icon: SolarIconsOutline.arrowLeft,
+            icon: Bi.arrowLeft,
             label: context.l.commonBack,
             onTap: () => setState(() {
               _importView = false;
@@ -318,7 +318,7 @@ class _Row extends StatelessWidget {
     this.selected = false,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final String label;
   final VoidCallback onTap;
 
@@ -346,7 +346,7 @@ class _Row extends StatelessWidget {
         child: Row(
           children: [
             if (art == null)
-              Icon(icon, size: 22, color: selected ? t.accent : t.text)
+              BloomIcon(icon, size: 22, color: selected ? t.accent : t.text)
             else
               Cover(url: art, size: 40),
             SizedBox(width: art == null ? 16 : 12),
@@ -361,8 +361,8 @@ class _Row extends StatelessWidget {
               ),
             ),
             if (selected)
-              Icon(SolarIconsBold.checkCircle, size: 18, color: t.accent),
-            if (chevron) Icon(Icons.chevron_right, size: 20, color: t.muted),
+              BloomIcon(Bi.checkCircleBold, size: 18, color: t.accent),
+            if (chevron) BloomIcon(Bi.altArrowRight, size: 20, color: t.muted),
           ],
         ),
       ),

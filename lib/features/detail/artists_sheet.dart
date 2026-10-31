@@ -19,6 +19,7 @@ import '../../core/entities/entities.dart';
 import '../../core/providers/artist_lookup.dart';
 import '../../core/providers/music_provider.dart';
 import '../../shared/ui/atoms.dart';
+import '../../shared/ui/bloom_icon.dart';
 import '../../shared/ui/bloom_sheet.dart';
 import '../../shared/util/artists.dart';
 import 'detail_nav.dart';
@@ -190,7 +191,7 @@ class _ArtistPickerState extends ConsumerState<_ArtistPicker> {
                 ),
               )
             else if (artist != null)
-              Icon(Icons.chevron_right, size: 20, color: t.muted),
+              BloomIcon(Bi.altArrowRight, size: 20, color: t.muted),
           ],
         ),
       ),

@@ -16,7 +16,6 @@ import 'dart:async' show scheduleMicrotask;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
@@ -26,6 +25,7 @@ import '../../../providers/soundcloud/models.dart';
 import '../../../providers/soundcloud/soundcloud.dart' as sc;
 import '../../../providers/yandex/ym_auth.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/platform_logo.dart';
@@ -195,8 +195,8 @@ class _PlatformRow extends StatelessWidget {
                     AnimatedRotation(
                       turns: open ? 0.5 : 0,
                       duration: const Duration(milliseconds: 220),
-                      child: Icon(
-                        SolarIconsOutline.altArrowDown,
+                      child: BloomIcon(
+                        Bi.altArrowDown,
                         size: 18,
                         color: t.muted,
                       ),

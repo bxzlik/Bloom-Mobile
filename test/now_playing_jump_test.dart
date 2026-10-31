@@ -18,8 +18,9 @@ import 'package:bloom/shared/ui/entity_tiles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'support/glyphs.dart';
 import 'package:bloom/core/db/db.dart';
-import 'package:solar_icons/solar_icons.dart';
+import 'package:bloom/shared/ui/bloom_icon.dart';
 
 /// Шапка списка и её сжатый вид — числа взяты «как в жизни», лишь бы считались.
 const double _hero = 300;
@@ -249,7 +250,7 @@ void main() {
       await pump(tester);
       expect(visible(tester), isTrue);
       expect(find.text('Сейчас играет'), findsOneWidget);
-      expect(find.byIcon(SolarIconsOutline.arrowDown), findsOneWidget);
+      expect(findGlyph(Bi.arrowDown), findsOneWidget);
     });
 
     testWidgets('тап возвращает список к строке', (tester) async {
@@ -277,7 +278,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       expect(visible(tester), isTrue);
-      expect(find.byIcon(SolarIconsOutline.arrowUp), findsOneWidget);
+      expect(findGlyph(Bi.arrowUp), findsOneWidget);
     });
 
     testWidgets('играет трек не из этого списка — пилюли нет', (tester) async {

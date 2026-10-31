@@ -13,12 +13,12 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/glass.dart';
@@ -107,7 +107,7 @@ class _TopBar extends ConsumerWidget {
           const NotifBell(),
           const SizedBox(width: 8),
           CircleIconButton(
-            icon: SolarIconsOutline.magnifier,
+            icon: Bi.magnifier,
             // Лупа остаётся в шапке, даже когда поиск стоит табом, — просто
             // уводит тогда в его ветку, а не открывает вторую страницу поиска
             // внутри главной.

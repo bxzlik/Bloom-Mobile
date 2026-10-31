@@ -15,13 +15,13 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/glass.dart';
 
@@ -221,10 +221,8 @@ class _NowPlayingJumpState extends ConsumerState<NowPlayingJump> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Icon(
-                        _dir < 0
-                            ? SolarIconsOutline.arrowUp
-                            : SolarIconsOutline.arrowDown,
+                      BloomIcon(
+                        _dir < 0 ? Bi.arrowUp : Bi.arrowDown,
                         size: 17,
                         color: t.text2,
                       ),

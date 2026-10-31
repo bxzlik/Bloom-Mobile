@@ -9,11 +9,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../library/history_format.dart';
 import '../notif_store.dart';
@@ -85,7 +85,7 @@ class _Header extends ConsumerWidget {
           // Убрать всю историю разом. Пустой список чистить нечего — кнопка
           // гаснет (тот же приём, что у дизлайков волны).
           CircleIconButton(
-            icon: SolarIconsOutline.trashBinMinimalistic,
+            icon: Bi.trashBinMinimalistic,
             iconSize: 20,
             tooltip: context.l.commonClear,
             onTap: count == 0
@@ -139,7 +139,7 @@ class _Card extends StatelessWidget {
               shape: BoxShape.circle,
               color: color.withValues(alpha: 0.14),
             ),
-            child: Icon(_glyph(item.kind), size: 18, color: color),
+            child: BloomIcon(_glyph(item.kind), size: 18, color: color),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -211,10 +211,10 @@ class _Card extends StatelessWidget {
   }
 
   /// Значки видов — те же, что в десктопном `KIND_ICON`.
-  static IconData _glyph(NotifKind kind) => switch (kind) {
-    NotifKind.error => SolarIconsOutline.dangerCircle,
-    NotifKind.success => Icons.check_rounded,
-    NotifKind.info => SolarIconsOutline.infoCircle,
+  static BloomGlyph _glyph(NotifKind kind) => switch (kind) {
+    NotifKind.error => Bi.dangerCircle,
+    NotifKind.success => Bi.check,
+    NotifKind.info => Bi.infoCircle,
   };
 }
 

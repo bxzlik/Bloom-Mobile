@@ -7,6 +7,7 @@ library;
 import 'package:bloom/app/theme/bloom_theme.dart';
 import 'package:bloom/app/theme/tokens.dart';
 import 'package:bloom/core/store/json_store.dart';
+import 'package:bloom/shared/ui/bloom_icon.dart';
 import 'package:bloom/shared/ui/bloom_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +15,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bloom/core/db/db.dart';
 
 import 'package:bloom/core/l10n/l10n.dart';
+
+import 'support/glyphs.dart';
 
 /// Экран-подложка: тост показывается через мессенджер, поэтому нужен Scaffold.
 ///
@@ -131,7 +134,7 @@ void main() {
     expect(find.text('Сохранение для офлайна…'), findsNothing);
     expect(find.text('Доступно офлайн: Song'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+    expect(findGlyph(Bi.check), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();

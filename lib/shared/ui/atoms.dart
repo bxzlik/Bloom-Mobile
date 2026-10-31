@@ -12,10 +12,10 @@ import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../app/theme/tokens.dart';
 import '../../core/store/cover_store.dart';
+import 'bloom_icon.dart';
 import 'bloom_mark.dart';
 import 'cover_collage.dart';
 import 'cover_hero.dart';
@@ -107,30 +107,6 @@ class SliverBottomBarsInset extends StatelessWidget {
   );
 }
 
-/// Иконка из SVG-ассета, перекрашенная в цвет темы. Нужна там, где глиф из
-/// шрифта Solar нарисован криво (library, user-circle) и берётся настоящий
-/// Solar-SVG.
-class SvgIcon extends StatelessWidget {
-  const SvgIcon(this.asset, {super.key, this.size = 22, this.color});
-
-  final String asset;
-  final double size;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    return SvgPicture.asset(
-      asset,
-      width: size,
-      height: size,
-      colorFilter: ColorFilter.mode(
-        color ?? context.bloom.iconFg,
-        BlendMode.srcIn,
-      ),
-    );
-  }
-}
-
 /// Главное действие блока: значок и подпись по центру, во всю ширину, сплошной
 /// заливкой акцентом.
 ///
@@ -148,7 +124,7 @@ class AccentWideButton extends StatelessWidget {
   });
 
   final String label;
-  final IconData icon;
+  final BloomGlyph icon;
   final VoidCallback onTap;
 
   /// Действие идёт: вместо значка крутилка, тап не проходит.
@@ -183,7 +159,7 @@ class AccentWideButton extends StatelessWidget {
                         strokeWidth: 2.2,
                         color: t.accentText,
                       )
-                    : Icon(icon, size: 20, color: t.accentText),
+                    : BloomIcon(icon, size: 20, color: t.accentText),
               ),
               const SizedBox(width: 10),
               Flexible(
@@ -219,7 +195,7 @@ class CircleIconButton extends StatelessWidget {
     this.tooltip,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final VoidCallback? onTap;
   final double size;
   final double iconSize;
@@ -254,7 +230,7 @@ class CircleIconButton extends StatelessWidget {
         child: SizedBox(
           width: size,
           height: size,
-          child: Icon(icon, size: iconSize, color: color ?? t.iconFg),
+          child: BloomIcon(icon, size: iconSize, color: color ?? t.iconFg),
         ),
       ),
     );
@@ -310,7 +286,7 @@ class GlassIconButton extends StatelessWidget {
     this.color,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final VoidCallback? onTap;
   final double size;
   final double iconSize;
@@ -339,7 +315,7 @@ class GlassIconButton extends StatelessWidget {
         child: SizedBox(
           width: size,
           height: size,
-          child: Icon(icon, size: iconSize, color: color ?? Colors.white),
+          child: BloomIcon(icon, size: iconSize, color: color ?? Colors.white),
         ),
       ),
     );
@@ -405,37 +381,6 @@ class HeroCover extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Та же круглая кнопка, но со Solar-SVG вместо глифа.
-class CircleSvgButton extends StatelessWidget {
-  const CircleSvgButton({
-    super.key,
-    required this.asset,
-    this.onTap,
-    this.size = kHeaderControl,
-    this.iconSize = 23,
-  });
-
-  final String asset;
-  final VoidCallback? onTap;
-  final double size;
-  final double iconSize;
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassBox(
-      shape: const CircleBorder(),
-      child: InkWell(
-        onTap: onTap,
-        child: SizedBox(
-          width: size,
-          height: size,
-          child: Center(child: SvgIcon(asset, size: iconSize)),
-        ),
       ),
     );
   }

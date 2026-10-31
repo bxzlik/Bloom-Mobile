@@ -14,6 +14,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/glass.dart';
 
 /// Рост карточки-входа: плитка 56 плюс поля 18 сверху и снизу.
@@ -46,7 +47,7 @@ class ProfileEntryCard extends StatelessWidget {
   });
 
   final String value;
-  final IconData icon;
+  final BloomGlyph icon;
   final String side;
   final Widget tile;
   final VoidCallback onTap;
@@ -64,7 +65,7 @@ class ProfileEntryCard extends StatelessWidget {
       children: [
         Text(value, style: valueStyle),
         const SizedBox(width: 8),
-        Icon(icon, size: 16, color: t.muted),
+        BloomIcon(icon, size: 16, color: t.muted),
       ],
     );
     final alt = this.alt;

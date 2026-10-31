@@ -19,13 +19,13 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/log/bloom_log.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/subpage_header.dart';
@@ -68,13 +68,13 @@ class _VersionScreenState extends ConsumerState<VersionScreen> {
         if (about.phase == UpdatePhase.available)
           AccentWideButton(
             label: l.aboutOpenRelease,
-            icon: SolarIconsOutline.download,
+            icon: Bi.download,
             onTap: () => _openRelease(about.releaseUrl),
           )
         else
           AccentWideButton(
             label: l.aboutRecheck,
-            icon: SolarIconsOutline.refresh,
+            icon: Bi.refresh,
             busy: about.phase == UpdatePhase.checking,
             onTap: () => ref.read(aboutProvider.notifier).check(),
           ),
@@ -101,7 +101,7 @@ class _VersionScreenState extends ConsumerState<VersionScreen> {
           dividerInset: 52,
           rows: [
             SettingsLinkRow(
-              icon: SolarIconsOutline.history,
+              icon: Bi.history,
               title: l.updHistory,
               subtitle: l.updHistorySub,
               onTap: () => showUpdateHistory(context),
@@ -139,17 +139,17 @@ class _StatusCard extends StatelessWidget {
       // Цвета исходов — те же, что у тостов: зелёный «всё хорошо», жёлтый
       // «не вышло». Про них уже знают по всему приложению.
       UpdatePhase.uptodate => (
-        SolarIconsBold.checkCircle,
+        Bi.checkCircleBold,
         kindColor(ToastKind.success, t),
         l.aboutUptodate,
       ),
       UpdatePhase.available => (
-        SolarIconsBold.download,
+        Bi.downloadBold,
         t.accent,
         l.aboutAvailable(about.latest),
       ),
       UpdatePhase.error => (
-        SolarIconsBold.dangerTriangle,
+        Bi.dangerTriangleBold,
         kindColor(ToastKind.warn, t),
         l.aboutError,
       ),
@@ -179,7 +179,7 @@ class _StatusCard extends StatelessWidget {
                         color: color,
                       ),
                     )
-                  : Icon(icon, size: 34, color: color),
+                  : BloomIcon(icon, size: 34, color: color),
             ),
             const SizedBox(height: 18),
             Text(title, textAlign: TextAlign.center, style: theme.titleLarge),

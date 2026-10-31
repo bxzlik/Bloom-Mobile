@@ -26,11 +26,11 @@ library;
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 
 /// Слот кольца: смещение от центра и сторона плитки в точках дизайн-бокса плюс
 /// период и фаза покачивания.
@@ -281,8 +281,8 @@ class _Placeholder extends StatelessWidget {
     final t = context.bloom;
     final box = Container(
       decoration: BoxDecoration(color: t.coverEmpty, borderRadius: radius),
-      child: Icon(
-        SolarIconsBold.musicNote,
+      child: BloomIcon(
+        Bi.musicNoteBold,
         size: side * 0.32,
         color: t.muted.withValues(alpha: 0.5),
       ),

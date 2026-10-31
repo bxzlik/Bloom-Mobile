@@ -7,11 +7,11 @@ library;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
+import '../../../shared/ui/bloom_icon.dart';
 
 /// Отступ превью и блоков от края шторки — на макете они стоят по одной
 /// линии с кнопкой «назад» страницы под шторкой.
@@ -58,9 +58,7 @@ class _CustSheetPreviewState extends State<CustSheetPreview> {
             decoration: BoxDecoration(color: t.pill),
             child: switch (srcs.length) {
               // Пресет, у которого все картинки удалены, — значок коробки.
-              0 => Center(
-                child: Icon(SolarIconsOutline.box, size: 30, color: t.muted),
-              ),
+              0 => Center(child: BloomIcon(Bi.box, size: 30, color: t.muted)),
               1 => _FitImage(src: srcs.first),
               _ => Stack(
                 fit: StackFit.expand,
@@ -231,7 +229,7 @@ class CustSheetRow extends StatelessWidget {
     this.trailing,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final String label;
   final VoidCallback onTap;
   final Widget? trailing;
@@ -247,7 +245,10 @@ class CustSheetRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              SizedBox(width: 38, child: Icon(icon, size: 20, color: t.iconFg)),
+              SizedBox(
+                width: 38,
+                child: BloomIcon(icon, size: 20, color: t.iconFg),
+              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Text(

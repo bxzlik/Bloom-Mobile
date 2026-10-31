@@ -11,7 +11,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../core/entities/entities.dart';
 import '../../core/l10n/l10n.dart';
@@ -22,19 +21,20 @@ import '../../features/offline/offline_store.dart';
 import '../../features/player/player_controller.dart';
 import '../../features/player/track_swap_dir.dart';
 import '../../features/settings/swipe_store.dart';
+import 'bloom_icon.dart';
 import 'bloom_toast.dart';
 import 'swipe_row.dart';
 
 /// Значок действия — он же в настройках, в списке выбора и на плашке.
-IconData swipeActionIcon(SwipeAction action) => switch (action) {
-  SwipeAction.none => SolarIconsOutline.forbiddenCircle,
-  SwipeAction.like => SolarIconsOutline.heart,
-  SwipeAction.queue => SolarIconsOutline.addCircle,
-  SwipeAction.playNext => SolarIconsOutline.skipNext,
-  SwipeAction.next => SolarIconsOutline.skipNext,
-  SwipeAction.prev => SolarIconsOutline.skipPrevious,
-  SwipeAction.download => SolarIconsOutline.diskette,
-  SwipeAction.delete => SolarIconsOutline.trashBinMinimalistic,
+BloomGlyph swipeActionIcon(SwipeAction action) => switch (action) {
+  SwipeAction.none => Bi.forbiddenCircle,
+  SwipeAction.like => Bi.heart,
+  SwipeAction.queue => Bi.addCircle,
+  SwipeAction.playNext => Bi.skipNext,
+  SwipeAction.next => Bi.skipNext,
+  SwipeAction.prev => Bi.skipPrevious,
+  SwipeAction.download => Bi.diskette,
+  SwipeAction.delete => Bi.trashBinMinimalistic,
 };
 
 String swipeActionLabel(AppLocalizations l, SwipeAction action) =>

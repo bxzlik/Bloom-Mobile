@@ -8,12 +8,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../features/offline/offline_actions.dart';
 import '../../../features/offline/offline_store.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/util/format.dart';
 
 class ListMeta extends ConsumerWidget {
@@ -134,11 +134,7 @@ class ListMeta extends ConsumerWidget {
           separator();
           parts.addAll([
             // Та же дискета, что в строке трека и в теге плейлиста на десктопе.
-            Icon(
-              SolarIconsOutline.diskette,
-              size: iconSize,
-              color: style?.color,
-            ),
+            BloomIcon(Bi.diskette, size: iconSize, color: style?.color),
             const SizedBox(width: iconGap),
             Text(offline, style: style),
           ]);

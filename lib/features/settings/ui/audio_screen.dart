@@ -15,10 +15,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/subpage_header.dart';
 import 'settings_rows.dart';
 
@@ -41,7 +41,7 @@ class AudioSettingsScreen extends ConsumerWidget {
           dividerInset: 52,
           rows: [
             SettingsToggleRow(
-              icon: SolarIconsOutline.playlistMinimalistic,
+              icon: Bi.playlistMinimalistic,
               title: l.audRestoreTitle,
               subtitle: l.audRestoreSub,
               value: settings.restoreQueue,
@@ -56,7 +56,7 @@ class AudioSettingsScreen extends ConsumerWidget {
             // бы играющий с порога плеер.
             if (settings.restoreQueue)
               SettingsToggleRow(
-                icon: SolarIconsOutline.play,
+                icon: Bi.play,
                 title: l.audAutoplayTitle,
                 subtitle: l.audAutoplaySub,
                 value: settings.autoplay,
@@ -71,7 +71,7 @@ class AudioSettingsScreen extends ConsumerWidget {
           dividerInset: 52,
           rows: [
             SettingsToggleRow(
-              icon: SolarIconsOutline.skipNext,
+              icon: Bi.skipNext,
               title: l.audAutoSimilarTitle,
               subtitle: l.audAutoSimilarSub,
               value: settings.autoSimilar,

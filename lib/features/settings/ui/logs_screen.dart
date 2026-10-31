@@ -17,12 +17,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/log/bloom_log.dart';
 import '../../../core/store/text_files.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/subpage_header.dart';
@@ -89,7 +89,7 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
           children: [
             Expanded(
               child: _LogButton(
-                icon: SolarIconsOutline.copy,
+                icon: Bi.copy,
                 label: l.logsCopy,
                 onTap: empty ? null : _copy,
               ),
@@ -97,7 +97,7 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: _LogButton(
-                icon: SolarIconsOutline.export,
+                icon: Bi.export,
                 label: l.logsSave,
                 onTap: empty ? null : _save,
               ),
@@ -105,7 +105,7 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: _LogButton(
-                icon: SolarIconsOutline.trashBinMinimalistic,
+                icon: Bi.trashBinMinimalistic,
                 label: l.logsClear,
                 danger: true,
                 onTap: empty ? null : _clear,
@@ -186,7 +186,7 @@ class _LogButton extends StatelessWidget {
     this.danger = false,
   });
 
-  final IconData icon;
+  final BloomGlyph icon;
   final String label;
   final VoidCallback? onTap;
   final bool danger;
@@ -209,7 +209,7 @@ class _LogButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Column(
             children: [
-              Icon(icon, size: 18, color: color),
+              BloomIcon(icon, size: 18, color: color),
               const SizedBox(height: 6),
               Text(
                 label,

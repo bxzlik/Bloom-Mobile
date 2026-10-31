@@ -9,12 +9,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/track_actions.dart';
 import '../../player/player_controller.dart';
 import '../../player/session_store.dart';
@@ -170,7 +170,7 @@ class _CardShell extends ConsumerWidget {
             Cover(url: track.cover, size: _height),
             const SizedBox(width: 8),
             CircleIconButton(
-              icon: playing ? SolarIconsBold.pause : SolarIconsBold.play,
+              icon: playing ? Bi.pauseBold : Bi.playBold,
               iconSize: 16,
               size: _height,
               onTap: onPlay,
@@ -188,7 +188,7 @@ class _CardShell extends ConsumerWidget {
             ),
             const SizedBox(width: 8),
             CircleIconButton(
-              icon: isFav ? SolarIconsBold.heart : SolarIconsOutline.heart,
+              icon: isFav ? Bi.heartBold : Bi.heart,
               iconSize: 18,
               size: _height,
               color: isFav ? t.sysFavIco : null,

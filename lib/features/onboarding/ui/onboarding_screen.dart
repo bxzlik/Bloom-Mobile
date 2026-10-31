@@ -33,7 +33,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show LengthLimitingTextInputFormatter;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/theme/bloom_theme.dart';
 import '../../../app/theme/tokens.dart';
@@ -41,6 +40,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/language_card.dart';
@@ -360,7 +360,7 @@ class _Header extends StatelessWidget {
                     child: IgnorePointer(
                       ignoring: first,
                       child: CircleIconButton(
-                        icon: SolarIconsOutline.altArrowLeft,
+                        icon: Bi.altArrowLeft,
                         onTap: onBack,
                       ),
                     ),
@@ -451,11 +451,7 @@ class _CtaButton extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Icon(
-              SolarIconsOutline.altArrowRight,
-              size: 18,
-              color: t.accentText,
-            ),
+            BloomIcon(Bi.altArrowRight, size: 18, color: t.accentText),
           ],
         ),
       ),
@@ -1069,8 +1065,8 @@ class _ProfileSlide extends ConsumerWidget {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(
-                                    SolarIconsOutline.gallery,
+                                  const BloomIcon(
+                                    Bi.gallery,
                                     size: 18,
                                     color: Colors.white,
                                   ),
@@ -1093,14 +1089,14 @@ class _ProfileSlide extends ConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           GlassIconButton(
-                            icon: SolarIconsOutline.gallery,
+                            icon: Bi.gallery,
                             size: 40,
                             iconSize: 18,
                             onTap: onPickBanner,
                           ),
                           const SizedBox(width: 8),
                           GlassIconButton(
-                            icon: SolarIconsOutline.trashBinMinimalistic,
+                            icon: Bi.trashBinMinimalistic,
                             size: 40,
                             iconSize: 18,
                             onTap: onDropBanner,
@@ -1147,10 +1143,8 @@ class _ProfileSlide extends ConsumerWidget {
                               shape: BoxShape.circle,
                               border: Border.all(color: t.bg, width: 3),
                             ),
-                            child: Icon(
-                              avatar == null
-                                  ? SolarIconsOutline.camera
-                                  : SolarIconsOutline.closeCircle,
+                            child: BloomIcon(
+                              avatar == null ? Bi.camera : Bi.closeCircle,
                               size: 15,
                               color: avatar == null
                                   ? t.accentText
@@ -1310,7 +1304,7 @@ class _ThemeSlide extends ConsumerWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(SolarIconsOutline.palette, size: 14, color: t.muted),
+              BloomIcon(Bi.palette, size: 14, color: t.muted),
               const SizedBox(width: 6),
               Text(context.l.onbThemeHint, style: theme.bodySmall),
             ],
@@ -1371,8 +1365,8 @@ class _ThemeCard extends StatelessWidget {
                     Positioned(
                       top: 0,
                       right: 0,
-                      child: Icon(
-                        SolarIconsBold.checkCircle,
+                      child: BloomIcon(
+                        Bi.checkCircleBold,
                         size: 16,
                         color: preview.accent,
                       ),
@@ -1517,7 +1511,7 @@ class _FinalSlide extends ConsumerWidget {
               style: bloomText(size: 14, weight: 500, color: t.text2),
             ),
             const SizedBox(width: 7),
-            Icon(SolarIconsOutline.musicNote, size: 15, color: t.text2),
+            BloomIcon(Bi.musicNote, size: 15, color: t.text2),
           ],
         ),
       ],

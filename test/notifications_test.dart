@@ -15,8 +15,9 @@ import 'package:bloom/features/notifications/ui/notif_bell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'support/glyphs.dart';
 import 'package:bloom/core/db/db.dart';
-import 'package:solar_icons/solar_icons.dart';
+import 'package:bloom/shared/ui/bloom_icon.dart';
 
 final _at = DateTime(2026, 8, 20, 14, 2);
 
@@ -124,7 +125,7 @@ void main() {
       final c = _container();
       await _pump(tester, c, const NotifBell());
 
-      expect(find.byIcon(SolarIconsOutline.bell), findsOneWidget);
+      expect(findGlyph(Bi.bell), findsOneWidget);
       expect(find.textContaining(RegExp(r'^\d')), findsNothing);
     });
 
@@ -155,7 +156,7 @@ void main() {
           );
       await _pump(tester, c, const NotifBell());
 
-      await tester.tap(find.byIcon(SolarIconsOutline.bell));
+      await tester.tap(findGlyph(Bi.bell));
       await tester.pumpAndSettle();
 
       // Заголовок события, тело и время — всё из карточки.
@@ -173,13 +174,13 @@ void main() {
     ) async {
       final c = _container();
       await _pump(tester, c, const NotifBell());
-      await tester.tap(find.byIcon(SolarIconsOutline.bell));
+      await tester.tap(findGlyph(Bi.bell));
       await tester.pumpAndSettle();
 
       expect(find.text('Уведомлений пока нет'), findsOneWidget);
       final clear = tester.widget<InkWell>(
         find.ancestor(
-          of: find.byIcon(SolarIconsOutline.trashBinMinimalistic),
+          of: findGlyph(Bi.trashBinMinimalistic),
           matching: find.byType(InkWell),
         ),
       );
@@ -196,11 +197,11 @@ void main() {
             body: 'Песня',
           );
       await _pump(tester, c, const NotifBell());
-      await tester.tap(find.byIcon(SolarIconsOutline.bell));
+      await tester.tap(findGlyph(Bi.bell));
       await tester.pumpAndSettle();
 
       expect(find.text('Недоступный трек'), findsOneWidget);
-      await tester.tap(find.byIcon(SolarIconsOutline.trashBinMinimalistic));
+      await tester.tap(findGlyph(Bi.trashBinMinimalistic));
       await tester.pumpAndSettle();
 
       expect(find.text('Недоступный трек'), findsNothing);
@@ -214,7 +215,7 @@ void main() {
         notifs.add(kind: NotifKind.info, title: title);
       }
       await _pump(tester, c, const NotifBell());
-      await tester.tap(find.byIcon(SolarIconsOutline.bell));
+      await tester.tap(findGlyph(Bi.bell));
       await tester.pumpAndSettle();
 
       // Ни одного «сырого» имени из enum — значит все ключи на месте.
@@ -246,7 +247,7 @@ void main() {
             action: NotifAction(label: 'Смотреть', run: () => opened++),
           );
       await _pump(tester, c, const NotifBell());
-      await tester.tap(find.byIcon(SolarIconsOutline.bell));
+      await tester.tap(findGlyph(Bi.bell));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Смотреть'));

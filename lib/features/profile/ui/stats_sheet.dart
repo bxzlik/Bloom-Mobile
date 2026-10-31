@@ -18,7 +18,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme/tokens.dart';
@@ -28,6 +27,7 @@ import '../../../core/l10n/source_label.dart';
 import '../../../core/providers/artist_lookup.dart';
 import '../../../core/store/days_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
@@ -262,7 +262,7 @@ class _StatsSheetState extends ConsumerState<StatsSheet> {
             child: Row(
               children: [
                 _ToolButton(
-                  icon: SolarIconsOutline.cup,
+                  icon: Bi.cup,
                   label: context.l.wrMonth,
                   color: t.accent,
                   background: t.accent.withValues(alpha: 0.12),
@@ -285,7 +285,7 @@ class _StatsSheetState extends ConsumerState<StatsSheet> {
           child: Row(
             children: [
               _ToolButton(
-                icon: _asking ? null : SolarIconsOutline.copy,
+                icon: _asking ? null : Bi.copy,
                 label: _asking ? context.l.commonCancel : context.l.statsCopy,
                 onTap: _asking
                     ? () => setState(() => _asking = false)
@@ -293,7 +293,7 @@ class _StatsSheetState extends ConsumerState<StatsSheet> {
               ),
               const SizedBox(width: 8),
               _ToolButton(
-                icon: SolarIconsOutline.trashBinMinimalistic,
+                icon: Bi.trashBinMinimalistic,
                 label: context.l.statsClear,
                 color: t.danger,
                 onTap: _clear,
@@ -675,7 +675,7 @@ class _SourceRow extends StatelessWidget {
           Row(
             children: [
               if (row.source == MusicSource.local)
-                Icon(SolarIconsOutline.folder, size: 15, color: t.iconFg)
+                BloomIcon(Bi.folder, size: 15, color: t.iconFg)
               else
                 PlatformLogo(row.source, size: 15),
               const SizedBox(width: 8),
@@ -970,7 +970,7 @@ class _ToolButton extends StatelessWidget {
   });
 
   /// `null` — одна надпись («Отмена» в подтверждении очистки).
-  final IconData? icon;
+  final BloomGlyph? icon;
   final String label;
   final VoidCallback onTap;
   final Color? color;
@@ -994,7 +994,7 @@ class _ToolButton extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (icon != null) ...[
-                  Icon(icon, size: 16, color: color ?? t.iconFg),
+                  BloomIcon(icon, size: 16, color: color ?? t.iconFg),
                   const SizedBox(width: 8),
                 ],
                 Text(

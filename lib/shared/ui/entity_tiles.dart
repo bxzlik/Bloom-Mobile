@@ -5,7 +5,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../app/theme/tokens.dart';
 import '../../core/l10n/l10n.dart';
@@ -16,6 +15,7 @@ import '../../features/player/play_source.dart';
 import '../../features/player/player_controller.dart';
 import '../util/format.dart';
 import 'atoms.dart';
+import 'bloom_icon.dart';
 import 'chart_trend.dart';
 import 'cover_hero.dart';
 import 'platform_logo.dart';
@@ -474,7 +474,7 @@ class _OfflineMark extends ConsumerWidget {
       padding: const EdgeInsets.only(left: 8),
       // Дискета и приглушённый цвет — как `.tr-offline` на десктопе (там
       // `Ico name="save"` = solar/diskette-linear, color: var(--text2)).
-      child: Icon(SolarIconsOutline.diskette, size: 14, color: t.text2),
+      child: BloomIcon(Bi.diskette, size: 14, color: t.text2),
     );
   }
 }

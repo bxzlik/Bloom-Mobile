@@ -18,10 +18,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:solar_icons/solar_icons.dart';
 
 import '../../../core/l10n/l10n.dart';
 import '../../../features/player/mini_style_store.dart';
+import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/subpage_header.dart';
 import 'settings_sheets.dart';
@@ -45,26 +45,26 @@ class MiniPlayerSettingsScreen extends ConsumerWidget {
             SettingsValueRow(
               title: l.pvMiniBgRow,
               value: _miniBgLabel(l, mini.bg),
-              glyph: Icon(_miniBgIcon(mini.bg)),
+              glyph: BloomIcon(_miniBgIcon(mini.bg)),
               onTap: () => _openMiniBg(context, ref),
             ),
             SettingsValueRow(
               title: l.pvMiniShapeRow,
               value: _miniShapeLabel(l, mini.shape),
-              glyph: Icon(_miniShapeIcon(mini.shape)),
+              glyph: BloomIcon(_miniShapeIcon(mini.shape)),
               onTap: () => _openMiniShape(context, ref),
             ),
             SettingsValueRow(
               title: l.pvMiniRadiusRow,
               value: _miniRadiusLabel(l, mini.radius),
-              glyph: Icon(_miniRadiusIcon(mini.radius)),
+              glyph: BloomIcon(_miniRadiusIcon(mini.radius)),
               onTap: () => _openMiniRadius(context, ref),
             ),
             SettingsValueRow(
               title: l.pvMiniProgressRow,
               value: _miniProgressSummary(l, mini),
               // Набор: значок общий — про сам прогресс.
-              glyph: const Icon(SolarIconsOutline.soundwave),
+              glyph: const BloomIcon(Bi.soundwave),
               onTap: () => _openMiniProgress(context),
             ),
           ],
@@ -78,13 +78,13 @@ class MiniPlayerSettingsScreen extends ConsumerWidget {
               title: l.pvMiniButtonsRow,
               value: _miniButtonsSummary(l, mini),
               // Набор: значок общий — про кнопки.
-              glyph: const Icon(SolarIconsOutline.gamepad),
+              glyph: const BloomIcon(Bi.gamepad),
               onTap: () => _openMiniButtons(context),
             ),
             SettingsValueRow(
               title: l.pvMiniNeighborsRow,
               value: _miniNeighborsLabel(l, mini.neighbors),
-              glyph: Icon(_miniNeighborsIcon(mini.neighbors)),
+              glyph: BloomIcon(_miniNeighborsIcon(mini.neighbors)),
               onTap: () => _openMiniNeighbors(context, ref),
             ),
           ],
@@ -103,10 +103,10 @@ String _miniBgLabel(AppLocalizations l, MiniBg bg) => switch (bg) {
   MiniBg.cover => l.pvMiniBgCover,
 };
 
-IconData _miniBgIcon(MiniBg bg) => switch (bg) {
-  MiniBg.theme => SolarIconsOutline.paintRoller,
-  MiniBg.coverColor => SolarIconsOutline.palette,
-  MiniBg.cover => SolarIconsOutline.gallery,
+BloomGlyph _miniBgIcon(MiniBg bg) => switch (bg) {
+  MiniBg.theme => Bi.paintRoller,
+  MiniBg.coverColor => Bi.palette,
+  MiniBg.cover => Bi.gallery,
 };
 
 String _miniShapeLabel(AppLocalizations l, MiniCoverShape shape) =>
@@ -115,9 +115,9 @@ String _miniShapeLabel(AppLocalizations l, MiniCoverShape shape) =>
       MiniCoverShape.circle => l.pvMiniShapeCircle,
     };
 
-IconData _miniShapeIcon(MiniCoverShape shape) => switch (shape) {
-  MiniCoverShape.rounded => SolarIconsOutline.stop,
-  MiniCoverShape.circle => SolarIconsOutline.record,
+BloomGlyph _miniShapeIcon(MiniCoverShape shape) => switch (shape) {
+  MiniCoverShape.rounded => Bi.stop,
+  MiniCoverShape.circle => Bi.record,
 };
 
 String _miniRadiusLabel(AppLocalizations l, MiniRadius radius) =>
@@ -128,11 +128,11 @@ String _miniRadiusLabel(AppLocalizations l, MiniRadius radius) =>
       MiniRadius.pill => l.pvMiniRadiusPill,
     };
 
-IconData _miniRadiusIcon(MiniRadius radius) => switch (radius) {
-  MiniRadius.none => SolarIconsOutline.stop,
-  MiniRadius.soft => SolarIconsOutline.widget,
-  MiniRadius.rounded => SolarIconsOutline.widget_2,
-  MiniRadius.pill => SolarIconsOutline.record,
+BloomGlyph _miniRadiusIcon(MiniRadius radius) => switch (radius) {
+  MiniRadius.none => Bi.stop,
+  MiniRadius.soft => Bi.widget,
+  MiniRadius.rounded => Bi.widget2,
+  MiniRadius.pill => Bi.record,
 };
 
 String _miniProgressLabel(AppLocalizations l, MiniProgressKind kind) =>
@@ -142,10 +142,10 @@ String _miniProgressLabel(AppLocalizations l, MiniProgressKind kind) =>
       MiniProgressKind.ring => l.pvMiniProgressRing,
     };
 
-IconData _miniProgressIcon(MiniProgressKind kind) => switch (kind) {
-  MiniProgressKind.line => SolarIconsOutline.minus,
-  MiniProgressKind.fill => SolarIconsOutline.stop,
-  MiniProgressKind.ring => SolarIconsOutline.refreshCircle,
+BloomGlyph _miniProgressIcon(MiniProgressKind kind) => switch (kind) {
+  MiniProgressKind.line => Bi.minus,
+  MiniProgressKind.fill => Bi.stop,
+  MiniProgressKind.ring => Bi.refreshCircle,
 };
 
 /// Подпись строки «Индикаторы прогресса»: включённое через запятую, в том же
@@ -235,11 +235,11 @@ String _miniButtonLabel(AppLocalizations l, MiniButton button) =>
       MiniButton.fav => l.pvMiniButtonFav,
     };
 
-IconData _miniButtonIcon(MiniButton button) => switch (button) {
-  MiniButton.prev => SolarIconsOutline.skipPrevious,
-  MiniButton.play => SolarIconsOutline.play,
-  MiniButton.next => SolarIconsOutline.skipNext,
-  MiniButton.fav => SolarIconsOutline.heart,
+BloomGlyph _miniButtonIcon(MiniButton button) => switch (button) {
+  MiniButton.prev => Bi.skipPrevious,
+  MiniButton.play => Bi.play,
+  MiniButton.next => Bi.skipNext,
+  MiniButton.fav => Bi.heart,
 };
 
 /// Подпись строки «Кнопки управления» — включённые в том порядке, в каком они
@@ -288,8 +288,7 @@ Future<void> _openMiniButtons(BuildContext context) {
 String _miniNeighborsLabel(AppLocalizations l, bool on) =>
     on ? l.pvMiniNeighborsOn : l.pvMiniNeighborsOff;
 
-IconData _miniNeighborsIcon(bool on) =>
-    on ? SolarIconsOutline.transferHorizontal : SolarIconsOutline.stop;
+BloomGlyph _miniNeighborsIcon(bool on) => on ? Bi.transferHorizontal : Bi.stop;
 
 /// Соседние треки — выбор из двух, а не тумблер: строка стоит в одной карточке
 /// с остальным видом миниплеера, и её значение должно читаться так же, как у
