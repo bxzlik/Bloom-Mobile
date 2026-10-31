@@ -144,6 +144,8 @@ class _WaveHeroState extends ConsumerState<WaveHero> {
     return SizedBox(
       height: height,
       child: Stack(
+        // The stage runs on up into a pull past the top.
+        clipBehavior: Clip.none,
         children: [
           Positioned.fill(
             child: GestureDetector(
@@ -490,9 +492,13 @@ class _PicksState extends ConsumerState<_Picks> {
     return ((n - acts) / 2).ceil();
   }
 
+  // keepPage off: a row built anew (the home scrolled far and back) restored
+  // its old page, while the arc's first frame reads initialPage, so every
+  // pick rose to the arc's top and stayed there till a swipe.
   PageController _controller() => PageController(
     viewportFraction: _pickShare,
     initialPage: widget.once ? 0 : widget.options.length * _laps + _mid,
+    keepPage: false,
   );
 
   @override

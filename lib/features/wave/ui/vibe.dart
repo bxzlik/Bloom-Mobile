@@ -176,9 +176,7 @@ class _VibeState extends State<Vibe> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return RepaintBoundary(
-      child: ClipRect(
-        child: CustomPaint(size: Size.infinite, painter: _VibePainter(this)),
-      ),
+      child: CustomPaint(size: Size.infinite, painter: _VibePainter(this)),
     );
   }
 }
@@ -196,6 +194,15 @@ class _VibePainter extends CustomPainter {
     // page), fading out downwards with an ease-out: a straight ramp shows a kink.
     final c = Color.lerp(cols[0], bg, 0.3)!;
     final rest = 1 - _fadeFrom;
+    // Clipped to the box save upwards: a pull past the top of the page shows
+    // more of the stage, not the page's black.
+    canvas.clipRect(
+      Rect.fromLTRB(0, -size.height, size.width, size.height),
+    );
+    canvas.drawRect(
+      Rect.fromLTRB(0, -size.height, size.width, 0),
+      Paint()..color = c,
+    );
     canvas.drawRect(
       Offset.zero & size,
       Paint()
