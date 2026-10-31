@@ -419,6 +419,7 @@ class PcRemoteController extends Notifier<PcPlayback?> {
   Future<void> wavePersonal() =>
       _post('/v1/connect/wave', {'from': 'personal'});
   Future<void> waveQueue() => _post('/v1/connect/wave', {'from': 'queue'});
+  Future<void> waveShake() => _post('/v1/connect/wave', {'from': 'shake'});
   Future<void> waveTrack(Track track) =>
       _post('/v1/connect/wave', {'from': 'track', 'track': track.toJson()});
   Future<void> waveArtist(Artist artist, List<Track> tracks) =>

@@ -40,6 +40,12 @@ Future<CoverHsl?> extractCoverHsl(String? cover) {
   return extractProviderHsl(provider);
 }
 
+/// A cover's dominant colour by its link, kept until restart: scanning means
+/// loading the image.
+final coverHslProvider = FutureProvider.family<CoverHsl?, String?>(
+  (ref, cover) => extractCoverHsl(cover),
+);
+
 /// То же по УЖЕ ВЫБРАННОМУ провайдеру. Нужно там, где картинка не сводится к
 /// ссылке из стора: карточки «Поделиться» берут обложку покрупнее и с откатом
 /// на исходный размер, и тон должен считаться ровно по той, что нарисована.

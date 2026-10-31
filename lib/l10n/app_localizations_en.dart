@@ -2620,6 +2620,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get waveTitle => 'My Wave';
 
   @override
+  String get waveStart => 'Start My Wave';
+
+  @override
+  String get wavePickArtist => 'In the style of';
+
+  @override
+  String get wavePickTrack => 'By track';
+
+  @override
+  String get wavePickNow => 'Now playing';
+
+  @override
+  String get waveBack => 'Back to the usual';
+
+  @override
+  String get waveShake => 'Shake up My Wave';
+
+  @override
   String get waveLabelTrack => 'Track wave';
 
   @override

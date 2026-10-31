@@ -56,7 +56,6 @@ WaveLibrary _library(
     disliked: disliked,
     seedOf: _seedOf,
     stats: PlayStats.build(PlayLog(events: events)),
-    recent: [for (final e in plays.keys) e],
     extras: extras,
   );
 }
@@ -175,23 +174,6 @@ void main() {
         disliked: {'sc:1'},
       );
       expect(personalSeeds(view, 'sc', 0), isNot(contains(_sc(1))));
-    });
-  });
-
-  group('pickDisplaySeeds', () {
-    test('витрина не повторяет треки и уважает лимит', () {
-      final tracks = [for (var i = 0; i < 30; i++) _track('sc:$i')];
-      final view = _library(
-        tracks,
-        plays: {'sc:0': 9, 'sc:1': 7},
-        favs: ['sc:5'],
-      );
-      final faces = pickDisplaySeeds(view, 0, limit: 8);
-
-      expect(faces.length, 8);
-      expect(faces.toSet().length, 8);
-      // Сверху — то, на чём волна и построится: слушаемое, потом лайки.
-      expect(faces.take(3), containsAll(['sc:0', 'sc:1']));
     });
   });
 }

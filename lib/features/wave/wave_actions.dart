@@ -66,6 +66,18 @@ Future<void> startWaveFromArtist(
   (wave) => wave.startByArtist(artist, seedTracks: seedTracks),
 );
 
+/// A wave in the style of [name], one of [track]'s artists.
+Future<void> startWaveFromArtistName(
+  BuildContext context,
+  WidgetRef ref,
+  Track track,
+  String name,
+) => _run(context, ref, (wave) => wave.startByArtistName(track, name));
+
+/// Shakes up My Wave (starts it, when it isn't on).
+Future<void> shakeWave(BuildContext context, WidgetRef ref) =>
+    _run(context, ref, (wave) => wave.shake());
+
 /// Остановить волну — очередь доигрывает, но больше не догружается.
 void stopWave(BuildContext context, WidgetRef ref) {
   ref.read(waveProvider.notifier).stop();

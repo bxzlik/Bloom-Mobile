@@ -707,6 +707,17 @@ class PlaybackController extends Notifier<PlaybackState>
   void appendToQueue(List<Track> tracks) =>
       _pc?.enqueue(tracks) ?? _append(tracks);
 
+  /// What follows the playing track, replaced by [tracks] ("Shake up My
+  /// Wave"); the playing one plays on.
+  void replaceUpcoming(List<Track> tracks) {
+    if (_st.queue.isEmpty) return;
+    final q = _st.queue.take(_st.index + 1).toList();
+    _origQueue = null;
+    _st = _st.copyWith(queue: q);
+    _handler.setQueue(q);
+    _append(tracks);
+  }
+
   /// Дописать и вернуть, сколько реально встало.
   int _append(List<Track> tracks) {
     if (tracks.isEmpty || _st.queue.isEmpty) return 0;

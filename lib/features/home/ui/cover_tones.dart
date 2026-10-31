@@ -24,11 +24,11 @@ class CoverTones {
   }
 }
 
-/// Tones by cover link. Kept until restart: scanning means loading the image.
+/// Tones by cover link.
 final coverTonesProvider = FutureProvider.family<CoverTones?, String?>((
   ref,
   cover,
 ) async {
-  final hsl = await extractCoverHsl(cover);
+  final hsl = await ref.watch(coverHslProvider(cover).future);
   return hsl == null ? null : CoverTones.of(hsl);
 });

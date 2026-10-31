@@ -4628,6 +4628,42 @@ abstract class AppLocalizations {
   /// **'My Wave'**
   String get waveTitle;
 
+  /// desktop: wave.start
+  ///
+  /// In en, this message translates to:
+  /// **'Start My Wave'**
+  String get waveStart;
+
+  /// desktop: wave.pick.artist
+  ///
+  /// In en, this message translates to:
+  /// **'In the style of'**
+  String get wavePickArtist;
+
+  /// desktop: wave.pick.track
+  ///
+  /// In en, this message translates to:
+  /// **'By track'**
+  String get wavePickTrack;
+
+  /// desktop: wave.pick.now
+  ///
+  /// In en, this message translates to:
+  /// **'Now playing'**
+  String get wavePickNow;
+
+  /// desktop: wave.back
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the usual'**
+  String get waveBack;
+
+  /// desktop: wave.shake
+  ///
+  /// In en, this message translates to:
+  /// **'Shake up My Wave'**
+  String get waveShake;
+
   /// desktop: wave.label.track
   ///
   /// In en, this message translates to:

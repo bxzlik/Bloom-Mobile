@@ -108,6 +108,10 @@ flutter:
     # Логотипы площадок и сервисов — те же файлы, что в десктопном Bloom.
     - assets/platform/
 
+  # My Wave's living circle.
+  shaders:
+    - shaders/vibe.frag
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

@@ -8,6 +8,7 @@ library;
 import '../../core/entities/entities.dart';
 import '../../core/store/library_store.dart';
 import '../../core/store/play_stats.dart';
+import '../../shared/util/taste.dart';
 import 'wave_engine.dart' show spreadSeeds;
 import 'wave_types.dart';
 
@@ -18,7 +19,6 @@ class WaveLibrary {
     required this.disliked,
     required this.seedOf,
     PlayStats? stats,
-    this.recent = const [],
     Iterable<Track> extras = const [],
   }) : stats = stats ?? PlayStats.empty,
        _extras = {for (final t in extras) t.id: t};
@@ -27,9 +27,6 @@ class WaveLibrary {
 
   /// Журнал прослушиваний целиком.
   final PlayStats stats;
-
-  /// id из «Истории», свежие сверху.
-  final List<String> recent;
 
   /// id дизлайкнутых треков — сидами они не бывают.
   final Set<String> disliked;
@@ -82,7 +79,7 @@ List<WaveSeed> personalSeeds(WaveLibrary view, String provider, int rotation) {
 
   final byPlays = _byPlays(view, lib);
   final favs = [
-    for (final t in _newest(view.lib.favTracks, view.lib.favs))
+    for (final t in newestFirst(view.lib.favTracks, view.lib.favs))
       if (usable(t)) t,
   ];
 
@@ -101,54 +98,8 @@ List<WaveSeed> personalSeeds(WaveLibrary view, String provider, int rotation) {
   take(favs, rotation * 2 + 1);
   if (!take(byPlays, rotation * 2 + 2)) take(favs, rotation * 2 + 2);
   // Ничего не слушали и не лайкали: самое свежее в библиотеке.
-  if (picked.isEmpty) picked.addAll(_newest(lib, view.lib.inLib).take(3));
+  if (picked.isEmpty) picked.addAll(newestFirst(lib, view.lib.inLib).take(3));
   return [for (final t in picked) ?view.seedOf(t)];
-}
-
-/// Кольцо «Моей волны» на главной: из чего брать обложки. Те же источники в
-/// том же порядке, но БЕЗ сдвига ротации — отрисовка главной не должна
-/// прокручивать сиды настоящей волны. С запасом: у части не будет обложки.
-List<String> pickDisplaySeeds(
-  WaveLibrary view,
-  int rotation, {
-  int limit = 24,
-}) {
-  final lib = view.tracks;
-  if (lib.isEmpty) return const [];
-
-  final out = <String>[];
-  final seen = <String>{};
-  void push(String? id) {
-    if (id == null || out.length >= limit) return;
-    if (seen.add(id)) out.add(id);
-  }
-
-  final byPlays = _byPlays(view, lib);
-  final favs = [
-    for (final t in _newest(view.lib.favTracks, view.lib.favs))
-      if (!view.disliked.contains(t.id)) t,
-  ];
-  for (final t in _rotate(byPlays, rotation * 2).take(4)) {
-    push(t.id);
-  }
-  for (final t in _rotate(favs, rotation * 2).take(4)) {
-    push(t.id);
-  }
-  // Добивка: остаток топа → остаток лайков → недавнее → свежее в библиотеке.
-  for (final t in byPlays) {
-    push(t.id);
-  }
-  for (final t in favs) {
-    push(t.id);
-  }
-  for (final id in view.recent) {
-    if (view.disliked.contains(id)) continue;
-    push(id);
-  }
-  for (final t in lib) {
-    push(t.id);
-  }
-  return out;
 }
 
 /// Слушанные, самые слушаемые сверху (порядок при равенстве — как пришли).
@@ -160,19 +111,69 @@ List<Track> _byPlays(WaveLibrary view, List<Track> lib) {
   return [for (final x in scored) x.$1];
 }
 
-/// Свежие сверху по времени добавления [at] — `Taste::newestIn` ПК.
-List<Track> _newest(List<Track> list, Map<String, int> at) {
-  final rows = [for (var i = 0; i < list.length; i++) (list[i], i)]
-    ..sort((a, b) {
-      final c = (at[b.$1.id] ?? 0).compareTo(at[a.$1.id] ?? 0);
-      return c != 0 ? c : a.$2.compareTo(b.$2);
-    });
-  return [for (final x in rows) x.$1];
+/// What a wave started from an artist or a track is about: the pick that
+/// started the wave on now is lit by it.
+String waveAboutArtist(String name) => 'artist:${artistKey(name)}';
+String waveAboutTrack(String trackId) => 'track:$trackId';
+
+enum WaveOptionKind { artist, track, back, shake }
+
+/// A wave to turn to from My Wave's stage.
+class WaveOption {
+  const WaveOption.artist(this.name, Track this.track)
+    : kind = WaveOptionKind.artist;
+  const WaveOption.track(Track this.track)
+    : kind = WaveOptionKind.track,
+      name = '';
+  const WaveOption.action(this.kind) : name = '', track = null;
+
+  final WaveOptionKind kind;
+  final String name;
+
+  /// The track's own for a track; for an artist, their own track (the
+  /// platform to look them up on, the picture while there's no avatar).
+  final Track? track;
+
+  String get about => switch (kind) {
+    WaveOptionKind.artist => waveAboutArtist(name),
+    WaveOptionKind.track => waveAboutTrack(track!.id),
+    _ => '',
+  };
 }
 
-/// Список, прокрученный на [by] позиций.
-List<T> _rotate<T>(List<T> items, int by) {
-  if (items.length < 2) return items;
-  final k = by % items.length;
-  return [...items.skip(k), ...items.take(k)];
+/// Waves to turn to, artist and track by turns, as `Wave::picks` on the PC:
+/// the top artists, and tracks of others (two fresh likes, then the top). An
+/// artist's own hit beside their name would say the same twice.
+List<WaveOption> wavePicks(RecsInput input, {int each = 4}) {
+  final artists = topArtists(input, each);
+  final listed = {for (final a in artists) a.key};
+
+  final tracks = <Track>[];
+  final taken = <String>{};
+  void take(Iterable<Track> from, int upTo) {
+    for (final t in from) {
+      if (tracks.length >= upTo) return;
+      if (taken.contains(t.id) ||
+          input.disliked.contains(t.id) ||
+          !recsAskable(input, t) ||
+          artistKeys(t).any(listed.contains)) {
+        continue;
+      }
+      taken.add(t.id);
+      tracks.add(t);
+    }
+  }
+
+  take(newestFirst(input.lib.favTracks, input.lib.favs), 2);
+  take([
+    for (final r in recsTopPlayed(input, limit: 50)) ?input.trackOf(r.id),
+  ], each);
+
+  return [
+    for (var i = 0; i < each; i++) ...[
+      if (i < artists.length)
+        WaveOption.artist(artists[i].name, artists[i].own),
+      if (i < tracks.length) WaveOption.track(tracks[i]),
+    ],
+  ];
 }

@@ -806,6 +806,12 @@
   "onbReplay": "\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u043e\u043d\u0431\u043e\u0440\u0434\u0438\u043d\u0433 \u0441\u043d\u043e\u0432\u0430",
 
   "waveTitle": "\u041c\u043e\u044f \u0432\u043e\u043b\u043d\u0430",
+  "waveStart": "Запустить «Мою волну»",
+  "wavePickArtist": "В стиле артиста",
+  "wavePickTrack": "По треку",
+  "wavePickNow": "Сейчас играет",
+  "waveBack": "Назад к привычному",
+  "waveShake": "Встряхнуть Мою волну",
   "waveLabelTrack": "\u0412\u043e\u043b\u043d\u0430 \u043f\u043e \u0442\u0440\u0435\u043a\u0443",
   "waveLabelQueue": "\u041f\u043e\u0445\u043e\u0436\u0438\u0435 \u043d\u0430 \u043e\u0447\u0435\u0440\u0435\u0434\u044c",
   "waveLabelArtist": "\u0412\u043e\u043b\u043d\u0430 \u043f\u043e \u0430\u0440\u0442\u0438\u0441\u0442\u0443",

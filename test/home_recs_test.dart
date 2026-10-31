@@ -11,6 +11,8 @@ import 'package:bloom/core/store/play_log.dart';
 import 'package:bloom/core/store/play_stats.dart';
 import 'package:bloom/features/home/for_you.dart';
 import 'package:bloom/features/home/similar_to.dart';
+import 'package:bloom/features/wave/wave_seeds.dart';
+import 'package:bloom/shared/util/taste.dart';
 import 'package:bloom/shared/util/track_dedup.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -553,6 +555,54 @@ void main() {
         const SimilarArtistItem(artist).toJson(),
       );
       expect((item as SimilarArtistItem).artist.avatar, 'https://a');
+    });
+  });
+
+  group('волны для ряда «Моей волны»', () {
+    test('артист и трек по очереди, треки не тех же артистов', () {
+      final input = _input(
+        providers: [_Fake()],
+        plays: {'sc:a1': 9, 'sc:a2': 8, 'sc:b1': 7, 'sc:c1': 2},
+        tracks: [
+          _t('sc:a1', artist: 'A'),
+          _t('sc:a2', artist: 'A'),
+          _t('sc:b1', artist: 'B'),
+          _t('sc:c1', artist: 'C'),
+          _t('sc:d1', artist: 'D'),
+        ],
+        favs: {'sc:d1'},
+      );
+      final picks = wavePicks(input, each: 2);
+
+      expect(
+        [for (final p in picks) p.kind],
+        [
+          WaveOptionKind.artist,
+          WaveOptionKind.track,
+          WaveOptionKind.artist,
+          WaveOptionKind.track,
+        ],
+      );
+      expect(picks[0].name, 'A');
+      expect(picks[2].name, 'B');
+      // The fresh like first, then the top past A's and B's own tracks.
+      expect(picks[1].track!.id, 'sc:d1');
+      expect(picks[3].track!.id, 'sc:c1');
+      expect(picks[1].about, 'track:sc:d1');
+      expect(picks[0].about, 'artist:a');
+    });
+
+    test('дизлайкнутое и то, о чём не спросить, в ряд не идёт', () {
+      final input = _input(
+        providers: [_Fake()],
+        tracks: [
+          _t('sc:1', artist: 'X'),
+          _t('ym:2', artist: 'Y'),
+        ],
+        favs: {'sc:1', 'ym:2'},
+        disliked: {'sc:1'},
+      );
+      expect(wavePicks(input), isEmpty);
     });
   });
 }

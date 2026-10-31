@@ -1,5 +1,5 @@
-/// Настройка волны (долгое нажатие по карточке) — порт попапа `.wave-menu` из
-/// `WaveCard.tsx`: выбор площадки и вход в дизлайки.
+/// Tuning the wave (a long press on its stage), as `WaveMenu` on the PC: the
+/// platform and the way into the dislikes.
 ///
 /// Заголовка строкой нет: шторку открывают жестом с самой волны, и подписывать
 /// её нечем — плитки и «Дизлайки» говорят за себя.
@@ -23,7 +23,6 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
-import '../wave_faces.dart';
 import '../wave_store.dart';
 import 'wave_dislikes_sheet.dart';
 
@@ -111,13 +110,8 @@ class _TuneSheet extends ConsumerWidget {
     );
   }
 
-  /// Смена площадки сбрасывает кэш витрины: кольцо обязано показать обложки
-  /// ВЫБРАННОЙ станции, а не остаться со старыми.
-  void _pick(WidgetRef ref, MusicSource source) {
-    ref.read(waveStoreProvider.notifier).setSource(source);
-    resetWaveFaces();
-    ref.invalidate(waveFacesProvider);
-  }
+  void _pick(WidgetRef ref, MusicSource source) =>
+      ref.read(waveStoreProvider.notifier).setSource(source);
 }
 
 /// Плитка площадки: логотип и ОБВОДКА в её фирменном цвете, а не в акценте

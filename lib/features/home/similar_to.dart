@@ -164,11 +164,6 @@ int recsDayNumber(DateTime now) =>
     DateTime.utc(now.year, now.month, now.day).millisecondsSinceEpoch ~/
     Duration.millisecondsPerDay;
 
-bool _isRealArtist(String name) {
-  final n = name.trim().toLowerCase();
-  return n.isNotEmpty && n != '—' && n != 'unknown artist';
-}
-
 MusicProvider? _providerOf(RecsInput input, MusicSource source) {
   final p = input.registry.byId(source.id);
   return p != null && p.isEnabled ? p : null;
@@ -325,7 +320,7 @@ Future<SimilarTo?> _fromTrack(
     // Показывать всё равно нечего — за артистами не ходим.
     if (tracks.length < _minTracks) continue;
 
-    final artist = _isRealArtist(first)
+    final artist = isRealArtist(first)
         ? await _resolveArtist(input, first, seed)
         : null;
     final artists = artist == null
@@ -348,43 +343,6 @@ Future<SimilarTo?> _fromTrack(
   return null;
 }
 
-class _ArtistCand {
-  _ArtistCand(this.name, this.key);
-
-  final String name;
-  final String key;
-  int plays = 0;
-
-  /// Его треки из топа, самый слушаемый первым.
-  final List<Track> theirs = [];
-
-  /// Свой трек — где он один (аватар трека его), иначе самый слушаемый:
-  /// `Taste::Artist::own` ПК.
-  Track get own =>
-      theirs.where((t) => parseArtists(t.artist).length == 1).firstOrNull ??
-      theirs.first;
-}
-
-/// Топ артистов — свёртка топа треков, как в статистике профиля: совместный
-/// трек идёт каждому, иначе в топе стояло бы склеенное имя, по которому
-/// площадка никого не найдёт.
-List<_ArtistCand> _topArtists(RecsInput input) {
-  final map = <String, _ArtistCand>{};
-  for (final r in recsTopPlayed(input, limit: 1000)) {
-    final t = input.trackOf(r.id);
-    if (t == null) continue;
-    for (final name in parseArtists(t.artist)) {
-      if (!_isRealArtist(name)) continue;
-      final key = artistKey(name);
-      final cand = map.putIfAbsent(key, () => _ArtistCand(name, key));
-      cand.plays += r.plays;
-      cand.theirs.add(t);
-    }
-  }
-  final list = map.values.toList()..sort((a, b) => b.plays.compareTo(a.plays));
-  return list.take(_seedPool).toList();
-}
-
 /// Артист-сид: самые слушаемые артисты, по кругу. Похожие артисты — с его
 /// страницы; треки — похожие на его самые слушаемые, но не его (иначе это
 /// его дискография).
@@ -393,7 +351,7 @@ Future<SimilarTo?> _fromArtist(
   int turn,
   List<Track> forYou,
 ) async {
-  final pool = _topArtists(input);
+  final pool = topArtists(input, _seedPool);
   for (var k = 0; k < math.min(_seedTries, pool.length); k++) {
     final cand = pool[(turn + k) % pool.length];
     final artist = await _resolveArtist(input, cand.name, cand.own);

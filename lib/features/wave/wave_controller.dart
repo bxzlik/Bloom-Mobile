@@ -21,8 +21,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../core/entities/entities.dart';
 import '../../core/l10n/l10n.dart';
+import '../../core/providers/artist_lookup.dart';
 import '../../core/providers/music_provider.dart';
-import '../../core/store/history_store.dart';
 import '../../core/store/library_store.dart';
 import '../../core/store/play_stats.dart';
 import '../../providers/soundcloud/sc_sources.dart';
@@ -68,13 +68,16 @@ enum WaveStartResult {
 }
 
 class WaveRunState {
-  const WaveRunState({this.starting = false, this.mode});
+  const WaveRunState({this.starting = false, this.mode, this.about = ''});
 
   /// Волна собирается прямо сейчас — кнопка запуска крутит вертушку.
   final bool starting;
 
   /// Режим идущей волны; `null` — волна не играет.
   final WaveMode? mode;
+
+  /// What the wave on now was started from ([WaveRun.about]).
+  final String about;
 
   bool get active => mode != null;
 }
@@ -117,7 +120,6 @@ class WaveController extends Notifier<WaveRunState> {
     lib: ref.read(libraryProvider),
     disliked: ref.read(waveStoreProvider).dislikedIds,
     stats: ref.read(playStatsProvider),
-    recent: [for (final row in ref.read(historyRowsProvider)) row.id],
     extras: extras,
     seedOf: seedOf,
   );
@@ -163,7 +165,7 @@ class WaveController extends Notifier<WaveRunState> {
       WaveMode.track,
       [s],
       native: s.provider == MusicSource.yandex.code,
-      about: 'track:${track.id}',
+      about: waveAboutTrack(track.id),
       first: seedFirst ? track : null,
     );
   }
@@ -185,7 +187,7 @@ class WaveController extends Notifier<WaveRunState> {
     List<Track> seedTracks = const [],
   }) {
     if (_remote case final pc?) return _onPc(pc.waveArtist(artist, seedTracks));
-    final about = 'artist:${artistKey(artist.name)}';
+    final about = waveAboutArtist(artist.name);
     if (artist.source == MusicSource.yandex) {
       final id = ymNumericId(artist.id);
       if (id.isEmpty) return Future.value(WaveStartResult.artistNoSeeds);
@@ -202,6 +204,88 @@ class WaveController extends Notifier<WaveRunState> {
     final seeds = queueSeeds(seedTracks, _view(extras: seedTracks));
     if (seeds.isEmpty) return Future.value(WaveStartResult.artistNoSeeds);
     return _begin(WaveMode.artist, seeds, about: about);
+  }
+
+  /// A wave in the style of [name], one of [track]'s artists, as
+  /// `Wave::startByArtistName` on the PC: a Yandex track has its artist's own
+  /// station, the rest are seeded with the artist's tracks the listener has
+  /// (the top and the library).
+  Future<WaveStartResult> startByArtistName(Track track, String name) async {
+    if (state.starting) return WaveStartResult.busy;
+    final ym = _provider(MusicSource.yandex.code);
+    if (track.source == MusicSource.yandex && ym != null && ym.isEnabled) {
+      Artist? found;
+      try {
+        found = await findArtistCached(ym, name);
+      } on Object {
+        // No network or no such artist there: seeded from their tracks below.
+      }
+      if (found != null && found.source == MusicSource.yandex) {
+        return startByArtist(found);
+      }
+    }
+    final input = recsInputOf(ref);
+    final key = artistKey(name);
+    final seen = <String>{};
+    final theirs = [
+      for (final t in [
+        for (final r in recsTopPlayed(input, limit: 400)) ?input.trackOf(r.id),
+        ...input.lib.allTracks,
+      ])
+        if (artistKeys(t).contains(key) && seen.add(t.id)) t,
+    ];
+    // No station of their own: the artist stands for their name alone.
+    return startByArtist(
+      Artist(id: '', name: name, source: MusicSource.local),
+      seedTracks: theirs,
+    );
+  }
+
+  /// Shakes up My Wave: what follows the playing track turns into a fresh
+  /// batch from new seeds. Outside My Wave it starts it. `Wave::shake`.
+  Future<WaveStartResult> shake() async {
+    if (_remote case final pc?) return _onPc(pc.waveShake());
+    final run = _run;
+    if (run == null || !_inWave || run.mode != WaveMode.personal) {
+      return startPersonal();
+    }
+    if (state.starting) return WaveStartResult.busy;
+    // A Yandex station learns by itself and its next batch is new anyway.
+    if (!run.native) {
+      final seeds = personalSeeds(
+        _view(),
+        run.seeds.first.provider,
+        _store.takeRotation(),
+      );
+      if (seeds.isEmpty) return WaveStartResult.notEnoughData;
+      run.seeds = seeds;
+    }
+    final gen = ++_gen;
+    _refilling = false;
+    state = WaveRunState(starting: true, mode: state.mode, about: state.about);
+    resetWaveSourceCache();
+    try {
+      final pages = await _gather(run.seeds);
+      if (gen != _gen || !_inWave) return WaveStartResult.busy;
+      final batch = pickBatch(pages, _pick(run));
+      if (batch.isEmpty) return WaveStartResult.noSimilar;
+      _markShown(batch);
+      _playback.replaceUpcoming(batch);
+      _save();
+      return WaveStartResult.ok;
+    } finally {
+      if (gen == _gen) {
+        state = WaveRunState(mode: state.mode, about: state.about);
+      }
+    }
+  }
+
+  /// Whether My Wave has something to start from: Yandex's own station, or a
+  /// track of the chosen platform with a radio. `Wave::canPersonal`.
+  bool canPersonal() {
+    final src = ref.read(effectiveWaveSourceProvider);
+    if (src == MusicSource.yandex) return true;
+    return _view().tracks.any((t) => t.source == src && seedOf(t) != null);
   }
 
   /// [replace] — пачка становится очередью; иначе дописывается в её конец
@@ -221,7 +305,13 @@ class WaveController extends Notifier<WaveRunState> {
     final run = WaveRun(mode: mode, seeds: seeds, about: about, native: native);
     _run = run;
     _refilling = false;
-    if (replace) state = WaveRunState(starting: true, mode: state.mode);
+    if (replace) {
+      state = WaveRunState(
+        starting: true,
+        mode: state.mode,
+        about: state.about,
+      );
+    }
     // Новая волна не должна собраться из тех же ответов, что прошлая.
     resetWaveSourceCache();
     try {
@@ -239,7 +329,7 @@ class WaveController extends Notifier<WaveRunState> {
       _markShown(batch);
       final source = WaveSource(label: waveLabel(mode), mode: mode);
       if (replace) {
-        state = WaveRunState(starting: true, mode: mode);
+        state = WaveRunState(starting: true, mode: mode, about: about);
         _save();
         await _playback.playWave([
           ?first,
@@ -250,7 +340,7 @@ class WaveController extends Notifier<WaveRunState> {
         _end();
         return WaveStartResult.noSimilar;
       } else {
-        state = WaveRunState(mode: mode);
+        state = WaveRunState(mode: mode, about: about);
         _save();
       }
       if (native) {
@@ -261,7 +351,9 @@ class WaveController extends Notifier<WaveRunState> {
       return WaveStartResult.ok;
     } finally {
       if (replace && gen == _gen) {
-        state = WaveRunState(mode: _run == null ? null : state.mode);
+        state = _run == null
+            ? const WaveRunState()
+            : WaveRunState(mode: state.mode, about: state.about);
       }
     }
   }
@@ -490,7 +582,7 @@ class WaveController extends Notifier<WaveRunState> {
     }
     if (saved == null) return;
     _run = saved;
-    state = WaveRunState(mode: saved.mode);
+    state = WaveRunState(mode: saved.mode, about: saved.about);
   }
 }
 

@@ -11,21 +11,11 @@ import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/providers.dart';
 import '../../core/entities/entities.dart';
 import '../../core/providers/registry.dart';
-import '../../core/store/library_store.dart';
 import '../../core/store/play_stats.dart';
 import '../../shared/util/taste.dart';
-import '../../shared/util/track_dedup.dart';
-import '../wave/wave_store.dart';
 import 'daily_showcase.dart';
-
-/// Окно «текущего вкуса»: вкус двухлетней давности рекомендациям только мешает.
-const int kRecsWindowDays = 90;
-
-/// Меньше позиций за окно — считаем за всё время (новая установка).
-const int _windowMinSeeds = 3;
 
 /// Сколько сидов опрашиваем. Каждый — сетевой запрос, поэтому немного.
 const int _seedLimit = 5;
@@ -36,90 +26,6 @@ const int kForYouMax = 20;
 /// Больше двух треков одного артиста полоса не выдерживает — становится его
 /// витриной. Считается по каждому имени трека.
 const int kRecsPerArtistMax = 2;
-
-/// Всё, из чего собираются витрины. Снимок, а не живые сторы: сборка идёт
-/// секунды, и подборка обязана быть собрана по одному состоянию.
-class RecsInput {
-  RecsInput({
-    required this.registry,
-    required this.stats,
-    required this.lib,
-    this.disliked = const {},
-    DateTime? now,
-  }) : now = now ?? DateTime.now();
-
-  final ProviderRegistry registry;
-  final PlayStats stats;
-  final LibraryState lib;
-
-  /// Дизлайки волны — в витрину они не попадают ни сидом, ни карточкой.
-  final Set<String> disliked;
-  final DateTime now;
-
-  /// Трек по id: из библиотеки, иначе его снимок из журнала.
-  Track? trackOf(String id) => lib.tracks[id] ?? stats.tracks[id];
-
-  /// Всё, что человек уже знает: сохранённое и когда-либо слышанное.
-  late final Set<String> known = {
-    ...lib.tracks.keys,
-    for (final r in stats.allPlayed()) r.id,
-  };
-
-  /// Отсев перезаливов по всему знакомому. Сверки [known] мало: копия того же
-  /// трека от другого загрузчика приходит под своим id. Слышанное, но не
-  /// сохранённое, сверяем по его снимку из базы. Каждый раз новый: накопитель
-  /// запоминает принятое.
-  DupGuard knownDups() {
-    final guard = DupGuard();
-    for (final t in lib.tracks.values) {
-      guard.add(t);
-    }
-    for (final e in stats.tracks.entries) {
-      if (!lib.tracks.containsKey(e.key)) guard.add(e.value);
-    }
-    return guard;
-  }
-}
-
-RecsInput recsInputOf(Ref ref) => RecsInput(
-  registry: ref.read(registryProvider),
-  stats: ref.read(playStatsProvider),
-  lib: ref.read(libraryProvider),
-  disliked: ref.read(waveStoreProvider).dislikedIds,
-);
-
-/// Можно ли спросить похожие: площадка трека включена и у неё есть радио для
-/// него — `Taste::askable` ПК. Своим файлам спросить не у кого.
-bool recsAskable(RecsInput input, Track t) {
-  final p = input.registry.byId(t.source.id);
-  return p != null && p.isEnabled && p.trackStation(t).isNotEmpty;
-}
-
-/// Снимок трека есть, и о нём можно спросить.
-bool _askableId(RecsInput input, String id) {
-  final t = input.trackOf(id);
-  return t != null && recsAskable(input, t);
-}
-
-/// Самое слушаемое, о чём можно спросить, без дизлайков, — `Taste::topTracks`
-/// ПК: за окно, а пока там мало — за всё время.
-List<TopPlayed> recsTopPlayed(
-  RecsInput input, {
-  required int limit,
-  int minPlays = 1,
-}) {
-  List<TopPlayed> pick({int? sinceDays, required int minPlays}) => [
-    for (final r in input.stats.topPlayed(
-      sinceDays: sinceDays,
-      limit: limit * 4,
-      minPlays: minPlays,
-      now: input.now,
-    ))
-      if (!input.disliked.contains(r.id) && _askableId(input, r.id)) r,
-  ].take(limit).toList();
-  final top = pick(sinceDays: kRecsWindowDays, minPlays: minPlays);
-  return top.length >= _windowMinSeeds ? top : pick(minPlays: 1);
-}
 
 /// Похожие на трек у его площадки. Площадку решает префикс id; без метода или
 /// с упавшей сетью — пусто: один сид не повод хоронить витрину.
@@ -134,16 +40,6 @@ Future<List<Track>> similarTracksFor(
   } on Object {
     return const [];
   }
-}
-
-/// Список свежими сверху по времени добавления [at] — `Taste::newestIn` ПК.
-List<Track> newestFirst(List<Track> list, Map<String, int> at) {
-  final rows = [for (var i = 0; i < list.length; i++) (list[i], i)]
-    ..sort((a, b) {
-      final c = (at[b.$1.id] ?? 0).compareTo(at[a.$1.id] ?? 0);
-      return c != 0 ? c : a.$2.compareTo(b.$2);
-    });
-  return [for (final x in rows) x.$1];
 }
 
 /// Сиды: самое слушаемое, свежие лайки, свежее в библиотеке; первым проходом —

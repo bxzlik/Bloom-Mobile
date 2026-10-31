@@ -2652,6 +2652,24 @@ class AppLocalizationsRu extends AppLocalizations {
   String get waveTitle => 'Моя волна';
 
   @override
+  String get waveStart => 'Запустить «Мою волну»';
+
+  @override
+  String get wavePickArtist => 'В стиле артиста';
+
+  @override
+  String get wavePickTrack => 'По треку';
+
+  @override
+  String get wavePickNow => 'Сейчас играет';
+
+  @override
+  String get waveBack => 'Назад к привычному';
+
+  @override
+  String get waveShake => 'Встряхнуть Мою волну';
+
+  @override
   String get waveLabelTrack => 'Волна по треку';
 
   @override

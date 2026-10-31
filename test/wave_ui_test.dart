@@ -1,20 +1,14 @@
-/// Интерфейс волны: геометрия кольца, карточка на главной и шторка дизлайков.
-///
-/// Кольцо проверяем числами, а не на глаз: слоты стоят по эллипсу вокруг
-/// центра, и съехавший масштаб виден только тем, что обложки уезжают за край
-/// блока — на скриншоте это заметишь не сразу.
+/// The wave's interface: the stage atop the home screen and the dislikes sheet.
 library;
-
-import 'dart:math';
 
 import 'package:bloom/app/theme/bloom_theme.dart';
 import 'package:bloom/app/theme/tokens.dart';
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/l10n/l10n.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/features/wave/ui/wave_card.dart';
 import 'package:bloom/features/wave/ui/wave_dislikes_sheet.dart';
-import 'package:bloom/features/wave/ui/wave_ring.dart';
+import 'package:bloom/features/player/player_controller.dart';
+import 'package:bloom/features/wave/ui/wave_hero.dart';
 import 'package:bloom/features/wave/wave_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,12 +27,28 @@ Track _track(String id, {String? cover}) => Track(
   cover: cover,
 );
 
-ProviderContainer _container([JsonStore? store]) {
+class _FakePlayback extends PlaybackController {
+  _FakePlayback(this.initial);
+
+  final PlaybackState initial;
+
+  @override
+  PlaybackState build() => initial;
+}
+
+ProviderContainer _container({JsonStore? store, Track? playing}) {
   final json = store ?? JsonStore.memory();
   final c = ProviderContainer(
     overrides: [
       jsonStoreProvider.overrideWithValue(json),
       dbProvider.overrideWithValue(testDb(json)),
+      playbackProvider.overrideWith(
+        () => _FakePlayback(PlaybackState(queue: [?playing], index: 0)),
+      ),
+      playingNowProvider.overrideWithValue(false),
+      playheadProvider.overrideWith(
+        (ref) => Stream.value((position: Duration.zero, total: Duration.zero)),
+      ),
     ],
   );
   addTearDown(c.dispose);
@@ -63,170 +73,62 @@ Future<void> _pump(
 );
 
 void main() {
-  group('масштаб кольца', () {
-    test('узкий экран сжимает кольцо, но не ниже дна читаемости', () {
-      // Телефон: кольцо ужимается примерно вдвое от десктопного размера.
-      final phone = ringScale(360);
-      expect(phone, closeTo(360 / kRingDesignWidth, 0.001));
-      expect(phone, greaterThan(0.46));
-      // Совсем узкий блок упирается в дно: ниже обложки не читаются.
-      expect(ringScale(120), 0.46);
-    });
-
-    test('широкий блок кольцо НЕ растягивает', () {
-      // Дизайн-размер — потолок: на планшете кольцо просто стоит по центру.
-      expect(ringScale(1200), 1.0);
-      expect(ringScale(kRingDesignWidth), 1.0);
-    });
-  });
-
-  group('слоты кольца', () {
-    test('восемь слотов и все внутри дизайн-бокса', () {
-      expect(kRingSlots.length, 8);
-      for (final slot in kRingSlots) {
-        // Половина стороны плитки от центра слота не должна вылезать за бокс.
-        expect(
-          slot.x.abs() + slot.size / 2,
-          lessThanOrEqualTo(kRingDesignWidth / 2),
-        );
-        expect(
-          slot.y.abs() + slot.size / 2,
-          lessThanOrEqualTo(kRingDesignHeight / 2),
-        );
-      }
-    });
-
-    test('плитки стоят по окружности — просветы вокруг героя одинаковые', () {
-      // Ровно этого и не хватало на десктопной геометрии: там кольцо — эллипс
-      // 250×155, и боковые просветы выходили вдвое шире верхних.
-      final distances = [
-        for (final slot in kRingSlots) sqrt(slot.x * slot.x + slot.y * slot.y),
-      ];
-      for (final d in distances) {
-        expect(d, closeTo(distances.first, 0.001));
-      }
-      // И плитки одного размера: разнобой на окружности читается неровностью.
-      expect({for (final s in kRingSlots) s.size}.length, 1);
-    });
-
-    test('в центре кольца пусто — там стоит герой', () {
-      for (final slot in kRingSlots) {
-        final clearance =
-            sqrt(slot.x * slot.x + slot.y * slot.y) - slot.size / 2;
-        expect(clearance, greaterThan(100), reason: 'слот ${slot.x},${slot.y}');
-      }
-    });
-
-    test('у плиток разные периоды качания — кольцо не ходит строем', () {
-      final periods = {for (final s in kRingSlots) s.period};
-      expect(periods.length, greaterThan(4));
-    });
-  });
-
-  group('кольцо', () {
-    testWidgets('обложек меньше, чем слотов — дырок нет, стоят заглушки', (
-      tester,
-    ) async {
-      await _pump(
-        tester,
-        _container(),
-        WaveRing(
-          faces: [_track('sc:1', cover: 'https://x/1.jpg')],
-          scale: 0.6,
-          loading: false,
-          onTap: (_) {},
-        ),
-      );
-      // Восемь слотов на месте независимо от того, сколько обложек пришло, —
-      // дырок в кольце быть не должно.
-      expect(find.byType(Positioned), findsNWidgets(kRingSlots.length));
-      // Нажимается ровно одна плитка: у остальных семи стоят заглушки.
-      expect(find.byType(GestureDetector), findsOneWidget);
-    });
-
-    testWidgets('тап по обложке отдаёт её трек', (tester) async {
-      Track? tapped;
-      await _pump(
-        tester,
-        _container(),
-        WaveRing(
-          faces: [_track('sc:7', cover: 'https://x/7.jpg')],
-          scale: 0.6,
-          loading: false,
-          onTap: (t) => tapped = t,
-        ),
-      );
-      await tester.tap(find.byType(GestureDetector).first);
-      expect(tapped?.id, 'sc:7');
-    });
-
-    testWidgets('пустое кольцо тапов не ловит', (tester) async {
-      var taps = 0;
-      await _pump(
-        tester,
-        _container(),
-        WaveRing(
-          faces: const [],
-          scale: 0.6,
-          loading: true,
-          onTap: (_) => taps++,
-        ),
-      );
-      expect(find.byType(GestureDetector), findsNothing);
-      expect(taps, 0);
-    });
-  });
-
-  group('карточка на главной', () {
-    // `pumpAndSettle` здесь НЕЛЬЗЯ: плитки кольца качаются бесконечно, и он
-    // ждёт покоя до таймаута. Крутим кадры руками.
+  group('сцена волны на главной', () {
+    // The circle runs on a ticker for good: no `pumpAndSettle`, frames by hand.
     Future<void> settle(WidgetTester tester) async {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
     }
 
-    testWidgets('кольцо и заголовок — на месте', (tester) async {
-      // Библиотека пуста: сидов нет, значит и в сеть карточка не пойдёт.
-      await _pump(tester, _container(), const WaveCard());
-      await settle(tester);
+    Future<void> hero(WidgetTester tester, ProviderContainer c) {
+      final scroll = ScrollController();
+      addTearDown(scroll.dispose);
+      return _pump(
+        tester,
+        c,
+        ListView(
+          controller: scroll,
+          children: [WaveHero(header: const SizedBox(), scroll: scroll)],
+        ),
+      );
+    }
 
-      expect(find.byType(WaveRing), findsOneWidget);
-      expect(find.text('Моя волна'), findsOneWidget);
-      // Отдельной кнопки «Настроить» на карточке нет — шторка открывается
-      // долгим нажатием (см. тесты ниже).
-      expect(find.text('Настроить'), findsNothing);
-    });
-
-    testWidgets('долгое нажатие по заголовку открывает настройку', (
+    testWidgets('плеер пуст — «Моя волна», ряда волн без данных нет', (
       tester,
     ) async {
-      await _pump(tester, _container(), const WaveCard());
+      await hero(tester, _container());
+      await settle(tester);
+
+      expect(find.text('Моя волна'), findsOneWidget);
+      // An empty library: nothing for My Wave to start from, so no row.
+      expect(find.text('Встряхнуть Мою волну'), findsNothing);
+    });
+
+    testWidgets('долгое нажатие по «Моей волне» открывает настройку', (
+      tester,
+    ) async {
+      await hero(tester, _container());
       await settle(tester);
 
       await tester.longPress(find.text('Моя волна'));
       await settle(tester);
 
       expect(find.text('Дизлайки'), findsOneWidget);
-      // Переключатель площадки стоит ВСЕГДА — спрятанный, он выглядел бы так,
-      // будто выбора нет вовсе. Без входа в Яндекс его плитка просто гаснет.
       expect(find.text('SoundCloud'), findsOneWidget);
       expect(find.text('Яндекс.Музыка'), findsOneWidget);
     });
 
-    testWidgets('долгое нажатие по кнопке — та же настройка, а тап её не '
-        'открывает', (tester) async {
-      await _pump(tester, _container(), const WaveCard());
+    testWidgets('что-то играет — артист и название вместо «Моей волны»', (
+      tester,
+    ) async {
+      await hero(tester, _container(playing: _track('sc:1')));
       await settle(tester);
 
-      // Короткое нажатие — это запуск волны, а не настройка: сидов в пустой
-      // библиотеке нет, поэтому оно ничего и не откроет.
-      await tester.tap(findGlyph(Bi.playBold));
-      await settle(tester);
-      expect(find.text('Дизлайки'), findsNothing);
-
-      await tester.longPress(findGlyph(Bi.playBold));
-      await settle(tester);
-      expect(find.text('Дизлайки'), findsOneWidget);
+      expect(find.text('Моя волна'), findsNothing);
+      expect(find.text('Artist sc:1'), findsOneWidget);
+      expect(find.text('Song sc:1'), findsOneWidget);
+      expect(findGlyph(Bi.dislike), findsOneWidget);
+      expect(findGlyph(Bi.heart), findsOneWidget);
     });
   });
 
