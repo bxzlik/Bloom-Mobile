@@ -18,6 +18,7 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
+import '../../../shared/ui/pressable.dart';
 import '../speed_store.dart';
 
 /// Полоса: толщина дорожки и радиус бегунка. От них же считается отступ, на
@@ -162,12 +163,12 @@ class _PresetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final radius = BorderRadius.circular(t.radius * 0.8);
-    return Material(
-      color: active ? t.accent : t.ovlBg,
-      borderRadius: radius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
+    return Pressable(
+      onTap: onTap,
+      child: Material(
+        color: active ? t.accent : t.ovlBg,
+        borderRadius: radius,
+        clipBehavior: Clip.antiAlias,
         child: Container(
           height: 52,
           alignment: Alignment.center,
@@ -204,9 +205,8 @@ class _CurrentPill extends StatelessWidget {
     return Semantics(
       button: true,
       label: context.l.playerSpeedReset,
-      child: GestureDetector(
+      child: Pressable(
         onTap: onReset,
-        behavior: HitTestBehavior.opaque,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
           decoration: BoxDecoration(

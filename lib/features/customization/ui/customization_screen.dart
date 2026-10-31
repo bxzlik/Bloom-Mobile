@@ -16,6 +16,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
+import '../../../shared/ui/pressable.dart';
 import '../custom_store.dart';
 import '../media_store.dart';
 import 'custom_widgets.dart';
@@ -193,7 +194,7 @@ class _CtxTile extends ConsumerWidget {
     String? src,
     ImageProvider? image,
   ) {
-    return GestureDetector(
+    return Pressable(
       onTap: src == null
           ? null
           : () {
@@ -204,6 +205,7 @@ class _CtxTile extends ConsumerWidget {
                 CustomCtx.slider => context.l.custSliderRemoved,
               });
             },
+      scale: 0.97,
       child: ClipRRect(
         // Скругление — как у карточек групп настроек: на ПК плашки мельче, и
         // их 0.75 радиуса здесь читались почти углами.
@@ -371,12 +373,12 @@ class _PlusTool extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(t.radius * 0.8),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
+    return Pressable(
+      onTap: onTap,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(t.radius * 0.8),
+        clipBehavior: Clip.antiAlias,
         child: SizedBox(
           width: 44,
           height: 38,

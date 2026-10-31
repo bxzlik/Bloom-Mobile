@@ -15,6 +15,7 @@ import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
+import '../../../shared/ui/pressable.dart';
 import '../pl_auto_store.dart';
 
 /// «30 мин» / «3 ч» — подпись периода (десктопный `fmtEvery`).
@@ -108,7 +109,7 @@ class _PlAutoBody extends ConsumerWidget {
                 ),
               ),
               if (candidates.isNotEmpty)
-                GestureDetector(
+                Pressable(
                   onTap: state.running
                       ? null
                       : () => library.setAutoRefresh(
@@ -348,16 +349,16 @@ class _IntervalRow extends StatelessWidget {
             children: [
               for (final min in kPlAutoIntervals) ...[
                 Expanded(
-                  child: Material(
-                    // Невыбранный сегмент — плёнка поверх блока, в который он
-                    // вложен: чёрный на плашке блока читался бы дырой.
-                    color: min == value
-                        ? (enabled ? t.accent : t.pill)
-                        : t.iconBg,
-                    borderRadius: BorderRadius.circular(999),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: enabled ? () => onPick(min) : null,
+                  child: Pressable(
+                    onTap: enabled ? () => onPick(min) : null,
+                    child: Material(
+                      // Невыбранный сегмент — плёнка поверх блока, в который он
+                      // вложен: чёрный на плашке блока читался бы дырой.
+                      color: min == value
+                          ? (enabled ? t.accent : t.pill)
+                          : t.iconBg,
+                      borderRadius: BorderRadius.circular(999),
+                      clipBehavior: Clip.antiAlias,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 9),
                         child: Center(
@@ -416,8 +417,9 @@ class _CandidateRow extends StatelessWidget {
               ? '+${run!.added}'
               : context.l.paRunNoChanges} · ${_ago(context.l, run!.at)}';
 
-    return InkWell(
+    return Pressable(
       onTap: onTap,
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
@@ -503,13 +505,14 @@ class _Footer extends StatelessWidget {
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
-            child: Material(
-              // Кнопка стоит на фоне шторки: погашенная — плашка темы.
-              color: canRun ? t.accent : t.pill,
-              borderRadius: BorderRadius.circular(999),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: canRun ? onRun : null,
+            child: Pressable(
+              onTap: canRun ? onRun : null,
+              scale: 0.97,
+              child: Material(
+                // Кнопка стоит на фоне шторки: погашенная — плашка темы.
+                color: canRun ? t.accent : t.pill,
+                borderRadius: BorderRadius.circular(999),
+                clipBehavior: Clip.antiAlias,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 13),
                   child: Center(

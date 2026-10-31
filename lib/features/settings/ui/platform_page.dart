@@ -24,6 +24,7 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/platform_logo.dart';
+import '../../../shared/ui/pressable.dart';
 
 /// Зелёный «всё в порядке» — один на все страницы площадок.
 const Color kPlatformOk = Color(0xFF1DB954);
@@ -185,15 +186,16 @@ class PlatformButton extends StatelessWidget {
     return SizedBox(
       height: height,
       width: double.infinity,
-      child: GlassBox(
-        color: muted ? Colors.transparent : null,
-        // Прозрачной кнопке стекло не нужно: размывать под ней нечего, а
-        // плёнка заливки сделала бы её похожей на главную.
-        enabled: !muted,
-        borderRadius: BorderRadius.circular(t.radius),
-        borderSide: muted ? BorderSide(color: t.ovlLine2) : BorderSide.none,
-        child: InkWell(
-          onTap: enabled ? onTap : null,
+      child: Pressable(
+        onTap: enabled ? onTap : null,
+        scale: 0.97,
+        child: GlassBox(
+          color: muted ? Colors.transparent : null,
+          // Прозрачной кнопке стекло не нужно: размывать под ней нечего, а
+          // плёнка заливки сделала бы её похожей на главную.
+          enabled: !muted,
+          borderRadius: BorderRadius.circular(t.radius),
+          borderSide: muted ? BorderSide(color: t.ovlLine2) : BorderSide.none,
           child: Center(
             child: busy
                 ? SizedBox(
@@ -243,10 +245,11 @@ class PlatformCard extends StatelessWidget {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
 
-    return GlassBox(
-      borderRadius: BorderRadius.circular(t.radius),
-      child: InkWell(
-        onTap: onTap,
+    return Pressable(
+      onTap: onTap,
+      scale: 0.98,
+      child: GlassBox(
+        borderRadius: BorderRadius.circular(t.radius),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
           child: Row(

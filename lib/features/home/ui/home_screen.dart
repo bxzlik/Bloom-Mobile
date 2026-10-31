@@ -13,6 +13,7 @@ import '../../../app/theme/tokens.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/cover_hero.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../profile/profile_store.dart';
 import '../../profile/ui/profile_avatar.dart';
 import '../../wave/ui/wave_hero.dart';
@@ -121,7 +122,7 @@ class _ProfileButtonState extends ConsumerState<_ProfileButton> {
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider);
-    return GestureDetector(
+    return Pressable(
       onTap: () => context.go(kProfileLocation, extra: CoverFlight(tag: _tag)),
       child: ProfileAvatar(
         profile: profile,

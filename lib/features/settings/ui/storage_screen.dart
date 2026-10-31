@@ -22,6 +22,7 @@ import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/danger_confirm.dart';
 import '../../../shared/ui/glass.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../storage_stats.dart';
 
@@ -140,8 +141,9 @@ class _CacheRow extends ConsumerWidget {
     final l = context.l;
     final theme = Theme.of(context).textTheme;
 
-    return InkWell(
+    return Pressable(
       onTap: () => _openCacheSheet(context, ref, kind),
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
         child: Row(
@@ -186,8 +188,9 @@ class _ClearAllRow extends ConsumerWidget {
     final theme = Theme.of(context).textTheme;
     final empty = stats != null && stats!.count == 0;
 
-    return InkWell(
+    return Pressable(
       onTap: empty ? null : () => _openClearAllSheet(context, ref, stats),
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
         child: Row(
@@ -231,8 +234,9 @@ class _ImportRow extends ConsumerWidget {
     final theme = Theme.of(context).textTheme;
     final mode = ref.watch(settingsProvider).localImport;
 
-    return InkWell(
+    return Pressable(
       onTap: () => _openImportSheet(context, ref),
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
         child: Row(
@@ -417,16 +421,16 @@ class _ModeButton extends StatelessWidget {
     final color = active ? t.accent : t.iconFg;
     final radius = BorderRadius.circular(t.radius * 0.8);
 
-    return Material(
-      // Невыбранный красится плашкой шторки, а не плёнкой страницы: под
-      // шторкой лежит размытый фон, и токен-плёнка вышла бы на нём пятном.
-      color: active
-          ? t.accent.withValues(alpha: 0.14)
-          : sheetPanelColor(context),
-      borderRadius: radius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
+    return Pressable(
+      onTap: onTap,
+      child: Material(
+        // Невыбранный красится плашкой шторки, а не плёнкой страницы: под
+        // шторкой лежит размытый фон, и токен-плёнка вышла бы на нём пятном.
+        color: active
+            ? t.accent.withValues(alpha: 0.14)
+            : sheetPanelColor(context),
+        borderRadius: radius,
+        clipBehavior: Clip.antiAlias,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(

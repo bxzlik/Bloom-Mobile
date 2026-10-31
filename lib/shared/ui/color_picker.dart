@@ -10,6 +10,7 @@ import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 
 import '../../app/theme/tokens.dart';
 import '../../core/l10n/l10n.dart';
+import 'atoms.dart';
 import 'bloom_sheet.dart';
 
 /// Открыть пикер. Возвращает выбранный цвет или `null`, если закрыли.
@@ -164,19 +165,18 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                   Row(
                     children: [
                       Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: Text(
-                            context.l.commonCancel,
-                            style: TextStyle(color: t.text2),
-                          ),
+                        child: BloomButton(
+                          label: context.l.commonCancel,
+                          color: t.text2,
+                          onTap: () => Navigator.of(context).pop(),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: FilledButton(
-                          onPressed: () => Navigator.of(context).pop(_color),
-                          child: Text(context.l.commonDone),
+                        child: BloomButton(
+                          label: context.l.commonDone,
+                          filled: true,
+                          onTap: () => Navigator.of(context).pop(_color),
                         ),
                       ),
                     ],

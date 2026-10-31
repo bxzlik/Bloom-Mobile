@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/glass.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../profile/ui/profile_entry_card.dart'
     show kProfileEntryHeight, profileEntryFill;
 import '../periods.dart';
@@ -284,11 +285,12 @@ class _EntryShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    return GlassBox(
-      color: profileEntryFill(t),
-      borderRadius: BorderRadius.circular(t.radius),
-      child: InkWell(
-        onTap: onTap,
+    return Pressable(
+      onTap: onTap,
+      scale: 0.98,
+      child: GlassBox(
+        color: profileEntryFill(t),
+        borderRadius: BorderRadius.circular(t.radius),
         child: SizedBox(
           height: kProfileEntryHeight,
           child: Padding(

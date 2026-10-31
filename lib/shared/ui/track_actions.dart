@@ -29,6 +29,7 @@ import 'bloom_icon.dart';
 import 'bloom_sheet.dart';
 import 'bloom_toast.dart';
 import 'platform_logo.dart';
+import 'pressable.dart';
 import 'track_info_sheet.dart';
 import 'track_swipes.dart';
 
@@ -354,8 +355,9 @@ class _PlatformRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return Pressable(
       onTap: onTap,
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         child: Row(
@@ -477,8 +479,9 @@ class _SimpleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return Pressable(
       onTap: onTap,
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         child: Row(
@@ -513,13 +516,14 @@ class _PlaylistRow extends ConsumerWidget {
     final ids = playlist.trackIds.toSet();
     final has = tracks.every((track) => ids.contains(track.id));
 
-    return InkWell(
+    return Pressable(
       onTap: () {
         ref
             .read(libraryProvider.notifier)
             .addTracksToPlaylist(playlist.id, tracks);
         Navigator.of(context).pop();
       },
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(

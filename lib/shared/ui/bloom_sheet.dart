@@ -23,6 +23,7 @@ import '../util/format.dart';
 import 'atoms.dart';
 import 'bloom_icon.dart';
 import 'glass.dart';
+import 'pressable.dart';
 
 /// Пункт шторки.
 class SheetAction {
@@ -588,13 +589,14 @@ class _SheetTile extends StatelessWidget {
         ? t.text
         : t.muted;
 
-    return InkWell(
+    return Pressable(
       onTap: enabled
           ? () {
               Navigator.of(context).pop();
               action.onTap!();
             }
           : null,
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: _SheetGroup.pad,
@@ -874,28 +876,24 @@ class _ConfirmButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    return Material(
-      color: t.accent,
-      borderRadius: radius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: busy ? null : onTap,
-        child: SizedBox(
-          width: 54,
-          height: 54,
-          child: busy
-              ? Center(
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: t.accentText,
-                    ),
+    return Pressable(
+      onTap: busy ? null : onTap,
+      child: Container(
+        width: 54,
+        height: 54,
+        decoration: BoxDecoration(color: t.accent, borderRadius: radius),
+        child: busy
+            ? Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: t.accentText,
                   ),
-                )
-              : BloomIcon(Bi.check, size: 24, color: t.accentText),
-        ),
+                ),
+              )
+            : BloomIcon(Bi.check, size: 24, color: t.accentText),
       ),
     );
   }

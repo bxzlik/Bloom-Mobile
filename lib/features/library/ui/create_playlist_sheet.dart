@@ -25,6 +25,7 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
+import '../../../shared/ui/pressable.dart';
 import '../import_file.dart';
 import '../import_url.dart';
 
@@ -334,8 +335,9 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final art = cover;
-    return InkWell(
+    return Pressable(
       onTap: onTap,
+      scale: 0.98,
       child: Padding(
         // Обложка выше значка — поля по вертикали ужимаются, чтобы строка с
         // ней не выбивалась из списка (та же мера в «Добавить в плейлист»).

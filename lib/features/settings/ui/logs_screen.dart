@@ -25,6 +25,7 @@ import '../../../core/store/text_files.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/glass.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
 
 class LogsScreen extends ConsumerStatefulWidget {
@@ -201,10 +202,11 @@ class _LogButton extends StatelessWidget {
         ? t.danger
         : t.text;
 
-    return GlassBox(
-      borderRadius: BorderRadius.circular(t.radius),
-      child: InkWell(
-        onTap: onTap,
+    return Pressable(
+      onTap: onTap,
+      scale: 0.97,
+      child: GlassBox(
+        borderRadius: BorderRadius.circular(t.radius),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Column(

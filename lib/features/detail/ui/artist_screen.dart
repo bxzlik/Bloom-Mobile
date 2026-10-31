@@ -30,6 +30,7 @@ import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/detail_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/glass.dart';
+import '../../../shared/ui/pressable.dart';
 
 class ArtistScreen extends ConsumerStatefulWidget {
   const ArtistScreen({
@@ -485,10 +486,11 @@ class _MoreButton extends StatelessWidget {
     final t = context.bloom;
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
-      child: GlassBox(
-        borderRadius: BorderRadius.circular(999),
-        child: InkWell(
-          onTap: busy ? null : onTap,
+      child: Pressable(
+        onTap: busy ? null : onTap,
+        scale: 0.97,
+        child: GlassBox(
+          borderRadius: BorderRadius.circular(999),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Center(

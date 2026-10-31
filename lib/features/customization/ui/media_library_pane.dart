@@ -18,6 +18,7 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
+import '../../../shared/ui/pressable.dart';
 import '../custom_store.dart';
 import '../media_store.dart';
 import 'custom_widgets.dart';
@@ -83,8 +84,9 @@ class _MediaCard extends ConsumerWidget {
     final t = context.bloom;
     final image = coverImage(item.src);
     final usage = ref.watch(mediaUsageProvider(item.id));
-    final tile = GestureDetector(
+    final tile = Pressable(
       onTap: () => showMediaItemSheet(context, item),
+      scale: 0.97,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(t.radius * 0.85),
         child: DecoratedBox(

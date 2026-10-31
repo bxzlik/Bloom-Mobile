@@ -37,6 +37,7 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/glass.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../detail/detail_nav.dart';
 import '../lib_order_store.dart';
 import '../pl_auto_store.dart';
@@ -465,24 +466,25 @@ class _SystemTile extends StatelessWidget {
     // раздела на тёмной теме слепил («слишком ярко») — берём его глубокий
     // тёмный оттенок.
     final base = Color.alphaBlend(Colors.black.withValues(alpha: 0.55), color);
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            base,
-            Color.alphaBlend(Colors.black.withValues(alpha: 0.3), base),
-          ],
-          stops: const [0.3, 1],
+    return Pressable(
+      onTap: onTap,
+      scale: 0.97,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              base,
+              Color.alphaBlend(Colors.black.withValues(alpha: 0.3), base),
+            ],
+            stops: const [0.3, 1],
+          ),
+          borderRadius: BorderRadius.circular(t.radius),
         ),
-        borderRadius: BorderRadius.circular(t.radius),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
+        clipBehavior: Clip.antiAlias,
+        child: Material(
+          color: Colors.transparent,
           child: Container(
             width: 300,
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -731,17 +733,17 @@ class _FilterChip extends StatelessWidget {
     return Center(
       child: SizedBox(
         height: _kLibChipHeight,
-        child: GlassBox(
-          color: _libChipFill(t),
-          // Стекло у чипа включено всегда, даже у выбранного: акцент наливается
-          // ВНУТРИ плашки и, пока он не сплошной, под ним должна оставаться та
-          // же поверхность, что у соседей. Сплошной он стекло всё равно
-          // закрывает, так что в покое выбранный чип выглядит как и раньше —
-          // заливкой состояния, а не поверхностью темы.
-          borderRadius: BorderRadius.circular(999),
-          borderSide: BorderSide(color: _libChipLine(t)),
-          child: InkWell(
-            onTap: onTap,
+        child: Pressable(
+          onTap: onTap,
+          child: GlassBox(
+            color: _libChipFill(t),
+            // Стекло у чипа включено всегда, даже у выбранного: акцент наливается
+            // ВНУТРИ плашки и, пока он не сплошной, под ним должна оставаться та
+            // же поверхность, что у соседей. Сплошной он стекло всё равно
+            // закрывает, так что в покое выбранный чип выглядит как и раньше —
+            // заливкой состояния, а не поверхностью темы.
+            borderRadius: BorderRadius.circular(999),
+            borderSide: BorderSide(color: _libChipLine(t)),
             child: AnimatedContainer(
               duration: _fill,
               curve: Curves.easeOut,
@@ -804,8 +806,9 @@ class _SetTileState extends ConsumerState<_SetTile> {
         : CoverFlight(tag: _tag, image: cover);
 
     return LayoutBuilder(
-      builder: (context, box) => GestureDetector(
+      builder: (context, box) => Pressable(
         onTap: () => context.go('/library/list/${playlist.id}', extra: flight),
+        scale: 0.97,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -874,10 +877,10 @@ class _ArtistTileState extends ConsumerState<_ArtistTile> {
         ? null
         : CoverFlight(tag: _tag, image: avatar);
 
-    return GestureDetector(
+    return Pressable(
       onTap: () =>
           openArtist(context, artist.id, initial: artist, flight: flight),
-      behavior: HitTestBehavior.opaque,
+      scale: 0.97,
       child: LayoutBuilder(
         builder: (context, box) => Column(
           crossAxisAlignment: CrossAxisAlignment.center,

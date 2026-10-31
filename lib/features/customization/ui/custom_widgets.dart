@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../custom_store.dart';
 
@@ -161,8 +162,9 @@ class SheetPickRow extends StatelessWidget {
     final t = context.bloom;
     return SheetPanel(
       children: [
-        InkWell(
+        Pressable(
           onTap: () => Navigator.of(context).pop(true),
+          scale: 0.98,
           child: Padding(
             // Тот же ряд, что у пунктов меню шторки.
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),

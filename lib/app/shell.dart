@@ -33,6 +33,7 @@ import '../shared/ui/bloom_mark.dart';
 import '../shared/ui/bloom_toast.dart';
 import '../shared/ui/cover_hero.dart';
 import '../shared/ui/glass.dart';
+import '../shared/ui/pressable.dart';
 import 'theme/tokens.dart';
 
 class BloomShell extends ConsumerStatefulWidget {
@@ -804,9 +805,8 @@ class _NavItemState extends State<_NavItem> with TickerProviderStateMixin {
       // Без подложки и без ряби: активный таб отличается заливкой глифа
       // (bold вместо outline) и цветом акцента — этого достаточно, а
       // material-ripple на голом фоне читается как посторонний круг.
-      child: GestureDetector(
+      child: Pressable(
         onTap: _tap,
-        behavior: HitTestBehavior.opaque,
         child: AnimatedBuilder(
           animation: Listenable.merge([_morph, _react]),
           builder: (context, _) {

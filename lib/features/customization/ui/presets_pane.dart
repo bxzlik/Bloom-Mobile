@@ -17,6 +17,7 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
+import '../../../shared/ui/pressable.dart';
 import '../media_store.dart';
 import '../presets_file.dart';
 import '../presets_store.dart';
@@ -220,8 +221,9 @@ class _PresetCard extends ConsumerWidget {
           if (item.id == id) item.src,
     ];
 
-    return GestureDetector(
+    return Pressable(
       onTap: () => _openSheet(context, ref, srcs),
+      scale: 0.97,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(t.radius * 0.85),
         child: DecoratedBox(

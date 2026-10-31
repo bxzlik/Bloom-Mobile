@@ -26,6 +26,7 @@ import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/marquee_text.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../detail/detail_nav.dart';
 import '../play_source.dart';
 import 'player_sheet.dart';
@@ -113,28 +114,28 @@ class SourcePill extends ConsumerWidget {
 
     final border = borderColor;
     return Center(
-      child: Material(
-        color: background ?? t.pill,
-        // Пилюля ровно в высоту круглых кнопок, поэтому `StadiumBorder` — тот
-        // же радиус, что был; форма нужна ради обводки: у `Material` она
-        // задаётся либо радиусом, либо формой, но не тем и другим сразу.
-        shape: StadiumBorder(
-          side: border == null ? BorderSide.none : BorderSide(color: border),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          // Тап — очередь. Всегда: пилюля заменила собой кнопку очереди в ряду
-          // инструментов, и «мёртвой» она быть не может.
-          onTap: () => showQueueSheet(context),
-          // Долгое нажатие — источник. Отклик обязателен: у долгого нажатия нет
-          // своего вида, и без него непонятно, сработало оно или ты просто
-          // задержал палец на тапе.
-          onLongPress: opens
-              ? () {
-                  HapticFeedback.selectionClick();
-                  openPlaySource(context, source);
-                }
-              : null,
+      child: Pressable(
+        // Тап — очередь. Всегда: пилюля заменила собой кнопку очереди в ряду
+        // инструментов, и «мёртвой» она быть не может.
+        onTap: () => showQueueSheet(context),
+        // Долгое нажатие — источник. Отклик обязателен: у долгого нажатия нет
+        // своего вида, и без него непонятно, сработало оно или ты просто
+        // задержал палец на тапе.
+        onLongPress: opens
+            ? () {
+                HapticFeedback.selectionClick();
+                openPlaySource(context, source);
+              }
+            : null,
+        child: Material(
+          color: background ?? t.pill,
+          // Пилюля ровно в высоту круглых кнопок, поэтому `StadiumBorder` — тот
+          // же радиус, что был; форма нужна ради обводки: у `Material` она
+          // задаётся либо радиусом, либо формой, но не тем и другим сразу.
+          shape: StadiumBorder(
+            side: border == null ? BorderSide.none : BorderSide(color: border),
+          ),
+          clipBehavior: Clip.antiAlias,
           child: Padding(
             // Слева поля больше, чем просвет над картинкой: край пилюли
             // скруглён, и квадратная обложка, отодвинутая от него «поровну»,

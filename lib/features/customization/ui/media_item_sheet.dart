@@ -21,6 +21,7 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
+import '../../../shared/ui/pressable.dart';
 import '../custom_store.dart';
 import '../media_store.dart';
 import 'custom_sheet.dart';
@@ -182,12 +183,13 @@ class _ModeRow extends StatelessWidget {
     final color = on ? t.text : t.iconFg;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: kCustSheetEdge),
-      child: Material(
-        color: on ? Color.alphaBlend(t.iconBg, t.pill) : t.pill,
-        borderRadius: BorderRadius.circular(t.radius),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
+      child: Pressable(
+        onTap: onTap,
+        scale: 0.98,
+        child: Material(
+          color: on ? Color.alphaBlend(t.iconBg, t.pill) : t.pill,
+          borderRadius: BorderRadius.circular(t.radius),
+          clipBehavior: Clip.antiAlias,
           child: SizedBox(
             height: 46,
             child: Padding(

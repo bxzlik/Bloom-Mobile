@@ -18,6 +18,7 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/glass.dart';
+import '../../../shared/ui/pressable.dart';
 import '../sleep_timer_store.dart';
 
 /// Полоса своего времени: те же толщина дорожки и бегунок, что у скорости, —
@@ -223,12 +224,12 @@ class _PresetCard extends StatelessWidget {
     final t = context.bloom;
     final radius = BorderRadius.circular(t.radius * 0.8);
     final color = active ? t.accentText : t.text;
-    return Material(
-      color: active ? t.accent : t.ovlBg,
-      borderRadius: radius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
+    return Pressable(
+      onTap: onTap,
+      child: Material(
+        color: active ? t.accent : t.ovlBg,
+        borderRadius: radius,
+        clipBehavior: Clip.antiAlias,
         child: Container(
           height: 56,
           alignment: Alignment.center,
@@ -279,12 +280,13 @@ class _EndOfTrackCard extends StatelessWidget {
     final t = context.bloom;
     final radius = BorderRadius.circular(t.radius * 0.8);
     final color = active ? t.accentText : t.text;
-    return Material(
-      color: active ? t.accent : t.ovlBg,
-      borderRadius: radius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
+    return Pressable(
+      onTap: onTap,
+      scale: 0.98,
+      child: Material(
+        color: active ? t.accent : t.ovlBg,
+        borderRadius: radius,
+        clipBehavior: Clip.antiAlias,
         child: Container(
           height: 52,
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -393,12 +395,13 @@ class _WideButton extends StatelessWidget {
       borderRadius: radius,
       // Шторка — оверлей, и стекло у неё своей настройки.
       overlay: true,
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: radius,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
+      child: Pressable(
+        onTap: onTap,
+        scale: 0.97,
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: radius,
+          clipBehavior: Clip.antiAlias,
           child: Container(
             height: 44,
             alignment: Alignment.center,

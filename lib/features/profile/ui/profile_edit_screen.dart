@@ -260,13 +260,11 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                 top: false,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                  child: SizedBox(
+                  child: BloomButton(
+                    label: context.l.commonSave,
+                    filled: true,
                     height: 56,
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _save,
-                      child: Text(context.l.commonSave),
-                    ),
+                    onTap: _save,
                   ),
                 ),
               ),
@@ -572,24 +570,20 @@ class _ImageSheetState extends State<_ImageSheet> {
             ],
           ),
           const SizedBox(height: 10),
-          SizedBox(
+          BloomButton(
+            label: context.l.commonUpload,
+            icon: Bi.uploadMinimalistic,
+            filled: true,
             height: 52,
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: () => _run(widget.onPick),
-              icon: const BloomIcon(Bi.uploadMinimalistic, size: 20),
-              label: Text(context.l.commonUpload),
-            ),
+            onTap: () => _run(widget.onPick),
           ),
           if (_hasOwn)
-            TextButton(
-              onPressed: () => _run(widget.onDrop),
-              child: Text(
-                banner
-                    ? context.l.profileRemoveImage
-                    : context.l.profileRemovePhoto,
-                style: TextStyle(color: t.danger),
-              ),
+            BloomButton(
+              label: banner
+                  ? context.l.profileRemoveImage
+                  : context.l.profileRemovePhoto,
+              color: t.danger,
+              onTap: () => _run(widget.onDrop),
             ),
         ],
       ),

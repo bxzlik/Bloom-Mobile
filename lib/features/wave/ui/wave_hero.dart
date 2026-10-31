@@ -20,6 +20,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/track_actions.dart';
 import '../../../shared/util/artists.dart';
 import '../../../shared/util/taste.dart';
@@ -226,9 +227,10 @@ class _WaveTitle extends StatelessWidget {
     return Semantics(
       button: true,
       label: context.l.waveStart,
-      child: GestureDetector(
+      child: Pressable(
         onTap: starting ? null : onTap,
         onLongPress: () => showWaveTuneSheet(context),
+        scale: 0.97,
         child: starting
             ? SizedBox.square(
                 dimension: size * 0.6,
@@ -277,9 +279,10 @@ class _NowPlaying extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 24),
-        GestureDetector(
+        Pressable(
           onTap: expandPlayerSheet,
           onLongPress: menu,
+          scale: 0.97,
           child: Cover(url: cover, size: 96, radius: 10),
         ),
         const SizedBox(height: 18),
@@ -341,12 +344,12 @@ class _FilmButton extends StatelessWidget {
     return Semantics(
       button: true,
       label: label,
-      child: Material(
-        color: _film(context),
-        shape: const CircleBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
+      child: Pressable(
+        onTap: onTap,
+        child: Material(
+          color: _film(context),
+          shape: const CircleBorder(),
+          clipBehavior: Clip.antiAlias,
           child: SizedBox.square(
             dimension: _filmSide,
             child: BloomIcon(
@@ -688,9 +691,9 @@ class _PickItem extends ConsumerWidget {
       WaveOptionKind.shake => l.waveShake,
     };
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return Pressable(
       onTap: pending ? null : onTap,
+      scale: 0.97,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Column(

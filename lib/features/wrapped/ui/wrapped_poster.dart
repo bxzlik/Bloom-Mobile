@@ -24,6 +24,7 @@ import '../../../core/store/library_store.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/bloom_toast.dart';
+import '../../../shared/ui/pressable.dart';
 import '../periods.dart';
 import '../wrapped_data.dart';
 import '../wrapped_format.dart';
@@ -155,7 +156,7 @@ class _ShareButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
       child: Container(
         height: 46,

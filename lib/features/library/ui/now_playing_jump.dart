@@ -24,6 +24,7 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/glass.dart';
+import '../../../shared/ui/pressable.dart';
 
 /// На сколько строка должна уехать за край видимой части, чтобы пилюля
 /// появилась. Полторы строки запаса — чтобы она не мигала, когда трек стоит
@@ -196,11 +197,10 @@ class _NowPlayingJumpState extends ConsumerState<NowPlayingJump> {
           duration: const Duration(milliseconds: 200),
           // Скругление полное, а не радиусом темы: это пилюля, как кнопки-
           // пилюли шапки, — его правка по живому виду.
-          child: GlassBox(
-            shape: StadiumBorder(side: BorderSide(color: t.ovlLine)),
-            child: InkWell(
-              onTap: _jump,
-              customBorder: const StadiumBorder(),
+          child: Pressable(
+            onTap: _jump,
+            child: GlassBox(
+              shape: StadiumBorder(side: BorderSide(color: t.ovlLine)),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 0, 12, 0),
                 child: SizedBox(

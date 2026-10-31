@@ -19,6 +19,7 @@ import 'bloom_icon.dart';
 import 'chart_trend.dart';
 import 'cover_hero.dart';
 import 'platform_logo.dart';
+import 'pressable.dart';
 import 'track_actions.dart';
 
 /// Метка перелёта обложки — своя у КАЖДОГО экземпляра карточки. Считать её из
@@ -662,12 +663,12 @@ class TrackCard extends ConsumerWidget {
     final theme = Theme.of(context).textTheme;
     final active = ref.watch(playbackProvider).track?.id == track.id;
 
-    return GestureDetector(
+    return Pressable(
       onTap: () => ref
           .read(playbackProvider.notifier)
           .playQueue(queue, index, source: source),
       onLongPress: () => showTrackActions(context, ref, track),
-      behavior: HitTestBehavior.opaque,
+      scale: 0.97,
       child: SizedBox(
         width: size,
         child: Column(
@@ -771,12 +772,12 @@ class _ArtistCardState extends State<ArtistCard> {
       ),
     );
 
-    return GestureDetector(
+    return Pressable(
       onTap: () {
         widget.onOpen?.call();
         openArtist(context, artist.id, initial: artist, flight: flight);
       },
-      behavior: HitTestBehavior.opaque,
+      scale: 0.97,
       child: size == null ? content : SizedBox(width: size, child: content),
     );
   }
@@ -867,12 +868,12 @@ class _SetCardState extends State<SetCard> {
       ),
     );
 
-    return GestureDetector(
+    return Pressable(
       onTap: () {
         widget.onOpen?.call();
         openSet(context, set, flight: flight);
       },
-      behavior: HitTestBehavior.opaque,
+      scale: 0.97,
       child: size == null ? content : SizedBox(width: size, child: content),
     );
   }

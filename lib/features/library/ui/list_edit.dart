@@ -29,6 +29,7 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/entity_tiles.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/sticky_hero.dart';
 import '../../../shared/ui/track_actions.dart';
 import '../local_tracks.dart';
@@ -570,9 +571,8 @@ class _EditHero extends StatelessWidget {
                 const SizedBox(width: 8),
                 // Карандаш прямо у названия, без подложки: это часть
                 // заголовка, а не ещё одна кнопка шапки.
-                InkResponse(
+                Pressable(
                   onTap: onRename,
-                  radius: 22,
                   child: const Padding(
                     padding: EdgeInsets.all(4),
                     child: BloomIcon(Bi.pen, size: 21, color: Colors.white),
@@ -605,10 +605,10 @@ class _SourcesButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context).textTheme;
 
-    return GlassSurface(
-      shape: BorderRadius.circular(999),
-      child: InkWell(
-        onTap: onTap,
+    return Pressable(
+      onTap: onTap,
+      child: GlassSurface(
+        shape: BorderRadius.circular(999),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 9, 8, 9),
           child: Row(
@@ -1036,12 +1036,12 @@ class _BarIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    return Material(
-      color: background ?? Colors.transparent,
-      borderRadius: BorderRadius.circular(12),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
+    return Pressable(
+      onTap: onTap,
+      child: Material(
+        color: background ?? Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        clipBehavior: Clip.antiAlias,
         child: SizedBox(
           width: 44,
           height: 44,

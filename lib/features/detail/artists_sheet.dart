@@ -21,6 +21,7 @@ import '../../core/providers/music_provider.dart';
 import '../../shared/ui/atoms.dart';
 import '../../shared/ui/bloom_icon.dart';
 import '../../shared/ui/bloom_sheet.dart';
+import '../../shared/ui/pressable.dart';
 import '../../shared/util/artists.dart';
 import 'detail_nav.dart';
 
@@ -146,9 +147,10 @@ class _ArtistPickerState extends ConsumerState<_ArtistPicker> {
         ? null
         : context.l.artistNotFoundOnSource;
 
-    return InkWell(
+    return Pressable(
       // Пока ищем и когда не нашли — идти некуда: строка просто не нажимается.
       onTap: artist == null ? null : () => Navigator.of(context).pop(artist),
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(

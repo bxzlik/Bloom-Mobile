@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
+import '../../../shared/ui/atoms.dart';
 
 enum CropShape { circle, rect }
 
@@ -262,19 +263,18 @@ class _CropPageState extends State<_CropPage> {
                   Row(
                     children: [
                       Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: Text(
-                            context.l.commonBack,
-                            style: TextStyle(color: t.text2),
-                          ),
+                        child: BloomButton(
+                          label: context.l.commonBack,
+                          color: t.text2,
+                          onTap: () => Navigator.of(context).pop(),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: FilledButton(
-                          onPressed: image == null ? null : _apply,
-                          child: Text(context.l.commonApply),
+                        child: BloomButton(
+                          label: context.l.commonApply,
+                          filled: true,
+                          onTap: image == null ? null : _apply,
                         ),
                       ),
                     ],

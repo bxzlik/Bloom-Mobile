@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/entity_tiles.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../player/play_source.dart';
 import '../../player/player_controller.dart';
 import '../for_you.dart';
@@ -77,11 +78,11 @@ class _PlayAllCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final left = tracks.length > 1 ? tracks[1] : null;
     final right = tracks.length > 2 ? tracks[2] : null;
-    return GestureDetector(
+    return Pressable(
       onTap: () => ref
           .read(playbackProvider.notifier)
           .playQueue(tracks, 0, source: source),
-      behavior: HitTestBehavior.opaque,
+      scale: 0.97,
       child: SizedBox(
         width: _fyWidth,
         child: Column(

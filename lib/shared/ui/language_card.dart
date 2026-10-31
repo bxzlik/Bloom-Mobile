@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import '../../app/theme/tokens.dart';
 import '../../core/l10n/l10n.dart';
 import 'glass.dart';
+import 'pressable.dart';
 
 class LanguageCard extends StatelessWidget {
   const LanguageCard({
@@ -34,8 +35,9 @@ class LanguageCard extends StatelessWidget {
       _ => context.l.apLanguageEn,
     };
 
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
+      scale: 0.97,
       child: GlassBox(
         borderRadius: BorderRadius.circular(t.radius * 0.75),
         borderSide: BorderSide(

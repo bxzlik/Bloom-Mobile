@@ -18,9 +18,11 @@ import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/glass.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../../shared/ui/track_swipes.dart';
 import '../swipe_store.dart';
+import 'settings_sheets.dart';
 
 class SwipesScreen extends ConsumerWidget {
   const SwipesScreen({super.key});
@@ -135,8 +137,9 @@ class _SideRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
-    return InkWell(
+    return Pressable(
       onTap: () => _pickAction(context, ref, zone, isLeft, action),
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
         child: Row(
@@ -190,103 +193,20 @@ Future<void> _pickAction(
       mainAxisSize: MainAxisSize.min,
       children: [
         for (final action in SwipeAction.values)
-          _ActionTile(
-            action: action,
+          SheetChoiceTile(
+            glyph: BloomIcon(
+              swipeActionIcon(action),
+              size: 22,
+              color: context.bloom.text,
+            ),
+            label: swipeActionLabel(context.l, action),
             selected: action == current,
+            height: 72,
+            closes: true,
             onTap: () =>
                 controller.setAction(zone, isLeft: isLeft, action: action),
           ),
       ],
     ),
   );
-}
-
-/// Строка выбора действия. Своя, а не [SheetAction]: в референсе такие строки
-/// заметно крупнее обычных пунктов шторки, у выбранной обводка и кружок под
-/// значком.
-class _ActionTile extends StatelessWidget {
-  const _ActionTile({
-    required this.action,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final SwipeAction action;
-  final bool selected;
-  final VoidCallback onTap;
-
-  /// Высота строки — по референсу: между пунктами должно быть видно фон
-  /// шторки, а сами пункты читаются кнопками, а не списком.
-  static const double _height = 72;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 3, kSheetEdge, 3),
-      child: Material(
-        // Та же заливка, что у блоков шторки ([SheetPanel]).
-        color: sheetPanelColor(context),
-        borderRadius: BorderRadius.circular(t.radius),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () {
-            Navigator.of(context).pop();
-            onTap();
-          },
-          child: Container(
-            height: _height,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(t.radius),
-              border: Border.all(
-                color: selected ? t.ovlLine2 : Colors.transparent,
-              ),
-            ),
-            child: Row(
-              children: [
-                _TileIcon(action: action, selected: selected),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    swipeActionLabel(context.l, action),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                if (selected)
-                  BloomIcon(Bi.checkCircleBold, size: 20, color: t.accent),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Значок действия: у выбранного — в кружке, как в референсе.
-class _TileIcon extends StatelessWidget {
-  const _TileIcon({required this.action, required this.selected});
-
-  final SwipeAction action;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final icon = BloomIcon(swipeActionIcon(action), size: 22, color: t.text);
-    if (!selected) return SizedBox(width: 38, child: Center(child: icon));
-    return Container(
-      width: 38,
-      height: 38,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
-        shape: BoxShape.circle,
-      ),
-      child: icon,
-    );
-  }
 }

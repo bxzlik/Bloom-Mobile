@@ -30,6 +30,7 @@ import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/platform_logo.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/skeleton.dart';
 import '../recent_store.dart';
 import 'profile_view.dart';
@@ -341,7 +342,7 @@ class _SearchField extends StatelessWidget {
               valueListenable: controller,
               builder: (context, value, _) => value.text.isEmpty
                   ? const SizedBox.shrink()
-                  : GestureDetector(
+                  : Pressable(
                       onTap: onClear,
                       child: BloomIcon(
                         Bi.closeCircle,
@@ -431,9 +432,8 @@ class _RecentHeader extends StatelessWidget {
           Expanded(child: Text(title, style: theme.titleLarge)),
           // «Очистить» — второстепенное действие, поэтому текстом без
           // подложки; зону нажатия добирают отступы вокруг надписи.
-          InkWell(
+          Pressable(
             onTap: onClear,
-            borderRadius: BorderRadius.circular(999),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               child: Text(
@@ -489,12 +489,12 @@ class _RecentCard extends ConsumerWidget {
       ),
     };
 
-    return GestureDetector(
+    return Pressable(
       onTap: () => _openRecent(context, ref, item),
       // Убрать одну карточку — долгим тапом: крестик поверх обложки в ленте
       // читался бы как часть картинки, а места под отдельную кнопку тут нет.
       onLongPress: () => _removeRecent(context, ref, item),
-      behavior: HitTestBehavior.opaque,
+      scale: 0.97,
       child: SizedBox(
         width: _size,
         child: Column(
@@ -615,9 +615,9 @@ class _RecentRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    return InkWell(
+    return Pressable(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(t.radius * 0.85),
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Row(
@@ -638,8 +638,7 @@ class _RecentRow extends StatelessWidget {
             const SizedBox(width: 8),
             // У крестика своя зона нажатия с запасом: тап по строке уходит в
             // сеть, и промах мимо мелкого значка стоил бы лишнего запроса.
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
+            Pressable(
               onTap: onRemove,
               child: Padding(
                 padding: const EdgeInsets.all(8),
@@ -671,10 +670,10 @@ class _PlatformButton extends ConsumerWidget {
     final activeId = ref.watch(activeProviderIdProvider);
     final provider = registry.byId(activeId);
 
-    return GlassBox(
-      shape: const CircleBorder(),
-      child: InkWell(
-        onTap: () => _pickSource(context, ref, onPicked),
+    return Pressable(
+      onTap: () => _pickSource(context, ref, onPicked),
+      child: GlassBox(
+        shape: const CircleBorder(),
         child: SizedBox(
           width: kHeaderControl,
           height: kHeaderControl,
@@ -756,19 +755,20 @@ class _SourceRow extends StatelessWidget {
     final t = context.bloom;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: t.pill,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(t.radius),
-          // Выбранная карточка обведена акцентом: галочки справа мало —
-          // взгляд ищет активный пункт по силуэту, а не по значку.
-          side: active
-              ? BorderSide(color: t.accent.withValues(alpha: 0.55))
-              : BorderSide.none,
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
+      child: Pressable(
+        onTap: onTap,
+        scale: 0.98,
+        child: Material(
+          color: t.pill,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(t.radius),
+            // Выбранная карточка обведена акцентом: галочки справа мало —
+            // взгляд ищет активный пункт по силуэту, а не по значку.
+            side: active
+                ? BorderSide(color: t.accent.withValues(alpha: 0.55))
+                : BorderSide.none,
+          ),
+          clipBehavior: Clip.antiAlias,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
             child: Row(
@@ -843,12 +843,12 @@ class _Chip extends StatelessWidget {
     final t = context.bloom;
     // Активный чип — заливка акцентом с контрастной надписью, как в референсе.
     final fg = active ? t.accentText : t.text2;
-    return GlassBox(
-      color: active ? t.accent : null,
-      enabled: !active,
-      borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        onTap: onTap,
+    return Pressable(
+      onTap: onTap,
+      child: GlassBox(
+        color: active ? t.accent : null,
+        enabled: !active,
+        borderRadius: BorderRadius.circular(999),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(

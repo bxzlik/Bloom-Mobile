@@ -24,6 +24,7 @@ import 'bloom_icon.dart';
 import 'bloom_mark.dart';
 import 'cover_hero.dart';
 import 'glass.dart';
+import 'pressable.dart';
 import 'sticky_hero.dart';
 
 class DetailHero extends StatelessWidget {
@@ -229,12 +230,13 @@ class HeroPlayButton extends ConsumerWidget {
       final tap = on
           ? (mine ? () => ref.read(playbackProvider.notifier).toggle() : onPlay)
           : null;
-      return GlassBox(
-        color: on ? t.accent : null,
-        enabled: !on,
-        borderRadius: BorderRadius.circular(999),
-        child: InkWell(
-          onTap: tap,
+      return Pressable(
+        onTap: tap,
+        scale: 0.97,
+        child: GlassBox(
+          color: on ? t.accent : null,
+          enabled: !on,
+          borderRadius: BorderRadius.circular(999),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 13),
             // Знак и подпись меняются вместе и одним наплывом: врозь они бы

@@ -23,6 +23,7 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
+import '../../../shared/ui/pressable.dart';
 import '../wave_store.dart';
 import 'wave_dislikes_sheet.dart';
 
@@ -139,14 +140,14 @@ class _SourceTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final brand = platformColor[source] ?? t.accent;
-    final tile = Material(
-      // Заливки нет ни у выбранной, ни у остальных: фирменный цвет здесь
-      // только в обводке и логотипе.
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(t.radius * 0.8),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
+    final tile = Pressable(
+      onTap: onTap,
+      child: Material(
+        // Заливки нет ни у выбранной, ни у остальных: фирменный цвет здесь
+        // только в обводке и логотипе.
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(t.radius * 0.8),
+        clipBehavior: Clip.antiAlias,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
@@ -187,8 +188,9 @@ class _DislikesRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    return InkWell(
+    return Pressable(
       onTap: onTap,
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         child: Row(

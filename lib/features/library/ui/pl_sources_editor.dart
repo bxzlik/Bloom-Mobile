@@ -22,10 +22,12 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/library_store.dart';
+import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
+import '../../../shared/ui/pressable.dart';
 import '../import_url.dart';
 import 'create_playlist_sheet.dart' show detectLinkSource;
 
@@ -225,13 +227,14 @@ class _SourceRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          IconButton(
-            onPressed: onRemove,
-            visualDensity: VisualDensity.compact,
+          CircleIconButton(
+            icon: Bi.close,
+            size: 40,
             iconSize: 18,
+            background: Colors.transparent,
             color: t.muted,
             tooltip: context.l.psRemove,
-            icon: const BloomIcon(Bi.close),
+            onTap: onRemove,
           ),
         ],
       ),
@@ -303,12 +306,12 @@ class _AddRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Material(
-          color: filled ? t.accent : sheetPanelColor(context),
-          borderRadius: BorderRadius.circular(t.radius),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: filled && !busy ? onSubmit : null,
+        Pressable(
+          onTap: filled && !busy ? onSubmit : null,
+          child: Material(
+            color: filled ? t.accent : sheetPanelColor(context),
+            borderRadius: BorderRadius.circular(t.radius),
+            clipBehavior: Clip.antiAlias,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               child: Row(

@@ -28,6 +28,7 @@ import '../../app/theme/tokens.dart';
 import '../../core/l10n/l10n.dart';
 import 'bloom_icon.dart';
 import 'glass.dart';
+import 'pressable.dart';
 
 /// Вид тоста: от него зависят значок и цвет полосы (те же четыре, что на ПК).
 enum ToastKind { info, success, warn, error }
@@ -390,18 +391,17 @@ class _ActionPill extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: color.withValues(alpha: 0.14),
-    shape: const StadiumBorder(),
-    clipBehavior: Clip.antiAlias,
-    child: InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        child: Text(
-          label,
-          style: bloomText(size: 12.5, weight: 700, color: color),
-        ),
+  Widget build(BuildContext context) => Pressable(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: ShapeDecoration(
+        color: color.withValues(alpha: 0.14),
+        shape: const StadiumBorder(),
+      ),
+      child: Text(
+        label,
+        style: bloomText(size: 12.5, weight: 700, color: color),
       ),
     ),
   );

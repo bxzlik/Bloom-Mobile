@@ -39,6 +39,7 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/color_picker.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../customization/custom_store.dart';
 import '../../customization/media_store.dart' show kBgBlurMax, kBgDimMax;
@@ -748,8 +749,9 @@ class _NavPickCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
+      scale: 0.97,
       child: Container(
         width: width,
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
@@ -1142,8 +1144,9 @@ class _SettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return Pressable(
       onTap: onTap,
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
         child: child,
@@ -1188,9 +1191,8 @@ class _FontCard extends ConsumerWidget {
               Semantics(
                 button: true,
                 label: context.l.apFontAdd,
-                child: GestureDetector(
+                child: Pressable(
                   onTap: () => _addFonts(context, ref),
-                  behavior: HitTestBehavior.opaque,
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(12, 2, 0, 8),
                     child: BloomIcon(Bi.addCircle, size: 22, color: t.muted),
@@ -1322,8 +1324,9 @@ class _FontTileState extends State<_FontTile> {
       fontFamily: widget.family,
       fontFamilyFallback: const [kDefaultFont],
     );
-    return GestureDetector(
+    return Pressable(
       onTap: widget.onTap,
+      scale: 0.97,
       child: Container(
         width: widget.width,
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 14),
@@ -1366,9 +1369,8 @@ class _FontTileState extends State<_FontTile> {
                 child: Semantics(
                   button: true,
                   label: context.l.apFontRemove,
-                  child: GestureDetector(
+                  child: Pressable(
                     onTap: _delete,
-                    behavior: HitTestBehavior.opaque,
                     child: Padding(
                       padding: const EdgeInsets.all(4),
                       child: BloomIcon(
@@ -1656,21 +1658,19 @@ class _ThemeCreatorState extends State<_ThemeCreator> {
           Row(
             children: [
               Expanded(
-                child: TextButton.icon(
-                  onPressed: _random,
-                  icon: BloomIcon(Bi.magicStick, size: 16),
-                  label: Text(
-                    context.l.thRandom,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: t.text2),
-                  ),
+                child: BloomButton(
+                  label: context.l.thRandom,
+                  icon: Bi.magicStick,
+                  color: t.text2,
+                  onTap: _random,
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: FilledButton(
-                  onPressed: () => Navigator.of(context).pop(
+                child: BloomButton(
+                  label: context.l.commonSave,
+                  filled: true,
+                  onTap: () => Navigator.of(context).pop(
                     _ThemeDraft(
                       name: _name.text.trim(),
                       bg: _bg,
@@ -1678,7 +1678,6 @@ class _ThemeCreatorState extends State<_ThemeCreator> {
                       accent: _accent,
                     ),
                   ),
-                  child: Text(context.l.commonSave),
                 ),
               ),
             ],
@@ -1715,8 +1714,9 @@ class _ColorSlot extends StatelessWidget {
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 6),
-          GestureDetector(
+          Pressable(
             onTap: onTap,
+            scale: 0.97,
             child: Container(
               height: 44,
               decoration: BoxDecoration(
@@ -1742,12 +1742,12 @@ class _RoundButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    return Material(
-      color: Colors.white.withValues(alpha: 0.08),
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
+    return Pressable(
+      onTap: onTap,
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.08),
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
         child: Padding(
           padding: const EdgeInsets.all(9),
           child: BloomIcon(icon, size: 22, color: t.text),
@@ -1819,8 +1819,9 @@ class _AutoThemeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final preview = preset.tokens();
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
+      scale: 0.98,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(14),
@@ -1903,8 +1904,9 @@ class _PresetCardState extends State<_PresetCard> {
     final preset = widget.preset;
     final active = widget.active;
     final preview = preset.tokens();
-    return GestureDetector(
+    return Pressable(
       onTap: widget.onTap,
+      scale: 0.97,
       child: Container(
         width: widget.width,
         height: 150,
@@ -1934,9 +1936,8 @@ class _PresetCardState extends State<_PresetCard> {
                   // Своя зона нажатия: крестик мелкий, а мажут по нему пальцем.
                   // Взведённый — красная корзина: без модалки видно, что
                   // следующий тап удалит.
-                  GestureDetector(
+                  Pressable(
                     onTap: _delete,
-                    behavior: HitTestBehavior.opaque,
                     child: Padding(
                       padding: const EdgeInsets.only(left: 8),
                       child: BloomIcon(

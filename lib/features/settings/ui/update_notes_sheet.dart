@@ -20,6 +20,7 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/bloom_sheet.dart';
+import '../../../shared/ui/pressable.dart';
 import '../update_notes_store.dart';
 
 /// Показать заметку к версии.
@@ -305,8 +306,9 @@ class _HistoryRow extends ConsumerWidget {
     final locale = Localizations.localeOf(context).languageCode;
     final date = formatNoteDate(item.date, locale);
 
-    return InkWell(
+    return Pressable(
       onTap: () => _open(context, ref, locale),
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(18, 14, 16, 14),
         child: Row(

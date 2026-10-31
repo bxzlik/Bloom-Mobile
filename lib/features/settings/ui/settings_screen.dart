@@ -28,6 +28,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../providers/yandex/ym_auth.dart';
 import '../../../shared/ui/bloom_icon.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../lastfm/lastfm_store.dart';
 import '../../onboarding/onboarding_store.dart';
 import '../../pc/pc_store.dart';
@@ -250,8 +251,9 @@ class SettingsRow extends StatelessWidget {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
     final ready = onTap != null;
-    return InkWell(
+    return Pressable(
       onTap: onTap ?? () => _showStub(context, title),
+      scale: 0.98,
       child: Padding(
         // 22 по вертикали + 20 строки текста = 64 на строку.
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 22),
@@ -369,8 +371,9 @@ class _LanguageTile extends StatelessWidget {
       // рвал бы короткий список на отдельные плашки.
       gap: 3,
       children: [
-        InkWell(
+        Pressable(
           onTap: onTap,
+          scale: 0.98,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 17, 18, 17),
             child: Row(

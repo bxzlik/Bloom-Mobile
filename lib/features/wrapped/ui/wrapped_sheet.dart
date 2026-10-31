@@ -40,6 +40,7 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../detail/detail_nav.dart';
 import '../../player/play_source.dart';
 import '../../player/player_controller.dart';
@@ -566,15 +567,16 @@ class _CtaButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    return Material(
-      color: quiet ? Colors.transparent : t.text,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(t.radius),
-        side: quiet ? BorderSide(color: t.ovlLine) : BorderSide.none,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
+    return Pressable(
+      onTap: onTap,
+      scale: 0.97,
+      child: Material(
+        color: quiet ? Colors.transparent : t.text,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(t.radius),
+          side: quiet ? BorderSide(color: t.ovlLine) : BorderSide.none,
+        ),
+        clipBehavior: Clip.antiAlias,
         child: SizedBox(
           height: kWrCtaHeight,
           child: Center(
@@ -811,9 +813,9 @@ class _TrackHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final l = context.l;
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
+      scale: 0.97,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -879,9 +881,9 @@ class _TrackRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final l = context.l;
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 5),
         child: Row(
@@ -1023,9 +1025,9 @@ class _ArtistHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
+      scale: 0.97,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1070,9 +1072,9 @@ class _ArtistRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 5),
         child: Row(
@@ -1333,9 +1335,8 @@ class _ArtistChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
       child: Container(
         padding: const EdgeInsets.fromLTRB(6, 6, 13, 6),
         decoration: BoxDecoration(

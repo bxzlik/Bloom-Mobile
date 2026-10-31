@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
+import '../../../shared/ui/pressable.dart';
 
 /// Строка с тумблером. Вложенную настройку экран не гасит, а просто не строит,
 /// пока выключен её «родитель» — как «Автовоспроизведение» в «Аудио».
@@ -110,8 +111,9 @@ class SettingsRowShell extends StatelessWidget {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
 
-    return InkWell(
+    return Pressable(
       onTap: onTap,
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
         child: Row(

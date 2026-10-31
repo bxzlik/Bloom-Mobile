@@ -19,6 +19,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../providers/soundcloud/models.dart';
 import '../../../providers/soundcloud/soundcloud.dart' as sc;
+import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/platform_logo.dart';
@@ -159,9 +160,13 @@ class _SoundCloudSettingsScreenState
                 ),
                 // «?» внутри поля — как на референсе: инструкция нужна ровно
                 // тогда, когда смотришь на пустое поле.
-                IconButton(
-                  onPressed: _guide,
-                  icon: BloomIcon(Bi.questionCircle, size: 20, color: t.muted),
+                CircleIconButton(
+                  icon: Bi.questionCircle,
+                  size: 48,
+                  iconSize: 20,
+                  background: Colors.transparent,
+                  color: t.muted,
+                  onTap: _guide,
                 ),
               ],
             ),

@@ -21,6 +21,7 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
+import '../../../shared/ui/pressable.dart';
 import '../merge.dart';
 
 /// Что человек выбрал в шторке.
@@ -260,8 +261,9 @@ class _PlaylistRow extends StatelessWidget {
     final theme = Theme.of(context).textTheme;
     final picked = order >= 0;
 
-    return InkWell(
+    return Pressable(
       onTap: onTap,
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
@@ -330,10 +332,11 @@ class _SwitchRow extends StatelessWidget {
     final t = context.bloom;
     final color = danger && value ? t.danger : t.text;
 
-    return InkWell(
+    return GestureDetector(
       onTap: () => onChanged(!value),
+      behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 12, 6),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         child: Row(
           children: [
             BloomIcon(icon, size: 22, color: color),
@@ -346,11 +349,10 @@ class _SwitchRow extends StatelessWidget {
                 ).textTheme.titleMedium?.copyWith(color: color),
               ),
             ),
-            Switch(
+            BloomSwitch(
               value: value,
               onChanged: onChanged,
-              activeThumbColor: t.accentText,
-              activeTrackColor: danger ? t.danger : t.accent,
+              color: danger ? t.danger : null,
             ),
           ],
         ),

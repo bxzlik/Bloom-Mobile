@@ -47,6 +47,7 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/glass.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../../shared/util/format.dart';
 import 'settings_rows.dart';
@@ -254,8 +255,10 @@ Future<void> _openStyle(BuildContext context) {
           children: [
             _StylePreview(style: current),
             for (final style in PlayerStyle.values)
-              _StyleTile(
-                style: style,
+              SheetChoiceTile(
+                glyph: _StyleGlyph(style: style),
+                label: _styleLabel(context.l, style),
+                sub: _styleSub(context.l, style),
                 selected: style == current,
                 onTap: () =>
                     ref.read(playerStyleProvider.notifier).setStyle(style),
@@ -301,8 +304,10 @@ Future<void> _openPlayShape(BuildContext context) {
           children: [
             const _PlayShapePreview(),
             for (final shape in PlayButtonShape.values)
-              _PlayShapeTile(
-                shape: shape,
+              SheetChoiceTile(
+                glyph: _PlayShapeGlyph(shape: shape),
+                label: _playShapeLabel(context.l, shape),
+                sub: _playShapeSub(context.l, shape),
                 selected: shape == current,
                 onTap: () =>
                     ref.read(playButtonShapeProvider.notifier).set(shape),
@@ -349,100 +354,6 @@ class _PlayShapePreview extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Строка выбора формы — та же, что у стиля плеера: значок в кружке у
-/// выбранного, название, подпись под ним и галочка справа.
-class _PlayShapeTile extends StatelessWidget {
-  const _PlayShapeTile({
-    required this.shape,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final PlayButtonShape shape;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final l = context.l;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 5, kSheetEdge, 5),
-      child: Material(
-        color: sheetPanelColor(context),
-        borderRadius: BorderRadius.circular(t.radius),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(t.radius),
-              border: Border.all(
-                color: selected ? t.ovlLine2 : Colors.transparent,
-              ),
-            ),
-            child: Row(
-              children: [
-                _PlayShapeTileGlyph(shape: shape, selected: selected),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _playShapeLabel(l, shape),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.titleMedium,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        _playShapeSub(l, shape),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                if (selected)
-                  BloomIcon(Bi.checkCircleBold, size: 20, color: t.accent),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Значок варианта: у выбранного — в кружке, как у стиля плеера.
-class _PlayShapeTileGlyph extends StatelessWidget {
-  const _PlayShapeTileGlyph({required this.shape, required this.selected});
-
-  final PlayButtonShape shape;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final glyph = _PlayShapeGlyph(shape: shape);
-    if (!selected) return SizedBox(width: 38, child: Center(child: glyph));
-    return Container(
-      width: 38,
-      height: 38,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
-        shape: BoxShape.circle,
-      ),
-      child: glyph,
     );
   }
 }
@@ -569,14 +480,15 @@ class _OptionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
-    return GlassBox(
-      // Радиус группы настроек: карточки стоят на её месте и обязаны читаться
-      // с ней одинаково.
-      borderRadius: BorderRadius.circular(t.radius * 1.3),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
+    return Pressable(
+      onTap: onTap,
+      scale: 0.97,
+      child: GlassBox(
+        // Радиус группы настроек: карточки стоят на её месте и обязаны читаться
+        // с ней одинаково.
+        borderRadius: BorderRadius.circular(t.radius * 1.3),
+        child: Material(
+          color: Colors.transparent,
           child: Ink(
             // Выбранное — тонкая плёнка акцента поверх стекла, как у строки
             // варианта в шторке (`SheetOptionTile`). Сплошной заливки тут быть
@@ -775,101 +687,6 @@ class _Bar extends StatelessWidget {
   );
 }
 
-/// Строка выбора стиля — та же, что у выравнивания заголовка ([_AlignTile]):
-/// значок в кружке у выбранного, название, подпись под ним и галочка справа.
-/// Отличие одно — от тапа шторка не закрывается, см. [_openStyle].
-class _StyleTile extends StatelessWidget {
-  const _StyleTile({
-    required this.style,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final PlayerStyle style;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final l = context.l;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 5, kSheetEdge, 5),
-      child: Material(
-        color: sheetPanelColor(context),
-        borderRadius: BorderRadius.circular(t.radius),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(t.radius),
-              border: Border.all(
-                color: selected ? t.ovlLine2 : Colors.transparent,
-              ),
-            ),
-            child: Row(
-              children: [
-                _StyleTileGlyph(style: style, selected: selected),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _styleLabel(l, style),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.titleMedium,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        _styleSub(l, style),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                if (selected)
-                  BloomIcon(Bi.checkCircleBold, size: 20, color: t.accent),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Значок варианта: у выбранного — в кружке, как у выравнивания заголовка.
-class _StyleTileGlyph extends StatelessWidget {
-  const _StyleTileGlyph({required this.style, required this.selected});
-
-  final PlayerStyle style;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final glyph = _StyleGlyph(style: style);
-    if (!selected) return SizedBox(width: 38, child: Center(child: glyph));
-    return Container(
-      width: 38,
-      height: 38,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
-        shape: BoxShape.circle,
-      ),
-      child: glyph,
-    );
-  }
-}
-
 /// Шторка выравнивания заголовка — порт карточки `settings.view.titleAlign` с
 /// ПК.
 ///
@@ -889,9 +706,15 @@ Future<void> _openTitleAlign(BuildContext context) {
           mainAxisSize: MainAxisSize.min,
           children: [
             for (final align in TitleAlign.values)
-              _AlignTile(
-                align: align,
+              SheetChoiceTile(
+                glyph: CustomPaint(
+                  size: const Size(22, 22),
+                  painter: _AlignGlyph(align: align, color: context.bloom.text),
+                ),
+                label: _alignLabel(context.l, align),
+                sub: _alignSub(context.l, align),
                 selected: align == current,
+                closes: true,
                 onTap: () => ref.read(titleAlignProvider.notifier).set(align),
               ),
           ],
@@ -899,108 +722,6 @@ Future<void> _openTitleAlign(BuildContext context) {
       },
     ),
   );
-}
-
-/// Строка выбора выравнивания. Своя, а не [SheetAction]: строка крупнее пункта
-/// шторки, под названием стоит подпись, а у выбранной — кружок под значком и
-/// галочка справа.
-class _AlignTile extends StatelessWidget {
-  const _AlignTile({
-    required this.align,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final TitleAlign align;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final l = context.l;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 5, kSheetEdge, 5),
-      child: Material(
-        // Та же заливка, что у блоков шторки ([SheetPanel]).
-        color: sheetPanelColor(context),
-        borderRadius: BorderRadius.circular(t.radius),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () {
-            Navigator.of(context).pop();
-            onTap();
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(t.radius),
-              border: Border.all(
-                color: selected ? t.ovlLine2 : Colors.transparent,
-              ),
-            ),
-            child: Row(
-              children: [
-                _TileGlyph(align: align, selected: selected),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _alignLabel(l, align),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.titleMedium,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        _alignSub(l, align),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                if (selected)
-                  BloomIcon(Bi.checkCircleBold, size: 20, color: t.accent),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Значок варианта: у выбранного — в кружке, как в шторке «Свайпов».
-class _TileGlyph extends StatelessWidget {
-  const _TileGlyph({required this.align, required this.selected});
-
-  final TitleAlign align;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final glyph = CustomPaint(
-      size: const Size(22, 22),
-      painter: _AlignGlyph(align: align, color: context.bloom.text),
-    );
-    if (!selected) return SizedBox(width: 38, child: Center(child: glyph));
-    return Container(
-      width: 38,
-      height: 38,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
-        shape: BoxShape.circle,
-      ),
-      child: glyph,
-    );
-  }
 }
 
 /// Тот же значок для строки настройки: без кружка и цветом [IconTheme] — в
@@ -1091,8 +812,17 @@ Future<void> _openSlider(BuildContext context) {
           children: [
             _SliderPreview(style: current),
             for (final style in SliderStyle.values)
-              _SliderTile(
-                style: style,
+              SheetChoiceTile(
+                // 44x10 like the PC grid: at 28 px it reads as a bar with a
+                // thumb, not a dash.
+                glyph: CustomPaint(
+                  size: const Size(28, 6.4),
+                  painter: _SliderGlyph(
+                    style: style,
+                    color: context.bloom.text,
+                  ),
+                ),
+                label: _sliderLabel(context.l, style),
                 selected: style == current,
                 onTap: () => ref.read(sliderStyleProvider.notifier).set(style),
               ),
@@ -1182,101 +912,6 @@ class _SliderPreviewState extends State<_SliderPreview> {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Строка выбора типа слайдера. Устроена как [_AlignTile] (значок в кружке у
-/// выбранного, галочка справа), но без подписи под названием: типов четыре, и
-/// вторая строка в каждом растянула бы шторку на пол-экрана. Что они значат,
-/// показывает превью сверху.
-class _SliderTile extends StatelessWidget {
-  const _SliderTile({
-    required this.style,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final SliderStyle style;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 5, kSheetEdge, 5),
-      child: Material(
-        color: sheetPanelColor(context),
-        borderRadius: BorderRadius.circular(t.radius),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Container(
-            // Размеры — как у строк шторки кнопки воспроизведения
-            // ([_PlayShapeTile]): соседние шторки должны выглядеть одинаково.
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(t.radius),
-              border: Border.all(
-                color: selected ? t.ovlLine2 : Colors.transparent,
-              ),
-            ),
-            child: Row(
-              children: [
-                _SliderTileGlyph(style: style, selected: selected),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    _sliderLabel(context.l, style),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.titleMedium,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                if (selected)
-                  BloomIcon(Bi.checkCircleBold, size: 20, color: t.accent),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Значок варианта: у выбранного — в кружке, как у выравнивания заголовка.
-class _SliderTileGlyph extends StatelessWidget {
-  const _SliderTileGlyph({required this.style, required this.selected});
-
-  final SliderStyle style;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final glyph = CustomPaint(
-      // Пропорции десктопной сетки 44×10 — в 28 px значок читается как
-      // полоска с ползунком, а не как чёрточка.
-      size: const Size(28, 6.4),
-      painter: _SliderGlyph(style: style, color: context.bloom.text),
-    );
-    // Коробка одна и та же с кружком и без него: высоту строки задаёт самый
-    // высокий её элемент, и значок без заданной высоты (а это высота самой
-    // картинки, 6 px) делал невыбранные строки ниже выбранной.
-    if (!selected) {
-      return SizedBox(width: 38, height: 38, child: Center(child: glyph));
-    }
-    return Container(
-      width: 38,
-      height: 38,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
-        shape: BoxShape.circle,
-      ),
-      child: glyph,
     );
   }
 }

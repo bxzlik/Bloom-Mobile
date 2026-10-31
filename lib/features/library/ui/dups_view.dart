@@ -133,14 +133,19 @@ class _Bar extends StatelessWidget {
             ),
           ),
           if (onDeleteAll != null)
-            _TextButton(
+            BloomButton(
               label: context.l.dupsDelAll,
-              danger: true,
-              onTap: onDeleteAll!,
+              color: context.bloom.danger,
+              height: 32,
+              onTap: onDeleteAll,
             ),
-          IconButton(
-            onPressed: onExit,
-            icon: BloomIcon(Bi.closeCircle, size: 22, color: t.text2),
+          CircleIconButton(
+            icon: Bi.closeCircle,
+            size: 48,
+            iconSize: 22,
+            background: Colors.transparent,
+            color: t.text2,
+            onTap: onExit,
           ),
         ],
       ),
@@ -186,9 +191,10 @@ class _Group extends StatelessWidget {
                       style: theme.bodySmall,
                     ),
                   ),
-                  _TextButton(
+                  BloomButton(
                     label: context.l.dupsDelGroup,
-                    danger: true,
+                    color: context.bloom.danger,
+                    height: 32,
                     onTap: onDelete,
                   ),
                 ],
@@ -267,9 +273,13 @@ class _Row extends StatelessWidget {
               style: theme.bodySmall?.copyWith(color: t.accent),
             )
           else
-            IconButton(
-              onPressed: onDelete,
-              icon: BloomIcon(Bi.closeCircle, size: 20, color: t.danger),
+            CircleIconButton(
+              icon: Bi.closeCircle,
+              size: 48,
+              iconSize: 20,
+              background: Colors.transparent,
+              color: t.danger,
+              onTap: onDelete,
             ),
         ],
       ),
@@ -296,38 +306,6 @@ class _Empty extends StatelessWidget {
           const SizedBox(height: 4),
           Text(context.l.dupsChecked(checked), style: theme.bodySmall),
         ],
-      ),
-    );
-  }
-}
-
-/// Плоская текстовая кнопка полосы и группы — своя, чтобы не тащить сюда
-/// material-кнопку с её палитрой и отступами.
-class _TextButton extends StatelessWidget {
-  const _TextButton({
-    required this.label,
-    required this.onTap,
-    this.danger = false,
-  });
-
-  final String label;
-  final VoidCallback onTap;
-  final bool danger;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: danger ? t.danger : t.text),
-        ),
       ),
     );
   }

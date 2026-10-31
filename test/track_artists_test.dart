@@ -20,6 +20,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bloom/core/db/db.dart';
 
 import 'package:bloom/core/l10n/l10n.dart';
+import 'package:bloom/shared/ui/pressable.dart';
 
 Artist _artist(String name, {String? avatar}) => Artist(
   id: 'sc:artist:$name',
@@ -111,9 +112,9 @@ List<String?> _avatars(WidgetTester tester) => [
 bool _enabled(WidgetTester tester, String name) {
   final row = find.ancestor(
     of: find.text(name),
-    matching: find.byType(InkWell),
+    matching: find.byType(Pressable),
   );
-  return tester.widget<InkWell>(row.first).onTap != null;
+  return tester.widget<Pressable>(row.first).onTap != null;
 }
 
 void main() {

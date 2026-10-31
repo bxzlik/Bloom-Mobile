@@ -18,6 +18,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/sync/pc_client.dart';
+import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
@@ -307,9 +308,13 @@ class _PcScanScreenState extends ConsumerState<PcScanScreen> {
               children: [
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: IconButton(
-                    onPressed: () => context.go('/settings/pc'),
-                    icon: const BloomIcon(Bi.altArrowLeft, color: Colors.white),
+                  child: CircleIconButton(
+                    icon: Bi.altArrowLeft,
+                    size: 48,
+                    iconSize: 22,
+                    background: Colors.transparent,
+                    color: Colors.white,
+                    onTap: () => context.go('/settings/pc'),
                   ),
                 ),
                 const Spacer(),

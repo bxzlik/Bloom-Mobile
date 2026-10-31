@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
 
+import '../../app/theme/bloom_theme.dart';
 import '../../app/theme/tokens.dart';
 import '../../core/store/cover_store.dart';
 import 'bloom_icon.dart';
@@ -20,6 +21,7 @@ import 'bloom_mark.dart';
 import 'cover_collage.dart';
 import 'cover_hero.dart';
 import 'glass.dart';
+import 'pressable.dart';
 
 /// Высота управляющих элементов шапки: круглых кнопок, пилюли профиля, поля
 /// поиска и пилюли-заголовка подстраницы. В референсе шапка заметно крупнее,
@@ -135,42 +137,101 @@ class AccentWideButton extends StatelessWidget {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
 
-    return Material(
-      color: t.accent,
-      borderRadius: BorderRadius.circular(t.radius),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: busy ? null : onTap,
-        highlightColor: t.accentText.withValues(alpha: 0.10),
-        splashColor: t.accentText.withValues(alpha: 0.08),
-        child: SizedBox(
-          height: 54,
-          width: double.infinity,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Крутилка ровно того же размера, что значок: ряд не дёргается,
-              // когда действие начинается и кончается.
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: busy
-                    ? CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        color: t.accentText,
-                      )
-                    : BloomIcon(icon, size: 20, color: t.accentText),
+    return Pressable(
+      onTap: busy ? null : onTap,
+      scale: 0.98,
+      child: Container(
+        height: 54,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: t.accent,
+          borderRadius: BorderRadius.circular(t.radius),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Крутилка ровно того же размера, что значок: ряд не дёргается,
+            // когда действие начинается и кончается.
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: busy
+                  ? CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: t.accentText,
+                    )
+                  : BloomIcon(icon, size: 20, color: t.accentText),
+            ),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.titleSmall?.copyWith(
+                  color: t.accentText,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              const SizedBox(width: 10),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Text button: [filled] is an accent pill, otherwise just the label in
+/// [color]. Height is set at the place, 40 when not.
+class BloomButton extends StatelessWidget {
+  const BloomButton({
+    super.key,
+    required this.label,
+    required this.onTap,
+    this.icon,
+    this.filled = false,
+    this.color,
+    this.height = 40,
+  });
+
+  final String label;
+  final VoidCallback? onTap;
+  final BloomGlyph? icon;
+  final bool filled;
+  final Color? color;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final ink = filled ? t.accentText : color ?? t.accent;
+    return Pressable(
+      onTap: onTap,
+      child: Opacity(
+        opacity: onTap == null ? 0.4 : 1,
+        child: Container(
+          height: height,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          alignment: Alignment.center,
+          decoration: filled
+              ? ShapeDecoration(
+                  color: color ?? t.accent,
+                  shape: const StadiumBorder(),
+                )
+              : null,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon case final glyph?) ...[
+                BloomIcon(glyph, size: 18, color: ink),
+                const SizedBox(width: 8),
+              ],
               Flexible(
                 child: Text(
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.titleSmall?.copyWith(
-                    color: t.accentText,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: bloomText(size: 14, weight: 600, color: ink),
                 ),
               ),
             ],
@@ -219,14 +280,14 @@ class CircleIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final border = borderColor;
-    final button = GlassBox(
-      color: background,
-      enabled: glass ?? background == null,
-      shape: CircleBorder(
-        side: border == null ? BorderSide.none : BorderSide(color: border),
-      ),
-      child: InkWell(
-        onTap: onTap,
+    final button = Pressable(
+      onTap: onTap,
+      child: GlassBox(
+        color: background,
+        enabled: glass ?? background == null,
+        shape: CircleBorder(
+          side: border == null ? BorderSide.none : BorderSide(color: border),
+        ),
         child: SizedBox(
           width: size,
           height: size,
@@ -308,10 +369,10 @@ class GlassIconButton extends StatelessWidget {
         onTap: onTap,
       );
     }
-    return GlassSurface(
-      shape: BorderRadius.circular(size / 2),
-      child: InkWell(
-        onTap: onTap,
+    return Pressable(
+      onTap: onTap,
+      child: GlassSurface(
+        shape: BorderRadius.circular(size / 2),
         child: SizedBox(
           width: size,
           height: size,
@@ -512,19 +573,26 @@ class _EqualizerBarsState extends State<EqualizerBars>
 /// `accentText`. Свой, а не material `Switch`: тому не отключить заливку под
 /// пальцем и он тянет за собой свою палитру.
 class BloomSwitch extends StatelessWidget {
-  const BloomSwitch({super.key, required this.value, required this.onChanged});
+  const BloomSwitch({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.color,
+  });
 
   final bool value;
   final ValueChanged<bool> onChanged;
+
+  /// Track when on; accent by default.
+  final Color? color;
 
   static const _duration = Duration(milliseconds: 200);
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    return GestureDetector(
+    return Pressable(
       onTap: () => onChanged(!value),
-      behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: _duration,
         curve: Curves.easeOut,
@@ -532,7 +600,7 @@ class BloomSwitch extends StatelessWidget {
         height: 24,
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
-          color: value ? t.accent : t.border,
+          color: value ? color ?? t.accent : t.border,
           borderRadius: BorderRadius.circular(12),
         ),
         child: AnimatedAlign(

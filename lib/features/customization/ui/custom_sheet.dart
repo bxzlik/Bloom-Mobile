@@ -12,6 +12,7 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../shared/ui/bloom_icon.dart';
+import '../../../shared/ui/pressable.dart';
 
 /// Отступ превью и блоков от края шторки — на макете они стоят по одной
 /// линии с кнопкой «назад» страницы под шторкой.
@@ -237,8 +238,9 @@ class CustSheetRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    return InkWell(
+    return Pressable(
       onTap: onTap,
+      scale: 0.98,
       child: SizedBox(
         height: 64,
         child: Padding(
@@ -284,15 +286,16 @@ class CustSheetFooterButton extends StatelessWidget {
     final t = context.bloom;
     return Padding(
       padding: const EdgeInsets.all(kCustSheetEdge),
-      child: Material(
-        color: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(t.radius),
-          side: BorderSide(color: t.ovlLine),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
+      child: Pressable(
+        onTap: onTap,
+        scale: 0.97,
+        child: Material(
+          color: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(t.radius),
+            side: BorderSide(color: t.ovlLine),
+          ),
+          clipBehavior: Clip.antiAlias,
           child: SizedBox(
             height: 49,
             child: Center(

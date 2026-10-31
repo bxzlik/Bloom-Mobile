@@ -22,6 +22,7 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/marquee_text.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/track_actions.dart';
 import '../../../shared/ui/track_flick.dart';
 import '../../../shared/ui/track_swipes.dart';
@@ -760,12 +761,12 @@ class _NextUpPill extends ConsumerWidget {
     if (next == null) return const SizedBox.shrink();
 
     final t = context.bloom;
-    return Material(
-      color: t.ovlBg,
-      shape: StadiumBorder(side: BorderSide(color: t.ovlLine)),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => showQueueSheet(context),
+    return Pressable(
+      onTap: () => showQueueSheet(context),
+      child: Material(
+        color: t.ovlBg,
+        shape: StadiumBorder(side: BorderSide(color: t.ovlLine)),
+        clipBehavior: Clip.antiAlias,
         child: Padding(
           // Слева поля ВДВОЕ больше, чем сверху и снизу, — та же поправка, что
           // в пилюле источника: край плашки скруглён, и квадрат обложки,
@@ -999,9 +1000,8 @@ class _FlatIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final color = this.color ?? (active ? t.accent : t.iconFg);
-    return InkResponse(
+    return Pressable(
       onTap: onTap,
-      radius: 26,
       child: Padding(
         padding: const EdgeInsets.all(8),
         child: Stack(

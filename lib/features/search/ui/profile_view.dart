@@ -28,6 +28,7 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/glass.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../detail/detail_nav.dart';
 import '../../library/import_url.dart' show likesTitle;
 import '../../player/play_source.dart';
@@ -209,10 +210,11 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
           if (shown < likes.length)
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
-              child: GlassBox(
-                borderRadius: BorderRadius.circular(999),
-                child: InkWell(
-                  onTap: () => setState(() => _likesShown += _likesStep),
+              child: Pressable(
+                onTap: () => setState(() => _likesShown += _likesStep),
+                scale: 0.97,
+                child: GlassBox(
+                  borderRadius: BorderRadius.circular(999),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Center(
@@ -288,13 +290,14 @@ class _HeroState extends ConsumerState<_Hero> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    GestureDetector(
+                    Pressable(
                       onTap: () => openArtist(
                         context,
                         artist.id,
                         initial: artist,
                         flight: flight,
                       ),
+                      scale: 0.97,
                       child: Cover(
                         url: artist.avatar,
                         size: _avatar,
@@ -341,17 +344,18 @@ class _HeroState extends ConsumerState<_Hero> {
                 Row(
                   children: [
                     Expanded(
-                      child: Material(
-                        color: t.accent,
-                        borderRadius: BorderRadius.circular(999),
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: () => openArtist(
-                            context,
-                            artist.id,
-                            initial: artist,
-                            flight: flight,
-                          ),
+                      child: Pressable(
+                        onTap: () => openArtist(
+                          context,
+                          artist.id,
+                          initial: artist,
+                          flight: flight,
+                        ),
+                        scale: 0.97,
+                        child: Material(
+                          color: t.accent,
+                          borderRadius: BorderRadius.circular(999),
+                          clipBehavior: Clip.antiAlias,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             child: Row(
@@ -494,12 +498,12 @@ class _MiniButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final fg = accent ? t.accentText : t.text2;
-    return GlassBox(
-      color: accent ? t.accent : null,
-      enabled: !accent,
-      borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        onTap: busy ? null : onTap,
+    return Pressable(
+      onTap: busy ? null : onTap,
+      child: GlassBox(
+        color: accent ? t.accent : null,
+        enabled: !accent,
+        borderRadius: BorderRadius.circular(999),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           child: busy

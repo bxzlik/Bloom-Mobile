@@ -325,13 +325,13 @@ class _KeyField extends StatelessWidget {
                 ),
               ),
             ),
-            IconButton(
-              onPressed: onToggle,
-              icon: BloomIcon(
-                obscure ? Bi.eyeClosed : Bi.eye,
-                size: 20,
-                color: t.muted,
-              ),
+            CircleIconButton(
+              icon: obscure ? Bi.eyeClosed : Bi.eye,
+              size: 48,
+              iconSize: 20,
+              background: Colors.transparent,
+              color: t.muted,
+              onTap: onToggle,
             ),
           ],
         ),

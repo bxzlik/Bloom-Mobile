@@ -9,6 +9,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../player/play_source.dart';
 import '../discover_store.dart';
 import 'chart_screen.dart';
@@ -49,11 +50,7 @@ class HomeSectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 10),
       child: onTap == null
           ? row
-          : GestureDetector(
-              onTap: onTap,
-              behavior: HitTestBehavior.opaque,
-              child: row,
-            ),
+          : Pressable(onTap: onTap, scale: 0.98, child: row),
     );
   }
 }

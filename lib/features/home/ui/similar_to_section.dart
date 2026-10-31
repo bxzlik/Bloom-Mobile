@@ -11,6 +11,7 @@ import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/entity_tiles.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../detail/detail_nav.dart';
 import '../../player/play_source.dart';
 import '../../player/player_controller.dart';
@@ -46,8 +47,9 @@ class SimilarToSection extends ConsumerWidget {
               Text(l.homeSimilarTo, style: theme.titleLarge),
               const SizedBox(width: 6),
               Flexible(
-                child: GestureDetector(
+                child: Pressable(
                   onTap: open,
+                  scale: 0.98,
                   child: Text(
                     seed.name,
                     maxLines: 1,
@@ -120,9 +122,9 @@ class _ArtistTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context).textTheme;
-    return GestureDetector(
+    return Pressable(
       onTap: () => openArtist(context, artist.id, initial: artist),
-      behavior: HitTestBehavior.opaque,
+      scale: 0.97,
       child: SizedBox(
         width: 132,
         child: Column(

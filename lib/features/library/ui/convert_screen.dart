@@ -27,6 +27,7 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../convert_playlist.dart';
 
@@ -89,8 +90,9 @@ class _TargetRow extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => InkWell(
+  Widget build(BuildContext context) => Pressable(
     onTap: onTap,
+    scale: 0.98,
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       child: Row(
@@ -271,7 +273,7 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),
-                    TextButton(onPressed: _takeBest, child: Text(l.cvTakeBest)),
+                    BloomButton(label: l.cvTakeBest, onTap: _takeBest),
                   ],
                 ),
               ),
@@ -396,14 +398,15 @@ class _ItemRow extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Material(
-        color: t.pill,
-        borderRadius: BorderRadius.circular(t.radius),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: canChoose || item.status != ConvertStatus.same
-              ? () => _choose(context)
-              : null,
+      child: Pressable(
+        onTap: canChoose || item.status != ConvertStatus.same
+            ? () => _choose(context)
+            : null,
+        scale: 0.98,
+        child: Material(
+          color: t.pill,
+          borderRadius: BorderRadius.circular(t.radius),
+          clipBehavior: Clip.antiAlias,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
             child: Opacity(
@@ -529,8 +532,9 @@ class _CandidateRow extends StatelessWidget {
     final theme = Theme.of(context).textTheme;
     final track = match.track;
 
-    return InkWell(
+    return Pressable(
       onTap: onTap,
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
@@ -595,8 +599,9 @@ class _DecisionRow extends StatelessWidget {
     final t = context.bloom;
     final color = danger ? t.danger : t.text;
 
-    return InkWell(
+    return Pressable(
       onTap: onTap,
+      scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         child: Row(
@@ -631,12 +636,13 @@ class _CreateButton extends StatelessWidget {
     final t = context.bloom;
     final enabled = onTap != null;
 
-    return Material(
-      color: enabled ? t.accent : t.pill,
-      borderRadius: BorderRadius.circular(999),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
+    return Pressable(
+      onTap: onTap,
+      scale: 0.97,
+      child: Material(
+        color: enabled ? t.accent : t.pill,
+        borderRadius: BorderRadius.circular(999),
+        clipBehavior: Clip.antiAlias,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 14),
           child: Center(
