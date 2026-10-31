@@ -17,7 +17,18 @@ import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../customization/ui/app_background.dart';
 import '../discover_store.dart';
-import 'release_card.dart' show releaseTypeLabel;
+
+/// A release's caption: "artist · single". An album unless the platform says
+/// otherwise.
+String releaseSubtitle(AppLocalizations l, Playlist album) => [
+  album.ownerName ?? '',
+  switch (album.albumType) {
+    'single' => l.relSingle,
+    'compilation' => l.relCompilation,
+    'podcast' => l.relPodcast,
+    _ => l.relAlbum,
+  },
+].where((s) => s.isNotEmpty).join(' · ');
 
 const double _gap = 12;
 const double _side = 16;
@@ -89,14 +100,10 @@ class ReleasesScreen extends ConsumerWidget {
                       ),
                       itemCount: albums.length,
                       itemBuilder: (context, i) {
-                        final a = albums[i];
                         return SetCard(
-                          set: a,
+                          set: albums[i],
                           size: null,
-                          subtitle: [
-                            a.ownerName ?? '',
-                            releaseTypeLabel(l, a.albumType),
-                          ].where((s) => s.isNotEmpty).join(' · '),
+                          subtitle: releaseSubtitle(l, albums[i]),
                         );
                       },
                     ),

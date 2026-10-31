@@ -1,12 +1,6 @@
-/// «Похожие на X» на главной — порт десктопного `SimilarToSection.tsx`.
-///
-/// Заголовок «Похожие на» + имя сида, подкрашенное тоном его обложки; в ленте
-/// первой стоит плитка сида («тёмный остров» того же тона), за ней треки и
-/// артисты вперемешку. Тап по сиду: артист открывает страницу, трек играет.
-///
-/// Одно отличие от ПК: там плитка сида стоит неподвижно слева от ленты. На
-/// телефоне неподвижная плитка шириной в полэкрана оставила бы ленте щель,
-/// поэтому здесь она первая карточка и уезжает вместе с лентой.
+/// "Similar to X" on home: the seed's name in its cover's hue in the title,
+/// tracks and artists mixed in the row. Tapping the name opens an artist seed
+/// and plays a track seed.
 library;
 
 import 'package:flutter/material.dart';
@@ -22,16 +16,6 @@ import '../../player/play_source.dart';
 import '../../player/player_controller.dart';
 import 'cover_tones.dart';
 import '../similar_to.dart';
-
-/// Геометрия плитки сида — десктопные `--sim-seed-w` / `--sim-seed-cov`,
-/// ужатые под наши карточки 132 вместо 140.
-const double _k = 132 / 140;
-const double _seedWidth = 210 * _k;
-const double _seedCover = 72 * _k;
-
-/// Рост плитки — рост карточки ленты: обложка, отступ и две строки подписи
-/// (на ПК плитка тянется по высоте ряда).
-const double _seedHeight = 176;
 
 class SimilarToSection extends ConsumerWidget {
   const SimilarToSection({super.key});
@@ -82,21 +66,16 @@ class SimilarToSection extends ConsumerWidget {
         EntityCarousel(
           height: 194,
           padding: 16,
-          itemCount: data.items.length + 1,
-          builder: (i) {
-            if (i == 0) {
-              return _SeedTile(seed: seed, tint: tones?.tint, onTap: open);
-            }
-            return switch (data.items[i - 1]) {
-              // Одиночная карточка играет свой трек, как на ПК.
-              SimilarTrackItem(:final track) => TrackCard(
-                track: track,
-                queue: [track],
-                index: 0,
-                source: source,
-              ),
-              SimilarArtistItem(:final artist) => _ArtistTile(artist: artist),
-            };
+          itemCount: data.items.length,
+          builder: (i) => switch (data.items[i]) {
+            // A card plays its own track.
+            SimilarTrackItem(:final track) => TrackCard(
+              track: track,
+              queue: [track],
+              index: 0,
+              source: source,
+            ),
+            SimilarArtistItem(:final artist) => _ArtistTile(artist: artist),
           },
         ),
       ],
@@ -131,80 +110,8 @@ VoidCallback? _seedAction(
   SimilarTrackSeed() => null,
 };
 
-/// Плитка сида — порт `.sim-seed`: обложка сверху, имя и подпись прижаты к
-/// низу. Текст всегда белый: плитка тёмная в любой теме.
-class _SeedTile extends StatelessWidget {
-  const _SeedTile({required this.seed, required this.tint, this.onTap});
-
-  final SimilarSeed seed;
-  final Color? tint;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final isArtist = seed is SimilarArtistSeed;
-    final sub = switch (seed) {
-      SimilarArtistSeed() => context.l.homeSimilarArtist,
-      SimilarTrackSeed(:final artist) => artist,
-    };
-
-    return Align(
-      alignment: Alignment.topLeft,
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          width: _seedWidth,
-          height: _seedHeight,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            // Тон ещё не посчитан или обложки нет — нейтральный тёмный с ПК.
-            color: tint ?? kCoverTileFallback,
-            borderRadius: BorderRadius.circular(t.radius + 2),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Cover(
-                url: seed.cover,
-                size: _seedCover,
-                circle: isArtist,
-                radius: t.radius,
-              ),
-              const Spacer(),
-              Text(
-                seed.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.titleMedium?.copyWith(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.3,
-                  height: 1.32,
-                ),
-              ),
-              Text(
-                sub,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.bodySmall?.copyWith(
-                  color: Colors.white.withValues(alpha: 0.62),
-                  fontSize: 12.5,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Артист в ленте — та же геометрия, что у карточки трека, только круг, а под
-/// именем «Артист» (порт `.sim-art`).
+/// An artist in the row: the track card's size in a circle, "Artist" under the
+/// name.
 class _ArtistTile extends StatelessWidget {
   const _ArtistTile({required this.artist});
 

@@ -4,12 +4,10 @@
 library;
 
 import 'package:bloom/core/entities/entities.dart';
-import 'package:bloom/features/home/ui/release_card.dart' show releaseDayLabel;
 import 'package:bloom/providers/yandex/models.dart';
 import 'package:bloom/providers/yandex/ym_provider.dart';
 import 'package:bloom/providers/yandex/yandex.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
   group('разбор выдачи', () {
@@ -319,37 +317,6 @@ void main() {
       // Пустой тип — обычный альбом, поля нет вовсе.
       expect(albumFromYm(parseAlbum({'id': 11})!).albumType, isNull);
     });
-
-    test(
-      'дата релиза: день и месяц в этом году, с годом — в прошлые',
-      () async {
-        // В приложении данные локалей грузит flutter_localizations; в голом
-        // тесте их нужно поднять руками, иначе полная дата бросает.
-        await initializeDateFormatting('en');
-        final now = DateTime(2026, 9, 13);
-        const fresh = Playlist(
-          id: 'ym:album:1',
-          title: 'A',
-          source: MusicSource.yandex,
-          releaseDate: '2026-08-14T00:00:00+03:00',
-        );
-        const old = Playlist(
-          id: 'ym:album:2',
-          title: 'B',
-          source: MusicSource.yandex,
-          releaseDate: '2024-05-13',
-        );
-        const yearOnly = Playlist(
-          id: 'ym:album:3',
-          title: 'C',
-          source: MusicSource.yandex,
-          year: '2019',
-        );
-        expect(releaseDayLabel(fresh, 'en', now: now), 'August 14');
-        expect(releaseDayLabel(old, 'en', now: now), 'May 13, 2024');
-        expect(releaseDayLabel(yearOnly, 'en', now: now), '2019');
-      },
-    );
   });
 
   group('треки артиста порциями', () {

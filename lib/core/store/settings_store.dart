@@ -164,56 +164,14 @@ NavBarStyle readNavStyle(Object? raw) {
   return NavBarStyle.bar;
 }
 
-/// Таб нижнего бара. Порядок значений — порядок бара у свежей установки;
-/// дальше его переставляют вручную, см. [SettingsState.navOrder].
-///
-/// Главная, библиотека и настройки стоят в баре всегда ([NavTabX.fixed]) — без
-/// них до половины приложения не добраться. Поиск и профиль по умолчанию
-/// выключены: они уже есть в шапке главной, и в баре нужны не всем.
-enum NavTab { home, search, library, profile, settings }
+/// A bottom bar tab. The bar always holds all four; only their order is a
+/// setting ([SettingsState.navOrder]). The enum order is the fresh install's
+/// order and also the router's branch order ([NavTab.index]).
+enum NavTab { home, search, library, settings }
 
-extension NavTabX on NavTab {
-  /// Таб, который нельзя убрать из бара.
-  bool get fixed => this != NavTab.search && this != NavTab.profile;
-
-  /// Номер ветки роутера. Не совпадает с местом в баре намеренно: ветки нумерует
-  /// `StatefulShellRoute` в порядке объявления, и первые три обязаны остаться на
-  /// своих местах — иначе у всех, кто уже поставил сборку, вкладки перепутаются.
-  int get branch => switch (this) {
-    NavTab.home => 0,
-    NavTab.library => 1,
-    NavTab.settings => 2,
-    NavTab.search => 3,
-    NavTab.profile => 4,
-  };
-}
-
-/// Бар свежей установки — только обязательные табы.
-const Set<NavTab> kDefaultNavTabs = {
-  NavTab.home,
-  NavTab.library,
-  NavTab.settings,
-};
-
-/// Состав бара из сырых настроек. Обязательные табы добавляются независимо от
-/// того, что записано: список от чужой (или битой) сборки не должен оставлять
-/// человека без навигации.
-Set<NavTab> readNavTabs(Object? raw) {
-  if (raw is! List) return kDefaultNavTabs;
-  final names = raw.whereType<String>().toSet();
-  return {
-    for (final tab in NavTab.values)
-      if (tab.fixed || names.contains(tab.name)) tab,
-  };
-}
-
-/// Порядок бара из сырых настроек — ВСЕГДА все пять табов, ровно по одному
-/// разу: список чинится, а не отвергается целиком.
-///
-/// Настройки от сборки без этого ключа порядка не знают — там он был задан
-/// перечислением, его и вернём. Пропавшие имена (новый таб в свежей сборке)
-/// дописываются в конец, лишние и повторы выкидываются: без этого бар потерял
-/// бы вкладку или показал её дважды.
+/// The bar order from raw settings — always every tab exactly once: I repair
+/// the list rather than reject it, so a missing name lands at the end and
+/// unknown names or repeats drop out.
 List<NavTab> readNavOrder(Object? raw) {
   if (raw is! List) return kDefaultNavOrder;
   final seen = <NavTab>{};
@@ -367,14 +325,7 @@ class SettingsState {
   /// Вид таб-бара, см. [NavBarStyle].
   final NavBarStyle navStyle;
 
-  /// Какие табы стоят в баре, см. [NavTab]. Порядок здесь ни при чём — он
-  /// живёт отдельно, в [navOrder].
-  final Set<NavTab> navTabs;
-
-  /// Порядок табов в баре — все пять, включая выключенные.
-  ///
-  /// Выключенные хранятся вместе с остальными намеренно: убранный из бара таб
-  /// помнит своё место и, когда его вернут, встаёт туда же, а не в конец ряда.
+  /// The bar tabs in display order.
   final List<NavTab> navOrder;
 
   /// Чем помечен активный таб, см. [NavIndicator].
@@ -427,7 +378,6 @@ class SettingsState {
     this.accentBadges = false,
     this.fontFamily = kDefaultFont,
     this.navStyle = NavBarStyle.bar,
-    this.navTabs = kDefaultNavTabs,
     this.navOrder = kDefaultNavOrder,
     this.navIndicator = NavIndicator.pill,
     this.navLabels = NavLabels.none,
@@ -439,13 +389,6 @@ class SettingsState {
     this.autoSimilar = false,
     this.customThemes = const [],
   });
-
-  /// Табы бара в порядке показа: выключенные просто выпадают из ряда, а
-  /// оставшиеся делят ширину поровну.
-  List<NavTab> get navBarTabs => [
-    for (final tab in navOrder)
-      if (navTabs.contains(tab)) tab,
-  ];
 
   /// Встроенные и свои разом — в этом порядке они и показываются.
   List<ThemePreset> get allThemes => [...kThemePresets, ...customThemes];
@@ -489,7 +432,6 @@ class SettingsState {
     bool? accentBadges,
     String? fontFamily,
     NavBarStyle? navStyle,
-    Set<NavTab>? navTabs,
     List<NavTab>? navOrder,
     NavIndicator? navIndicator,
     NavLabels? navLabels,
@@ -511,7 +453,6 @@ class SettingsState {
     accentBadges: accentBadges ?? this.accentBadges,
     fontFamily: fontFamily ?? this.fontFamily,
     navStyle: navStyle ?? this.navStyle,
-    navTabs: navTabs ?? this.navTabs,
     navOrder: navOrder ?? this.navOrder,
     navIndicator: navIndicator ?? this.navIndicator,
     navLabels: navLabels ?? this.navLabels,
@@ -549,7 +490,6 @@ class SettingsController extends Notifier<SettingsState> {
       accentBadges: raw['accentBadges'] as bool? ?? false,
       fontFamily: raw['fontFamily'] as String? ?? kDefaultFont,
       navStyle: readNavStyle(raw['navStyle']),
-      navTabs: readNavTabs(raw['navTabs']),
       navOrder: readNavOrder(raw['navOrder']),
       navIndicator: readNavIndicator(raw),
       navLabels: readNavLabels(raw['navLabels']),
@@ -583,7 +523,6 @@ class SettingsController extends Notifier<SettingsState> {
       'accentBadges': state.accentBadges,
       'fontFamily': state.fontFamily,
       'navStyle': state.navStyle.name,
-      'navTabs': [for (final tab in state.navBarTabs) tab.name],
       'navOrder': [for (final tab in state.navOrder) tab.name],
       'navIndicator': state.navIndicator.name,
       'navLabels': state.navLabels.name,
@@ -748,28 +687,8 @@ class SettingsController extends Notifier<SettingsState> {
     _save();
   }
 
-  /// Поставить таб [tab] в бар или убрать его оттуда. Обязательный таб
-  /// ([NavTabX.fixed]) не убирается — переключатель у него и не показывают, но
-  /// проверка тут, а не только в интерфейсе: настройку читает и восстановление
-  /// из файла.
-  void setNavTab(NavTab tab, bool value) {
-    if (tab.fixed && !value) return;
-    final tabs = {...state.navTabs};
-    if (value) {
-      tabs.add(tab);
-    } else {
-      tabs.remove(tab);
-    }
-    state = state.copyWith(navTabs: tabs);
-    _save();
-  }
-
-  /// Переставить таб внутри бара. Номера — в семантике `ReorderableListView`:
-  /// [to] считается по списку ДО того, как строку из него вынули, поэтому при
-  /// движении вниз его надо уменьшить на единицу.
-  ///
-  /// Переставляется весь порядок целиком, вместе с выключенными табами: их
-  /// место в списке — это место, куда таб вернётся, когда его снова включат.
+  /// Move a bar tab. [to] follows `ReorderableListView`: it counts the list
+  /// before the row is taken out, so moving down I subtract one.
   void moveNavTab(int from, int to) {
     final order = [...state.navOrder];
     if (from < 0 || from >= order.length) return;

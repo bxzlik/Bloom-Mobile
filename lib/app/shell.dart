@@ -1,4 +1,4 @@
-/// Каркас приложения: три таба, миниплеер над баром, полноэкранный плеер
+/// Каркас приложения: таб-бар, миниплеер над ним, полноэкранный плеер
 /// поверх всего.
 ///
 /// Бары лежат поверх содержимого (`extendBody`), а не отрезают ему низ: поля
@@ -16,21 +16,16 @@ import 'package:go_router/go_router.dart';
 
 import '../core/l10n/l10n.dart';
 import '../features/customization/ui/app_background.dart';
-import '../core/store/cover_store.dart';
 import '../core/store/settings_store.dart';
-import '../features/notifications/notif_store.dart';
 import '../features/player/ui/mini_player.dart';
 import '../features/player/ui/player_sheet.dart';
 import '../features/profile/achievements.dart';
-import '../features/profile/profile_store.dart';
-import '../features/profile/ui/profile_avatar.dart';
 import '../features/settings/about_store.dart';
 import '../features/settings/update_notes_store.dart';
 import '../features/settings/ui/update_notes_sheet.dart';
 import '../features/wrapped/periods.dart';
 import '../core/store/play_log.dart';
 import '../features/wrapped/ui/wrapped_sheet.dart';
-import '../features/wrapped/wrapped_format.dart';
 import '../features/wrapped/wrapped_store.dart';
 import '../shared/ui/atoms.dart';
 import '../shared/ui/bloom_icon.dart';
@@ -86,15 +81,9 @@ class _BloomShellState extends ConsumerState<BloomShell> {
     await showUpdateNote(context, note);
   }
 
-  /// Напоминание про готовые «Итоги» — порт десктопного `WrappedHost`.
-  ///
-  /// Здесь, а не в профиле, по той же причине, что и достижения: входы в итоги
-  /// живут на странице профиля, но узнать о них человек должен, даже если туда
-  /// не заходит.
-  ///
-  /// Уведомление кидается в свой день (1-е число / декабрьское окно), один раз
-  /// на период и только если за период есть что показывать. Отметку ставим ДО
-  /// уведомления — она на диске, и перезапуск в тот же день не звенит повторно.
+  /// A review is out: a toast with a way into it, once per period and only
+  /// when the period has plays. I mark it before the toast, so a restart the
+  /// same day stays quiet.
   void _wrappedNotice() {
     final entries = ref.read(wrappedEntriesProvider);
     if (entries.isEmpty) return;
@@ -110,29 +99,24 @@ class _BloomShellState extends ConsumerState<BloomShell> {
       final data = kind == PeriodKind.year ? entries.year : entries.month;
       if (data == null || prefs.isNotified(data.range)) continue;
       prefs.markNotified(data.range);
-      ref
-          .read(notifCenterProvider.notifier)
-          .add(
-            kind: NotifKind.info,
-            title: kind == PeriodKind.year
-                ? NotifTitle.wrappedYear
-                : NotifTitle.wrappedMonth,
-            body:
-                '${periodDatesLabel(data.range, locale)} · '
-                '${l.wrPlaysN(data.plays)} · ${fmtListenTime(l, data.seconds)}',
-            action: NotifAction(
-              label: l.wrWatch,
-              // Данные берём заново в момент нажатия: между уведомлением и
-              // тапом могли смениться сутки, а с ними и период.
-              run: () {
-                if (!mounted) return;
-                final fresh = ref.read(wrappedEntriesProvider);
-                final data = kind == PeriodKind.year ? fresh.year : fresh.month;
-                if (data == null) return;
-                showWrappedSheet(context, period: kind, data: data);
-              },
-            ),
-          );
+      ScaffoldMessenger.of(context).toast(
+        [
+          kind == PeriodKind.year ? l.wrYear : l.wrMonth,
+          periodDatesLabel(data.range, locale),
+          l.wrPlaysN(data.plays),
+        ].join(' · '),
+        action: ToastAction(
+          label: l.wrWatch,
+          // I read the data again on the tap: the day may have turned.
+          fn: () {
+            if (!mounted) return;
+            final fresh = ref.read(wrappedEntriesProvider);
+            final data = kind == PeriodKind.year ? fresh.year : fresh.month;
+            if (data == null) return;
+            showWrappedSheet(context, period: kind, data: data);
+          },
+        ),
+      );
     }
   }
 
@@ -201,15 +185,15 @@ class _BloomShellState extends ConsumerState<BloomShell> {
             const MiniCardSlot(),
             _NavBar(
               style: ref.watch(settingsProvider).navStyle,
-              tabs: ref.watch(settingsProvider).navBarTabs,
+              tabs: ref.watch(settingsProvider).navOrder,
               indicator: ref.watch(settingsProvider).navIndicator,
               labels: ref.watch(settingsProvider).navLabels,
               homeLogo: ref.watch(settingsProvider).navHomeLogo,
               branch: shell.currentIndex,
               panelKey: _panelKey,
               onTap: (tab) => shell.goBranch(
-                tab.branch,
-                initialLocation: tab.branch == shell.currentIndex,
+                tab.index,
+                initialLocation: tab.index == shell.currentIndex,
               ),
               onLongPress: _openMenu,
             ),
@@ -358,7 +342,6 @@ class _NavSpec {
     required this.icon,
     required this.activeIcon,
     this.motion = _NavMotion.wiggle,
-    this.avatar = false,
   });
 
   /// Подпись резолвится при отрисовке, а не при сборке списка: таблица табов
@@ -369,12 +352,6 @@ class _NavSpec {
 
   /// Чем иконка отвечает на выбор своей вкладки — см. [_NavMotion].
   final _NavMotion motion;
-
-  /// Вместо глифов — аватар профиля, если он поставлен. Пары глифов у такого
-  /// таба всё равно обязательны: без своей картинки в баре рисуется человечек,
-  /// а не заглушка аватара (кружок с бледным человечком в размере таба
-  /// читался бы как «не загрузилось»).
-  final bool avatar;
 }
 
 /// Высота ряда иконок у прижатых к низу стилей.
@@ -417,8 +394,7 @@ class _NavBar extends StatelessWidget {
 
   final NavBarStyle style;
 
-  /// Табы в баре, в порядке показа. Состав и порядок настраиваются, см.
-  /// [NavTab].
+  /// The tabs in display order, see [NavTab].
   final List<NavTab> tabs;
 
   /// Чем помечен активный таб, см. [_NavMark].
@@ -430,8 +406,8 @@ class _NavBar extends StatelessWidget {
   /// Знак Bloom на месте иконки «Главной», см. [SettingsState.navHomeLogo].
   final bool homeLogo;
 
-  /// Открытая ветка каркаса. Не место в баре: у веток своя нумерация, а таба
-  /// открытой ветки в баре может и не быть вовсе — тогда подсвечивать нечего.
+  /// The open shell branch ([NavTab.index]), not a slot in the bar: the order
+  /// is a setting.
   final int branch;
 
   /// Ключ панели: по ней меню таба считает свою раскладку (см. [showNavMenu]).
@@ -461,12 +437,6 @@ class _NavBar extends StatelessWidget {
       icon: Bi.library,
       activeIcon: Bi.libraryBold,
     ),
-    NavTab.profile: _NavSpec(
-      label: (l) => l.navProfile,
-      icon: Bi.user,
-      activeIcon: Bi.userBold,
-      avatar: true,
-    ),
     NavTab.settings: _NavSpec(
       label: (l) => l.navSettings,
       icon: Bi.settings,
@@ -480,9 +450,7 @@ class _NavBar extends StatelessWidget {
     final t = context.bloom;
     final floating = style == NavBarStyle.floating || style == NavBarStyle.pill;
     final height = floating ? kNavBarFloatHeight : kNavBarHeight;
-    // Место активного таба в ряду. −1 — открытой ветки в баре нет (в неё зашли
-    // страницей главной): подсвечивать тогда нечего, подложка просто не рисуется.
-    final slot = tabs.indexWhere((tab) => tab.branch == branch);
+    final slot = tabs.indexWhere((tab) => tab.index == branch);
 
     // Прижатые стили отличаются друг от друга только радиусом верхних углов.
     // У «Купола» он вдвое больше темы и не мельче 28: на слабом радиусе темы он
@@ -1000,16 +968,13 @@ class _NavItemState extends State<_NavItem> with TickerProviderStateMixin {
     final line = 1 - const Interval(0.35, 1).transform(m);
     final spec = widget.spec;
 
-    final glyphs = Stack(
+    return Stack(
       alignment: Alignment.center,
       children: [
         if (line > 0) _layer(spec.icon, color, line, size),
         if (fill > 0) _layer(spec.activeIcon, color, fill, size),
       ],
     );
-
-    if (!spec.avatar) return glyphs;
-    return _TabAvatar(size: size, morph: m, fallback: glyphs);
   }
 
   Widget _layer(BloomGlyph glyph, Color color, double opacity, double size) =>
@@ -1017,38 +982,4 @@ class _NavItemState extends State<_NavItem> with TickerProviderStateMixin {
         opacity: opacity.clamp(0, 1),
         child: BloomIcon(glyph, size: size, color: color),
       );
-}
-
-/// Аватар вместо глифа у таба профиля — если он поставлен.
-///
-/// Кольца вокруг аватара нет ни в шапке главной, ни на странице профиля (см.
-/// `ProfileAvatar`), поэтому выбранность тут показывает яркость: в покое аватар
-/// приглушён, у своей вкладки — в полную силу. Красить его акцентом, как глиф,
-/// нельзя: это фотография, а не значок.
-///
-/// Своей картинки нет — рисуем [fallback], обычную пару глифов. Заглушка
-/// аватара (кружок с бледным человечком) в размере таба читалась бы как «не
-/// загрузилось».
-class _TabAvatar extends ConsumerWidget {
-  const _TabAvatar({
-    required this.size,
-    required this.morph,
-    required this.fallback,
-  });
-
-  final double size;
-
-  /// 0 — покой, 1 — активный таб; тот же наплыв, что у глифов.
-  final double morph;
-  final Widget fallback;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final profile = ref.watch(profileProvider);
-    if (coverImage(profile.avatar) == null) return fallback;
-    return Opacity(
-      opacity: 0.62 + 0.38 * morph,
-      child: ProfileAvatar(profile: profile, size: size),
-    );
-  }
 }

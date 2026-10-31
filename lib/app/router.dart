@@ -1,11 +1,11 @@
-/// Навигация: три таба через [StatefulShellRoute] — у каждого свой стек,
-/// состояние вкладки переживает переключение.
+/// Navigation: one [StatefulShellRoute] branch per tab, each with its own
+/// stack, so a tab keeps its state across switches.
 ///
-/// Контейнер веток свой ([BranchCrossfade]) вместо готового `indexedStack`:
-/// тот меняет вкладку одним кадром, без перехода.
+/// The branch container is my own ([BranchCrossfade]): the stock
+/// `indexedStack` swaps tabs in one frame.
 ///
-/// Вложенные страницы (поиск, списки библиотеки, разделы настроек) живут
-/// ВНУТРИ своей ветки: таб-бар и миниплеер остаются на месте.
+/// Nested pages live inside their branch, so the tab bar and the mini player
+/// stay in place.
 library;
 
 import 'package:flutter/material.dart';
@@ -45,56 +45,27 @@ import 'theme/tokens.dart';
 
 final GlobalKey<NavigatorState> _rootKey = GlobalKey<NavigatorState>();
 
-/// Навигаторы вкладок — в порядке веток: главная, библиотека, настройки, поиск,
-/// профиль (тот же порядок, что у [NavTabX.branch]).
+/// Tab navigators in branch order ([NavTab.index]).
 ///
-/// Нужны тем, кто открывает страницу НЕ из дерева вкладки: пилюля источника
-/// живёт в полноэкранном плеере, а он лежит в корневом навигаторе, и ближайший
-/// `Navigator.of(context)` оттуда — корневой. Положи страницу артиста в него —
-/// она накроет таб-бар и миниплеер, хотя из поиска та же страница открывается
-/// под ними.
+/// Pages opened from outside a tab's tree need them: the full player lives in
+/// the root navigator, and an artist page pushed there would cover the tab bar
+/// and the mini player.
 final List<GlobalKey<NavigatorState>> _branchKeys = [
-  GlobalKey<NavigatorState>(),
-  GlobalKey<NavigatorState>(),
-  GlobalKey<NavigatorState>(),
-  GlobalKey<NavigatorState>(),
-  GlobalKey<NavigatorState>(),
+  for (final _ in NavTab.values) GlobalKey<NavigatorState>(),
 ];
 
-/// Навигатор ТОЙ вкладки, что открыта сейчас. `null` — каркас ещё не собран.
+/// The navigator of the open tab. `null` until the shell is built.
 NavigatorState? currentBranchNavigator() {
   final path = bloomRouter.state.uri.path;
-  final key = path.startsWith('/library')
-      ? _branchKeys[1]
-      : path.startsWith('/settings')
-      ? _branchKeys[2]
-      : path.startsWith('/search')
-      ? _branchKeys[3]
-      : path.startsWith('/profile')
-      ? _branchKeys[4]
-      : _branchKeys[0];
-  return key.currentState;
+  final tab = NavTab.values.firstWhere(
+    (tab) => path.startsWith('/${tab.name}'),
+    orElse: () => NavTab.home,
+  );
+  return _branchKeys[tab.index].currentState;
 }
 
-/// Куда ведёт лупа в шапке главной: свой таб, если он стоит в баре, иначе
-/// вложенная страница главной, как было всегда.
-///
-/// Уводить в ветку без таба нельзя: подсветить её в баре нечем, а системная
-/// «назад» из корня ветки вышла бы из приложения вместо возврата на главную.
-String searchLocation(Set<NavTab> tabs) =>
-    tabs.contains(NavTab.search) ? '/search' : '/home/search';
-
-/// То же для аватара профиля, см. [searchLocation].
-String profileLocation(Set<NavTab> tabs) =>
-    tabs.contains(NavTab.profile) ? '/profile' : '/home/profile';
-
-/// Ветка, в которой профиль открыт ПРЯМО СЕЙЧАС. Настройку тут спрашивать
-/// нельзя: её могли переключить, пока страница профиля уже открыта, и тогда
-/// «Сохранить» увело бы редактор в чужую ветку.
-String profileBase(BuildContext context) =>
-    GoRouterState.of(context).matchedLocation.startsWith('/profile')
-    ? '/profile'
-    : '/home/profile';
+/// The profile page: it lives inside home, opened from the header avatar.
+const String kProfileLocation = '/home/profile';
 
 /// Фон страницы маршрута.
 ///
@@ -123,9 +94,6 @@ class _Page extends ConsumerWidget {
   );
 }
 
-/// Страница профиля. Одна на два места: своим табом он живёт веткой `/profile`,
-/// без таба — страницей внутри главной.
-///
 /// Растворение на месте вместо общего перехода со сдвигом: в шапку профиля
 /// летит аватар с кнопки главной, и сдвиг всей страницы спорил бы с ним
 /// (см. `detailPageTransition`).
@@ -173,16 +141,12 @@ final GoRouter bloomRouter = GoRouter(
           BranchCrossfade(index: shell.currentIndex, children: children),
       branches: [
         StatefulShellBranch(
-          navigatorKey: _branchKeys[0],
+          navigatorKey: _branchKeys[NavTab.home.index],
           routes: [
             GoRoute(
               path: '/home',
               builder: (_, _) => const _Page(HomeScreen()),
               routes: [
-                GoRoute(
-                  path: 'search',
-                  builder: (_, _) => const _Page(SearchScreen()),
-                ),
                 GoRoute(
                   path: 'profile',
                   pageBuilder: (_, state) => _profilePage(state),
@@ -193,7 +157,16 @@ final GoRouter bloomRouter = GoRouter(
           ],
         ),
         StatefulShellBranch(
-          navigatorKey: _branchKeys[1],
+          navigatorKey: _branchKeys[NavTab.search.index],
+          routes: [
+            GoRoute(
+              path: '/search',
+              builder: (_, _) => const _Page(SearchScreen()),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          navigatorKey: _branchKeys[NavTab.library.index],
           routes: [
             GoRoute(
               path: '/library',
@@ -228,7 +201,7 @@ final GoRouter bloomRouter = GoRouter(
           ],
         ),
         StatefulShellBranch(
-          navigatorKey: _branchKeys[2],
+          navigatorKey: _branchKeys[NavTab.settings.index],
           routes: [
             GoRoute(
               path: '/settings',
@@ -305,30 +278,6 @@ final GoRouter bloomRouter = GoRouter(
                   builder: (_, _) => const _Page(CustomizationScreen()),
                 ),
               ],
-            ),
-          ],
-        ),
-        // Ветки поиска и профиля — под их табы в баре. Ветка есть всегда, даже
-        // когда таба нет: `StatefulShellRoute` собирает навигатор ветки только
-        // при первом заходе, и незанятая ветка не стоит ничего. Пока таб
-        // выключен, сюда просто никто не ходит — поиск и профиль открываются
-        // страницами внутри главной (см. [searchLocation]).
-        StatefulShellBranch(
-          navigatorKey: _branchKeys[3],
-          routes: [
-            GoRoute(
-              path: '/search',
-              builder: (_, _) => const _Page(SearchScreen()),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          navigatorKey: _branchKeys[4],
-          routes: [
-            GoRoute(
-              path: '/profile',
-              pageBuilder: (_, state) => _profilePage(state),
-              routes: [_profileEditRoute],
             ),
           ],
         ),

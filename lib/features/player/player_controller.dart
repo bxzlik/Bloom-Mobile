@@ -28,7 +28,6 @@ import '../../core/store/settings_store.dart';
 import '../../shared/ui/bloom_toast.dart';
 import '../lastfm/lastfm_store.dart';
 import '../library/local_tracks.dart';
-import '../notifications/notif_store.dart';
 import '../offline/offline_store.dart';
 import '../wave/wave_controller.dart';
 import '../../core/store/play_log.dart';
@@ -938,19 +937,6 @@ class PlaybackController extends Notifier<PlaybackState>
     // играть никто не просил, и листать очередь самим на старте приложения
     // нельзя — ошибка просто остаётся на экране.
     final canSkip = autoplay && q.length > 1 && skipped + 1 < q.length;
-
-    // Уведомление — одно на действие человека, а не по одному на каждый трек
-    // очереди: дальше идёт авто-скип, и на глухой очереди список уведомлений
-    // забился бы ею целиком.
-    if (skipped == 0) {
-      ref
-          .read(notifCenterProvider.notifier)
-          .add(
-            kind: NotifKind.error,
-            title: NotifTitle.trackUnavailable,
-            body: failed.name,
-          );
-    }
 
     final l = globalL10n;
     if (l != null) {

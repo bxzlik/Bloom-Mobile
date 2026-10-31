@@ -193,14 +193,12 @@ class AppearanceScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            // Состав бара — отдельной строкой под видом: вид про форму панели,
-            // а тут про то, что в ней стоит и в каком порядке.
             _SettingsCard(
-              onTap: () => _pickNavTabs(context, ref),
+              onTap: () => _pickNavOrder(context, ref),
               child: _SettingsRow(
                 title: context.l.apNavTabsRow,
                 subtitle: [
-                  for (final tab in settings.navBarTabs)
+                  for (final tab in settings.navOrder)
                     _navTabLabel(context.l, tab),
                 ].join(' · '),
                 trailing: BloomIcon(
@@ -462,12 +460,12 @@ List<Widget> _transparencyGroup(BuildContext context, WidgetRef ref) {
 class _SettingsRow extends StatelessWidget {
   const _SettingsRow({
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     required this.trailing,
   });
 
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final Widget trailing;
 
   @override
@@ -480,12 +478,14 @@ class _SettingsRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: theme.titleMedium),
-              const SizedBox(height: 3),
-              // Ярче общего `bodySmall` — как выбранное в строках «Плеера».
-              Text(
-                subtitle,
-                style: theme.bodySmall?.copyWith(color: context.bloom.text2),
-              ),
+              if (subtitle case final sub?) ...[
+                const SizedBox(height: 3),
+                // Ярче общего `bodySmall` — как выбранное в строках «Плеера».
+                Text(
+                  sub,
+                  style: theme.bodySmall?.copyWith(color: context.bloom.text2),
+                ),
+              ],
             ],
           ),
         ),
@@ -785,27 +785,18 @@ class _NavPickCard extends StatelessWidget {
   }
 }
 
-// ─── Состав таб-бара ────────────────────────────────────────────────────────
+// ─── Порядок вкладок ────────────────────────────────────────────────────────
 
 String _navTabLabel(AppLocalizations l, NavTab tab) => switch (tab) {
   NavTab.home => l.navHome,
   NavTab.search => l.navSearch,
   NavTab.library => l.navLibrary,
-  NavTab.profile => l.navProfile,
   NavTab.settings => l.navSettings,
 };
 
-/// Шторка состава и порядка бара: строка на каждый таб, порядок строк — тот
-/// же, что в самом баре, и меняется он перетаскиванием за ручку справа.
-///
-/// Переключатели работают сразу, без «Готово»: бар стоит под шторкой не весь,
-/// и результат видно, не закрывая её. У обязательных табов переключателя нет
-/// вовсе — выключенный ползунок читался бы как «сломался», а замок сразу
-/// говорит, почему таб не трогают.
-///
-/// В списке стоят ВСЕ табы, включая убранные из бара: их место в списке — это
-/// место, куда таб вернётся, когда его снова включат.
-Future<void> _pickNavTabs(BuildContext context, WidgetRef ref) =>
+/// The tab order sheet: a row per tab in bar order, moved by the handle on the
+/// right. It applies at once, no "Done".
+Future<void> _pickNavOrder(BuildContext context, WidgetRef ref) =>
     showBloomSheetChild<void>(
       context: context,
       // Заголовка НЕТ (его слово): что настраивают, уже сказано строкой, из
@@ -831,9 +822,7 @@ Future<void> _pickNavTabs(BuildContext context, WidgetRef ref) =>
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       padding: EdgeInsets.zero,
-                      // Ручка своя, справа: `ReorderableListView` иначе вешает
-                      // тянучку на всю строку — тогда по переключателю нельзя
-                      // было бы попасть пальцем.
+                      // The handle is my own, on the right.
                       buildDefaultDragHandles: false,
                       itemCount: settings.navOrder.length,
                       onReorder: controller.moveNavTab,
@@ -853,9 +842,6 @@ Future<void> _pickNavTabs(BuildContext context, WidgetRef ref) =>
                           // Разделитель — у всех, кроме первой: карточка
                           // группы своих линий тут не рисует.
                           divider: i > 0,
-                          on: settings.navTabs.contains(tab),
-                          onChanged: (value) =>
-                              controller.setNavTab(tab, value),
                         );
                       },
                     ),
@@ -877,24 +863,19 @@ Future<void> _pickNavTabs(BuildContext context, WidgetRef ref) =>
       ),
     );
 
-/// Строка таба в шторке состава: название, замок либо переключатель и ручка
-/// перетаскивания.
+/// A tab row in the order sheet: its name and the drag handle.
 class _NavTabRow extends StatelessWidget {
   const _NavTabRow({
     super.key,
     required this.index,
     required this.tab,
     required this.divider,
-    required this.on,
-    required this.onChanged,
   });
 
-  /// Место строки в списке — по нему `ReorderableListView` узнаёт, что тянут.
+  /// The row's place, which `ReorderableListView` reads to know what's dragged.
   final int index;
   final NavTab tab;
   final bool divider;
-  final bool on;
-  final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -914,34 +895,13 @@ class _NavTabRow extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
           child: _SettingsRow(
             title: _navTabLabel(context.l, tab),
-            subtitle: tab.fixed
-                ? context.l.apNavTabsFixed
-                : context.l.apNavTabsOptional,
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (tab.fixed)
-                  BloomIcon(Bi.lock, size: 20, color: t.iconFgSb)
-                else
-                  BloomSwitch(value: on, onChanged: onChanged),
-                const SizedBox(width: 14),
-                ReorderableDragStartListener(
-                  index: index,
-                  // Поля вокруг значка — чтобы за ручку было чем взяться:
-                  // сам глиф в 20 пикселей для пальца мелковат.
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 6,
-                    ),
-                    child: BloomIcon(
-                      Bi.hamburgerMenu,
-                      size: 20,
-                      color: t.iconFgSb,
-                    ),
-                  ),
-                ),
-              ],
+            trailing: ReorderableDragStartListener(
+              index: index,
+              // Padding so a finger has something to grab.
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                child: BloomIcon(Bi.hamburgerMenu, size: 20, color: t.iconFgSb),
+              ),
             ),
           ),
         ),

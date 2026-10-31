@@ -165,7 +165,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     if (_draft.avatar != _saved.avatar) unawaited(deleteCover(_saved.avatar));
     if (_draft.banner != _saved.banner) unawaited(deleteCover(_saved.banner));
     showToast(context, context.l.profileSaved, kind: ToastKind.success);
-    context.go(profileBase(context));
+    context.go(kProfileLocation);
   }
 
   /// Уход с непустой правкой спрашивает вторым нажатием на саму стрелку — как
@@ -183,7 +183,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     // Выбранные, но не сохранённые файлы — мусор, на который никто не сошлётся.
     if (_draft.avatar != _saved.avatar) unawaited(deleteCover(_draft.avatar));
     if (_draft.banner != _saved.banner) unawaited(deleteCover(_draft.banner));
-    context.go(profileBase(context));
+    context.go(kProfileLocation);
   }
 
   // ── Раскладка ─────────────────────────────────────────────────────────────

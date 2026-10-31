@@ -33,7 +33,6 @@ import '../features/wave/wave_actions.dart';
 import '../shared/ui/atoms.dart';
 import '../shared/ui/bloom_icon.dart';
 import '../shared/ui/glass.dart';
-import 'router.dart';
 import 'theme/tokens.dart';
 
 /// Раскрытие меню. Длиннее смены вкладки (220 мс): там ответ на тап, а тут
@@ -337,8 +336,7 @@ class _HomeMenu extends ConsumerWidget {
         _Row(
           icon: Bi.magnifier,
           label: l.searchHint,
-          onTap: () =>
-              host.go(searchLocation(hostRef.read(settingsProvider).navTabs)),
+          onTap: () => host.go('/search'),
         ),
       ],
     );

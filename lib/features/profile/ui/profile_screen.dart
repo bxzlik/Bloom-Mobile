@@ -317,18 +317,14 @@ class _Banner extends StatelessWidget {
               flying: flight != null,
               child: Row(
                 children: [
-                  // Своим табом профиль — корень ветки, и уходить с него
-                  // некуда: стрелки тогда нет вовсе, как и на любой другой
-                  // вкладке. Внутри главной она на месте.
-                  if (Navigator.of(context).canPop())
-                    GlassIconButton(
-                      icon: Bi.arrowLeft,
-                      onTap: () => context.go('/home'),
-                    ),
+                  GlassIconButton(
+                    icon: Bi.arrowLeft,
+                    onTap: () => context.go('/home'),
+                  ),
                   const Spacer(),
                   GlassIconButton(
                     icon: Bi.pen,
-                    onTap: () => context.go('${profileBase(context)}/edit'),
+                    onTap: () => context.go('$kProfileLocation/edit'),
                   ),
                 ],
               ),

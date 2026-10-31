@@ -105,9 +105,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonHistory => 'History';
 
   @override
-  String get commonLibrary => 'Library';
-
-  @override
   String get commonSort => 'Sort';
 
   @override
@@ -179,19 +176,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navSearch => 'Search';
 
   @override
-  String get navProfile => 'Profile';
-
-  @override
   String get sourceLocal => 'Local';
 
   @override
   String get sourceYandex => 'Yandex Music';
-
-  @override
-  String get homeRecent => 'Recently played';
-
-  @override
-  String get homeYourPlaylists => 'Your playlists';
 
   @override
   String get homeCharts => 'Chart';
@@ -1150,9 +1138,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchHint => 'Search';
 
   @override
-  String get searchSource => 'Source';
-
-  @override
   String get searchSourceAll => 'All sources';
 
   @override
@@ -1222,9 +1207,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileNickCopied => 'Nickname copied!';
-
-  @override
-  String get profileStats => 'Statistics';
 
   @override
   String get profileAchievements => 'Achievements';
@@ -1359,9 +1341,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statsRecordDay => 'Day record';
-
-  @override
-  String get statsAvgPerDay => 'Daily average';
 
   @override
   String get statsHoursDay => 'hours/day';
@@ -1680,9 +1659,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pvSliderRow => 'Slider type';
 
   @override
-  String get pvSliderSub => 'style of the progress bar';
-
-  @override
   String get pvSliderStandard => 'Standard';
 
   @override
@@ -1905,9 +1881,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pvMiniNeighborsOn => 'Peeking at the edges';
 
   @override
-  String get playerLyrics => 'Lyrics';
-
-  @override
   String get lyricsLoading => 'Loading lyrics…';
 
   @override
@@ -1972,9 +1945,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get swRemoved => 'Removed';
-
-  @override
-  String get apLanguage => 'LANGUAGE';
 
   @override
   String get apLanguageRu => 'Русский';
@@ -2061,13 +2031,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apNavBarPill => 'Pill';
 
   @override
-  String get apNavTabsRow => 'Tabs in the bar';
-
-  @override
-  String get apNavTabsFixed => 'Always in the bar';
-
-  @override
-  String get apNavTabsOptional => 'Also in the home header';
+  String get apNavTabsRow => 'Tab order';
 
   @override
   String get apNavTabsDrag =>
@@ -2524,17 +2488,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get custPresetUntitled => 'Untitled';
 
   @override
-  String custPresetSlots(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count images',
-      one: '$count image',
-    );
-    return '$_temp0';
-  }
-
-  @override
   String get custPresetApply => 'Apply';
 
   @override
@@ -2611,9 +2564,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onbNext => 'Next';
 
   @override
-  String get onbBack => 'Back';
-
-  @override
   String get onbDone => 'Done';
 
   @override
@@ -2673,12 +2623,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get waveTitle => 'My Wave';
 
   @override
-  String get waveStart => 'Start My Wave';
-
-  @override
-  String get waveStop => 'Stop the wave';
-
-  @override
   String get waveLabelTrack => 'Track wave';
 
   @override
@@ -2691,13 +2635,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get waveFromTrack => 'Wave from this track';
 
   @override
-  String get waveFromQueue => 'Similar to queue';
-
-  @override
   String get waveFromArtist => 'Artist wave';
-
-  @override
-  String get waveTune => 'Customize';
 
   @override
   String get waveDislikes => 'Dislikes';
@@ -2845,27 +2783,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get lfmToastKeysSaved => 'Last.fm: keys saved';
 
   @override
-  String get notifCenterTitle => 'Notifications';
-
-  @override
-  String get notifCenterEmpty => 'No notifications yet';
-
-  @override
-  String get notifTrackDownloaded => 'Track downloaded';
-
-  @override
-  String get notifDownloadError => 'Download error';
-
-  @override
-  String get notifOfflineReady => 'Track available offline';
-
-  @override
-  String get notifOfflineError => 'Offline download failed';
-
-  @override
-  String get notifTrackUnavailable => 'Track unavailable';
-
-  @override
   String get wrMonth => 'Month in review';
 
   @override
@@ -2924,9 +2841,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get wrSourcesKicker => 'Where it came from';
-
-  @override
-  String get wrSourcesTitle => 'Where you listened';
 
   @override
   String get wrDiscoverKicker => 'New names';
@@ -3036,17 +2950,6 @@ class AppLocalizationsEn extends AppLocalizations {
       locale: localeName,
       other: 'tracks',
       one: 'track',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String wrArtistsN(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count artists',
-      one: '$count artist',
     );
     return '$_temp0';
   }
@@ -3192,9 +3095,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutVersion => 'Version';
 
   @override
-  String get aboutCheck => 'Check for updates';
-
-  @override
   String get aboutChecking => 'Checking for updates…';
 
   @override
@@ -3220,13 +3120,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutOpenRelease => 'Open the release page';
 
   @override
-  String get updSection => 'Updates';
-
-  @override
   String get updWhatsNew => 'What’s new';
-
-  @override
-  String get updWhatsNewSub => 'Notes for the installed version';
 
   @override
   String get updHistory => 'Update history';
@@ -3464,13 +3358,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pcFailed => 'Couldn\'t sync';
-
-  @override
-  String get pcHowTitle => 'How to connect';
-
-  @override
-  String get pcHowSubtitle =>
-      'On the computer: Bloom → Settings → Integrations → Phone';
 
   @override
   String get pcStep1 =>

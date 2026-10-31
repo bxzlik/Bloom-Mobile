@@ -1,16 +1,12 @@
-/// Главная: лента «Недавно слушали» и витрина «Новинки»/«Чарты» с её кешем и
-/// тихими повторами. Сессия («Продолжить») — в `session_test.dart`.
+/// Home's platform shelves: their cache and quiet retries.
 library;
 
 import 'package:bloom/app/providers.dart';
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/providers/music_provider.dart';
 import 'package:bloom/core/providers/registry.dart';
-import 'package:bloom/core/store/history_store.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/core/store/play_stats.dart';
 import 'package:bloom/features/home/discover_store.dart';
-import 'package:bloom/features/home/ui/home_sections.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloom/core/db/db.dart';
@@ -74,21 +70,6 @@ ProviderContainer _container(MusicProvider provider) {
 
 void main() {
   setUp(resetDiscoverCache);
-
-  group('недавно слушали', () {
-    test('идут в порядке «Истории», лимит соблюдается', () {
-      final history = [
-        for (final (i, id) in ['a', 'b', 'c'].indexed)
-          HistoryItem(HistoryRow('sc:$id', 10 - i, 1), _track(id)),
-      ];
-      expect(recentTracks(history, 12).map((t) => t.id), [
-        'sc:a',
-        'sc:b',
-        'sc:c',
-      ]);
-      expect(recentTracks(history, 2).map((t) => t.id), ['sc:a', 'sc:b']);
-    });
-  });
 
   group('витрина', () {
     test('чарт берётся у площадки и кешируется', () async {

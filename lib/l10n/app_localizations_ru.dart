@@ -105,9 +105,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonHistory => 'История';
 
   @override
-  String get commonLibrary => 'Библиотека';
-
-  @override
   String get commonSort => 'Сортировка';
 
   @override
@@ -183,19 +180,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get navSearch => 'Поиск';
 
   @override
-  String get navProfile => 'Профиль';
-
-  @override
   String get sourceLocal => 'Локальные';
 
   @override
   String get sourceYandex => 'Яндекс.Музыка';
-
-  @override
-  String get homeRecent => 'Недавно слушали';
-
-  @override
-  String get homeYourPlaylists => 'Ваши плейлисты';
 
   @override
   String get homeCharts => 'Чарт';
@@ -1171,9 +1159,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get searchHint => 'Поиск';
 
   @override
-  String get searchSource => 'Источник';
-
-  @override
   String get searchSourceAll => 'Все источники';
 
   @override
@@ -1244,9 +1229,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get profileNickCopied => 'Ник скопирован!';
-
-  @override
-  String get profileStats => 'Статистика';
 
   @override
   String get profileAchievements => 'Достижения';
@@ -1381,9 +1363,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get statsRecordDay => 'Рекорд дня';
-
-  @override
-  String get statsAvgPerDay => 'В среднем за день';
 
   @override
   String get statsHoursDay => 'часов/день';
@@ -1704,9 +1683,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pvSliderRow => 'Тип слайдера';
 
   @override
-  String get pvSliderSub => 'стиль полосы прогресса';
-
-  @override
   String get pvSliderStandard => 'Обычный';
 
   @override
@@ -1928,9 +1904,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pvMiniNeighborsOn => 'Выглядывают по краям';
 
   @override
-  String get playerLyrics => 'Текст песни';
-
-  @override
   String get lyricsLoading => 'Загрузка текста…';
 
   @override
@@ -1995,9 +1968,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get swRemoved => 'Убрано';
-
-  @override
-  String get apLanguage => 'ЯЗЫК';
 
   @override
   String get apLanguageRu => 'Русский';
@@ -2084,17 +2054,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String get apNavBarPill => 'Пилюля';
 
   @override
-  String get apNavTabsRow => 'Табы в баре';
-
-  @override
-  String get apNavTabsFixed => 'Всегда в баре';
-
-  @override
-  String get apNavTabsOptional => 'Есть в шапке главной';
+  String get apNavTabsRow => 'Порядок вкладок';
 
   @override
   String get apNavTabsDrag =>
-      'Потяните таб за ручку, чтобы поменять его место в баре';
+      'Потяните вкладку за ручку, чтобы поменять её место в баре';
 
   @override
   String get apNavMarkRow => 'Выделение активного';
@@ -2553,19 +2517,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get custPresetUntitled => 'Без названия';
 
   @override
-  String custPresetSlots(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count картинок',
-      many: '$count картинок',
-      few: '$count картинки',
-      one: '$count картинка',
-    );
-    return '$_temp0';
-  }
-
-  @override
   String get custPresetApply => 'Применить';
 
   @override
@@ -2644,9 +2595,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get onbNext => 'Далее';
 
   @override
-  String get onbBack => 'Назад';
-
-  @override
   String get onbDone => 'Готово';
 
   @override
@@ -2707,12 +2655,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get waveTitle => 'Моя волна';
 
   @override
-  String get waveStart => 'Запустить «Мою волну»';
-
-  @override
-  String get waveStop => 'Остановить волну';
-
-  @override
   String get waveLabelTrack => 'Волна по треку';
 
   @override
@@ -2725,13 +2667,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get waveFromTrack => 'Волна по этому треку';
 
   @override
-  String get waveFromQueue => 'Похожие на очередь';
-
-  @override
   String get waveFromArtist => 'Волна по артисту';
-
-  @override
-  String get waveTune => 'Настроить';
 
   @override
   String get waveDislikes => 'Дизлайки';
@@ -2878,27 +2814,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get lfmToastKeysSaved => 'Last.fm: ключи сохранены';
 
   @override
-  String get notifCenterTitle => 'Уведомления';
-
-  @override
-  String get notifCenterEmpty => 'Уведомлений пока нет';
-
-  @override
-  String get notifTrackDownloaded => 'Трек скачан';
-
-  @override
-  String get notifDownloadError => 'Ошибка скачивания';
-
-  @override
-  String get notifOfflineReady => 'Трек доступен офлайн';
-
-  @override
-  String get notifOfflineError => 'Не удалось скачать офлайн';
-
-  @override
-  String get notifTrackUnavailable => 'Недоступный трек';
-
-  @override
   String get wrMonth => 'Итоги месяца';
 
   @override
@@ -2959,9 +2874,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get wrSourcesKicker => 'Откуда музыка';
-
-  @override
-  String get wrSourcesTitle => 'Где ты слушал';
 
   @override
   String get wrDiscoverKicker => 'Новые имена';
@@ -3080,19 +2992,6 @@ class AppLocalizationsRu extends AppLocalizations {
       many: 'треков',
       few: 'трека',
       one: 'трек',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String wrArtistsN(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count артистов',
-      many: '$count артистов',
-      few: '$count артиста',
-      one: '$count артист',
     );
     return '$_temp0';
   }
@@ -3254,9 +3153,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get aboutVersion => 'Версия';
 
   @override
-  String get aboutCheck => 'Проверить обновления';
-
-  @override
   String get aboutChecking => 'Проверяем обновления…';
 
   @override
@@ -3282,13 +3178,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get aboutOpenRelease => 'Открыть страницу релиза';
 
   @override
-  String get updSection => 'Обновления';
-
-  @override
   String get updWhatsNew => 'Что нового';
-
-  @override
-  String get updWhatsNewSub => 'Заметки к установленной версии';
 
   @override
   String get updHistory => 'История обновлений';
@@ -3528,13 +3418,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pcFailed => 'Не удалось синхронизировать';
-
-  @override
-  String get pcHowTitle => 'Как подключить';
-
-  @override
-  String get pcHowSubtitle =>
-      'На компьютере: Bloom → Настройки → Интеграции → Телефон';
 
   @override
   String get pcStep1 =>

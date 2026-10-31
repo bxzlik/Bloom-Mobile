@@ -1,13 +1,6 @@
-/// Главная — витрина из секций, порядок как на десктопе 3.0 (`app/pages/HomePage`):
-/// «Моя волна» → «Продолжить» → «Любимые»/«История» → «Недавно слушали» →
-/// «Ваши плейлисты» → «Для вас» → «Похожие на» → «Новинки» → «Чарты».
-/// Витрины про самого слушателя идут впереди площадочных: те общие для всех.
-///
-/// Скрыть секцию нельзя и не нужно — у мобилки нет настроек видимости главной.
-///
-/// Секции сами решают, показываться ли им: пустая история, пустой список
-/// плейлистов и пустая витрина схлопываются в ничто, поэтому на свежей
-/// установке остаются только карточки разделов.
+/// Home, top down: the wave, then what's picked for the listener ("for you",
+/// "similar to") ahead of what is the same for everyone (releases and the
+/// chart). A shelf with nothing in it yet isn't there at all.
 library;
 
 import 'package:flutter/material.dart';
@@ -16,21 +9,16 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/tokens.dart';
-import '../../../core/store/settings_store.dart';
 import '../../../shared/ui/atoms.dart';
-import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/glass.dart';
-import '../../notifications/ui/notif_bell.dart';
 import '../../profile/profile_store.dart';
 import '../../profile/ui/profile_avatar.dart';
 import '../../wave/ui/wave_card.dart';
 import '../discover_store.dart';
-import 'continue_card.dart';
 import 'for_you_section.dart';
 import 'home_sections.dart';
-import 'quick_cards.dart';
 import 'similar_to_section.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -51,10 +39,6 @@ class HomeScreen extends StatelessWidget {
               padding: EdgeInsets.only(bottom: bottomBarsInset(context) + 16),
               children: const [
                 WaveCard(),
-                ContinueCard(),
-                QuickCards(),
-                RecentSection(),
-                PlaylistsSection(),
                 ForYouSection(),
                 SimilarToSection(),
                 DiscoverSection(mode: DiscoverMode.newReleases),
@@ -68,13 +52,12 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _TopBar extends ConsumerWidget {
+class _TopBar extends StatelessWidget {
   const _TopBar();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final t = context.bloom;
-    final tabs = ref.watch(settingsProvider.select((s) => s.navTabs));
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       child: Row(
@@ -104,16 +87,6 @@ class _TopBar extends ConsumerWidget {
             ),
           ),
           const Spacer(),
-          const NotifBell(),
-          const SizedBox(width: 8),
-          CircleIconButton(
-            icon: Bi.magnifier,
-            // Лупа остаётся в шапке, даже когда поиск стоит табом, — просто
-            // уводит тогда в его ветку, а не открывает вторую страницу поиска
-            // внутри главной.
-            onTap: () => context.go(searchLocation(tabs)),
-          ),
-          const SizedBox(width: 8),
           const _ProfileButton(),
         ],
       ),
@@ -140,10 +113,8 @@ class _ProfileButtonState extends ConsumerState<_ProfileButton> {
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider);
-    final tabs = ref.watch(settingsProvider.select((s) => s.navTabs));
     return GestureDetector(
-      onTap: () =>
-          context.go(profileLocation(tabs), extra: CoverFlight(tag: _tag)),
+      onTap: () => context.go(kProfileLocation, extra: CoverFlight(tag: _tag)),
       child: ProfileAvatar(
         profile: profile,
         size: kHeaderControl,

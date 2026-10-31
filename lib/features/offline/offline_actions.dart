@@ -14,7 +14,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/entities/entities.dart';
 import '../../core/l10n/l10n.dart';
 import '../../shared/ui/bloom_toast.dart';
-import '../notifications/notif_store.dart';
 import 'file_download.dart';
 import 'offline_store.dart';
 
@@ -45,19 +44,6 @@ Future<void> toggleTrackOffline(
         : describeOfflineFailure(l, error),
     kind: error == null ? ToastKind.success : ToastKind.error,
   );
-  // Дубль события в центр уведомлений: тост гаснет за пару секунд, а искать в
-  // истории «а скачалось ли» приходят и через час. Как на ПК, уведомление
-  // ставит только ОДИНОЧНАЯ загрузка — пакет молчит, иначе одна папка на
-  // полсотни треков вытеснила бы из истории вообще всё (`kNotifMax`).
-  ref
-      .read(notifCenterProvider.notifier)
-      .add(
-        kind: error == null ? NotifKind.success : NotifKind.error,
-        title: error == null
-            ? NotifTitle.offlineReady
-            : NotifTitle.offlineError,
-        body: error == null ? track.name : describeOfflineFailure(l, error),
-      );
 }
 
 /// Скачать список целиком (плейлист, «Любимые», «Все треки»).
@@ -95,28 +81,18 @@ Future<void> saveTrackFile(
   Track track,
 ) async {
   final toast = messenger.busyToast(l.ofDownloadingTrack);
-  final notifs = ref.read(notifCenterProvider.notifier);
   try {
     final path = await saveTrackAsFile(ref, track);
     toast.finish(l.ofSaved(path ?? saveTargetLabel(l)));
-    notifs.add(
-      kind: NotifKind.success,
-      title: NotifTitle.trackDownloaded,
-      body: track.name,
-    );
   } catch (e) {
-    final reason = describeSaveError(l, readableSaveError(e));
-    toast.finish(reason, kind: ToastKind.error);
-    notifs.add(
-      kind: NotifKind.error,
-      title: NotifTitle.downloadError,
-      body: reason,
+    toast.finish(
+      describeSaveError(l, readableSaveError(e)),
+      kind: ToastKind.error,
     );
   }
 }
 
-/// «Скачать обложку». В центр уведомлений не пишем: заголовки там про треки, а
-/// картинку ищут в галерее, а не в истории.
+/// Save the cover as a picture.
 Future<void> saveCoverFile(
   ScaffoldMessengerState messenger,
   AppLocalizations l,

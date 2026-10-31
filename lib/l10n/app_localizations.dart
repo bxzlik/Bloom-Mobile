@@ -290,12 +290,6 @@ abstract class AppLocalizations {
   /// **'History'**
   String get commonHistory;
 
-  /// No description provided for @commonLibrary.
-  ///
-  /// In en, this message translates to:
-  /// **'Library'**
-  String get commonLibrary;
-
   /// desktop: lib.plmenu.sort
   ///
   /// In en, this message translates to:
@@ -398,12 +392,6 @@ abstract class AppLocalizations {
   /// **'Search'**
   String get navSearch;
 
-  /// No description provided for @navProfile.
-  ///
-  /// In en, this message translates to:
-  /// **'Profile'**
-  String get navProfile;
-
   /// No description provided for @sourceLocal.
   ///
   /// In en, this message translates to:
@@ -415,18 +403,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Yandex Music'**
   String get sourceYandex;
-
-  /// No description provided for @homeRecent.
-  ///
-  /// In en, this message translates to:
-  /// **'Recently played'**
-  String get homeRecent;
-
-  /// No description provided for @homeYourPlaylists.
-  ///
-  /// In en, this message translates to:
-  /// **'Your playlists'**
-  String get homeYourPlaylists;
 
   /// No description provided for @homeCharts.
   ///
@@ -1994,12 +1970,6 @@ abstract class AppLocalizations {
   /// **'Search'**
   String get searchHint;
 
-  /// No description provided for @searchSource.
-  ///
-  /// In en, this message translates to:
-  /// **'Source'**
-  String get searchSource;
-
   /// desktop: search.allSources
   ///
   /// In en, this message translates to:
@@ -2113,12 +2083,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Nickname copied!'**
   String get profileNickCopied;
-
-  /// desktop: stats.title
-  ///
-  /// In en, this message translates to:
-  /// **'Statistics'**
-  String get profileStats;
 
   /// desktop: ach.title
   ///
@@ -2371,12 +2335,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Day record'**
   String get statsRecordDay;
-
-  /// No description provided for @statsAvgPerDay.
-  ///
-  /// In en, this message translates to:
-  /// **'Daily average'**
-  String get statsAvgPerDay;
 
   /// No description provided for @statsHoursDay.
   ///
@@ -2918,12 +2876,6 @@ abstract class AppLocalizations {
   /// **'Slider type'**
   String get pvSliderRow;
 
-  /// desktop: settings.view.slider.desc
-  ///
-  /// In en, this message translates to:
-  /// **'style of the progress bar'**
-  String get pvSliderSub;
-
   /// desktop: settings.view.slider.default
   ///
   /// In en, this message translates to:
@@ -3362,12 +3314,6 @@ abstract class AppLocalizations {
   /// **'Peeking at the edges'**
   String get pvMiniNeighborsOn;
 
-  /// desktop: player.lyrics
-  ///
-  /// In en, this message translates to:
-  /// **'Lyrics'**
-  String get playerLyrics;
-
   /// desktop: lyrics.loading
   ///
   /// In en, this message translates to:
@@ -3499,12 +3445,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Removed'**
   String get swRemoved;
-
-  /// desktop: settings.interface.cat.language
-  ///
-  /// In en, this message translates to:
-  /// **'LANGUAGE'**
-  String get apLanguage;
 
   /// No description provided for @apLanguageRu.
   ///
@@ -3671,20 +3611,8 @@ abstract class AppLocalizations {
   /// No description provided for @apNavTabsRow.
   ///
   /// In en, this message translates to:
-  /// **'Tabs in the bar'**
+  /// **'Tab order'**
   String get apNavTabsRow;
-
-  /// No description provided for @apNavTabsFixed.
-  ///
-  /// In en, this message translates to:
-  /// **'Always in the bar'**
-  String get apNavTabsFixed;
-
-  /// No description provided for @apNavTabsOptional.
-  ///
-  /// In en, this message translates to:
-  /// **'Also in the home header'**
-  String get apNavTabsOptional;
 
   /// No description provided for @apNavTabsDrag.
   ///
@@ -4472,12 +4400,6 @@ abstract class AppLocalizations {
   /// **'Untitled'**
   String get custPresetUntitled;
 
-  /// No description provided for @custPresetSlots.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, one{{count} image} other{{count} images}}'**
-  String custPresetSlots(int count);
-
   /// No description provided for @custPresetApply.
   ///
   /// In en, this message translates to:
@@ -4604,12 +4526,6 @@ abstract class AppLocalizations {
   /// **'Next'**
   String get onbNext;
 
-  /// desktop: onb.back
-  ///
-  /// In en, this message translates to:
-  /// **'Back'**
-  String get onbBack;
-
   /// desktop: onb.done
   ///
   /// In en, this message translates to:
@@ -4718,18 +4634,6 @@ abstract class AppLocalizations {
   /// **'My Wave'**
   String get waveTitle;
 
-  /// desktop: wave.start
-  ///
-  /// In en, this message translates to:
-  /// **'Start My Wave'**
-  String get waveStart;
-
-  /// desktop: wave.stop, phrased as a menu item
-  ///
-  /// In en, this message translates to:
-  /// **'Stop the wave'**
-  String get waveStop;
-
   /// desktop: wave.label.track
   ///
   /// In en, this message translates to:
@@ -4754,23 +4658,11 @@ abstract class AppLocalizations {
   /// **'Wave from this track'**
   String get waveFromTrack;
 
-  /// queue screen action; desktop: wave.label.queue
-  ///
-  /// In en, this message translates to:
-  /// **'Similar to queue'**
-  String get waveFromQueue;
-
   /// artist page action; desktop: wave.label.artist
   ///
   /// In en, this message translates to:
   /// **'Artist wave'**
   String get waveFromArtist;
-
-  /// desktop: wave.tune
-  ///
-  /// In en, this message translates to:
-  /// **'Customize'**
-  String get waveTune;
 
   /// desktop: wave.dislikes
   ///
@@ -5030,48 +4922,6 @@ abstract class AppLocalizations {
   /// **'Last.fm: keys saved'**
   String get lfmToastKeysSaved;
 
-  /// desktop: notif.title — the notification centre sheet behind the bell
-  ///
-  /// In en, this message translates to:
-  /// **'Notifications'**
-  String get notifCenterTitle;
-
-  /// desktop: notif.empty
-  ///
-  /// In en, this message translates to:
-  /// **'No notifications yet'**
-  String get notifCenterEmpty;
-
-  /// desktop: notif.trackDl.title
-  ///
-  /// In en, this message translates to:
-  /// **'Track downloaded'**
-  String get notifTrackDownloaded;
-
-  /// desktop: notif.dlError.title
-  ///
-  /// In en, this message translates to:
-  /// **'Download error'**
-  String get notifDownloadError;
-
-  /// desktop: notif.offline.title
-  ///
-  /// In en, this message translates to:
-  /// **'Track available offline'**
-  String get notifOfflineReady;
-
-  /// desktop: notif.offlineError.title
-  ///
-  /// In en, this message translates to:
-  /// **'Offline download failed'**
-  String get notifOfflineError;
-
-  /// desktop: notif.trackUnavailable.title
-  ///
-  /// In en, this message translates to:
-  /// **'Track unavailable'**
-  String get notifTrackUnavailable;
-
   /// No description provided for @wrMonth.
   ///
   /// In en, this message translates to:
@@ -5167,12 +5017,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Where it came from'**
   String get wrSourcesKicker;
-
-  /// No description provided for @wrSourcesTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Where you listened'**
-  String get wrSourcesTitle;
 
   /// No description provided for @wrDiscoverKicker.
   ///
@@ -5312,12 +5156,6 @@ abstract class AppLocalizations {
   /// **'{count, plural, one{track} other{tracks}}'**
   String wrTracksWord(int count);
 
-  /// No description provided for @wrArtistsN.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, one{{count} artist} other{{count} artists}}'**
-  String wrArtistsN(int count);
-
   /// No description provided for @wrArtistsWord.
   ///
   /// In en, this message translates to:
@@ -5456,12 +5294,6 @@ abstract class AppLocalizations {
   /// **'Version'**
   String get aboutVersion;
 
-  /// No description provided for @aboutCheck.
-  ///
-  /// In en, this message translates to:
-  /// **'Check for updates'**
-  String get aboutCheck;
-
   /// No description provided for @aboutChecking.
   ///
   /// In en, this message translates to:
@@ -5504,23 +5336,11 @@ abstract class AppLocalizations {
   /// **'Open the release page'**
   String get aboutOpenRelease;
 
-  /// No description provided for @updSection.
-  ///
-  /// In en, this message translates to:
-  /// **'Updates'**
-  String get updSection;
-
   /// desktop: update.whatsNew
   ///
   /// In en, this message translates to:
   /// **'What’s new'**
   String get updWhatsNew;
-
-  /// No description provided for @updWhatsNewSub.
-  ///
-  /// In en, this message translates to:
-  /// **'Notes for the installed version'**
-  String get updWhatsNewSub;
 
   /// desktop: update.history
   ///
@@ -5947,18 +5767,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t sync'**
   String get pcFailed;
-
-  /// No description provided for @pcHowTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'How to connect'**
-  String get pcHowTitle;
-
-  /// No description provided for @pcHowSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'On the computer: Bloom → Settings → Integrations → Phone'**
-  String get pcHowSubtitle;
 
   /// No description provided for @pcStep1.
   ///
