@@ -530,7 +530,7 @@ class _EditHero extends StatelessWidget {
                   if (onCoverRemove case final remove?) ...[
                     const SizedBox(width: 14),
                     GlassIconButton(
-                      icon: Bi.trashBinMinimalistic,
+                      icon: Bi.trashBinTrash,
                       size: 52,
                       iconSize: 23,
                       onTap: remove,
@@ -922,7 +922,7 @@ class _EditBar extends StatelessWidget {
               ),
             const SizedBox(width: 4),
             _BarIcon(
-              icon: Bi.trashBinMinimalistic,
+              icon: Bi.trashBinTrash,
               color: t.danger,
               background: t.danger.withValues(alpha: 0.16),
               onTap: onRemove,

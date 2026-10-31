@@ -307,7 +307,7 @@ class _SourceIcon extends ConsumerWidget {
       case WaveSource():
         // Волна — не список, обложки у неё нет: значок берёт акцент темы, как
         // и её карточка на главной.
-        return _tint(t, radius, t.ovlBg, t.accent, Bi.playStreamBold);
+        return _tint(t, radius, t.ovlBg, t.accent, Bi.soundwaveBold);
       case SetSource(:final set):
         return Cover(url: set.cover, size: _iconSize, radius: radius);
       case ArtistSource(:final artist):

@@ -176,12 +176,6 @@ class _UsageBadge extends StatelessWidget {
 
   final List<CustomCtx> usage;
 
-  static const Map<CustomCtx, BloomGlyph> _icons = {
-    CustomCtx.bg: Bi.galleryWide,
-    CustomCtx.cover: Bi.album,
-    CustomCtx.slider: Bi.sliderMinimalisticHorizontal,
-  };
-
   @override
   Widget build(BuildContext context) => GlassSurface(
     shape: BorderRadius.circular(10),
@@ -192,7 +186,7 @@ class _UsageBadge extends StatelessWidget {
         children: [
           for (final ctx in usage) ...[
             if (ctx != usage.first) const SizedBox(width: 8),
-            BloomIcon(_icons[ctx], size: 15, color: Colors.white),
+            BloomIcon(customCtxIcon(ctx), size: 15, color: Colors.white),
           ],
         ],
       ),

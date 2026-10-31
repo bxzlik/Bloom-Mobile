@@ -68,7 +68,7 @@ class _VersionScreenState extends ConsumerState<VersionScreen> {
         if (about.phase == UpdatePhase.available)
           BloomButton(
             label: l.aboutOpenRelease,
-            icon: Bi.download,
+            icon: Bi.downloadMinimalistic,
             tone: ButtonTone.accent,
             pill: false,
             height: 54,
@@ -150,7 +150,7 @@ class _StatusCard extends StatelessWidget {
         l.aboutUptodate,
       ),
       UpdatePhase.available => (
-        Bi.downloadBold,
+        Bi.downloadMinimalistic,
         t.accent,
         l.aboutAvailable(about.latest),
       ),

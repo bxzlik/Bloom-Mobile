@@ -106,7 +106,7 @@ class SystemSettingsScreen extends ConsumerWidget {
               onTap: () => _confirmReset(context, ref, hard: false),
             ),
             SettingsLinkRow(
-              icon: Bi.trashBinMinimalistic,
+              icon: Bi.trashBinTrash,
               title: l.sysHardResetTitle,
               subtitle: l.sysHardResetSub,
               danger: true,
@@ -153,7 +153,7 @@ Future<void> _confirmReset(
 
   final yes = await confirmDanger(
     context,
-    icon: hard ? Bi.trashBinMinimalistic : Bi.restart,
+    icon: hard ? Bi.trashBinTrash : Bi.restart,
     title: hard ? l.sysHardResetTitle : l.sysResetTitle,
     body: hard ? l.sysHardResetBody : l.sysResetBody,
     button: hard ? l.sysHardResetBtn : l.sysResetBtn,

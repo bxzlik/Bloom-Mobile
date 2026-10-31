@@ -91,7 +91,7 @@ class _Header extends ConsumerWidget {
           ),
           // Снять все метки разом. Пустой список чистить нечего — кнопка гаснет.
           CircleIconButton(
-            icon: Bi.trashBinMinimalistic,
+            icon: Bi.trashBinTrash,
             iconSize: 20,
             onTap: count == 0
                 ? null
@@ -157,7 +157,7 @@ class _Row extends ConsumerWidget {
           const SizedBox(width: 8),
           // Снять метку — трек снова может попасть в подбор.
           CircleIconButton(
-            icon: Bi.closeCircle,
+            icon: Bi.close,
             iconSize: 18,
             onTap: () =>
                 ref.read(waveStoreProvider.notifier).undislike(track.id),

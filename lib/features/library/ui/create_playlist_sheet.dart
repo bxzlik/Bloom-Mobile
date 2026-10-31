@@ -266,7 +266,7 @@ class _AddBodyState extends ConsumerState<_AddBody> {
                 (
                   ImportTarget(ImportTargetKind.playlist, playlistId: p.id),
                   p.name,
-                  Bi.playlistMinimalistic,
+                  Bi.musicLibrary2,
                   p.cover ?? '',
                 ),
             ])
@@ -362,8 +362,7 @@ class _Row extends StatelessWidget {
                 ),
               ),
             ),
-            if (selected)
-              BloomIcon(Bi.checkCircleBold, size: 18, color: t.accent),
+            if (selected) BloomIcon(Bi.check, size: 18, color: t.accent),
             if (chevron) BloomIcon(Bi.altArrowRight, size: 20, color: t.muted),
           ],
         ),

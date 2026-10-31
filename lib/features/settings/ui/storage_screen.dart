@@ -198,7 +198,7 @@ class _ClearAllRow extends ConsumerWidget {
             SizedBox(
               width: 24,
               child: BloomIcon(
-                Bi.trashBinMinimalistic,
+                Bi.trashBinTrash,
                 size: 20,
                 color: empty ? t.muted : t.danger,
               ),
@@ -310,7 +310,7 @@ Future<void> _openClearAllSheet(
   final yes = await showBloomSheetChild<bool>(
     context: context,
     child: _ClearBody(
-      icon: Bi.trashBinMinimalistic,
+      icon: Bi.trashBinTrash,
       title: l.stClearAll,
       subtitle: stats == null ? l.stCounting : l.stFiles(stats.count),
       body: l.stClearAllBody,
@@ -586,7 +586,7 @@ class _RingPainter extends CustomPainter {
 }
 
 BloomGlyph _icon(CacheKind kind) => switch (kind) {
-  CacheKind.offline => Bi.download,
+  CacheKind.offline => Bi.downloadMinimalistic,
   CacheKind.lyrics => Bi.microphone3,
   CacheKind.custom => Bi.palette,
 };
@@ -616,7 +616,7 @@ String _meta(AppLocalizations l, CacheStat stat) => stat.isEmpty
     : '${l.stFiles(stat.count)} · ${formatSize(l, stat.bytes)}';
 
 BloomGlyph _importIcon(LocalImportMode mode) =>
-    mode == LocalImportMode.inPlace ? Bi.folder : Bi.download;
+    mode == LocalImportMode.inPlace ? Bi.folder : Bi.downloadMinimalistic;
 
 String _importLabel(AppLocalizations l, LocalImportMode mode) =>
     mode == LocalImportMode.inPlace ? l.ltImportInPlace : l.ltImportCopy;

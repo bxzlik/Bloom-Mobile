@@ -331,7 +331,7 @@ class _Header extends ConsumerWidget {
         ),
         const SizedBox(width: _headerGap),
         CircleIconButton(
-          icon: Bi.menuDots,
+          icon: Bi.kebab,
           background: fill,
           borderColor: line,
           glass: true,
@@ -941,7 +941,7 @@ class _PlayOnButton extends ConsumerWidget {
     final pc = ref.read(pcProvider).link?.name ?? '';
     final remote = ref.read(pcRemoteProvider.notifier);
     Widget? mark(bool on) =>
-        on ? BloomIcon(Bi.checkCircleBold, size: 18, color: t.accent) : null;
+        on ? BloomIcon(Bi.check, size: 18, color: t.accent) : null;
     showBloomSheet(
       context: context,
       groups: [
@@ -1113,7 +1113,7 @@ class _Tools extends ConsumerWidget {
           children: [
             const _PlayOnButton(),
             _FlatIcon(
-              icon: Bi.speedometerMiddle,
+              icon: Bi.speed,
               size: 25,
               label: rate == 1 ? null : speedLabel(rate),
               active: rate != 1,

@@ -140,7 +140,7 @@ class _Bar extends StatelessWidget {
               onTap: onDeleteAll,
             ),
           CircleIconButton(
-            icon: Bi.closeCircle,
+            icon: Bi.close,
             size: 48,
             iconSize: 22,
             background: Colors.transparent,
@@ -274,7 +274,7 @@ class _Row extends StatelessWidget {
             )
           else
             CircleIconButton(
-              icon: Bi.closeCircle,
+              icon: Bi.close,
               size: 48,
               iconSize: 20,
               background: Colors.transparent,

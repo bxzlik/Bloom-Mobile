@@ -34,7 +34,7 @@ BloomGlyph swipeActionIcon(SwipeAction action) => switch (action) {
   SwipeAction.next => Bi.skipNext,
   SwipeAction.prev => Bi.skipPrevious,
   SwipeAction.download => Bi.diskette,
-  SwipeAction.delete => Bi.trashBinMinimalistic,
+  SwipeAction.delete => Bi.trashBinTrash,
 };
 
 String swipeActionLabel(AppLocalizations l, SwipeAction action) =>

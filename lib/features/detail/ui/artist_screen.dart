@@ -395,7 +395,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
           // по тем трекам, что страница уже загрузила.
           if (canStartWaveFromArtist(ref, artist, _waveSeeds))
             SheetAction(
-              icon: Bi.playStream,
+              icon: Bi.soundwave,
               label: context.l.waveFromArtist,
               onTap: () => startWaveFromArtist(
                 context,
@@ -407,7 +407,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         ],
         [
           SheetAction(
-            icon: following ? Bi.userCheckRoundedBold : Bi.userPlusRounded,
+            icon: following ? Bi.check : Bi.user,
             label: following
                 ? context.l.commonUnfollow
                 : context.l.commonFollow,
@@ -467,7 +467,7 @@ class _FollowButton extends ConsumerWidget {
     final t = context.bloom;
     final following = ref.watch(libraryProvider).isFollowing(artist.id);
     return GlassIconButton(
-      icon: following ? Bi.userCheckRoundedBold : Bi.userPlusRounded,
+      icon: following ? Bi.check : Bi.user,
       size: 46,
       background: following ? t.accent : null,
       color: following ? t.accentText : null,

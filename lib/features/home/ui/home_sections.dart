@@ -39,7 +39,7 @@ class HomeSectionHeader extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(left: 2, top: 2),
             child: BloomIcon(
-              Bi.altArrowRight,
+              Bi.arrowRight,
               size: 22,
               color: context.bloom.text.withValues(alpha: 0.55),
             ),

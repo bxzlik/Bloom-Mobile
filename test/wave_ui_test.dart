@@ -174,7 +174,7 @@ void main() {
       expect(find.text('Artist sc:1'), findsOneWidget);
 
       // Крестик в строке — второй круглый значок после «очистить всё» в шапке.
-      await tester.tap(findGlyph(Bi.closeCircle));
+      await tester.tap(findGlyph(Bi.close));
       await tester.pumpAndSettle();
 
       expect(container.read(waveStoreProvider).isDisliked('sc:1'), isFalse);

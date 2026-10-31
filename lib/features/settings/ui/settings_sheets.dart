@@ -405,8 +405,7 @@ class SheetChoiceTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              if (selected)
-                BloomIcon(Bi.checkCircleBold, size: 20, color: t.accent),
+              if (selected) BloomIcon(Bi.check, size: 20, color: t.accent),
             ],
           ),
         ),

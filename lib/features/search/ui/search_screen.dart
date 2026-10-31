@@ -63,7 +63,7 @@ SearchResults _resolvedToResults(ResolvedUrl resolved) => switch (resolved) {
 enum SearchFilter {
   all(Bi.widget4),
   tracks(Bi.musicNote),
-  playlists(Bi.playlistMinimalistic),
+  playlists(Bi.musicLibrary2),
   albums(Bi.vinyl),
   artists(Bi.user);
 
@@ -344,11 +344,7 @@ class _SearchField extends StatelessWidget {
                   ? const SizedBox.shrink()
                   : Pressable(
                       onTap: onClear,
-                      child: BloomIcon(
-                        Bi.closeCircle,
-                        size: 18,
-                        color: t.muted,
-                      ),
+                      child: BloomIcon(Bi.close, size: 18, color: t.muted),
                     ),
             ),
           ],
@@ -589,7 +585,7 @@ Future<void> _removeRecent(
     groups: [
       [
         SheetAction(
-          icon: Bi.closeCircle,
+          icon: Bi.close,
           label: context.l.searchRemoveRecent,
           danger: true,
           onTap: () => ref.read(recentItemsProvider.notifier).remove(item),
@@ -642,7 +638,7 @@ class _RecentRow extends StatelessWidget {
               onTap: onRemove,
               child: Padding(
                 padding: const EdgeInsets.all(8),
-                child: BloomIcon(Bi.closeCircle, size: 18, color: t.muted),
+                child: BloomIcon(Bi.close, size: 18, color: t.muted),
               ),
             ),
           ],
@@ -788,8 +784,7 @@ class _SourceRow extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
-                if (active)
-                  BloomIcon(Bi.checkCircleBold, size: 22, color: t.accent),
+                if (active) BloomIcon(Bi.check, size: 22, color: t.accent),
               ],
             ),
           ),

@@ -353,9 +353,7 @@ class _HeroState extends ConsumerState<_Hero> {
                     ),
                     const SizedBox(width: 10),
                     GlassIconButton(
-                      icon: following
-                          ? Bi.userCheckRoundedBold
-                          : Bi.userPlusRounded,
+                      icon: following ? Bi.check : Bi.user,
                       size: 46,
                       background: following ? t.accent : null,
                       color: following ? t.accentText : null,

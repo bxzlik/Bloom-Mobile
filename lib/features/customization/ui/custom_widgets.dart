@@ -14,11 +14,12 @@ import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../custom_store.dart';
 
-/// Значок контекста — один на плитки страницы и строки шторки картинки.
+/// A context's icon, the PC's: for the page's tiles, the picture sheet's rows
+/// and the badge of where a picture is used.
 BloomGlyph customCtxIcon(CustomCtx ctx) => switch (ctx) {
-  CustomCtx.bg => Bi.smartphone,
-  CustomCtx.cover => Bi.vinyl,
-  CustomCtx.slider => Bi.tuning,
+  CustomCtx.bg => Bi.galleryWide,
+  CustomCtx.cover => Bi.gallery,
+  CustomCtx.slider => Bi.sliderHorizontal,
 };
 
 /// Страница раздела: шапка сверху, содержимое под ней.

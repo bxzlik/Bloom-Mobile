@@ -106,7 +106,7 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: _LogButton(
-                icon: Bi.trashBinMinimalistic,
+                icon: Bi.trashBinTrash,
                 label: l.logsClear,
                 danger: true,
                 onTap: empty ? null : _clear,

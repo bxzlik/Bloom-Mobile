@@ -215,9 +215,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                       children: [
                         // Armed, it's a red bin: the next tap drops the edit.
                         GlassIconButton(
-                          icon: _armed
-                              ? Bi.trashBinMinimalisticBold
-                              : Bi.altArrowLeft,
+                          icon: _armed ? Bi.trashBinTrash : Bi.altArrowLeft,
                           color: _armed ? t.danger : null,
                           onTap: _cancel,
                         ),

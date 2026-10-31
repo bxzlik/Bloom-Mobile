@@ -60,7 +60,9 @@ class _CustSheetPreviewState extends State<CustSheetPreview> {
             decoration: BoxDecoration(color: t.pill),
             child: switch (srcs.length) {
               // Пресет, у которого все картинки удалены, — значок коробки.
-              0 => Center(child: BloomIcon(Bi.box, size: 30, color: t.muted)),
+              0 => Center(
+                child: BloomIcon(Bi.boxMinimalistic, size: 30, color: t.muted),
+              ),
               1 => _FitImage(src: srcs.first),
               _ => Stack(
                 fit: StackFit.expand,

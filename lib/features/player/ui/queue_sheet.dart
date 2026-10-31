@@ -354,10 +354,10 @@ class _QueueHeader extends StatelessWidget {
               ],
             ),
           ),
-          CircleIconButton(icon: Bi.playStream, iconSize: 20, onTap: onWave),
+          CircleIconButton(icon: Bi.soundwave, iconSize: 20, onTap: onWave),
           const SizedBox(width: 8),
           CircleIconButton(
-            icon: Bi.trashBinMinimalistic,
+            icon: Bi.trashBinTrash,
             iconSize: 20,
             // Как на десктопе: чистим всё, КРОМЕ играющего — обрывать
             // воспроизведение кнопка не должна.

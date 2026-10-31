@@ -51,8 +51,6 @@ Future<void> showTrackActions(
   // первого: тогда пункт ведёт не на страницу, а в шторку с выбором.
   final artists = parseArtists(track.artist);
   final canOpenArtist = track.artistId != null || artists.length > 1;
-  final offline = ref.read(offlineProvider);
-  final isOffline = offline.has(track.id);
   // Пункт показываем, только если площадка вообще отдаёт трек файлом.
   final canOffline = ref.read(offlineProvider.notifier).canDownload(track);
   final hasCover = track.cover?.isNotEmpty ?? false;
@@ -88,7 +86,7 @@ Future<void> showTrackActions(
       // над самой записью трека.
       [
         SheetAction(
-          icon: Bi.playlistMinimalistic,
+          icon: Bi.inboxIn,
           label: context.l.taToQueue,
           onTap: () => messenger.toast(
             player.addToQueue(track)
@@ -114,7 +112,7 @@ Future<void> showTrackActions(
           onTap: () => ref.read(libraryProvider.notifier).toggleFav(track),
         ),
         SheetAction(
-          icon: Bi.addCircle,
+          icon: Bi.musicNote,
           label: context.l.taAddToPlaylist,
           chevron: true,
           onTap: () => showAddToPlaylistSheet(context, ref, track),
@@ -126,7 +124,7 @@ Future<void> showTrackActions(
         // открывается и ради неё одной.
         if (canOffline || (canSaveFiles && hasCover))
           SheetAction(
-            icon: isOffline ? Bi.checkCircleBold : Bi.download,
+            icon: Bi.downloadMinimalistic,
             label: context.l.taDownload,
             chevron: true,
             onTap: () =>
@@ -138,7 +136,7 @@ Future<void> showTrackActions(
         // открывался бы ради отказа.
         if (canStartWaveFrom(ref, track))
           SheetAction(
-            icon: Bi.playStream,
+            icon: Bi.soundwave,
             label: context.l.waveFromTrack,
             onTap: () => startWaveFromTrack(context, ref, track),
           ),
@@ -162,7 +160,7 @@ Future<void> showTrackActions(
         // там, где выбирать не из чего, значит уводить наугад.
         if (canOpenArtist)
           SheetAction(
-            icon: Bi.userRounded,
+            icon: Bi.user,
             label: context.l.taGoToArtist,
             chevron: artists.length > 1,
             onTap: () => openTrackArtist(context, ref, track),
@@ -180,7 +178,7 @@ Future<void> showTrackActions(
         // десктопе: после них строка со своего места исчезает.
         if (fromPlaylist case final playlistId?)
           SheetAction(
-            icon: Bi.closeCircle,
+            icon: Bi.close,
             label: context.l.taRemoveFromPlaylist,
             danger: true,
             onTap: () =>
@@ -188,7 +186,7 @@ Future<void> showTrackActions(
           ),
         if (inQueueAt >= 0)
           SheetAction(
-            icon: Bi.closeCircle,
+            icon: Bi.close,
             label: context.l.taRemoveFromQueue,
             danger: true,
             onTap: () => unawaited(player.removeAt(inQueueAt)),
@@ -197,7 +195,7 @@ Future<void> showTrackActions(
         // ничего не стоит, они приехали из поиска.
         if (inLib)
           SheetAction(
-            icon: Bi.trashBinMinimalistic,
+            icon: Bi.trashBinTrash,
             label: context.l.taDeleteTrack,
             danger: true,
             onTap: () => _deleteTrack(messenger, l10n, ref, track),
@@ -246,7 +244,7 @@ Future<void> _showDownloadSheet(
     if (canOffline && canSaveFiles)
       Builder(
         builder: (sheetContext) => _SimpleRow(
-          icon: Bi.downloadMinimalistic,
+          icon: Bi.musicNote,
           label: l10n.fdDownloadFile,
           color: context.bloom.text,
           onTap: () {
@@ -272,7 +270,7 @@ Future<void> _showDownloadSheet(
         builder: (sheetContext) => _SimpleRow(
           // Дискета у офлайна и галочка у скачанного — те же значки, что на
           // ПК (голой галочки у Solar нет, поэтому в кружке).
-          icon: isOffline ? Bi.checkCircleBold : Bi.diskette,
+          icon: isOffline ? Bi.trashBinTrash : Bi.downloadMinimalistic,
           label: isOffline ? l10n.taRemoveOffline : l10n.taListenOffline,
           color: isOffline ? context.bloom.accent : context.bloom.text,
           onTap: () {
@@ -422,7 +420,7 @@ Future<void> showAddTracksToPlaylistSheet(
             // можно только «Удалить трек» из шторки действий, насквозь.
             if (outside.isNotEmpty) ...[
               _SimpleRow(
-                icon: Bi.download,
+                icon: Bi.downloadMinimalistic,
                 label: context.l.commonAddToLibrary,
                 color: t.accent,
                 onTap: () {
@@ -441,7 +439,7 @@ Future<void> showAddTracksToPlaylistSheet(
               sheetDivider(),
             ],
             _SimpleRow(
-              icon: Bi.addSquare,
+              icon: Bi.plus,
               label: context.l.commonNewPlaylist,
               color: t.accent,
               onTap: () {
@@ -542,7 +540,7 @@ class _PlaylistRow extends ConsumerWidget {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
-            if (has) BloomIcon(Bi.checkCircleBold, size: 18, color: t.accent),
+            if (has) BloomIcon(Bi.check, size: 18, color: t.accent),
           ],
         ),
       ),

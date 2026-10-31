@@ -378,7 +378,9 @@ class _PresetThumbState extends State<PresetThumb>
   Widget build(BuildContext context) {
     final t = context.bloom;
     if (widget.srcs.isEmpty) {
-      return Center(child: BloomIcon(Bi.box, size: 26, color: t.muted));
+      return Center(
+        child: BloomIcon(Bi.boxMinimalistic, size: 26, color: t.muted),
+      );
     }
     final image = coverImage(widget.srcs[_index % widget.srcs.length]);
     return AnimatedSwitcher(

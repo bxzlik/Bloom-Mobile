@@ -63,14 +63,14 @@ const double _listPadTop = 10;
 /// Порядок значений — порядок пунктов в шторке, как в десктопном `SortPage`:
 /// сперва сортировки, под чертой «По умолчанию» и «Скачанные».
 enum TrackSort {
-  name(Bi.sortAlphabetically),
-  artist(Bi.userRounded),
-  duration(Bi.sortByTime),
+  name(Bi.sort),
+  artist(Bi.user),
+  duration(Bi.clockCircle),
   date(Bi.calendar),
   plays(Bi.play),
   album(Bi.album),
-  manual(Bi.playlistMinimalistic),
-  downloaded(Bi.diskette);
+  manual(Bi.repeat),
+  downloaded(Bi.downloadMinimalistic);
 
   const TrackSort(this.icon);
   final BloomGlyph icon;
@@ -582,13 +582,13 @@ class _Hero extends ConsumerWidget {
                 const SizedBox(width: 8),
               ],
               GlassIconButton(
-                icon: searchOpen ? Bi.closeCircle : Bi.magnifier,
+                icon: searchOpen ? Bi.close : Bi.magnifier,
                 onTap: onToggleSearch,
               ),
               if (playlist != null) ...[
                 const SizedBox(width: 8),
                 GlassIconButton(
-                  icon: Bi.menuDots,
+                  icon: Bi.kebab,
                   onTap: () =>
                       showPlaylistMenu(context, ref, playlist!, tracks),
                 ),
@@ -711,7 +711,7 @@ class _SortButton extends StatelessWidget {
     // плейлист выглядит поломкой.
     final on = sort != TrackSort.manual;
     return GlassIconButton(
-      icon: Bi.tuning2,
+      icon: Bi.sort,
       background: on ? t.accent : null,
       color: on ? t.accentText : null,
       onTap: () => showSortSheet(context, sort, desc, onSort),
@@ -744,8 +744,8 @@ Future<void> showSortSheet(
                 desc ? Bi.altArrowDownBold : Bi.altArrowUpBold,
               // Вывернутый отбор «Скачанных» — «Не скачанные»: галочка тут
               // читалась бы как «скачано», поэтому крестик.
-              TrackSort.downloaded when desc => Bi.closeCircleBold,
-              _ => Bi.checkCircleBold,
+              TrackSort.downloaded when desc => Bi.close,
+              _ => Bi.check,
             },
             size: 18,
             color: t.accent,
@@ -858,7 +858,7 @@ class _Actions extends ConsumerWidget {
               : null,
         ),
         const SizedBox(width: 10),
-        GlassIconButton(icon: Bi.penNewSquare, size: 46, onTap: onEdit),
+        GlassIconButton(icon: Bi.pen, size: 46, onTap: onEdit),
       ],
     );
   }
@@ -927,7 +927,7 @@ Future<void> showPlaylistMenu(
         // Очередью список дополняют целиком — те же два пункта, что у трека,
         // только про весь плейлист (десктопные `lib.plmenu.toQueue`/`playNext`).
         SheetAction(
-          icon: Bi.playlistMinimalistic,
+          icon: Bi.inboxIn,
           label: context.l.tlToQueue,
           onTap: tracks.isEmpty
               ? null
@@ -962,7 +962,7 @@ Future<void> showPlaylistMenu(
         // ответит, что уже качает другой список.
         if (ref.read(offlineProvider).batch?.sourceId == playlist.id)
           SheetAction(
-            icon: Bi.closeCircle,
+            icon: Bi.close,
             label: context.l.tlStopSaving,
             onTap: () => ref.read(offlineProvider.notifier).cancelBatch(),
           )
@@ -970,7 +970,9 @@ Future<void> showPlaylistMenu(
         // треки; когда всё на устройстве — пункт становится «убрать».
         else if (offlineStatus.total > 0) ...[
           SheetAction(
-            icon: offlineStatus.all ? Bi.checkCircleBold : Bi.diskette,
+            icon: offlineStatus.all
+                ? Bi.trashBinTrash
+                : Bi.downloadMinimalistic,
             label: offlineStatus.all
                 ? context.l.tlRemoveOffline
                 : context.l.tlListenOffline(
@@ -1047,7 +1049,7 @@ Future<void> showPlaylistMenu(
       ],
       [
         SheetAction(
-          icon: Bi.trashBinMinimalistic,
+          icon: Bi.trashBinTrash,
           label: context.l.tlDeletePlaylist,
           danger: true,
           onTap: () {

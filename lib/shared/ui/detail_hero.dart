@@ -94,7 +94,7 @@ class DetailHero extends StatelessWidget {
             onTap: () => Navigator.of(context).maybePop(),
           ),
           const Spacer(),
-          if (onMenu != null) GlassIconButton(icon: Bi.menuDots, onTap: onMenu),
+          if (onMenu != null) GlassIconButton(icon: Bi.kebab, onTap: onMenu),
         ],
       ),
       body: Column(

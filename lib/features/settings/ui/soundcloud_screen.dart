@@ -209,7 +209,7 @@ class _SoundCloudSettingsScreenState
           Row(
             children: [
               BloomIcon(
-                r.ok ? Bi.checkCircleBold : Bi.closeCircleBold,
+                r.ok ? Bi.check : Bi.close,
                 size: 18,
                 color: r.ok ? kPlatformOk : t.danger,
               ),

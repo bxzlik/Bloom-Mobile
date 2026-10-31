@@ -1374,7 +1374,7 @@ class _FontTileState extends State<_FontTile> {
                     child: Padding(
                       padding: const EdgeInsets.all(4),
                       child: BloomIcon(
-                        _armed ? Bi.trashBinMinimalisticBold : Bi.closeCircle,
+                        _armed ? Bi.trashBinTrash : Bi.close,
                         size: 14,
                         color: _armed ? t.danger : t.text2,
                       ),
@@ -1826,8 +1826,7 @@ class _AutoThemeCard extends StatelessWidget {
                 ).textTheme.titleMedium?.copyWith(color: preview.text),
               ),
             ),
-            if (active)
-              BloomIcon(Bi.checkCircleBold, size: 18, color: preview.accent),
+            if (active) BloomIcon(Bi.check, size: 18, color: preview.accent),
           ],
         ),
       ),
@@ -1906,11 +1905,7 @@ class _PresetCardState extends State<_PresetCard> {
                 _ThemeDots(preset: preset, size: 24, ring: preview.bg),
                 const Spacer(),
                 if (active)
-                  BloomIcon(
-                    Bi.checkCircleBold,
-                    size: 18,
-                    color: preview.accent,
-                  ),
+                  BloomIcon(Bi.check, size: 18, color: preview.accent),
                 if (widget.onDelete != null)
                   // Своя зона нажатия: крестик мелкий, а мажут по нему пальцем.
                   // Взведённый — красная корзина: без модалки видно, что
@@ -1920,7 +1915,7 @@ class _PresetCardState extends State<_PresetCard> {
                     child: Padding(
                       padding: const EdgeInsets.only(left: 8),
                       child: BloomIcon(
-                        _armed ? Bi.trashBinMinimalisticBold : Bi.closeCircle,
+                        _armed ? Bi.trashBinTrash : Bi.close,
                         size: 18,
                         color: _armed ? preview.danger : preview.muted,
                       ),

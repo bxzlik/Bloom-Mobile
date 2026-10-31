@@ -226,7 +226,7 @@ class _MergeBodyState extends ConsumerState<_MergeBody> {
             ),
             sheetDivider(),
             _SwitchRow(
-              icon: Bi.trashBinMinimalistic,
+              icon: Bi.trashBinTrash,
               label: context.l.mgDeleteSources,
               value: _deleteSources,
               danger: true,

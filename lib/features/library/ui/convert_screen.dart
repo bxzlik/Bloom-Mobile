@@ -474,7 +474,7 @@ class _ItemRow extends StatelessWidget {
                 ),
                 sheetDivider(),
                 _DecisionRow(
-                  icon: Bi.closeCircle,
+                  icon: Bi.close,
                   label: l.cvSkip,
                   picked: decision is SkipTrack,
                   danger: true,
@@ -593,8 +593,7 @@ class _DecisionRow extends StatelessWidget {
                 ).textTheme.titleMedium?.copyWith(color: color),
               ),
             ),
-            if (picked)
-              BloomIcon(Bi.checkCircleBold, size: 18, color: t.accent),
+            if (picked) BloomIcon(Bi.check, size: 18, color: t.accent),
           ],
         ),
       ),

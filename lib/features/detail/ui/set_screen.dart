@@ -156,7 +156,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
                   onTap: queue.isEmpty ? null : _shuffle,
                 ),
                 GlassIconButton(
-                  icon: saved ? Bi.checkCircleBold : Bi.addCircle,
+                  icon: saved ? Bi.check : Bi.addCircle,
                   size: 46,
                   background: saved ? t.accent : null,
                   color: saved ? t.accentText : null,
@@ -328,7 +328,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
         ],
         [
           SheetAction(
-            icon: saved ? Bi.checkCircleBold : Bi.import,
+            icon: saved ? Bi.check : Bi.import,
             label: saved
                 ? context.l.commonAlreadyInLibrary
                 : context.l.setSaveToLibrary,

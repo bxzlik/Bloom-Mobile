@@ -62,7 +62,7 @@ class SettingsScreen extends StatelessWidget {
                 onTap: () => context.go('/settings/system'),
               ),
               SettingsRow(
-                icon: Bi.tuning,
+                icon: Bi.eq,
                 title: context.l.setAudio,
                 onTap: () => context.go('/settings/audio'),
               ),
@@ -91,24 +91,24 @@ class SettingsScreen extends StatelessWidget {
             title: context.l.setGroupInterface,
             rows: [
               SettingsRow(
-                icon: Bi.paintRoller,
+                icon: Bi.sidebarMinimalistic,
                 title: context.l.setAppearance,
                 onTap: () => context.go('/settings/appearance'),
               ),
               SettingsRow(
-                icon: Bi.playCircle,
+                icon: Bi.musicNote,
                 title: context.l.setPlayer,
                 onTap: () => context.go('/settings/player'),
               ),
               // Тот же значок, каким мини-плеер помечен как поверхность в
               // «Смене трека»: строка и там и тут про одну карточку.
               SettingsRow(
-                icon: Bi.minimizeSquare,
+                icon: Bi.widget,
                 title: context.l.setMiniPlayer,
                 onTap: () => context.go('/settings/miniplayer'),
               ),
               SettingsRow(
-                icon: Bi.gallery,
+                icon: Bi.album,
                 title: context.l.stCustom,
                 onTap: () => context.go('/settings/customization'),
               ),
