@@ -12,6 +12,8 @@ library;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart'
+    show OverScrollHeaderStretchConfiguration;
 
 import '../../app/theme/tokens.dart';
 import 'cover_hero.dart';
@@ -126,11 +128,12 @@ class _StickyHeroDelegate extends SliverPersistentHeaderDelegate {
           // Обложка с подписями уезжает вверх целиком, как обычное содержимое:
           // в сжатой шапке остаётся её нижняя, самая затемнённая полоска — на
           // ней белые кнопки читаются с любой картинкой.
+          // Pulled past the top, the box is taller and the cover fills it all.
           Positioned(
             top: extent - maxExtent,
             left: 0,
             right: 0,
-            height: maxExtent,
+            bottom: 0,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -163,6 +166,12 @@ class _StickyHeroDelegate extends SliverPersistentHeaderDelegate {
       ),
     );
   }
+
+  /// Pulled past the top, the header is laid out taller rather than baring
+  /// the page above it.
+  @override
+  OverScrollHeaderStretchConfiguration get stretchConfiguration =>
+      OverScrollHeaderStretchConfiguration();
 
   /// Содержимое приходит уже собранным (у страниц свои кнопки и подписи), и
   /// сравнивать его нечем — перестраиваем всегда.

@@ -34,6 +34,7 @@ import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/color_picker.dart';
 import '../../../shared/ui/glass.dart';
+import '../../../shared/ui/pull_stretch.dart';
 import '../profile_store.dart';
 import 'image_cropper.dart';
 import 'profile_avatar.dart';
@@ -320,30 +321,32 @@ class _BannerHeader extends StatelessWidget {
             height: height,
             child: GestureDetector(
               onTap: onBanner,
-              child: ClipRRect(
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(t.radius * 1.5),
-                ),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    ProfileBannerFill(profile: draft),
-                    // Та же тень под кнопки и часы, что на странице: на светлом
-                    // снимке белые иконки без неё пропадают.
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.45),
-                            Colors.black.withValues(alpha: 0),
-                          ],
-                          stops: const [0, 0.45],
+              child: PullStretch(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.vertical(
+                    bottom: Radius.circular(t.radius * 1.5),
+                  ),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      ProfileBannerFill(profile: draft),
+                      // Та же тень под кнопки и часы, что на странице: на светлом
+                      // снимке белые иконки без неё пропадают.
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.45),
+                              Colors.black.withValues(alpha: 0),
+                            ],
+                            stops: const [0, 0.45],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

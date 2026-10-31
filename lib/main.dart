@@ -295,6 +295,7 @@ class BloomApp extends ConsumerWidget {
       // Свой ключ мессенджера: тосты бывают и без экрана — авто-обновление
       // плейлистов ходит по таймеру.
       scaffoldMessengerKey: bloomMessengerKey,
+      scrollBehavior: const _SpringScroll(),
       theme: buildBloomTheme(
         tokens,
         transparentPages: bgOn,
@@ -306,4 +307,20 @@ class BloomApp extends ConsumerWidget {
       routerConfig: bloomRouter,
     );
   }
+}
+
+/// The iPhone's springy edge on every phone: Android's stretch goes.
+class _SpringScroll extends MaterialScrollBehavior {
+  const _SpringScroll();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) =>
+      const BouncingScrollPhysics(parent: RangeMaintainingScrollPhysics());
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) => child;
 }

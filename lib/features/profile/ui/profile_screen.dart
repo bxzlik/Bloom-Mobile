@@ -23,6 +23,7 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/glass.dart';
+import '../../../shared/ui/pull_stretch.dart';
 import '../../wrapped/ui/wrapped_entries.dart';
 import '../../wrapped/wrapped_store.dart';
 import '../achievements.dart';
@@ -282,30 +283,32 @@ class _Banner extends StatelessWidget {
             right: 0,
             top: 0,
             height: height,
-            child: ClipRRect(
-              borderRadius: BorderRadius.vertical(
-                bottom: Radius.circular(t.radius * 1.5),
-              ),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ProfileBannerFill(profile: profile),
-                  // Кнопки и часы системной строки тонут на светлом снимке —
-                  // им нужна тень независимо от того, что за картинка.
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.45),
-                          Colors.black.withValues(alpha: 0),
-                        ],
-                        stops: const [0, 0.45],
+            child: PullStretch(
+              child: ClipRRect(
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(t.radius * 1.5),
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ProfileBannerFill(profile: profile),
+                    // Кнопки и часы системной строки тонут на светлом снимке —
+                    // им нужна тень независимо от того, что за картинка.
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.45),
+                            Colors.black.withValues(alpha: 0),
+                          ],
+                          stops: const [0, 0.45],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
