@@ -28,6 +28,7 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/marquee_text.dart';
 import '../../../shared/ui/pressable.dart';
 import '../../detail/detail_nav.dart';
+import '../../profile/ui/history_sheet.dart';
 import '../play_source.dart';
 import 'player_sheet.dart';
 import 'queue_sheet.dart';
@@ -50,6 +51,14 @@ void openPlaySource(BuildContext context, PlaySource source) {
   Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst);
   collapsePlayerSheet();
   switch (source) {
+    case LibSource(listId: 'history'):
+      // History is a sheet over the profile: the profile first, then the sheet
+      // once it's laid out.
+      bloomRouter.go(kProfileLocation);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final root = bloomRouter.routerDelegate.navigatorKey.currentContext;
+        if (root != null) showHistorySheet(root);
+      });
     case LibSource(:final listId):
       // Раздел библиотеки живёт маршрутом — заодно переключит вкладку.
       bloomRouter.go('/library/list/$listId');

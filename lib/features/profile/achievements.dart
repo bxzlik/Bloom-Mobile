@@ -31,8 +31,8 @@ String tierLabel(AppLocalizations l, AchTier tier) => switch (tier) {
 
 Color tierColor(AchTier tier) => switch (tier) {
   AchTier.bronze => const Color(0xFFCD7F32),
-  AchTier.silver => const Color(0xFFC0C6CF),
-  AchTier.gold => const Color(0xFFFFC24B),
+  AchTier.silver => const Color(0xFFC8C8D2),
+  AchTier.gold => const Color(0xFFFFD24A),
 };
 
 /// Единица метрики — влияет только на подпись прогресса.
@@ -70,7 +70,7 @@ class AchDef {
 final List<AchDef> kAchievements = [
   AchDef(
     id: 'listener',
-    icon: Bi.playBold,
+    icon: Bi.play,
     name: (l) => l.achListenerName,
     description: (l) => l.achListenerDesc,
     unit: AchUnit.count,
@@ -79,7 +79,7 @@ final List<AchDef> kAchievements = [
   ),
   AchDef(
     id: 'time',
-    icon: Bi.headphonesRoundBold,
+    icon: Bi.clockCircle,
     name: (l) => l.achTimeName,
     description: (l) => l.achTimeDesc,
     unit: AchUnit.time,
@@ -88,7 +88,7 @@ final List<AchDef> kAchievements = [
   ),
   AchDef(
     id: 'streak',
-    icon: Bi.fireBold,
+    icon: Bi.fire,
     name: (l) => l.achStreakName,
     description: (l) => l.achStreakDesc,
     unit: AchUnit.count,
@@ -97,7 +97,7 @@ final List<AchDef> kAchievements = [
   ),
   AchDef(
     id: 'marathon',
-    icon: Bi.medalStarBold,
+    icon: Bi.star,
     name: (l) => l.achMarathonName,
     description: (l) => l.achMarathonDesc,
     unit: AchUnit.count,
@@ -106,7 +106,7 @@ final List<AchDef> kAchievements = [
   ),
   AchDef(
     id: 'veteran',
-    icon: Bi.crownStarBold,
+    icon: Bi.medalStar,
     name: (l) => l.achVeteranName,
     description: (l) => l.achVeteranDesc,
     unit: AchUnit.time,
@@ -115,7 +115,7 @@ final List<AchDef> kAchievements = [
   ),
   AchDef(
     id: 'devotee',
-    icon: Bi.calendarBold,
+    icon: Bi.calendar,
     name: (l) => l.achDevoteeName,
     description: (l) => l.achDevoteeDesc,
     unit: AchUnit.count,

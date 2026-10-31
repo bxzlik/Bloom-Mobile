@@ -72,7 +72,6 @@ class UserProfile {
   final String? banner;
 
   /// Есть ли что показывать в боксе под ником.
-  bool get hasAbout => bio.trim().isNotEmpty || status.trim().isNotEmpty;
 
   UserProfile copyWith({
     String? name,

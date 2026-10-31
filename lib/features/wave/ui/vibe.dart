@@ -196,9 +196,7 @@ class _VibePainter extends CustomPainter {
     final rest = 1 - _fadeFrom;
     // Clipped to the box save upwards: a pull past the top of the page shows
     // more of the stage, not the page's black.
-    canvas.clipRect(
-      Rect.fromLTRB(0, -size.height, size.width, size.height),
-    );
+    canvas.clipRect(Rect.fromLTRB(0, -size.height, size.width, size.height));
     canvas.drawRect(
       Rect.fromLTRB(0, -size.height, size.width, 0),
       Paint()..color = c,

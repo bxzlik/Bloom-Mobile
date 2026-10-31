@@ -25,7 +25,6 @@ class ListMeta extends ConsumerWidget {
     this.showCount = true,
     this.showOffline = true,
     this.showDuration = true,
-    this.listened,
   });
 
   /// Состав списка: по нему считаются и офлайн-тег, и общее время.
@@ -42,15 +41,10 @@ class ListMeta extends ConsumerWidget {
   final bool showCount;
 
   /// Сколько из списка уже на устройстве. Только у своих плейлистов: у «Всех
-  /// треков» / «Любимых» / «Истории» на десктопе этого тега нет.
+  /// треков» / «Любимых» на десктопе этого тега нет.
   final bool showOffline;
 
   final bool showDuration;
-
-  /// Время вместо суммы длин. У «Истории» это НАСЛУШАННОЕ — длина на число
-  /// прослушиваний (`historyTotals`): сумма длин последних проигранных не
-  /// значила бы ничего.
-  final Duration? listened;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -74,11 +68,7 @@ class ListMeta extends ConsumerWidget {
 
     final sum = !showDuration
         ? Duration.zero
-        : listened ??
-              tracks.fold<Duration>(
-                Duration.zero,
-                (acc, x) => acc + x.duration,
-              );
+        : tracks.fold<Duration>(Duration.zero, (acc, x) => acc + x.duration);
     final duration = sum > Duration.zero ? totalDur(l, sum) : null;
 
     final iconSize = style?.fontSize ?? 13;

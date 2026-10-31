@@ -432,9 +432,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get tlEmptyFav => 'Пока ничего не залайкано';
 
   @override
-  String get tlEmptyHistory => 'История пуста';
-
-  @override
   String get histToday => 'Сегодня';
 
   @override
@@ -1269,6 +1266,62 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String profileSumPlays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'прослушиваний',
+      many: 'прослушиваний',
+      few: 'прослушивания',
+      one: 'прослушивание',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get profileSumTime => 'наслушано';
+
+  @override
+  String profileSumStreak(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'дней подряд',
+      many: 'дней подряд',
+      few: 'дня подряд',
+      one: 'день подряд',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String profileSumArtists(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'исполнителей',
+      many: 'исполнителей',
+      few: 'исполнителя',
+      one: 'исполнитель',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get profileEntryStats => 'Статистика';
+
+  @override
+  String profileEntryOf(int total) {
+    return 'из $total';
+  }
+
+  @override
+  String get profileActivityDays => 'за 30 дней';
+
+  @override
+  String get historyEmpty => 'Здесь появятся треки, которые ты слушал';
+
+  @override
   String get profileRemoveImage => 'Убрать картинку';
 
   @override
@@ -1377,16 +1430,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get statsTopTracks => 'Топ треков';
 
   @override
-  String get statsActivity => 'Активность';
-
-  @override
-  String get statsFavArtists => 'Любимые артисты';
+  String get statsTopArtists => 'Топ исполнителей';
 
   @override
   String get statsOverview => 'Обзор';
-
-  @override
-  String get statsLocalFiles => 'Локальные файлы';
 
   @override
   String get statsNoDataYet => 'Пока нет данных';
@@ -1482,24 +1529,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get statsCleared => 'Статистика очищена';
 
   @override
-  String get statsToday => 'сег.';
-
-  @override
-  String get statsPeriod7d => '7д';
-
-  @override
-  String get statsPeriod30d => '30д';
-
-  @override
-  String get statsPeriodAll => 'Всё';
-
-  @override
-  String get statsLess => 'меньше';
-
-  @override
-  String get statsMore => 'больше';
-
-  @override
   String get statsZeroMinutes => '0 мин';
 
   @override
@@ -1510,11 +1539,6 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String statsMinutes(int minutes) {
     return '$minutes мин';
-  }
-
-  @override
-  String statsHoursValue(String hours) {
-    return '$hoursч';
   }
 
   @override

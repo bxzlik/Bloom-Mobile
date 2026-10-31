@@ -42,14 +42,3 @@ final historyProvider = Provider<List<HistoryItem>>((ref) {
 /// Трек строки истории: библиотека → снимок из базы.
 Track? resolveHistoryTrack(String id, LibraryState lib, PlayStats stats) =>
     lib.tracks[id] ?? stats.tracks[id];
-
-/// Сводка для подписи «Истории»: сколько треков и сколько НАСЛУШАНО — длина
-/// трека на число прослушиваний, а не сумма длин, как у остальных списков:
-/// трек, отыгранный десять раз, и правда занял в десять раз больше времени.
-({int tracks, Duration listened}) historyTotals(List<HistoryItem> items) {
-  var seconds = 0;
-  for (final item in items) {
-    seconds += item.track.duration.inSeconds * item.row.count;
-  }
-  return (tracks: items.length, listened: Duration(seconds: seconds));
-}

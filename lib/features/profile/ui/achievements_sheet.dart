@@ -1,20 +1,13 @@
-/// Шторка «Достижения» — то, что раньше было вкладкой на странице профиля.
-///
-/// Состав и вид прежние, десктопные: значения считаются на лету из той же
-/// статистики, отсюда ничего не пишется, кроме дат разблокировки (их ведёт
-/// [AchievementsController]). Карточка показывает медаль в цвете взятого тира,
-/// три пипса уровней, полосу прогресса и «сколько сейчас / сколько до
-/// следующего».
-///
-/// Единственная правка при переезде — заливка карточек: внутри шторки она
-/// зависит от того, на чём та стоит ([sheetPanelColor]), а не от настройки
-/// стекла для блоков страницы.
+/// The achievements sheet: the title with how many tiers are taken, then a
+/// card per achievement — its medal in the colour of the tier reached, the
+/// tier dots, what it counts, the bar to the next tier, when the last came.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../app/theme/bloom_theme.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/bloom_icon.dart';
@@ -22,52 +15,79 @@ import '../../../shared/ui/bloom_sheet.dart';
 import '../achievements.dart';
 import '../stats.dart';
 
-/// Открыть достижения. Обложки у шторки нет — фоном встаёт [SheetSurface].
 Future<void> showAchievementsSheet(BuildContext context) =>
     showBloomSheetChild<void>(
       context: context,
-      child: const AchievementsSheet(),
+      header: const _Head(),
+      child: const _Cards(),
     );
 
-class AchievementsSheet extends ConsumerWidget {
-  const AchievementsSheet({super.key});
+/// The title, the count on a pill; stays put while the cards scroll.
+class _Head extends ConsumerWidget {
+  const _Head();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
     final list = ref.watch(achievementsProvider);
-    final unlocked = ref.watch(unlockedAchievementsProvider);
-
     final done = list.fold(0, (n, a) => n + a.tierReached);
     final total = list.length * kTierOrder.length;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
-          child: Row(
-            children: [
-              BloomIcon(Bi.medalStar, size: 16, color: t.iconFg),
-              const SizedBox(width: 8),
-              Text(context.l.profileAchievements, style: theme.titleSmall),
-              const Spacer(),
-              Text(
-                '$done/$total',
-                style: theme.titleSmall?.copyWith(color: t.muted),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(kSheetEdge, 6, kSheetEdge, 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              context.l.profileAchievements,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: bloomText(
+                size: 18,
+                weight: 700,
+                color: t.text,
+                letterSpacing: -0.2,
               ),
-            ],
+            ),
           ),
-        ),
-        for (final a in list)
-          _AchCard(
-            progress: a,
-            // Дата последнего взятого тира — она и подписывается.
-            unlockedAt: unlocked.at[tierKey(a.def.id, a.tierReached - 1)],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: sheetPanelLineColor(context)),
+            ),
+            child: Text(
+              '$done/$total',
+              style: bloomText(size: 12, weight: 700, color: t.text2),
+            ),
           ),
-      ],
+        ],
+      ),
+    );
+  }
+}
+
+class _Cards extends ConsumerWidget {
+  const _Cards();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final list = ref.watch(achievementsProvider);
+    final unlocked = ref.watch(unlockedAchievementsProvider);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          for (final a in list)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _AchCard(
+                progress: a,
+                // The last tier taken is the one dated.
+                unlockedAt: unlocked.at[tierKey(a.def.id, a.tierReached - 1)],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -78,125 +98,172 @@ class _AchCard extends StatelessWidget {
   final AchProgress progress;
   final int? unlockedAt;
 
+  static const _gold = [Color(0xFFFFD24A), Color(0xFFFFB01F)];
+
   String _fmt(BuildContext context, int value) =>
-      progress.def.unit == AchUnit.time ? fmtDurLong(context, value) : '$value';
+      progress.def.unit == AchUnit.time
+      ? fmtDurLong(context, value)
+      : NumberFormat.decimalPattern(
+          Localizations.localeOf(context).toString(),
+        ).format(value);
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
     final a = progress;
-    final medal = a.tier == null ? t.muted : tierColor(a.tier!);
+    final tint = a.tier == null ? t.muted : tierColor(a.tier!);
+    final line = sheetPanelLineColor(context);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
-      child: Material(
-        color: sheetPanelColor(context),
-        borderRadius: BorderRadius.circular(t.radius),
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Медаль гаснет, пока не взят ни один тир, — то же, что класс `on`
-              // на десктопе.
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: medal.withValues(alpha: a.unlocked ? 0.16 : 0.06),
-                  borderRadius: BorderRadius.circular(t.radius * 0.7),
-                ),
-                child: BloomIcon(
-                  a.def.icon,
-                  size: 22,
-                  color: a.unlocked ? medal : t.muted,
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(sheetPanelRadius(context)),
+        border: Border.all(color: line),
+      ),
+      // Not reached yet: the whole card dimmed.
+      child: Opacity(
+        opacity: a.unlocked ? 1 : 0.5,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: a.unlocked
+                    ? tint.withValues(alpha: 0.16)
+                    : t.text.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: a.unlocked
+                      ? tint.withValues(alpha: a.maxed ? 0.45 : 0.4)
+                      : line,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            a.def.name(context.l),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.titleSmall,
+              child: Center(
+                child: BloomIcon(a.def.icon, size: 20, color: tint),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          a.def.name(context.l),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: bloomText(
+                            size: 14,
+                            weight: 700,
+                            color: t.text,
                           ),
-                        ),
-                        for (var i = 0; i < kTierOrder.length; i++)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 4),
-                            child: Container(
-                              width: 7,
-                              height: 7,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: i < a.tierReached
-                                    ? tierColor(kTierOrder[i])
-                                    : t.track,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      a.def.description(context.l),
-                      style: theme.bodySmall?.copyWith(color: t.muted),
-                    ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: LinearProgressIndicator(
-                        value: a.ratio,
-                        minHeight: 5,
-                        backgroundColor: t.track,
-                        valueColor: AlwaysStoppedAnimation(
-                          a.unlocked ? medal : t.text.withValues(alpha: 0.35),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Text(
-                          a.maxed
-                              ? context.l.achMax
-                              : '${_fmt(context, a.value)} / ${_fmt(context, a.nextTarget!)}',
-                          style: theme.bodySmall?.copyWith(
-                            color: a.maxed ? tierColor(AchTier.gold) : t.text2,
-                          ),
-                        ),
-                        const Spacer(),
-                        if (unlockedAt case final at?)
-                          Text(
-                            context.l.achUnlockedAt(_date(context, at)),
-                            style: theme.bodySmall?.copyWith(
-                              color: t.muted,
-                              fontSize: 11,
+                      for (var i = 0; i < kTierOrder.length; i++)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 3),
+                          child: Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: i < a.tierReached
+                                  ? tierColor(kTierOrder[i])
+                                  : t.text.withValues(alpha: 0.14),
                             ),
                           ),
-                      ],
-                    ),
-                  ],
-                ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    a.def.description(context.l),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: bloomText(size: 12, weight: 500, color: t.text2),
+                  ),
+                  const SizedBox(height: 5),
+                  _Bar(
+                    ratio: a.maxed ? 1 : a.ratio,
+                    fill: a.maxed ? null : t.accent,
+                    gold: a.maxed ? _gold : null,
+                    track: t.text.withValues(alpha: 0.08),
+                  ),
+                  const SizedBox(height: 5),
+                  Row(
+                    children: [
+                      Text(
+                        a.maxed
+                            ? context.l.achMax.toUpperCase()
+                            : '${_fmt(context, a.value)} / ${_fmt(context, a.nextTarget!)}',
+                        style: bloomText(
+                          size: 11,
+                          weight: 700,
+                          color: a.maxed ? _gold.first : t.text2,
+                          letterSpacing: a.maxed ? 0.5 : null,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (unlockedAt case final at?)
+                        Text(
+                          context.l.achUnlockedAt(_date(context, at)),
+                          style: bloomText(
+                            size: 11,
+                            weight: 500,
+                            color: t.muted,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  /// Дата берётся у `intl`, а не собирается вручную: он уже знает и порядок
-  /// частей, и сокращения месяцев для обеих локалей.
   String _date(BuildContext context, int ms) => DateFormat.yMMMd(
     Localizations.localeOf(context).languageCode,
   ).format(DateTime.fromMillisecondsSinceEpoch(ms));
+}
+
+/// The bar to the next tier: accent, or gold across once it's all taken.
+class _Bar extends StatelessWidget {
+  const _Bar({required this.ratio, required this.track, this.fill, this.gold});
+
+  final double ratio;
+  final Color track;
+  final Color? fill;
+  final List<Color>? gold;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 6,
+      decoration: BoxDecoration(
+        color: track,
+        borderRadius: BorderRadius.circular(3),
+      ),
+      alignment: Alignment.centerLeft,
+      child: ratio <= 0
+          ? null
+          : FractionallySizedBox(
+              widthFactor: ratio.clamp(0.0, 1.0),
+              child: Container(
+                constraints: const BoxConstraints(minWidth: 6),
+                decoration: BoxDecoration(
+                  color: fill,
+                  gradient: gold == null ? null : LinearGradient(colors: gold!),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ),
+    );
+  }
 }

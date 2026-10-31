@@ -22,7 +22,7 @@ class ListHeroBackground extends StatelessWidget {
     required this.tracks,
   });
 
-  /// `all` / `fav` / `history` либо id пользовательского плейлиста.
+  /// `all` / `fav` либо id пользовательского плейлиста.
   final String listId;
 
   /// Своя обложка плейлиста; у встроенных разделов её нет.
@@ -30,9 +30,9 @@ class ListHeroBackground extends StatelessWidget {
 
   final List<Track> tracks;
 
-  /// У `all` / `fav` / `history` своей обложки нет и коллаж не собираем —
-  /// шапка всегда остаётся фирменным тинтом раздела.
-  bool get _system => listId == 'all' || listId == 'fav' || listId == 'history';
+  /// У `all` / `fav` своей обложки нет и коллаж не собираем — шапка всегда
+  /// остаётся фирменным тинтом раздела.
+  bool get _system => listId == 'all' || listId == 'fav';
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +69,6 @@ class ListHeroBackground extends StatelessWidget {
 
     final (Color tint, Color color, BloomGlyph icon) = switch (listId) {
       'fav' => (t.sysFavTint, t.sysFavIco, Bi.heartBold),
-      'history' => (t.sysHistTint, t.sysHistIco, Bi.clockCircle),
       _ => (t.sysAllTint, t.sysAllIco, Bi.musicNote),
     };
     return ColoredBox(

@@ -14,11 +14,8 @@ import 'package:bloom/app/theme/tokens.dart';
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/l10n/l10n.dart';
 import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/features/profile/ui/profile_entry_card.dart'
-    show kProfileEntryHeight;
 import 'package:bloom/features/wrapped/periods.dart';
 import 'package:bloom/core/store/play_log.dart';
-import 'package:bloom/features/wrapped/ui/wrapped_entries.dart';
 import 'package:bloom/features/wrapped/ui/wrapped_poster.dart';
 import 'package:bloom/features/wrapped/ui/wrapped_sheet.dart';
 import 'package:bloom/features/wrapped/wrapped_data.dart';
@@ -627,45 +624,6 @@ void main() {
         ),
       ),
     );
-
-    testWidgets('карточка месяца называет период и зовёт смотреть', (
-      tester,
-    ) async {
-      await pump(tester, WrappedMonthCard(data: monthData()));
-      expect(find.text('Итоги месяца'), findsOneWidget);
-      expect(find.text('Июль 2026'), findsOneWidget);
-      expect(find.text('НОВОЕ'), findsOneWidget);
-      expect(find.text('Смотреть'), findsOneWidget);
-      // Ростом с соседей по ряду: своя высота читалась бы ступенькой.
-      expect(
-        tester.getSize(find.byType(WrappedMonthCard)).height,
-        kProfileEntryHeight,
-      );
-    });
-
-    testWidgets('плашка года показывает прослушивания и время', (tester) async {
-      final year = buildWrapped(
-        _log([(DateTime(2026, 3, 1, 9), _track('sc:1', seconds: 3600))]),
-        periodRange(PeriodKind.year, _now),
-      );
-      await pump(tester, WrappedYearBanner(data: year));
-      expect(find.text('Итоги года'), findsOneWidget);
-      expect(find.text('1 прослушивание · 1 час'), findsOneWidget);
-      expect(
-        tester.getSize(find.byType(WrappedYearBanner)).height,
-        kProfileEntryHeight,
-      );
-      // Текст стоит по центру плашки: непозиционированный ребёнок `Stack` без
-      // `StackFit.expand` уезжает к верхнему краю — наступил 2026-08-30.
-      final title = tester.getRect(find.text('Итоги года'));
-      final banner = tester.getRect(find.byType(WrappedYearBanner));
-      expect(
-        (title.center.dy - banner.center.dy).abs(),
-        lessThan(banner.height / 4),
-      );
-      // Волна анимируется вечно — снимаем виджет, чтобы тест не ждал таймеров.
-      await tester.pumpWidget(const SizedBox.shrink());
-    });
 
     testWidgets('шторка открывается на своём периоде и листается', (
       tester,

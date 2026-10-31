@@ -428,9 +428,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tlEmptyFav => 'Nothing liked yet';
 
   @override
-  String get tlEmptyHistory => 'History is empty';
-
-  @override
   String get histToday => 'Today';
 
   @override
@@ -1247,6 +1244,56 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String profileSumPlays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'plays',
+      one: 'play',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get profileSumTime => 'listened';
+
+  @override
+  String profileSumStreak(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'days in a row',
+      one: 'day in a row',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String profileSumArtists(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'artists',
+      one: 'artist',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get profileEntryStats => 'Statistics';
+
+  @override
+  String profileEntryOf(int total) {
+    return 'of $total';
+  }
+
+  @override
+  String get profileActivityDays => 'last 30 days';
+
+  @override
+  String get historyEmpty => 'Tracks you listen to will show up here';
+
+  @override
   String get profileRemoveImage => 'Remove image';
 
   @override
@@ -1355,16 +1402,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statsTopTracks => 'Top tracks';
 
   @override
-  String get statsActivity => 'Activity';
-
-  @override
-  String get statsFavArtists => 'Favorite artists';
+  String get statsTopArtists => 'Top artists';
 
   @override
   String get statsOverview => 'Overview';
-
-  @override
-  String get statsLocalFiles => 'Local files';
 
   @override
   String get statsNoDataYet => 'No data yet';
@@ -1458,24 +1499,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statsCleared => 'Statistics cleared';
 
   @override
-  String get statsToday => 'Today';
-
-  @override
-  String get statsPeriod7d => '7d';
-
-  @override
-  String get statsPeriod30d => '30d';
-
-  @override
-  String get statsPeriodAll => 'All';
-
-  @override
-  String get statsLess => 'less';
-
-  @override
-  String get statsMore => 'more';
-
-  @override
   String get statsZeroMinutes => '0 min';
 
   @override
@@ -1486,11 +1509,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String statsMinutes(int minutes) {
     return '$minutes min';
-  }
-
-  @override
-  String statsHoursValue(String hours) {
-    return '${hours}h';
   }
 
   @override

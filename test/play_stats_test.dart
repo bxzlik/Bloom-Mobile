@@ -118,17 +118,6 @@ void main() {
       expect(env.history.single.track.sourceData, isNotNull);
     });
 
-    test('наслушанное — длина трека на число прослушиваний', () {
-      final env = _Env();
-      env.listen(_track('sc:1'));
-      env.listen(_track('sc:1'));
-      env.listen(_track('sc:2'));
-
-      final totals = historyTotals(env.history);
-      expect(totals.tracks, 2);
-      expect(totals.listened, const Duration(seconds: 300));
-    });
-
     test('строка живёт и после удаления трека из библиотеки', () {
       final env = _Env();
       final t = _track('sc:1', name: 'Ушедший');

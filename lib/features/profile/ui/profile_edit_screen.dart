@@ -1,11 +1,7 @@
-/// Редактирование профиля.
-///
-/// Состав полей — десктопный (`ProfileEditModal`) минус пластинка: ник, о себе,
-/// статус, заливка обложки («Авто» / цвет / градиент). Раскладка — по присланному макету, но
-/// сверху не голая строка кнопок, а живой предпросмотр шапки профиля: полоса
-/// обложки, на ней кнопки, аватар свисает с её кромки — ровно так, как страница
-/// будет выглядеть после сохранения. Дальше блоки «капсовая подпись + тёмная
-/// плашка» со счётчиком символов внутри, снизу одна широкая кнопка «Сохранить».
+/// The profile editor: nick, about, status and the banner's fill (Auto /
+/// colour / gradient). On top a live copy of the page's head — the banner, the
+/// avatar and the nick as they'll be once saved; a tap on the banner or the
+/// avatar changes it. Then the fields, and one wide Save at the bottom.
 ///
 /// Обводок нигде нет: ни кольца у аватара, ни рамок у полей и плашек — блоки
 /// держатся своей заливкой. Десктопная настройка «Обводка» вместе с ней и
@@ -34,12 +30,12 @@ import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/color_picker.dart';
 import '../../../shared/ui/glass.dart';
-import '../../../shared/ui/pull_stretch.dart';
 import '../profile_store.dart';
 import 'image_cropper.dart';
 import 'profile_avatar.dart';
 import 'profile_banner.dart';
-import 'profile_screen.dart' show kProfileAvatarSize, kProfileBannerStrip;
+import 'profile_screen.dart'
+    show ProfileBannerHero, ProfileWho, kProfileBannerStrip;
 
 /// Стрелки к [kBannerAngles] — те же, что в десктопной модалке.
 const List<String> _angleArrows = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'];
@@ -210,44 +206,70 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         body: Column(
           children: [
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.only(bottom: 18),
-                children: [
-                  _BannerHeader(
-                    draft: _draft,
-                    armed: _armed,
-                    onBack: _cancel,
-                    onAvatar: () => _imageMenu(ProfileImage.avatar),
-                    onBanner: () => _imageMenu(ProfileImage.banner),
-                  ),
-                  const SizedBox(height: 22),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
+              child: CustomScrollView(
+                slivers: [
+                  ProfileBannerHero(
+                    profile: _draft,
+                    onTap: () => _imageMenu(ProfileImage.banner),
+                    bar: Row(
                       children: [
-                        _Field(
-                          label: context.l.profileNickname,
-                          controller: _name,
-                          hint: context.l.profileNicknameHint,
-                          limit: kNickMax,
+                        // Armed, it's a red bin: the next tap drops the edit.
+                        GlassIconButton(
+                          icon: _armed
+                              ? Bi.trashBinMinimalisticBold
+                              : Bi.altArrowLeft,
+                          color: _armed ? t.danger : null,
+                          onTap: _cancel,
                         ),
-                        const SizedBox(height: 16),
-                        _Field(
-                          label: context.l.profileAbout,
-                          controller: _bio,
-                          hint: context.l.profileAboutHint,
-                          limit: kBioMax,
-                          lines: 4,
-                        ),
-                        const SizedBox(height: 16),
-                        _Field(
-                          label: context.l.profileStatus,
-                          controller: _status,
-                          hint: context.l.profileStatusHint,
-                          limit: kStatusMax,
-                          italic: true,
+                        const Spacer(),
+                        GlassIconButton(
+                          icon: Bi.gallery,
+                          onTap: () => _imageMenu(ProfileImage.avatar),
                         ),
                       ],
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+                    sliver: SliverToBoxAdapter(
+                      child: Column(
+                        children: [
+                          // The page's own head, with what's typed so far.
+                          ListenableBuilder(
+                            listenable: Listenable.merge([_name, _status]),
+                            builder: (_, _) => ProfileWho(
+                              profile: _draft.copyWith(
+                                name: _name.text,
+                                status: _status.text,
+                              ),
+                              onAvatar: () => _imageMenu(ProfileImage.avatar),
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          _Field(
+                            label: context.l.profileNickname,
+                            controller: _name,
+                            hint: context.l.profileNicknameHint,
+                            limit: kNickMax,
+                          ),
+                          const SizedBox(height: 16),
+                          _Field(
+                            label: context.l.profileAbout,
+                            controller: _bio,
+                            hint: context.l.profileAboutHint,
+                            limit: kBioMax,
+                            lines: 4,
+                          ),
+                          const SizedBox(height: 16),
+                          _Field(
+                            label: context.l.profileStatus,
+                            controller: _status,
+                            hint: context.l.profileStatusHint,
+                            limit: kStatusMax,
+                            italic: true,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -272,116 +294,6 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Предпросмотр шапки профиля: полоса обложки, поверх неё кнопки, аватар
-/// свисает с нижней кромки ровно наполовину — порт `_Banner` со страницы, по
-/// её же меркам ([kProfileBannerStrip], [kProfileAvatarSize]).
-///
-/// Обе картинки тут же и меняются: тап по полосе открывает шторку на обложке,
-/// тап по аватару — на аватаре. Отдельной строке кнопок над предпросмотром
-/// места не осталось, поэтому «назад» и «галерея» переехали на саму полосу и
-/// стали стеклянными: на чужом снимке сплошной кружок читается хуже.
-class _BannerHeader extends StatelessWidget {
-  const _BannerHeader({
-    required this.draft,
-    required this.armed,
-    required this.onBack,
-    required this.onAvatar,
-    required this.onBanner,
-  });
-
-  final UserProfile draft;
-
-  /// Стрелка «назад» взведена — показываем корзину.
-  final bool armed;
-
-  final VoidCallback onBack;
-  final VoidCallback onAvatar;
-  final VoidCallback onBanner;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final top = MediaQuery.paddingOf(context).top;
-    final height = kProfileBannerStrip + top;
-
-    return SizedBox(
-      height: height + kProfileAvatarSize / 2,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: height,
-            child: GestureDetector(
-              onTap: onBanner,
-              child: PullStretch(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.vertical(
-                    bottom: Radius.circular(t.radius * 1.5),
-                  ),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      ProfileBannerFill(profile: draft),
-                      // Та же тень под кнопки и часы, что на странице: на светлом
-                      // снимке белые иконки без неё пропадают.
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.black.withValues(alpha: 0.45),
-                              Colors.black.withValues(alpha: 0),
-                            ],
-                            stops: const [0, 0.45],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 16,
-            right: 16,
-            top: top + 10,
-            child: Row(
-              children: [
-                // Взведённая — красная корзина: без модалки видно, что
-                // следующий тап бросит правку.
-                GlassIconButton(
-                  icon: armed ? Bi.trashBinMinimalisticBold : Bi.altArrowLeft,
-                  color: armed ? t.danger : null,
-                  onTap: onBack,
-                ),
-                const Spacer(),
-                // Та же кнопка, что в макете: картинка профиля.
-                GlassIconButton(icon: Bi.gallery, onTap: onAvatar),
-              ],
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            top: height - kProfileAvatarSize / 2,
-            child: Center(
-              child: GestureDetector(
-                onTap: onAvatar,
-                child: ProfileAvatar(profile: draft, size: kProfileAvatarSize),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -575,7 +487,7 @@ class _ImageSheetState extends State<_ImageSheet> {
           const SizedBox(height: 10),
           BloomButton(
             label: context.l.commonUpload,
-            icon: Bi.uploadMinimalistic,
+            icon: Bi.import,
             tone: ButtonTone.accent,
             height: 52,
             onTap: () => _run(widget.onPick),

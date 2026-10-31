@@ -28,7 +28,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
-import '../../../core/store/history_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
@@ -403,7 +402,7 @@ class _SystemTiles extends ConsumerWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
         children: [
-          // Иконки — те же, что в десктопном сайдбаре: нота, сердце, часы.
+          // Иконки — те же, что в десктопном сайдбаре: нота, сердце.
           // Заливка — чистый цвет раздела, без смешивания с поверхностью: так
           // плитки читаются издалека, а белый значок на них не теряется.
           _SystemTile(
@@ -420,16 +419,6 @@ class _SystemTiles extends ConsumerWidget {
             icon: Bi.heartBold,
             color: t.sysFavIco,
             onTap: () => context.go('/library/list/fav'),
-          ),
-          const SizedBox(width: 12),
-          _SystemTile(
-            title: context.l.commonHistory,
-            // С 3.0 лимита в 200 нет — счётчик снова что-то значит (на ПК
-            // подпись «Истории» в сайдбаре вернули по той же причине).
-            count: ref.watch(historyProvider).length,
-            icon: Bi.clockCircle,
-            color: t.sysHistIco,
-            onTap: () => context.go('/library/list/history'),
           ),
         ],
       ),

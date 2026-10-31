@@ -1,13 +1,10 @@
-/// Страница профиля — порт десктопной `ProfileCard` из `AccountPage`.
-///
-/// Раскладка мобильная (из присланного макета): обложка полосой сверху, аватар
-/// по центру на её нижней кромке, под ним ник и широкий бокс «о себе / статус».
-/// Десктопной строки «Слушает сейчас» здесь нет — он попросил её убрать.
-///
-/// Десктопные вкладки «Статистика» и «Достижения» здесь не вкладки, а две
-/// кнопки: содержимое открывается нижними шторками (`stats_sheet.dart` и
-/// `achievements_sheet.dart`).
+/// The profile: the banner across the top, under it the avatar with the
+/// level's shield and the nick, status, bio and since when; four small
+/// numbers; rows into the stats, history and achievements sheets; the
+/// activity ring.
 library;
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
@@ -16,38 +13,41 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/router.dart';
+import '../../../app/theme/bloom_theme.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
+import '../../../core/store/history_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
-import '../../../shared/ui/glass.dart';
-import '../../../shared/ui/pull_stretch.dart';
-import '../../wrapped/ui/wrapped_entries.dart';
+import '../../../shared/ui/pressable.dart';
+import '../../../shared/ui/sticky_hero.dart';
+import '../../wrapped/periods.dart';
+import '../../wrapped/ui/wrapped_sheet.dart';
 import '../../wrapped/wrapped_store.dart';
 import '../achievements.dart';
 import '../profile_store.dart';
 import '../stats.dart';
 import 'achievements_sheet.dart';
+import 'activity_ring.dart';
+import 'history_sheet.dart';
 import 'level_sheet.dart';
 import 'profile_avatar.dart';
 import 'profile_banner.dart';
-import 'profile_entry_card.dart';
 import 'stats_sheet.dart';
 
-/// Сторона аватара на странице — десктопные 120 из `.acc-ava`.
-const double kProfileAvatarSize = 120;
+/// The avatar beside the nick.
+const double kProfileAvatarSize = 84;
 
-/// Высота полосы обложки без системной строки. Знает не только страница:
-/// предпросмотр в редакторе строит шапку по тем же меркам, и по ним же
-/// кроппер режет выбранную картинку.
+/// The banner's height under the status bar. The editor's preview and the
+/// cropper's frame go by it too.
 const double kProfileBannerStrip = 168;
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key, this.flight});
 
-  /// Метка перелёта аватара с кнопки в шапке главной.
+  /// The avatar flies here from the button in home's header.
   final CoverFlight? flight;
 
   @override
@@ -56,9 +56,9 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen>
     with WidgetsBindingObserver {
-  /// Метку держим у себя: `extra` живёт на ВСЮ ссылку, и стоит уйти отсюда в
-  /// редактор, как страница профиля перестраивается уже без неё — аватару
-  /// стало бы некуда лететь на обратном пути.
+  /// Kept here: `extra` lives for the whole location, and once the editor is
+  /// opened from here the page rebuilds without it — the avatar would have
+  /// nowhere to fly back to.
   late CoverFlight? _flight = widget.flight;
 
   @override
@@ -75,9 +75,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Приложение может провисеть открытым до 1-го числа: сверяем дату по
-    // возвращению из фона, иначе входы в «Итоги» дожили бы до перезапуска со
-    // вчерашним периодом. На ПК ту же роль играет слушатель `focus` у окна.
+    // The app can stay open into the 1st: the date is checked on coming back,
+    // or the ways into the reviews would keep yesterday's period.
     if (state == AppLifecycleState.resumed) {
       ref.read(wrappedDayProvider.notifier).refresh();
     }
@@ -91,57 +90,78 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context).textTheme;
+    final t = context.bloom;
     final profile = ref.watch(profileProvider);
-    final flight = _flight;
+    final flying = _flight != null;
+    final bio = profile.bio.trim();
 
-    return ListView(
-      // Только снизу: сверху баннер уходит под статус-бар, а внизу над
-      // содержимым плавают миниплеер и таб-бар.
-      padding: EdgeInsets.only(bottom: bottomBarsInset(context)),
-      children: [
-        _Banner(profile: profile, flight: flight),
-        HeroContent(
-          flying: flight != null,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+    return CustomScrollView(
+      slivers: [
+        ProfileBannerHero(
+          profile: profile,
+          flying: flying,
+          bar: Row(
+            children: [
+              GlassIconButton(
+                icon: Bi.arrowLeft,
+                onTap: () => context.go('/home'),
+              ),
+              const Spacer(),
+              GlassIconButton(
+                icon: Bi.pen,
+                onTap: () => context.go('$kProfileLocation/edit'),
+              ),
+            ],
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 18, 16, 12),
+          sliver: SliverToBoxAdapter(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Уровень перед ником; тап по нику копирует его — то же, что
-                // клик по `.acc-name`.
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    LevelBadge(onTap: () => showLevelSheet(context)),
-                    const SizedBox(width: 10),
-                    Flexible(
-                      child: GestureDetector(
-                        onTap: () =>
-                            _copyNick(context, profile.displayName(context.l)),
-                        child: Text(
-                          profile.displayName(context.l),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.headlineSmall?.copyWith(fontSize: 26),
-                        ),
-                      ),
-                    ),
-                  ],
+                ProfileWho(
+                  profile: profile,
+                  flightTag: _flight?.tag,
+                  flying: flying,
+                  onNick: () =>
+                      _copyNick(context, profile.displayName(context.l)),
                 ),
-                const SizedBox(height: 14),
-                _AboutBox(profile: profile),
-                if (profile.hasAbout) const SizedBox(height: 12),
-                const _Since(),
-                const SizedBox(height: 16),
-                // Статистика и достижения живут в шторках, а не вкладками под
-                // карточкой: на странице от них остаются две кнопки, и профиль
-                // не растёт вниз на три экрана.
-                const _SheetButtons(),
+                HeroContent(
+                  flying: flying,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (bio.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          bio,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: bloomText(
+                            size: 15,
+                            weight: 500,
+                            color: t.text2,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 14),
+                      const _Since(),
+                      const SizedBox(height: 24),
+                      const _Numbers(),
+                      const SizedBox(height: 18),
+                      const _Entries(),
+                      const SizedBox(height: 26),
+                      const Center(child: ActivityRing()),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
         ),
+        const SliverBottomBarsInset(),
       ],
     );
   }
@@ -152,274 +172,499 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   }
 }
 
-/// Входы в шторки — две широкие карточки одного вида: статистика и достижения.
-///
-/// Над ними в декабре встаёт плашка «Итоги года», а сама карточка статистики
-/// раз в месяц ПОДМЕНЯЕТСЯ входом в итоги месяца — ровно до первого просмотра
-/// (см. `wrapped_entries.dart`). А всю первую неделю месяца уже вернувшаяся
-/// карточка чередует своё число с надписью «Итоги месяца» (`monthHint`).
-class _SheetButtons extends ConsumerWidget {
-  const _SheetButtons();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final wrapped = ref.watch(wrappedEntriesProvider);
-    final year = wrapped.year;
-    final month = wrapped.month;
-
-    return Column(
-      children: [
-        if (year != null) ...[
-          WrappedYearBanner(data: year, unseen: wrapped.yearUnseen),
-          const SizedBox(height: 10),
-        ],
-        if (month != null && wrapped.monthUnseen)
-          WrappedMonthCard(data: month)
-        else
-          const _StatsCard(),
-        const SizedBox(height: 10),
-        const _AchCard(),
-      ],
-    );
-  }
-}
-
-/// Статистика: слева сколько треков прослушано, справа сколько всего слушали,
-/// у края — коллаж из обложек топа.
-class _StatsCard extends ConsumerWidget {
-  const _StatsCard();
-
-  /// Время в часах с десятой долей — как на макете («11,9ч»). Меньше часа
-  /// показываем минутами: «0,3ч» ни о чём не говорит.
-  String _time(BuildContext context, int seconds) {
-    if (seconds < 3600) return fmtDurLong(context, seconds);
-    final hours = NumberFormat.decimalPatternDigits(
-      locale: Localizations.localeOf(context).toString(),
-      decimalDigits: 1,
-    ).format(seconds / 3600);
-    return context.l.statsHoursValue(hours);
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
-    final s = ref.watch(profileStatsProvider);
-    final hint = ref.watch(wrappedEntriesProvider.select((e) => e.monthHint));
-
-    return ProfileEntryCard(
-      value: '${s.totalPlays}',
-      icon: Bi.musicNote,
-      side: _time(context, s.listenSec),
-      // Первую неделю месяца число чередуется с «Итогами месяца». Цель нажатия
-      // при этом не меняется — сами итоги открывает кнопка внизу шторки.
-      alt: hint ? context.l.wrMonth : null,
-      // Обложки самых слушаемых треков — тот же коллаж, что у списков без
-      // своей картинки.
-      tile: Cover(
-        url: null,
-        covers: [for (final row in s.topTracks) row.track.cover],
-        size: 56,
-        radius: t.radius * 0.6,
-      ),
-      onTap: () => showStatsSheet(context),
-    );
-  }
-}
-
-/// Достижения: слева сколько уровней взято, справа сколько их всего.
-class _AchCard extends ConsumerWidget {
-  const _AchCard();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
-    final list = ref.watch(achievementsProvider);
-    final done = list.fold(0, (n, a) => n + a.tierReached);
-    final total = list.length * kTierOrder.length;
-    // Плитка горит золотом, только когда взято хоть что-то, — как медаль на
-    // карточке достижения.
-    final medal = done > 0 ? tierColor(AchTier.gold) : t.muted;
-
-    return ProfileEntryCard(
-      value: '$done',
-      icon: Bi.medalStar,
-      side: '$total',
-      tile: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          color: medal.withValues(alpha: done > 0 ? 0.16 : 0.06),
-          borderRadius: BorderRadius.circular(t.radius * 0.6),
-        ),
-        child: BloomIcon(Bi.medalStarBold, size: 28, color: medal),
-      ),
-      onTap: () => showAchievementsSheet(context),
-    );
-  }
-}
-
-/// Обложка полосой: своя картинка либо цвет/градиент, поверх — кнопки, на
-/// нижней кромке — аватар.
-class _Banner extends StatelessWidget {
-  const _Banner({required this.profile, required this.flight});
+/// The banner across the top, the buttons on it staying put while the page
+/// scrolls; pulled past the top it stretches. The editor shows the same one.
+class ProfileBannerHero extends StatelessWidget {
+  const ProfileBannerHero({
+    super.key,
+    required this.profile,
+    required this.bar,
+    this.flying = false,
+    this.onTap,
+  });
 
   final UserProfile profile;
-  final CoverFlight? flight;
+  final Widget bar;
+  final bool flying;
+
+  /// The editor: a tap on the banner changes it.
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final fill = Stack(
+      fit: StackFit.expand,
+      children: [
+        ProfileBannerFill(profile: profile),
+        // The buttons and the status bar's clock need a shade on a light
+        // picture, whatever the picture is.
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.45),
+                Colors.black.withValues(alpha: 0),
+              ],
+              stops: const [0, 0.45],
+            ),
+          ),
+        ),
+      ],
+    );
+    return StickyHero(
+      height: kProfileBannerStrip + MediaQuery.paddingOf(context).top,
+      flying: flying,
+      background: onTap == null
+          ? fill
+          : GestureDetector(onTap: onTap, child: fill),
+      barHeight: kHeaderControl,
+      bar: bar,
+      body: const SizedBox.shrink(),
+    );
+  }
+}
+
+/// Who: the avatar, beside it the level's shield and the nick, under them
+/// the status after an opening quote mark. The editor passes its draft.
+class ProfileWho extends StatelessWidget {
+  const ProfileWho({
+    super.key,
+    required this.profile,
+    this.flightTag,
+    this.flying = false,
+    this.onAvatar,
+    this.onNick,
+  });
+
+  final UserProfile profile;
+  final Object? flightTag;
+  final bool flying;
+  final VoidCallback? onAvatar;
+
+  /// A tap on the nick: copies it on the page.
+  final VoidCallback? onNick;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final top = MediaQuery.paddingOf(context).top;
-    final height = kProfileBannerStrip + top;
+    final nick = profile.displayName(context.l);
+    final said = profile.status.trim();
+    final avatar = ProfileAvatar(
+      profile: profile,
+      size: kProfileAvatarSize,
+      flightTag: flightTag,
+    );
 
-    return SizedBox(
-      // Аватар свисает с кромки ровно наполовину.
-      height: height + kProfileAvatarSize / 2,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: height,
-            child: PullStretch(
-              child: ClipRRect(
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(t.radius * 1.5),
-                ),
-                child: Stack(
-                  fit: StackFit.expand,
+    return Row(
+      children: [
+        if (onAvatar == null)
+          avatar
+        else
+          Pressable(onTap: onAvatar, child: avatar),
+        const SizedBox(width: 14),
+        Expanded(
+          child: HeroContent(
+            flying: flying,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    ProfileBannerFill(profile: profile),
-                    // Кнопки и часы системной строки тонут на светлом снимке —
-                    // им нужна тень независимо от того, что за картинка.
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.45),
-                            Colors.black.withValues(alpha: 0),
-                          ],
-                          stops: const [0, 0.45],
+                    LevelBadge(size: 28, onTap: () => showLevelSheet(context)),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: GestureDetector(
+                        onTap: onNick,
+                        child: Text(
+                          nick,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: bloomText(
+                            size: 24,
+                            weight: 700,
+                            color: t.text,
+                            letterSpacing: -0.4,
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 16,
-            right: 16,
-            top: top + 10,
-            child: HeroContent(
-              flying: flight != null,
-              child: Row(
-                children: [
-                  GlassIconButton(
-                    icon: Bi.arrowLeft,
-                    onTap: () => context.go('/home'),
-                  ),
-                  const Spacer(),
-                  GlassIconButton(
-                    icon: Bi.pen,
-                    onTap: () => context.go('$kProfileLocation/edit'),
+                if (said.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      // The mark's ink hangs high in its box: brought down onto
+                      // the status's lowercase letters.
+                      Transform.translate(
+                        offset: const Offset(0, 5),
+                        child: Text(
+                          '“',
+                          style: bloomText(
+                            size: 26,
+                            weight: 700,
+                            color: t.muted,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          said,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: bloomText(
+                            size: 15,
+                            weight: 500,
+                            color: t.text2,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              ),
+              ],
             ),
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            top: height - kProfileAvatarSize / 2,
-            child: Center(
-              child: ProfileAvatar(
-                profile: profile,
-                size: kProfileAvatarSize,
-                flightTag: flight?.tag,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-/// «С нами с …» — когда Bloom впервые запустили на этом устройстве, как
-/// строка с календарём у ПК.
+/// "With us since …": when Bloom first ran on this device.
 class _Since extends ConsumerWidget {
   const _Since();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
-    final since = ref.watch(profileSinceProvider);
     final date = DateFormat.yMMMMd(
       Localizations.localeOf(context).toString(),
-    ).format(since);
+    ).format(ref.watch(profileSinceProvider));
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        BloomIcon(Bi.calendar, size: 15, color: t.muted),
+        BloomIcon(Bi.calendar, size: 16, color: t.muted),
         const SizedBox(width: 7),
         Text(
           context.l.profileSince(date),
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: t.muted),
+          style: bloomText(size: 13, weight: 500, color: t.muted),
         ),
       ],
     );
   }
 }
 
-/// Бокс «о себе / статус» — десктопный `.acc-bio-box`, но БЕЗ рамки: блок
-/// держится своей заливкой, как поля в редакторе.
-class _AboutBox extends StatelessWidget {
-  const _AboutBox({required this.profile});
+/// Four numbers, two by two, no plates.
+class _Numbers extends ConsumerWidget {
+  const _Numbers();
 
-  final UserProfile profile;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(profileStatsProvider);
+    final l = context.l;
+    final cells = [
+      _Num(Bi.musicNote, '${s.totalPlays}', l.profileSumPlays(s.totalPlays)),
+      _Num(Bi.clockCircle, fmtDurLong(context, s.listenSec), l.profileSumTime),
+      _Num(Bi.fire, '${s.streak}', l.profileSumStreak(s.streak)),
+      _Num(Bi.user, '${s.uniqueArtists}', l.profileSumArtists(s.uniqueArtists)),
+    ];
+    return Column(
+      children: [
+        for (var row = 0; row < 2; row++) ...[
+          if (row > 0) const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(child: cells[row * 2]),
+              const SizedBox(width: 10),
+              Expanded(child: cells[row * 2 + 1]),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// A number with its icon, what it counts under it.
+class _Num extends StatelessWidget {
+  const _Num(this.icon, this.value, this.label);
+
+  final BloomGlyph icon;
+  final String value;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final bio = profile.bio.trim();
-    final status = profile.status.trim();
-    // Нечего показать — бокса нет вовсе, как на десктопе. Правка живёт за
-    // карандашом, лезть в неё из этого блока незачем.
-    if (bio.isEmpty && status.isEmpty) return const SizedBox.shrink();
-
-    return GlassBox(
-      borderRadius: BorderRadius.circular(t.radius * 0.85),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            if (bio.isNotEmpty)
-              Text(
-                bio,
-                style: theme.bodyMedium?.copyWith(color: t.text2, height: 1.45),
-              ),
-            if (status.isNotEmpty) ...[
-              if (bio.isNotEmpty) const SizedBox(height: 4),
-              Text(
-                '"$status"',
-                style: theme.bodyMedium?.copyWith(
-                  color: t.muted,
-                  fontStyle: FontStyle.italic,
+            Flexible(
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: bloomText(
+                  size: 22,
+                  weight: 700,
+                  color: t.text,
+                  letterSpacing: -0.4,
                 ),
               ),
-            ],
+            ),
+            const SizedBox(width: 6),
+            BloomIcon(icon, size: 17, color: t.iconFgSb),
           ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: bloomText(size: 13, weight: 500, color: t.muted),
+        ),
+      ],
+    );
+  }
+}
+
+/// The ways into the sheets. The year's review (only Dec 21–31) goes first;
+/// from the 1st, until it's watched, the month's review stands in for the
+/// stats row; through the 7th the stats' value swaps with the review's name
+/// now and then (a tap still opens the stats: the review's button is in
+/// their foot).
+class _Entries extends ConsumerWidget {
+  const _Entries();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l;
+    final s = ref.watch(profileStatsProvider);
+    final wrapped = ref.watch(wrappedEntriesProvider);
+    final year = wrapped.year;
+    final month = wrapped.month;
+    final history = ref.watch(historyProvider.select((h) => h.length));
+    final ach = ref.watch(achievementsProvider);
+    final done = ach.fold(0, (n, a) => n + a.tierReached);
+
+    return Column(
+      children: [
+        if (year != null)
+          _Entry(
+            icon: Bi.stars,
+            label: l.wrYear,
+            fresh: wrapped.yearUnseen,
+            onTap: () =>
+                showWrappedSheet(context, period: PeriodKind.year, data: year),
+          ),
+        if (month != null && wrapped.monthUnseen)
+          _Entry(
+            icon: Bi.stars,
+            label: l.wrMonth,
+            fresh: true,
+            onTap: () => showWrappedSheet(
+              context,
+              period: PeriodKind.month,
+              data: month,
+            ),
+          )
+        else
+          _Entry(
+            icon: Bi.chart2,
+            label: l.profileEntryStats,
+            value: fmtDurLong(context, s.listenSec),
+            alt: wrapped.monthHint ? l.wrMonth : null,
+            onTap: () => showStatsSheet(context),
+          ),
+        _Entry(
+          icon: Bi.history,
+          label: l.commonHistory,
+          value: '$history',
+          onTap: () => showHistorySheet(context),
+        ),
+        _Entry(
+          icon: Bi.medalRibbonsStar,
+          label: l.profileAchievements,
+          value: '$done ${l.profileEntryOf(ach.length * kTierOrder.length)}',
+          onTap: () => showAchievementsSheet(context),
+        ),
+      ],
+    );
+  }
+}
+
+/// A way into a sheet: icon, name, a value and a chevron on the right; no
+/// plate.
+class _Entry extends StatelessWidget {
+  const _Entry({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.value = '',
+    this.alt,
+    this.fresh = false,
+  });
+
+  final BloomGlyph icon;
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  /// Given: the value swaps with this every 10 s.
+  final String? alt;
+
+  /// Not watched yet: "New" before the chevron.
+  final bool fresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final style = bloomText(size: 15, weight: 500, color: t.text2);
+    final alt = this.alt;
+    return Pressable(
+      scale: 0.98,
+      onTap: onTap,
+      child: SizedBox(
+        height: 54,
+        child: Row(
+          children: [
+            BloomIcon(icon, size: 22, color: t.iconFgSb),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: bloomText(size: 16, weight: 500, color: t.text),
+              ),
+            ),
+            const SizedBox(width: 10),
+            if (fresh) ...[const _NewPill(), const SizedBox(width: 8)],
+            if (alt == null)
+              Text(value, style: style)
+            else
+              _SwapValue(
+                first: Text(value, style: style),
+                second: Text(alt, style: style),
+              ),
+            const SizedBox(width: 6),
+            BloomIcon(Bi.altArrowRight, size: 16, color: t.muted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "New" on a way into a review not watched yet.
+class _NewPill extends StatelessWidget {
+  const _NewPill();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: t.text,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        context.l.wrNew.toUpperCase(),
+        style: bloomText(
+          size: 10,
+          weight: 700,
+          color: t.bg,
+          letterSpacing: 0.6,
+        ),
+      ),
+    );
+  }
+}
+
+/// A slot that every 10 s swaps [first] for [second] and back: the leaving
+/// one goes up and out, the coming one up from below. The first showing
+/// isn't animated.
+class _SwapValue extends StatefulWidget {
+  const _SwapValue({required this.first, required this.second});
+
+  final Widget first;
+  final Widget second;
+
+  @override
+  State<_SwapValue> createState() => _SwapValueState();
+}
+
+class _SwapValueState extends State<_SwapValue>
+    with SingleTickerProviderStateMixin {
+  static const Curve _curve = Cubic(0.22, 0.61, 0.36, 1);
+  static const double _height = 20;
+
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 800),
+    value: 1,
+  );
+  late final Timer _timer;
+  int _phase = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 10), (_) => _swap());
+  }
+
+  void _swap() {
+    setState(() => _phase ^= 1);
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _c.value = 1;
+    } else {
+      _c.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // As wide as the wider of the two, so the row doesn't jump.
+    return ClipRect(
+      child: SizedBox(
+        height: _height,
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (_, _) {
+            final p = _curve.transform(_c.value);
+            Widget layer(int i, Widget child) {
+              final incoming = _phase == i;
+              return Opacity(
+                opacity: incoming ? p : 1 - p,
+                child: FractionalTranslation(
+                  translation: Offset(0, incoming ? 1 - p : -p),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: child,
+                  ),
+                ),
+              );
+            }
+
+            return Stack(
+              alignment: AlignmentDirectional.centerEnd,
+              children: [layer(0, widget.first), layer(1, widget.second)],
+            );
+          },
         ),
       ),
     );

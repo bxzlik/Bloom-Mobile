@@ -92,6 +92,7 @@ Future<T?> showBloomSheetChild<T>({
   Widget? header,
   Widget? footer,
   double maxFraction = _kSheetMaxFraction,
+  bool scrolls = true,
   required Widget child,
 }) {
   return showBloomModal<T>(
@@ -101,6 +102,7 @@ Future<T?> showBloomSheetChild<T>({
       header: header,
       footer: footer,
       maxFraction: maxFraction,
+      scrolls: scrolls,
       child: child,
     ),
   );
@@ -286,6 +288,7 @@ class _SheetShell extends ConsumerWidget {
     required this.header,
     required this.footer,
     required this.maxFraction,
+    required this.scrolls,
     required this.child,
   });
 
@@ -298,6 +301,10 @@ class _SheetShell extends ConsumerWidget {
 
   /// Доля экрана, выше которой шторка не растёт.
   final double maxFraction;
+
+  /// False: the child is a list that scrolls itself and builds lazily, so the
+  /// sheet takes its full height instead of wrapping it.
+  final bool scrolls;
   final Widget child;
 
   @override
@@ -348,14 +355,17 @@ class _SheetShell extends ConsumerWidget {
                         // иначе в длинной шторке обложка уезжает вверх с ними.
                         const SheetHandle(),
                         ?header,
-                        Flexible(
-                          child: SingleChildScrollView(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [child, const SizedBox(height: 10)],
+                        if (scrolls)
+                          Flexible(
+                            child: SingleChildScrollView(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [child, const SizedBox(height: 10)],
+                              ),
                             ),
-                          ),
-                        ),
+                          )
+                        else
+                          Expanded(child: child),
                         ?footer,
                       ],
                     ),

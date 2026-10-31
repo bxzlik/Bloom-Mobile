@@ -181,14 +181,14 @@ class LevelSheet extends ConsumerWidget {
           xp: fmt(lv.days),
         ),
         _Source(
-          icon: Bi.medalStar,
+          icon: Bi.medalRibbonsStar,
           title: l.levelAch,
           sub: l.levelAchSub(kTierXp[0], kTierXp[1], kTierXp[2]),
           xp: fmt(lv.ach),
         ),
         if (lv.banked > 0)
           _Source(
-            icon: Bi.chart,
+            icon: Bi.chart2,
             title: l.levelBanked,
             sub: l.levelBankedSub,
             xp: fmt(lv.banked),

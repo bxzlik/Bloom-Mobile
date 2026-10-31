@@ -860,12 +860,6 @@ abstract class AppLocalizations {
   /// **'Nothing liked yet'**
   String get tlEmptyFav;
 
-  /// No description provided for @tlEmptyHistory.
-  ///
-  /// In en, this message translates to:
-  /// **'History is empty'**
-  String get tlEmptyHistory;
-
   /// desktop: historyLabel() group header in the History view
   ///
   /// In en, this message translates to:
@@ -2156,6 +2150,54 @@ abstract class AppLocalizations {
   /// **'With us since {date}'**
   String profileSince(String date);
 
+  /// desktop: profile.sum.plays
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{play} other{plays}}'**
+  String profileSumPlays(int count);
+
+  /// No description provided for @profileSumTime.
+  ///
+  /// In en, this message translates to:
+  /// **'listened'**
+  String get profileSumTime;
+
+  /// No description provided for @profileSumStreak.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{day in a row} other{days in a row}}'**
+  String profileSumStreak(int count);
+
+  /// No description provided for @profileSumArtists.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{artist} other{artists}}'**
+  String profileSumArtists(int count);
+
+  /// No description provided for @profileEntryStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Statistics'**
+  String get profileEntryStats;
+
+  /// No description provided for @profileEntryOf.
+  ///
+  /// In en, this message translates to:
+  /// **'of {total}'**
+  String profileEntryOf(int total);
+
+  /// No description provided for @profileActivityDays.
+  ///
+  /// In en, this message translates to:
+  /// **'last 30 days'**
+  String get profileActivityDays;
+
+  /// No description provided for @historyEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Tracks you listen to will show up here'**
+  String get historyEmpty;
+
   /// No description provided for @profileRemoveImage.
   ///
   /// In en, this message translates to:
@@ -2360,29 +2402,17 @@ abstract class AppLocalizations {
   /// **'Top tracks'**
   String get statsTopTracks;
 
-  /// No description provided for @statsActivity.
-  ///
-  /// In en, this message translates to:
-  /// **'Activity'**
-  String get statsActivity;
-
   /// profile: favorite artists strip
   ///
   /// In en, this message translates to:
-  /// **'Favorite artists'**
-  String get statsFavArtists;
+  /// **'Top artists'**
+  String get statsTopArtists;
 
   /// profile: stats overview grid
   ///
   /// In en, this message translates to:
   /// **'Overview'**
   String get statsOverview;
-
-  /// No description provided for @statsLocalFiles.
-  ///
-  /// In en, this message translates to:
-  /// **'Local files'**
-  String get statsLocalFiles;
 
   /// No description provided for @statsNoDataYet.
   ///
@@ -2522,42 +2552,6 @@ abstract class AppLocalizations {
   /// **'Statistics cleared'**
   String get statsCleared;
 
-  /// No description provided for @statsToday.
-  ///
-  /// In en, this message translates to:
-  /// **'Today'**
-  String get statsToday;
-
-  /// No description provided for @statsPeriod7d.
-  ///
-  /// In en, this message translates to:
-  /// **'7d'**
-  String get statsPeriod7d;
-
-  /// No description provided for @statsPeriod30d.
-  ///
-  /// In en, this message translates to:
-  /// **'30d'**
-  String get statsPeriod30d;
-
-  /// No description provided for @statsPeriodAll.
-  ///
-  /// In en, this message translates to:
-  /// **'All'**
-  String get statsPeriodAll;
-
-  /// No description provided for @statsLess.
-  ///
-  /// In en, this message translates to:
-  /// **'less'**
-  String get statsLess;
-
-  /// No description provided for @statsMore.
-  ///
-  /// In en, this message translates to:
-  /// **'more'**
-  String get statsMore;
-
   /// No description provided for @statsZeroMinutes.
   ///
   /// In en, this message translates to:
@@ -2575,12 +2569,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{minutes} min'**
   String statsMinutes(int minutes);
-
-  /// profile card: listening time in hours, one decimal
-  ///
-  /// In en, this message translates to:
-  /// **'{hours}h'**
-  String statsHoursValue(String hours);
 
   /// No description provided for @statsShareTitle.
   ///
