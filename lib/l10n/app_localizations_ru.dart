@@ -54,9 +54,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonPause => 'Пауза';
 
   @override
-  String get commonContinue => 'Продолжить';
-
-  @override
   String get commonShuffle => 'Перемешать';
 
   @override

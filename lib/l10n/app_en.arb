@@ -24,8 +24,6 @@
   "@commonPlay": { "description": "desktop: player.aria.play" },
   "commonPause": "Pause",
   "@commonPause": { "description": "wide button on a list page while that very list is playing" },
-  "commonContinue": "Continue",
-  "@commonContinue": { "description": "phone only: resumes the paused track from the home tab menu" },
   "commonShuffle": "Shuffle",
   "@commonShuffle": { "description": "desktop: player.aria.shuffle" },
   "commonFollow": "Follow",

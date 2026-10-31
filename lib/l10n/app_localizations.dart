@@ -188,12 +188,6 @@ abstract class AppLocalizations {
   /// **'Pause'**
   String get commonPause;
 
-  /// phone only: resumes the paused track from the home tab menu
-  ///
-  /// In en, this message translates to:
-  /// **'Continue'**
-  String get commonContinue;
-
   /// desktop: player.aria.shuffle
   ///
   /// In en, this message translates to:

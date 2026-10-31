@@ -33,7 +33,6 @@ import '../shared/ui/bloom_mark.dart';
 import '../shared/ui/bloom_toast.dart';
 import '../shared/ui/cover_hero.dart';
 import '../shared/ui/glass.dart';
-import 'nav_menu.dart';
 import 'theme/tokens.dart';
 
 class BloomShell extends ConsumerStatefulWidget {
@@ -46,10 +45,6 @@ class BloomShell extends ConsumerStatefulWidget {
 }
 
 class _BloomShellState extends ConsumerState<BloomShell> {
-  /// Панель таб-бара целиком. По её прямоугольнику меню таба находит, над чем
-  /// встать и где вырезать дырку в затемнении (см. [showNavMenu]).
-  final _panelKey = GlobalKey();
-
   @override
   void initState() {
     super.initState();
@@ -140,23 +135,6 @@ class _BloomShellState extends ConsumerState<BloomShell> {
     }
   }
 
-  /// Долгое нажатие по табу [tab], стоящему в баре [slot]-м из [count]:
-  /// меню встаёт над панелью бара, [radius] — её скругление, по нему вырезается
-  /// дырка в затемнении.
-  void _openMenu(NavTab tab, int slot, int count, BorderRadius radius) {
-    final box = _panelKey.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return;
-    showNavMenu(
-      host: context,
-      ref: ref,
-      tab: tab,
-      slot: slot,
-      count: count,
-      panel: box.localToGlobal(Offset.zero) & box.size,
-      panelRadius: radius,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
@@ -190,12 +168,10 @@ class _BloomShellState extends ConsumerState<BloomShell> {
               labels: ref.watch(settingsProvider).navLabels,
               homeLogo: ref.watch(settingsProvider).navHomeLogo,
               branch: shell.currentIndex,
-              panelKey: _panelKey,
               onTap: (tab) => shell.goBranch(
                 tab.index,
                 initialLocation: tab.index == shell.currentIndex,
               ),
-              onLongPress: _openMenu,
             ),
           ],
         ),
@@ -387,9 +363,7 @@ class _NavBar extends StatelessWidget {
     required this.labels,
     required this.homeLogo,
     required this.branch,
-    required this.panelKey,
     required this.onTap,
-    required this.onLongPress,
   });
 
   final NavBarStyle style;
@@ -410,15 +384,7 @@ class _NavBar extends StatelessWidget {
   /// is a setting.
   final int branch;
 
-  /// Ключ панели: по ней меню таба считает свою раскладку (см. [showNavMenu]).
-  final Key panelKey;
   final ValueChanged<NavTab> onTap;
-
-  /// Долгое нажатие по табу: сам таб, его место в баре и всего табов — по ним
-  /// меню находит, над чем встать. Последним уходит скругление панели: оно
-  /// зависит от стиля бара и известно только здесь.
-  final void Function(NavTab tab, int slot, int count, BorderRadius radius)
-  onLongPress;
 
   /// Неактивный таб — outline, активный — bold (правило Solar).
   static final _items = <NavTab, _NavSpec>{
@@ -461,8 +427,6 @@ class _NavBar extends StatelessWidget {
       NavBarStyle.dome => math.max(t.radius * 2, 28.0),
       _ => 0.0,
     };
-    // Форма панели целиком — она же форма дырки, которую меню таба вырезает в
-    // своём затемнении.
     final radius = switch (style) {
       NavBarStyle.bar || NavBarStyle.rounded || NavBarStyle.dome =>
         BorderRadius.vertical(top: Radius.circular(topRadius)),
@@ -496,11 +460,6 @@ class _NavBar extends StatelessWidget {
               textIconSize: floating ? _kNavFloatIconText : _kNavIconText,
               labels: labels,
               onTap: () => onTap(tabs[i]),
-              // У таба без меню долгого нажатия нет вовсе — иначе палец получал
-              // бы отклик там, где ничего не откроется.
-              onLongPress: navMenuHasContent(tabs[i])
-                  ? () => onLongPress(tabs[i], i, tabs.length, radius)
-                  : null,
             ),
           ),
       ],
@@ -539,7 +498,6 @@ class _NavBar extends StatelessWidget {
         // не как продолжение фона. В стекле она полупрозрачна, и сквозь бар
         // видно уходящий под него список.
         return GlassBox(
-          key: panelKey,
           // Не мельче 10 у «Скруглённого»: на нуле темы он ничем не
           // отличался бы от обычного.
           borderRadius: radius,
@@ -567,7 +525,6 @@ class _NavBar extends StatelessWidget {
             bottomEdgeInset(context),
           ),
           child: GlassBox(
-            key: panelKey,
             borderSide: BorderSide(color: t.ovlLine),
             borderRadius: radius,
             child: content,
@@ -773,7 +730,6 @@ class _NavItem extends StatefulWidget {
     required this.textIconSize,
     required this.labels,
     required this.onTap,
-    required this.onLongPress,
   });
 
   final _NavSpec spec;
@@ -791,9 +747,6 @@ class _NavItem extends StatefulWidget {
   /// Подписи под иконками, см. [NavLabels].
   final NavLabels labels;
   final VoidCallback onTap;
-
-  /// Меню таба. `null` — у этого таба меню нет.
-  final VoidCallback? onLongPress;
 
   @override
   State<_NavItem> createState() => _NavItemState();
@@ -853,15 +806,6 @@ class _NavItemState extends State<_NavItem> with TickerProviderStateMixin {
       // material-ripple на голом фоне читается как посторонний круг.
       child: GestureDetector(
         onTap: _tap,
-        // Вкладка при этом НЕ переключается: `onLongPress` и `onTap` у одного
-        // распознавателя взаимоисключающие. Отклик пальцу даёт сама система —
-        // короткая вибрация ровно в момент срабатывания жеста.
-        onLongPress: widget.onLongPress == null
-            ? null
-            : () {
-                Feedback.forLongPress(context);
-                widget.onLongPress!();
-              },
         behavior: HitTestBehavior.opaque,
         child: AnimatedBuilder(
           animation: Listenable.merge([_morph, _react]),

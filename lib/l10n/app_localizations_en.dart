@@ -54,9 +54,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonPause => 'Pause';
 
   @override
-  String get commonContinue => 'Continue';
-
-  @override
   String get commonShuffle => 'Shuffle';
 
   @override

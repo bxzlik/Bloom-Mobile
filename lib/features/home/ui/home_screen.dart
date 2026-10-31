@@ -12,7 +12,6 @@ import '../../../app/theme/tokens.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/cover_hero.dart';
-import '../../../shared/ui/glass.dart';
 import '../../profile/profile_store.dart';
 import '../../profile/ui/profile_avatar.dart';
 import '../../wave/ui/wave_card.dart';
@@ -52,40 +51,19 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
+/// The header's logo and avatar, one size for both.
+const double _kHeaderItem = 40;
+
 class _TopBar extends StatelessWidget {
   const _TopBar();
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       child: Row(
         children: [
-          // Пилюля профиля: знак bloom + имя. Знак без подложки — он и так
-          // читается на плёнке пилюли. Высота ровно как у круглых кнопок
-          // справа, иначе шапка выглядит съехавшей.
-          GlassBox(
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              height: kHeaderControl,
-              padding: const EdgeInsets.fromLTRB(15, 0, 19, 0),
-              alignment: Alignment.center,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  BloomMark(size: 22, color: t.text),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Bloom',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontSize: kHeaderTitleSize,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          BloomMark(size: _kHeaderItem, color: context.bloom.text),
           const Spacer(),
           const _ProfileButton(),
         ],
@@ -117,7 +95,7 @@ class _ProfileButtonState extends ConsumerState<_ProfileButton> {
       onTap: () => context.go(kProfileLocation, extra: CoverFlight(tag: _tag)),
       child: ProfileAvatar(
         profile: profile,
-        size: kHeaderControl,
+        size: _kHeaderItem,
         flightTag: _tag,
       ),
     );
