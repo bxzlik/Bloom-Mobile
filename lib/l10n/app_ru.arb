@@ -169,6 +169,7 @@
   "leRemovedFromFavorites": "Из любимых: {tracks}",
   "leDeleteArm": "Ещё раз — удалить {tracks}",
   "leDiscardArm": "Ещё раз — без сохранения",
+  "leDescHint": "Описание плейлиста...",
 
   "cpImported": "Импорт: {title} — {count}",
   "cpAllAlreadyIn": "Всё это уже в библиотеке",

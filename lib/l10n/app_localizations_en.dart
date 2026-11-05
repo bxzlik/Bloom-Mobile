@@ -554,6 +554,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get leDiscardArm => 'Tap again to discard';
 
   @override
+  String get leDescHint => 'Playlist description...';
+
+  @override
   String cpImported(String title, int count) {
     return 'Imported: $title — $count';
   }

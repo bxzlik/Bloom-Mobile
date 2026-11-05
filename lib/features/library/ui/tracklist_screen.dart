@@ -44,6 +44,7 @@ import '../local_tracks.dart';
 import '../refresh_playlist.dart';
 import 'convert_screen.dart';
 import 'dups_view.dart';
+import 'list_desc.dart';
 import 'list_edit.dart';
 import 'list_meta.dart';
 import 'merge_sheet.dart';
@@ -585,6 +586,18 @@ class _Hero extends ConsumerWidget {
             overflow: TextOverflow.ellipsis,
             style: theme.headlineSmall?.copyWith(fontSize: 30),
           ),
+          if (playlist?.description case final desc?)
+            if (desc.trim().isNotEmpty) ...[
+              const SizedBox(height: 4),
+              ListDescLine(
+                text: desc.trim(),
+                title: title,
+                // As the menu's header: no own cover, the first track's.
+                cover:
+                    playlist?.cover ??
+                    (tracks.isEmpty ? null : tracks.first.cover),
+              ),
+            ],
           const SizedBox(height: 4),
           // Count, offline tag and total time.
           ListMeta(

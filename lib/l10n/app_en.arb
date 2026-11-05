@@ -249,6 +249,7 @@
   "leDeleteArm": "Tap again: delete {tracks}",
   "@leDeleteArm": { "placeholders": { "tracks": { "type": "String" } } },
   "leDiscardArm": "Tap again to discard",
+  "leDescHint": "Playlist description...",
 
   "@_createPlaylist": {},
   "cpImported": "Imported: {title} — {count}",

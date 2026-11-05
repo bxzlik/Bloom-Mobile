@@ -1046,6 +1046,12 @@ abstract class AppLocalizations {
   /// **'Tap again to discard'**
   String get leDiscardArm;
 
+  /// No description provided for @leDescHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist description...'**
+  String get leDescHint;
+
   /// No description provided for @cpImported.
   ///
   /// In en, this message translates to:

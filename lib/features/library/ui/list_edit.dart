@@ -69,13 +69,16 @@ class _ListEditorState extends ConsumerState<ListEditor> {
 
   late final List<Track> _tracks = [...widget.tracks];
   late String _name = widget.title;
+  late final String _descWas = widget.playlist?.description ?? '';
+  late String _desc = _descWas;
   late String? _cover = widget.playlist?.cover;
   late List<PlSourceRef> _sources = widget.playlist?.sources ?? const [];
 
   final Set<String> _selected = {};
 
-  /// The title is being edited: the bottom bar becomes an input for now.
-  bool _renaming = false;
+  /// The title or the description is being edited: the bottom bar becomes an
+  /// input for now.
+  _HeadField? _field;
 
   /// ✕ on a draft asks with a second press: the app has no modals for this.
   bool _armedCancel = false;
@@ -122,6 +125,7 @@ class _ListEditorState extends ConsumerState<ListEditor> {
 
   bool get _dirty =>
       _name != widget.title ||
+      _desc != _descWas ||
       _cover != _playlist?.cover ||
       !listEquals(_ids, _idsWas) ||
       _sourcesChanged;
@@ -289,6 +293,7 @@ class _ListEditorState extends ConsumerState<ListEditor> {
         if (pl != null) {
           lib.setPlaylistTracks(pl.id, _ids);
           if (_name.trim().isNotEmpty) lib.renamePlaylist(pl.id, _name);
+          if (_desc != _descWas) lib.setPlaylistDescription(pl.id, _desc);
           if (_sourcesChanged) lib.setPlaylistSources(pl.id, _sources);
           if (_cover != pl.cover) {
             lib.setPlaylistCover(pl.id, _cover);
@@ -338,6 +343,7 @@ class _ListEditorState extends ConsumerState<ListEditor> {
               _EditHero(
                 listId: widget.listId,
                 name: _name,
+                desc: _desc,
                 cover: _cover,
                 tracks: _tracks,
                 // Only a playlist has its own cover and name.
@@ -351,7 +357,8 @@ class _ListEditorState extends ConsumerState<ListEditor> {
                 // Nothing to remove with no cover: a list with no picture has a
                 // track mosaic in the header anyway.
                 onCoverRemove: (_cover?.isEmpty ?? true) ? null : _removeCover,
-                onRename: () => setState(() => _renaming = true),
+                onRename: () => setState(() => _field = _HeadField.name),
+                onDesc: () => setState(() => _field = _HeadField.desc),
                 // Only a playlist has sources: built-in sections have nowhere
                 // to pull from.
                 sources: _playlist == null ? null : _sources.length,
@@ -396,14 +403,28 @@ class _ListEditorState extends ConsumerState<ListEditor> {
               left: 12,
               right: 12,
               bottom: 12 + bars,
-              child: _renaming
+              child: _field != null
                   ? _RenameBar(
-                      initial: _name,
-                      onCancel: () => setState(() => _renaming = false),
+                      // A key per field: otherwise the other field's text
+                      // stays in the input.
+                      key: ValueKey(_field),
+                      initial: _field == _HeadField.name ? _name : _desc,
+                      hint: _field == _HeadField.desc
+                          ? context.l.leDescHint
+                          : null,
+                      // The same caps as on the computer.
+                      maxLength: _field == _HeadField.desc ? 300 : 120,
+                      onCancel: () => setState(() => _field = null),
                       onDone: (value) => setState(() {
-                        final name = value.trim();
-                        if (name.isNotEmpty) _name = name;
-                        _renaming = false;
+                        final text = value.trim();
+                        // A name can't be blank; a description can, that's
+                        // how it's removed.
+                        if (_field == _HeadField.desc) {
+                          _desc = text;
+                        } else if (text.isNotEmpty) {
+                          _name = text;
+                        }
+                        _field = null;
                       }),
                     )
                   : _EditBar(
@@ -437,6 +458,7 @@ class _EditHero extends StatelessWidget {
   const _EditHero({
     required this.listId,
     required this.name,
+    required this.desc,
     required this.cover,
     required this.tracks,
     required this.editable,
@@ -448,12 +470,16 @@ class _EditHero extends StatelessWidget {
     required this.onCover,
     required this.onCoverRemove,
     required this.onRename,
+    required this.onDesc,
     required this.sources,
     required this.onSources,
   });
 
   final String listId;
   final String name;
+
+  /// Blank shows the field's hint in its place.
+  final String desc;
   final String? cover;
   final List<Track> tracks;
 
@@ -476,6 +502,7 @@ class _EditHero extends StatelessWidget {
   final VoidCallback? onCoverRemove;
 
   final VoidCallback onRename;
+  final VoidCallback onDesc;
 
   /// Sources tied. `null` for a built-in section, which has no sources button.
   final int? sources;
@@ -571,6 +598,33 @@ class _EditHero extends StatelessWidget {
               ],
             ],
           ),
+          // The description's line with its own pencil; blank, the hint
+          // stands there, so there's a place to tap.
+          if (editable) ...[
+            const SizedBox(height: 4),
+            Pressable(
+              scale: 0.98,
+              onTap: onDesc,
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      desc.isEmpty ? context.l.leDescHint : desc,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.bodyMedium?.copyWith(
+                        color: desc.isEmpty
+                            ? context.bloom.muted
+                            : context.bloom.text2.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  BloomIcon(Bi.pen, size: 15, color: context.bloom.text2),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 4),
           Text(context.l.tracksCount(tracks.length), style: theme.bodyMedium),
           if (sources case final count?) ...[
@@ -896,15 +950,23 @@ class _EditBar extends StatelessWidget {
   }
 }
 
-/// The same bar as an input: ✕ drops the title edit, ✓ accepts it.
+/// Which line of the head the bottom bar edits.
+enum _HeadField { name, desc }
+
+/// The same bar as an input: ✕ drops the edit, ✓ accepts it.
 class _RenameBar extends StatefulWidget {
   const _RenameBar({
+    super.key,
     required this.initial,
+    this.hint,
+    this.maxLength,
     required this.onCancel,
     required this.onDone,
   });
 
   final String initial;
+  final String? hint;
+  final int? maxLength;
   final VoidCallback onCancel;
   final ValueChanged<String> onDone;
 
@@ -937,6 +999,8 @@ class _RenameBarState extends State<_RenameBar> {
           Expanded(
             child: BloomField(
               controller: _controller,
+              hint: widget.hint,
+              maxLength: widget.maxLength,
               autofocus: true,
               action: TextInputAction.done,
               onSubmitted: widget.onDone,

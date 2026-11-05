@@ -562,6 +562,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get leDiscardArm => 'Ещё раз — без сохранения';
 
   @override
+  String get leDescHint => 'Описание плейлиста...';
+
+  @override
   String cpImported(String title, int count) {
     return 'Импорт: $title — $count';
   }

@@ -633,6 +633,10 @@ class LibraryController extends Notifier<LibraryState> {
     _updateList(id, {'name': name.trim()});
   }
 
+  /// Sets the description; blank removes it.
+  void setPlaylistDescription(String id, String description) =>
+      _updateList(id, {'description': description.trim()});
+
   /// Sets or removes (`null`) the cover.
   void setPlaylistCover(String id, String? cover) =>
       _updateList(id, {'cover': cover ?? ''});
