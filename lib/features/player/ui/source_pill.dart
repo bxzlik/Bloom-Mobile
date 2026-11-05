@@ -26,6 +26,7 @@ import '../../detail/detail_nav.dart';
 import '../../library/ui/list_hero.dart';
 import '../../profile/ui/history_sheet.dart';
 import '../play_source.dart';
+import 'player_ink.dart';
 import 'player_sheet.dart';
 import 'queue_sheet.dart';
 
@@ -119,7 +120,7 @@ class SourcePill extends ConsumerWidget {
       child: Pressable(
         // Tap is the queue, always: the pill replaced the queue button in the
         // tool row and can't be dead.
-        onTap: () => showQueueSheet(context),
+        onTap: () => showQueueSheet(PlayerSheetAnchor.of(context)),
         // Long press is the source. Feedback is a must: a long press has no
         // look of its own, and otherwise you can't tell it from a slow tap.
         onLongPress: opens

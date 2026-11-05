@@ -7,6 +7,7 @@
 /// player, with no second layer to fade in step.
 library;
 
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -267,10 +268,89 @@ class _Dim extends StatelessWidget {
                   alpha: kPlayerBgDim[i] * (1 - k) + kPlayerBgDimSharp[i] * k,
                 ),
             ],
-            stops: const [0, 0.45, 1],
+            stops: _kDimStops,
           ),
         ),
       ),
     );
+  }
+}
+
+/// Where the film's three values stand down the screen.
+const List<double> _kDimStops = [0, 0.45, 1];
+
+/// A value of a three-point vertical gradient at [y], 0–1 down the screen.
+double _alongStops(List<double> values, List<double> stops, double y) {
+  for (var i = 1; i < stops.length; i++) {
+    if (y <= stops[i]) {
+      final k = (y - stops[i - 1]) / (stops[i] - stops[i - 1]);
+      return values[i - 1] + (values[i] - values[i - 1]) * k;
+    }
+  }
+  return values.last;
+}
+
+/// A picture's lightness around [y]: the row there and its neighbours, since a
+/// control is taller than one row.
+double _rowsAt(List<double> rows, double y) {
+  final at = (y * rows.length).floor().clamp(0, rows.length - 1);
+  final from = (at - 1).clamp(0, rows.length - 1);
+  final to = (at + 1).clamp(0, rows.length - 1);
+  var sum = 0.0;
+  for (var i = from; i <= to; i++) {
+    sum += rows[i];
+  }
+  return sum / (to - from + 1);
+}
+
+/// How light the background really is at [y], 0–1 down the screen, from what
+/// [PlayerBackdrop] draws there. [AsyncData] of `null` is the theme's fill, and
+/// [AsyncLoading] means the cover is still being read.
+AsyncValue<double?> playerBgLightAt(
+  WidgetRef ref,
+  double y,
+  BloomTokens theme,
+) {
+  final fill = perceivedLightness(theme.bg);
+
+  AsyncValue<double?> picture(String? src, double Function(double) look) {
+    final rows = ref.watch(coverRowsProvider(src));
+    if (rows.isLoading) return const AsyncLoading();
+    final value = rows.value;
+    return AsyncData(look(value == null ? fill : _rowsAt(value, y)));
+  }
+
+  switch (ref.watch(playerBgProvider)) {
+    case PlayerBg.none:
+      return const AsyncData(null);
+    case PlayerBg.color:
+      final color = ref.watch(playerBgColorProvider(playerBgCover(ref)));
+      if (color.isLoading) return const AsyncLoading();
+      final colors = playerBgGradient(color.value ?? theme.bg, theme.bg);
+      return AsyncData(
+        _alongStops(
+          [for (final c in colors) perceivedLightness(c)],
+          kPlayerBgStops,
+          y,
+        ),
+      );
+    case PlayerBg.cover:
+      final fx = ref.watch(coverBgFxProvider);
+      if (fx.isOriginal) return picture(playerBgCover(ref), (l) => l);
+      final film = _alongStops(
+        fx.isBlur ? kPlayerBgDim : kPlayerBgDimSharp,
+        _kDimStops,
+        y,
+      );
+      return picture(playerBgCover(ref), (l) {
+        final seen = fx.isBlur
+            ? math.min(1.0, l * kPlayerBgBrightness + kPlayerBgLift)
+            : l;
+        return seen * (1 - film);
+      });
+    case PlayerBg.app:
+      final item = ref.watch(playerAppBgProvider);
+      if (item == null) return const AsyncData(null);
+      return picture(item.src, (l) => l * (1 - item.dim / 100));
   }
 }

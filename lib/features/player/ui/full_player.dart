@@ -3,7 +3,8 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:flutter/services.dart'
+    show Clipboard, ClipboardData, SystemUiOverlayStyle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/tokens.dart';
@@ -40,6 +41,7 @@ import '../speed_store.dart';
 import 'artist_avatars.dart';
 import 'play_button.dart';
 import 'player_backdrop.dart';
+import 'player_ink.dart';
 import 'player_sheet.dart';
 import 'queue_sheet.dart';
 import 'sleep_sheet.dart';
@@ -75,6 +77,10 @@ class FullPlayerBody extends ConsumerStatefulWidget {
 }
 
 class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
+  /// The last lightness known under the status bar, like the rows keep theirs
+  /// ([PlayerInkZone]).
+  double? _statusLight;
+
   @override
   void initState() {
     super.initState();
@@ -93,25 +99,36 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
     final lyricsMode = ref.watch(lyricsPrefsProvider.select((p) => p.mode));
     final swipes = ref.watch(swipeProvider).of(SwipeZone.player);
 
-    return Scaffold(
-      // The theme's fill stays under the player's background, which covers it
-      // fully, and in none mode it's what shows. `Scaffold` can't be clear:
-      // what the panel lies over would show through.
-      backgroundColor: t.bg,
-      // No pull down here: the panel catches it outside the content, or two
-      // gestures would fight for the finger.
-      //
-      // The horizontal gesture is caught across the screen but moves only the
-      // cover and captions: header and transport aren't about the track. The
-      // progress trap below overrides it, as a nearer detector should.
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Background per the player setting. Below the content and above the
-          // fill: block films (`ovlBg`) must show on it.
-          const PlayerBackdrop(),
-          _body(context, state, track, lyricsOpen, lyricsMode, swipes),
-        ],
+    final statusLight = playerBgLightAt(ref, 0.01, t);
+    if (!statusLight.isLoading) _statusLight = statusLight.value;
+
+    // Status bar icons follow what's under them, or they vanish on it.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: playerBarsStyle(t, _statusLight),
+      child: PlayerSheetAnchor(
+        anchor: context,
+        child: Scaffold(
+          // The theme's fill stays under the player's background, which covers
+          // it fully, and in none mode it's what shows. `Scaffold` can't be
+          // clear: what the panel lies over would show through.
+          backgroundColor: t.bg,
+          // No pull down here: the panel catches it outside the content, or two
+          // gestures would fight for the finger.
+          //
+          // The horizontal gesture is caught across the screen but moves only
+          // the cover and captions: header and transport aren't about the
+          // track. The progress trap below overrides it, as a nearer detector
+          // should.
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Background per the player setting. Below the content and above
+              // the fill: block films (`ovlBg`) must show on it.
+              const PlayerBackdrop(),
+              _body(context, state, track, lyricsOpen, lyricsMode, swipes),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -168,7 +185,10 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
                 ),
                 child: Column(
                   children: [
-                    _Header(track: track, state: state),
+                    PlayerInkZone(
+                      at: 0.07,
+                      child: _Header(track: track, state: state),
+                    ),
                     const SizedBox(height: 16),
                     // Cover centred in the free space, or text in its place in
                     // replace mode. In over mode the cover stays and the text
@@ -182,7 +202,11 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 260),
                         child: lyricsOpen && lyricsMode == LyricsMode.replace
-                            ? const _LyricsPane(key: ValueKey('lyrics'))
+                            ? const PlayerInkZone(
+                                key: ValueKey('lyrics'),
+                                at: 0.4,
+                                child: _LyricsPane(),
+                              )
                             : Center(
                                 key: const ValueKey('cover'),
                                 child: AspectRatio(
@@ -208,17 +232,20 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
                     // Captions respond half as strongly as the cover: they're
                     // narrower than the card and at its pace would fly off the
                     // edge first.
-                    FlickSlide(
-                      shift: shift,
-                      amplitude: 0.5,
-                      child: _TitleBlock(state: state),
+                    PlayerInkZone(
+                      at: 0.72,
+                      child: FlickSlide(
+                        shift: shift,
+                        amplitude: 0.5,
+                        child: _TitleBlock(state: state),
+                      ),
                     ),
                     const SizedBox(height: 8),
-                    const _Progress(),
+                    const PlayerInkZone(at: 0.79, child: _Progress()),
                     const SizedBox(height: 16),
-                    const _Transport(),
+                    const PlayerInkZone(at: 0.88, child: _Transport()),
                     const SizedBox(height: 12),
-                    const _Tools(),
+                    const PlayerInkZone(at: 0.96, child: _Tools()),
                   ],
                 ),
               ),
@@ -282,7 +309,8 @@ class _Header extends ConsumerWidget {
           background: fill,
           borderColor: line,
           glass: true,
-          onTap: () => showTrackActions(context, ref, track),
+          onTap: () =>
+              showTrackActions(PlayerSheetAnchor.of(context), ref, track),
         ),
       ],
     );
@@ -293,7 +321,7 @@ class _Header extends ConsumerWidget {
 /// than the cover's square, fitting many more lines, which is the point of this
 /// mode.
 class _LyricsPane extends StatelessWidget {
-  const _LyricsPane({super.key});
+  const _LyricsPane();
 
   @override
   Widget build(BuildContext context) => const LyricsView(
@@ -676,7 +704,7 @@ class _NextUpPill extends ConsumerWidget {
 
     final t = context.bloom;
     return Pressable(
-      onTap: () => showQueueSheet(context),
+      onTap: () => showQueueSheet(PlayerSheetAnchor.of(context)),
       child: Material(
         color: t.ovlBg,
         shape: StadiumBorder(side: BorderSide(color: t.ovlLine)),
@@ -800,7 +828,7 @@ class _SleepButton extends ConsumerWidget {
             ? sleepLabel(sleep.remaining)
             : null,
         active: sleep.active,
-        onTap: () => showSleepSheet(context),
+        onTap: () => showSleepSheet(PlayerSheetAnchor.of(context)),
       ),
     );
   }
@@ -824,7 +852,7 @@ class _PlayOnButton extends ConsumerWidget {
         icon: Bi.monitorSmartphone,
         size: 25,
         active: onPc,
-        onTap: () => _showPlayOn(context, ref, onPc),
+        onTap: () => _showPlayOn(PlayerSheetAnchor.of(context), ref, onPc),
       ),
     );
   }
@@ -855,7 +883,7 @@ class _PlayOnButton extends ConsumerWidget {
   }
 }
 
-class _FlatIcon extends StatelessWidget {
+class _FlatIcon extends ConsumerWidget {
   const _FlatIcon({
     required this.icon,
     this.onTap,
@@ -888,14 +916,17 @@ class _FlatIcon extends StatelessWidget {
   static const double _labelWidth = 34;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
+    // A picture or a gradient under a half-bright icon eats it, so over a
+    // background the difference from the filled buttons gets smaller.
+    final quiet = ref.watch(playerBgProvider).isNone ? 0.5 : 0.75;
     final color =
         this.color ??
         (active
             ? t.accent
             : dim
-            ? t.iconFg.withValues(alpha: 0.5)
+            ? t.iconFg.withValues(alpha: quiet)
             : t.iconFg);
     return Pressable(
       onTap: onTap,
@@ -964,7 +995,11 @@ class _Tools extends ConsumerWidget {
             _FlatIcon(
               icon: Bi.addCircle,
               size: 25,
-              onTap: () => showAddToPlaylistSheet(context, ref, track),
+              onTap: () => showAddToPlaylistSheet(
+                PlayerSheetAnchor.of(context),
+                ref,
+                track,
+              ),
             ),
             if (lyricsFound || lyricsOpen)
               _FlatIcon(
@@ -984,7 +1019,7 @@ class _Tools extends ConsumerWidget {
               size: 25,
               label: rate == 1 ? null : speedLabel(rate),
               active: rate != 1,
-              onTap: () => showSpeedSheet(context),
+              onTap: () => showSpeedSheet(PlayerSheetAnchor.of(context)),
             ),
             const _SleepButton(),
           ],

@@ -17,20 +17,19 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/theme/bloom_theme.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../features/customization/custom_store.dart';
-import '../../../features/settings/user_fonts.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/marquee_text.dart';
 import '../mini_style_store.dart';
 import '../play_error.dart';
 import '../player_controller.dart';
+import 'ink_theme.dart';
 import 'play_button.dart';
 import 'track_swap.dart';
 
@@ -108,13 +107,6 @@ Color _progressColor(WidgetRef ref, BloomTokens t) {
   return ref.watch(miniProgressTintProvider(miniCardCover(ref))).value ??
       t.accent;
 }
-
-/// A cover's picture or colour under the card is dark whatever the theme, so on
-/// a light theme its row takes the dark theme's ink.
-final _miniInkProvider = Provider<ThemeData>(
-  (ref) =>
-      buildBloomTheme(BloomThemes.dark, fontFamily: ref.watch(uiFontProvider)),
-);
 
 /// Artist colour under the title. `muted` counts from the theme's plate, but
 /// anything may lie under the card's caption: a cover tint, the cover as a
@@ -195,9 +187,11 @@ class MiniCardRow extends ConsumerWidget {
     final progress = live ? style.progress : const MiniProgress(line: false);
     final error = live ? state.error : null;
     final visible = MiniButton.values.where(style.hasButton).toList();
+    // A cover's picture or colour under the card is dark whatever the theme.
     final island = t.isLight && style.bg != MiniBg.theme;
-    Widget ink(Widget row) =>
-        island ? Theme(data: ref.watch(_miniInkProvider), child: row) : row;
+    Widget ink(Widget row) => island
+        ? Theme(data: ref.watch(inkThemeProvider(true)), child: row)
+        : row;
 
     return SizedBox(
       height: kMiniCardHeight,

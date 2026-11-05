@@ -109,6 +109,12 @@ class PlayerBgController extends Notifier<PlayerBg> {
   }
 }
 
+/// A picture's lightness row by row, by its link. Kept until restart like the
+/// other cover scans: reading means loading the image.
+final coverRowsProvider = FutureProvider.family<List<double>?, String?>(
+  (ref, cover) => extractCoverRows(cover),
+);
+
 /// Player background colour in colour mode, the gradient's top. The key is the
 /// cover link, not the track: the player may show a custom picture, and the
 /// colour must come from what's visible. `null`: no cover or unreadable, so no

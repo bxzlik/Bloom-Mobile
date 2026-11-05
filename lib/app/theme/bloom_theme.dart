@@ -8,9 +8,22 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 
 import 'fonts.dart';
 import 'tokens.dart';
+
+/// System bars for this surface, or white status icons vanish on light. iOS
+/// reads the bar's brightness and Android the icons', so they're opposite.
+SystemUiOverlayStyle systemBarsStyle(BloomTokens t) => SystemUiOverlayStyle(
+  statusBarColor: Colors.transparent,
+  statusBarBrightness: t.isLight ? Brightness.light : Brightness.dark,
+  statusBarIconBrightness: t.isLight ? Brightness.dark : Brightness.light,
+  systemNavigationBarColor: t.bg,
+  systemNavigationBarIconBrightness: t.isLight
+      ? Brightness.dark
+      : Brightness.light,
+);
 
 TextStyle bloomText({
   required double size,

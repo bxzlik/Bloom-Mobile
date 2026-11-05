@@ -17,7 +17,7 @@ Color _mix(Color a, Color b, double t) => Color.from(
 );
 
 /// Perceived lightness, 0..1.
-double _lum(Color c) => 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
+double perceivedLightness(Color c) => 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
 
 /// Corner radius for the whole app. One number, with no setting.
 const double kBloomRadius = 14;
@@ -129,11 +129,11 @@ class BloomTokens extends ThemeExtension<BloomTokens> {
     double wb = 0.06,
     double wb2 = 0.13,
   }) {
-    final light = _lum(blockColor) > 0.6;
+    final light = perceivedLightness(blockColor) > 0.6;
     // Film: white on dark themes, black on light, or white on white vanishes.
     final ovl = light ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
     final text = light ? const Color(0xFF111111) : const Color(0xFFFFFFFF);
-    final accentText = _lum(accent) > 0.6
+    final accentText = perceivedLightness(accent) > 0.6
         ? const Color(0xFF000000)
         : const Color(0xFFFFFFFF);
     final border = _mix(blockColor, ovl, 0.12);

@@ -5,6 +5,7 @@
 library;
 
 import 'dart:async';
+import 'dart:typed_data' show Uint8List;
 import 'dart:ui' as ui;
 
 import 'package:flutter/painting.dart';
@@ -35,21 +36,54 @@ final coverHslProvider = FutureProvider.family<CoverHsl?, String?>(
   (ref, cover) => extractCoverHsl(cover),
 );
 
-/// `null` means no cover, or the picture didn't load.
-Future<CoverHsl?> extractCoverHsl(String? cover) async {
+/// A picture shrunk to 32×32, as RGBA bytes: a tone is all I read from it, and
+/// shrinking is faster and averages out noise. `null` means no picture, or it
+/// didn't load.
+Future<Uint8List?> _tinyPixels(String? cover) async {
   final provider = coverImage(cover);
   if (provider == null) return null;
-  // 32×32: the dominant is all that's needed, and shrinking is faster and
-  // averages out noise.
   final image = await _load(
     ResizeImage(provider, width: 32, height: 32, allowUpscaling: true),
   );
   if (image == null) return null;
   try {
     final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
-    if (data == null) return null;
-    final bytes = data.buffer.asUint8List();
+    return data?.buffer.asUint8List();
+  } catch (_) {
+    return null;
+  } finally {
+    image.dispose();
+  }
+}
 
+/// A picture's perceived lightness row by row, top to bottom, 0–1: what's under
+/// a row of buttons differs from what's under the header. `null` means no
+/// picture, or it didn't load.
+Future<List<double>?> extractCoverRows(String? cover) async {
+  final bytes = await _tinyPixels(cover);
+  if (bytes == null || bytes.length < 4) return null;
+  return rowLightness(bytes, width: 32);
+}
+
+/// Mean perceived lightness of each row of RGBA bytes, 0–1.
+List<double> rowLightness(Uint8List rgba, {required int width}) {
+  final rows = <double>[];
+  final stride = width * 4;
+  for (var start = 0; start + stride <= rgba.length; start += stride) {
+    var sum = 0.0;
+    for (var i = start; i < start + stride; i += 4) {
+      sum += 0.299 * rgba[i] + 0.587 * rgba[i + 1] + 0.114 * rgba[i + 2];
+    }
+    rows.add(sum / width / 255);
+  }
+  return rows;
+}
+
+/// `null` means no cover, or the picture didn't load.
+Future<CoverHsl?> extractCoverHsl(String? cover) async {
+  final bytes = await _tinyPixels(cover);
+  if (bytes == null) return null;
+  try {
     var bestH = 0.0;
     var bestS = 0.0;
     var bestL = 0.0;
@@ -87,8 +121,6 @@ Future<CoverHsl?> extractCoverHsl(String? cover) async {
     return CoverHsl(bestH, bestS, bestL);
   } catch (_) {
     return null;
-  } finally {
-    image.dispose();
   }
 }
 

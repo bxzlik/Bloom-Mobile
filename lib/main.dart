@@ -254,19 +254,6 @@ class BloomApp extends ConsumerWidget {
     // (see `pageBackground`). The full player and sheets over it stay solid:
     // the background isn't wanted in the player.
     final bgOn = ref.watch(backgroundOnProvider);
-    // System bars follow the theme, or white status icons vanish on light.
-    SystemChrome.setSystemUIOverlayStyle(
-      SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: tokens.isLight
-            ? Brightness.dark
-            : Brightness.light,
-        systemNavigationBarColor: tokens.bg,
-        systemNavigationBarIconBrightness: tokens.isLight
-            ? Brightness.dark
-            : Brightness.light,
-      ),
-    );
 
     return MaterialApp.router(
       title: 'Bloom',
@@ -286,10 +273,17 @@ class BloomApp extends ConsumerWidget {
       // The background goes under the navigator: one for the whole app, neither
       // repainted per transition nor moving with a page. Toasts go over it, so
       // no route covers them.
-      builder: (_, child) => Welcome(
-        show: firstRun,
-        child: ToastHost(
-          child: AppBackground(child: child ?? const SizedBox()),
+      //
+      // System bars follow the theme through a region rather than a one-off
+      // call: the open player sets its own over this one, and with nothing
+      // under it the bars would keep the player's look once it folds.
+      builder: (_, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: systemBarsStyle(tokens),
+        child: Welcome(
+          show: firstRun,
+          child: ToastHost(
+            child: AppBackground(child: child ?? const SizedBox()),
+          ),
         ),
       ),
       routerConfig: bloomRouter,
