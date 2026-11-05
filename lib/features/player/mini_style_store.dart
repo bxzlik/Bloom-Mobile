@@ -1,6 +1,6 @@
 /// Mini player look: card background, progress indicators, cover shape and
-/// corner rounding, plus buttons ([MiniButton]) and neighbours
-/// ([MiniStyle.neighbors]).
+/// corner rounding, plus buttons ([MiniButton]), neighbours
+/// ([MiniStyle.neighbors]) and folding into the tab bar ([MiniStyle.fold]).
 ///
 /// The card lies in plain view above the tab bar, so rounding has four steps
 /// rather than two.
@@ -90,6 +90,7 @@ class MiniStyle {
     this.radius = MiniRadius.rounded,
     this.buttons = kDefaultMiniButtons,
     this.neighbors = false,
+    this.fold = true,
   });
 
   final MiniBg bg;
@@ -104,6 +105,10 @@ class MiniStyle {
   /// Neighbours: the card narrows, the previous and next tracks' cards peek out
   /// at its edges, and all three follow the finger as a carousel.
   final bool neighbors;
+
+  /// Scrolling down folds the card into the tab bar: one row of the open tab,
+  /// the card and search.
+  final bool fold;
 
   bool has(MiniProgressKind kind) => switch (kind) {
     MiniProgressKind.line => progress.line,
@@ -128,6 +133,7 @@ class MiniStyle {
     MiniRadius? radius,
     Set<MiniButton>? buttons,
     bool? neighbors,
+    bool? fold,
   }) => MiniStyle(
     bg: bg ?? this.bg,
     progress: progress ?? this.progress,
@@ -136,6 +142,7 @@ class MiniStyle {
     radius: radius ?? this.radius,
     buttons: buttons ?? this.buttons,
     neighbors: neighbors ?? this.neighbors,
+    fold: fold ?? this.fold,
   );
 }
 
@@ -181,6 +188,8 @@ class MiniStyleController extends Notifier<MiniStyle> {
       // `==`, not a cast: the file could hold anything, and a card's look can't
       // crash a launch.
       neighbors: raw['neighbors'] == true,
+      // On unless turned off: no key is the default.
+      fold: raw['fold'] != false,
     );
   }
 
@@ -203,6 +212,8 @@ class MiniStyleController extends Notifier<MiniStyle> {
   void setProgressTint(bool on) => _set(state.copyWith(progressTint: on));
 
   void setNeighbors(bool on) => _set(state.copyWith(neighbors: on));
+
+  void setFold(bool on) => _set(state.copyWith(fold: on));
 
   void toggleButton(MiniButton button, bool on) {
     final buttons = {...state.buttons};
@@ -231,6 +242,7 @@ class MiniStyleController extends Notifier<MiniStyle> {
           if (next.buttons.contains(button)) button.name,
       ],
       'neighbors': next.neighbors,
+      'fold': next.fold,
     });
   }
 }

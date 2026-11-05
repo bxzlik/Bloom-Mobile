@@ -533,6 +533,8 @@
   "pvMiniNeighborsRow": "Соседние треки",
   "pvMiniNeighborsOff": "Скрыты",
   "pvMiniNeighborsOn": "По краям",
+  "pvMiniFold": "Прятать в нижний бар",
+  "pvMiniFoldSub": "Когда листаешь вниз, плеер сжимается в одну строку с вкладками",
 
   "lyricsLoading": "Загрузка текста…",
   "lyricsNotFound": "Текст не найден",

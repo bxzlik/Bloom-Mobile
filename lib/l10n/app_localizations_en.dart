@@ -1775,6 +1775,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pvMiniNeighborsOn => 'At the edges';
 
   @override
+  String get pvMiniFold => 'Tuck into the tab bar';
+
+  @override
+  String get pvMiniFoldSub =>
+      'Scrolling down folds the player into one row with the tabs';
+
+  @override
   String get lyricsLoading => 'Loading lyrics…';
 
   @override

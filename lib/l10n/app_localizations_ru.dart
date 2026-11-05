@@ -1815,6 +1815,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pvMiniNeighborsOn => 'По краям';
 
   @override
+  String get pvMiniFold => 'Прятать в нижний бар';
+
+  @override
+  String get pvMiniFoldSub =>
+      'Когда листаешь вниз, плеер сжимается в одну строку с вкладками';
+
+  @override
   String get lyricsLoading => 'Загрузка текста…';
 
   @override

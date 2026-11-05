@@ -745,6 +745,8 @@
   "pvMiniNeighborsRow": "Adjacent tracks",
   "pvMiniNeighborsOff": "Hidden",
   "pvMiniNeighborsOn": "At the edges",
+  "pvMiniFold": "Tuck into the tab bar",
+  "pvMiniFoldSub": "Scrolling down folds the player into one row with the tabs",
 
   "@_lyrics": {},
   "lyricsLoading": "Loading lyrics…",

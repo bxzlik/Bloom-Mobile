@@ -1,5 +1,5 @@
 /// App shell: the tab bar, the mini player above it, the full player over
-/// everything.
+/// everything. Scrolling down folds the card into the tab bar ([barFold]).
 ///
 /// The bars lie over the content (`extendBody`): the margins around the mini
 /// player card are clear and the list shows through. So every scroll needs
@@ -9,6 +9,7 @@ library;
 import 'dart:async';
 
 import 'dart:math' as math;
+import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,6 +18,8 @@ import 'package:go_router/go_router.dart';
 import '../core/l10n/l10n.dart';
 import '../features/customization/ui/app_background.dart';
 import '../core/store/settings_store.dart';
+import '../features/player/mini_style_store.dart';
+import '../features/player/player_controller.dart';
 import '../features/player/ui/mini_player.dart';
 import '../features/player/ui/player_sheet.dart';
 import '../features/profile/achievements.dart';
@@ -48,8 +51,76 @@ class BloomShell extends ConsumerStatefulWidget {
   ConsumerState<BloomShell> createState() => _BloomShellState();
 }
 
-class _BloomShellState extends ConsumerState<BloomShell> {
+/// How far a list must travel one way before the bars fold or unfold: a
+/// finger resting on the screen shouldn't flip them.
+const double _kFoldDrift = 24;
+
+/// Folding the card into the tab bar and back.
+const Duration _kFoldTime = Duration(milliseconds: 300);
+
+class _BloomShellState extends ConsumerState<BloomShell>
+    with SingleTickerProviderStateMixin {
   Timer? _noticeTimer;
+
+  /// Drives [barFold]; the curve is applied on the way out, so a reversal
+  /// midway continues from where the bars are.
+  late final AnimationController _fold =
+      AnimationController(vsync: this, duration: _kFoldTime)..addListener(
+        () => barFold.value = Curves.easeInOutCubic.transform(_fold.value),
+      );
+
+  /// Scroll travelled in one direction since it last changed.
+  double _drift = 0;
+
+  /// The home's wave is in view: it has no card, so nothing to fold.
+  bool get _onWave =>
+      kBranchTabs[widget.shell.currentIndex] == NavTab.home &&
+      homeOnTop.value &&
+      waveHoldsCard.value > 0;
+
+  bool get _canFold =>
+      ref.read(miniStyleProvider).fold &&
+      ref.read(playbackProvider).track != null &&
+      !searchOpen.value &&
+      !_onWave;
+
+  void _setFold(bool on) {
+    if (on && !_canFold) return;
+    final heading = on
+        ? _fold.status == AnimationStatus.forward ||
+              _fold.status == AnimationStatus.completed
+        : _fold.status == AnimationStatus.reverse ||
+              _fold.status == AnimationStatus.dismissed;
+    if (heading) return;
+    on ? _fold.forward() : _fold.reverse();
+  }
+
+  void _unfold() => _setFold(false);
+
+  void _unfoldIfNeeded() {
+    if (searchOpen.value || _onWave) _unfold();
+  }
+
+  /// Vertical scrolling anywhere in the tabs: down folds, up unfolds. The top
+  /// of a list always unfolds; a bounce past its end counts for nothing, or
+  /// the spring back would unfold.
+  bool _onScroll(ScrollNotification n) {
+    if (n is! ScrollUpdateNotification || n.metrics.axis != Axis.vertical) {
+      return false;
+    }
+    final m = n.metrics;
+    if (m.pixels <= m.minScrollExtent) {
+      _drift = 0;
+      _unfold();
+      return false;
+    }
+    final delta = n.scrollDelta ?? 0;
+    if (m.pixels > m.maxScrollExtent || delta == 0) return false;
+    if ((delta > 0) != (_drift > 0)) _drift = 0;
+    _drift += delta;
+    if (_drift.abs() >= _kFoldDrift) _setFold(_drift > 0);
+    return false;
+  }
 
   /// The page keeps its size under the search field: with the keyboard it would
   /// lay out anew and lose its place. Held until the keyboard is fully gone, or
@@ -60,6 +131,7 @@ class _BloomShellState extends ConsumerState<BloomShell> {
   /// other tab closes it first, and the tab it was over just comes back as it
   /// was.
   void _onTab(NavTab tab) {
+    _unfold();
     if (tab == NavTab.search) return toggleSearch();
     final branch = kBranchTabs.indexOf(tab);
     final current = widget.shell.currentIndex;
@@ -86,7 +158,11 @@ class _BloomShellState extends ConsumerState<BloomShell> {
   @override
   void didUpdateWidget(BloomShell old) {
     super.didUpdateWidget(old);
-    if (old.location != widget.location) dropSearch();
+    if (old.location != widget.location) {
+      dropSearch();
+      // A new page starts at its top, where the bars are open.
+      _unfold();
+    }
   }
 
   /// The app can stay open into the 1st: the date is checked on coming back.
@@ -100,13 +176,28 @@ class _BloomShellState extends ConsumerState<BloomShell> {
   void dispose() {
     _noticeTimer?.cancel();
     _life.dispose();
+    for (final signal in _unfoldSignals) {
+      signal.removeListener(_unfoldIfNeeded);
+    }
+    _fold.dispose();
+    barFold.value = 0;
     super.dispose();
   }
+
+  /// Search and the wave have no folded row: either one unfolds it.
+  late final List<Listenable> _unfoldSignals = [
+    searchOpen,
+    homeOnTop,
+    waveHoldsCard,
+  ];
 
   @override
   void initState() {
     super.initState();
     _life;
+    for (final signal in _unfoldSignals) {
+      signal.addListener(_unfoldIfNeeded);
+    }
     // The first run is silent: it also seeds achievements already earned. A
     // provider can't be touched from `initState`, so I wait a frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -191,6 +282,13 @@ class _BloomShellState extends ConsumerState<BloomShell> {
   Widget build(BuildContext context) {
     final t = context.bloom;
     ref.listen(achievementsProvider, (_, _) => _sync());
+    // With the setting off or nothing playing there's no card to fold.
+    ref.listen(miniStyleProvider.select((s) => s.fold), (_, on) {
+      if (!on) _unfold();
+    });
+    ref.listen(playbackProvider.select((s) => s.track != null), (_, playing) {
+      if (!playing) _unfold();
+    });
     final shell = widget.shell;
     final branchTab = kBranchTabs[shell.currentIndex];
     final scaffold = ListenableBuilder(
@@ -209,25 +307,33 @@ class _BloomShellState extends ConsumerState<BloomShell> {
               : t.bg,
           extendBody: true,
           resizeToAvoidBottomInset: !_holdBody,
-          body: shell,
+          body: NotificationListener<ScrollNotification>(
+            onNotification: _onScroll,
+            child: shell,
+          ),
           // The bars have their own glass group: they lie over the list, and
           // with a shared snapshot the rows passing under them wouldn't blur.
-          bottomNavigationBar: GlassGroup(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Room for the mini player card; the player panel draws the
-                // card itself, growing out of it over the bars.
-                const MiniCardSlot(),
-                _NavBar(
-                  style: ref.watch(settingsProvider).navStyle,
-                  tabs: ref.watch(settingsProvider).navOrder,
-                  indicator: ref.watch(settingsProvider).navIndicator,
-                  labels: ref.watch(settingsProvider).navLabels,
-                  active: searchOpen.value ? NavTab.search : branchTab,
-                  onTap: _onTab,
-                ),
-              ],
+          bottomNavigationBar: _FoldingBars(
+            tab: branchTab,
+            onUnfold: _unfold,
+            onSearch: () => _onTab(NavTab.search),
+            bars: GlassGroup(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Room for the mini player card; the player panel draws the
+                  // card itself, growing out of it over the bars.
+                  const MiniCardSlot(),
+                  _NavBar(
+                    style: ref.watch(settingsProvider).navStyle,
+                    tabs: ref.watch(settingsProvider).navOrder,
+                    indicator: ref.watch(settingsProvider).navIndicator,
+                    labels: ref.watch(settingsProvider).navLabels,
+                    active: searchOpen.value ? NavTab.search : branchTab,
+                    onTap: _onTab,
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -257,6 +363,145 @@ double navBarInset(BuildContext context, NavBarStyle style) => switch (style) {
   NavBarStyle.pill => kNavBarFloatHeight + bottomEdgeInset(context),
   _ => kNavBarHeight + bottomSafeInset(context),
 };
+
+// ─── Folded bars ─────────────────────────────────────────────────────────
+
+/// The bars and their folded form ([barFold]): the open tab and search as
+/// round buttons, with the card between them drawn by the player panel. The
+/// bars keep their full height either way, so lists keep their bottom room
+/// and don't jump.
+class _FoldingBars extends ConsumerWidget {
+  const _FoldingBars({
+    required this.bars,
+    required this.tab,
+    required this.onUnfold,
+    required this.onSearch,
+  });
+
+  final Widget bars;
+
+  /// The open tab, shown on the left button.
+  final NavTab tab;
+
+  /// The left button opens the bars back rather than resetting its tab: the
+  /// user came for the other tabs.
+  final VoidCallback onUnfold;
+  final VoidCallback onSearch;
+
+  /// Folded buttons grow out of this share of their size.
+  static const double _kFromScale = 0.8;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.bloom;
+    final l = context.l;
+    // The buttons share the card's rounding: three parts of one row.
+    final radius = math.min(
+      miniCardRadius(
+        ref.watch(miniStyleProvider.select((s) => s.radius)),
+        t.radius,
+      ),
+      kFoldedBarHeight / 2,
+    );
+    final open = _NavBar._items[tab]!;
+    final search = _NavBar._items[NavTab.search]!;
+
+    return ValueListenableBuilder<double>(
+      valueListenable: barFold,
+      child: bars,
+      builder: (context, fold, bars) {
+        Widget grow(Widget button) => Transform.scale(
+          scale: lerpDouble(_kFromScale, 1, fold)!,
+          child: button,
+        );
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            IgnorePointer(
+              ignoring: fold > 0.5,
+              child: Opacity(opacity: 1 - fold, child: bars),
+            ),
+            if (fold > 0)
+              Positioned(
+                left: kFloatGap,
+                right: kFloatGap,
+                bottom: bottomEdgeInset(context),
+                height: kFoldedBarHeight,
+                child: IgnorePointer(
+                  ignoring: fold < 0.5,
+                  child: Opacity(
+                    opacity: fold,
+                    // Own group: while folding, these overlap the bars.
+                    child: GlassGroup(
+                      child: Row(
+                        children: [
+                          grow(
+                            _FoldButton(
+                              glyph: open.activeIcon,
+                              color: t.accent,
+                              label: open.label(l),
+                              radius: radius,
+                              onTap: onUnfold,
+                            ),
+                          ),
+                          const Spacer(),
+                          grow(
+                            _FoldButton(
+                              glyph: search.icon,
+                              color: t.text,
+                              label: search.label(l),
+                              radius: radius,
+                              onTap: onSearch,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// A round button of the folded row, the card's height.
+class _FoldButton extends StatelessWidget {
+  const _FoldButton({
+    required this.glyph,
+    required this.color,
+    required this.label,
+    required this.radius,
+    required this.onTap,
+  });
+
+  final BloomGlyph glyph;
+  final Color color;
+  final String label;
+  final double radius;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: label,
+    child: Pressable(
+      onTap: onTap,
+      child: GlassBox(
+        borderSide: BorderSide(color: context.bloom.ovlLine),
+        borderRadius: BorderRadius.circular(radius),
+        child: SizedBox.square(
+          dimension: kFoldedBarHeight,
+          child: Center(
+            child: BloomIcon(glyph, size: _kNavIcon, color: color),
+          ),
+        ),
+      ),
+    ),
+  );
+}
 
 // ─── Switching tabs ──────────────────────────────────────────────────────
 

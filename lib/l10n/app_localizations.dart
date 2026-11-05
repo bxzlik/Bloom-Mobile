@@ -3062,6 +3062,18 @@ abstract class AppLocalizations {
   /// **'At the edges'**
   String get pvMiniNeighborsOn;
 
+  /// No description provided for @pvMiniFold.
+  ///
+  /// In en, this message translates to:
+  /// **'Tuck into the tab bar'**
+  String get pvMiniFold;
+
+  /// No description provided for @pvMiniFoldSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Scrolling down folds the player into one row with the tabs'**
+  String get pvMiniFoldSub;
+
   /// No description provided for @lyricsLoading.
   ///
   /// In en, this message translates to:

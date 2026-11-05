@@ -22,6 +22,7 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../features/settings/swipe_store.dart';
+import '../../../shared/ui/atoms.dart' show bottomEdgeInset;
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/track_flick.dart';
 import '../../../shared/ui/track_swipes.dart';
@@ -214,23 +215,37 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet>
         // The card's place at rest: exactly what the shell's bottom bar keeps
         // empty (`MiniCardSlot`), margins of 8 at the sides and above the tab
         // bar. With neighbours it narrows by their strips.
-        final card = miniCardRect(
+        final rest = miniCardRect(
           screen: screen,
           navInset: navInset,
           neighbors: peek,
         );
-        _travel = card.top;
-        // All three move by this step on a flick, so a neighbour lands dead
-        // centre.
-        final stride = miniStride(card.width);
+        final folded = foldedCardRect(
+          screen: screen,
+          bottom: bottomEdgeInset(context),
+        );
 
         // Own glass group: the panel lies over the page and bars, and a shared
         // backdrop snapshot wouldn't blur what's under it.
         return GlassGroup(
           child: AnimatedBuilder(
-            animation: Listenable.merge([_t, _wavePage, waveHoldsCard]),
+            animation: Listenable.merge([
+              _t,
+              _wavePage,
+              waveHoldsCard,
+              barFold,
+            ]),
             builder: (context, _) {
               final v = _t.value;
+              final fold = barFold.value;
+              final card = Rect.lerp(rest, folded, fold)!;
+              _travel = card.top;
+              // All three move by this step on a flick, so a neighbour lands
+              // dead centre.
+              final stride = miniStride(card.width);
+              // A pill radius is half the usual card's height, too much for
+              // the lower folded one.
+              final radius = cardRadius.clamp(0.0, card.height / 2);
               // The card's row leaves quickly: as the panel grows its content
               // is wrong a tenth of the way along. The player fades in
               // overlapping: it's opaque and covers what hasn't gone yet.
@@ -259,7 +274,8 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet>
                   // they extend past the card's edges, which can't happen from
                   // inside it. They fade with the row: an open player has no
                   // use for them.
-                  if (peek && row > 0)
+                  // The folded row has no room for them either.
+                  if (peek && row > 0 && fold < 1)
                     Positioned(
                       key: const ValueKey('neighbors'),
                       left: 0,
@@ -268,7 +284,7 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet>
                       height: kMiniCardHeight,
                       child: IgnorePointer(
                         child: Opacity(
-                          opacity: row * (1 - gone),
+                          opacity: row * (1 - gone) * (1 - fold),
                           child: ClipRect(
                             child: _Neighbors(
                               shift: _shift,
@@ -339,7 +355,7 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet>
                             child: _gestures(
                               expanded: v > 0,
                               child: MiniCardSkin(
-                                radius: lerpDouble(cardRadius, 0, v)!,
+                                radius: lerpDouble(radius, 0, v)!,
                                 // Glass stays while the fill shows through the
                                 // player. Beyond that there's no reason to blur
                                 // a full-screen backdrop nobody can see.
@@ -358,10 +374,17 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet>
                                         left: 0,
                                         right: 0,
                                         top: 0,
-                                        height: kMiniCardHeight,
+                                        height: card.height,
                                         child: Opacity(
                                           opacity: row,
-                                          child: const MiniCardRow(),
+                                          // Const at both ends, so the row
+                                          // isn't rebuilt on every frame of a
+                                          // pull.
+                                          child: fold == 0
+                                              ? const MiniCardRow()
+                                              : fold == 1
+                                              ? const MiniCardRow(fold: 1)
+                                              : MiniCardRow(fold: fold),
                                         ),
                                       ),
                                     // The player is laid out full screen and

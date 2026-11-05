@@ -13,6 +13,7 @@
 library;
 
 import 'dart:math' as math;
+import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,6 +45,26 @@ final ValueNotifier<double> waveHoldsCard = ValueNotifier<double>(1);
 /// Whether the home's first page lies on top of its tab. A page opened over it
 /// brings the card back.
 final ValueNotifier<bool> homeOnTop = ValueNotifier<bool>(true);
+
+/// How far the card is folded into the tab bar: 0 is the card over the bar, 1
+/// the single row of the open tab, the card and search. The shell drives it
+/// from scrolling, already eased.
+final ValueNotifier<double> barFold = ValueNotifier<double>(0);
+
+/// Height of the folded row: the card and the round buttons beside it.
+const double kFoldedBarHeight = kHeaderControl;
+
+/// The card's place in the folded row: between two round buttons, on the same
+/// bottom line as a floating tab bar ([bottom] is its margin from the edge).
+Rect foldedCardRect({required Size screen, required double bottom}) {
+  const side = kFloatGap * 2 + kFoldedBarHeight;
+  return Rect.fromLTWH(
+    side,
+    screen.height - bottom - kFoldedBarHeight,
+    screen.width - side * 2,
+    kFoldedBarHeight,
+  );
+}
 
 /// How much of a neighbour's card shows with neighbours on: a narrow strip at
 /// the very edge. Set RIGHT at the edge rather than within the usual margin: a
@@ -78,6 +99,9 @@ double miniStride(double cardWidth) => cardWidth + kFloatGap;
 
 /// Cover side in the card.
 const double _coverSize = 44;
+
+/// Cover side in the folded card: the row is lower, and the ring must still fit.
+const double _foldedCoverSize = 38;
 
 /// Gap between the cover and the progress ring.
 const double _ringGap = 4;
@@ -164,12 +188,16 @@ class MiniCardSlot extends ConsumerWidget {
 /// fades as the panel expands, and the panel doesn't build it when it can't be
 /// seen.
 class MiniCardRow extends ConsumerWidget {
-  const MiniCardRow({super.key, this.neighbor});
+  const MiniCardRow({super.key, this.neighbor, this.fold = 0});
 
   /// A NEIGHBOUR's card row in the carousel: drawn for this track, not the
   /// playing one, and nothing in it is live: no progress, no change animation
   /// (the carousel does that), no presses. `null` is the usual row.
   final Track? neighbor;
+
+  /// How far the card is folded into the tab bar ([barFold]). Folded, the row
+  /// is lower, the cover smaller, and only play is left of the buttons.
+  final double fold;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -193,8 +221,21 @@ class MiniCardRow extends ConsumerWidget {
         ? Theme(data: ref.watch(inkThemeProvider(true)), child: row)
         : row;
 
+    final coverSide = lerpDouble(_coverSize, _foldedCoverSize, fold)!;
+    // A button that leaves on folding gives its room back with its gap, or the
+    // caption would stop short of play.
+    Widget leaving(Widget child) => fold == 0
+        ? child
+        : ClipRect(
+            child: Align(
+              alignment: Alignment.centerRight,
+              widthFactor: 1 - fold,
+              child: Opacity(opacity: 1 - fold, child: child),
+            ),
+          );
+
     return SizedBox(
-      height: kMiniCardHeight,
+      height: lerpDouble(kMiniCardHeight, kFoldedBarHeight, fold),
       child: Stack(
         children: [
           // The cover background and progress fill lie UNDER the content, by
@@ -207,12 +248,19 @@ class MiniCardRow extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Row(
                 children: [
-                  _MiniCover(
-                    trackId: track.id,
-                    cover: cover,
-                    animated: live,
-                    shape: style.shape,
-                    ring: progress.ring,
+                  // Scaled whole, ring and all: the ring's frame is drawn for
+                  // one cover size.
+                  SizedBox.square(
+                    dimension: coverSide,
+                    child: FittedBox(
+                      child: _MiniCover(
+                        trackId: track.id,
+                        cover: cover,
+                        animated: live,
+                        shape: style.shape,
+                        ring: progress.ring,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -256,15 +304,33 @@ class MiniCardRow extends ConsumerWidget {
                   ),
                   // The enum sets button order, the setting the set; a removed
                   // one leaves no gap, or the caption would end in emptiness.
-                  for (var i = 0; i < visible.length; i++) ...[
-                    SizedBox(width: i == 0 ? 8 : 4),
-                    _MiniButton(
-                      button: visible[i],
-                      track: track,
-                      loading: live && state.loading,
-                      live: live,
-                    ),
-                  ],
+                  for (var i = 0; i < visible.length; i++)
+                    if (visible[i] == MiniButton.play) ...[
+                      SizedBox(width: i == 0 ? 8 : 4),
+                      // Keyed: the buttons before it leave the row on
+                      // folding, and play must keep its element.
+                      _MiniButton(
+                        key: const ValueKey(MiniButton.play),
+                        button: visible[i],
+                        track: track,
+                        loading: live && state.loading,
+                        live: live,
+                      ),
+                    ] else if (fold < 1)
+                      leaving(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(width: i == 0 ? 8 : 4),
+                            _MiniButton(
+                              button: visible[i],
+                              track: track,
+                              loading: live && state.loading,
+                              live: live,
+                            ),
+                          ],
+                        ),
+                      ),
                 ],
               ),
             ),
@@ -280,6 +346,7 @@ class MiniCardRow extends ConsumerWidget {
 /// A button in the card's row. Which ones show is a setting ([MiniButton]).
 class _MiniButton extends ConsumerWidget {
   const _MiniButton({
+    super.key,
     required this.button,
     required this.track,
     required this.loading,

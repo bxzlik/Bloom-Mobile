@@ -52,6 +52,22 @@ class _HomeScreenState extends State<HomeScreen> {
     waveHoldsCard.value = (1 - off / (_stop.at * _cardBackAt)).clamp(0.0, 1.0);
   }
 
+  /// A scroll that touched the way between the screens, until it ends.
+  bool _crossing = false;
+
+  /// The way between the screens doesn't fold the bars: the card comes out
+  /// whole, and folds once the shelves scroll on. The whole scroll is held,
+  /// not just the way: the snap's spring overshoots into the shelves and back.
+  bool _holdCrossing(ScrollNotification n) {
+    if (n.depth != 0) return false;
+    final between = n.metrics.pixels < _stop.at - 0.5;
+    if (n is ScrollStartNotification) _crossing = between;
+    if (between) _crossing = true;
+    final hold = _crossing;
+    if (n is ScrollEndNotification) _crossing = false;
+    return hold;
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -78,34 +94,37 @@ class _HomeScreenState extends State<HomeScreen> {
     return Stack(
       children: [
         // The wave's stage runs up under the status bar.
-        CustomScrollView(
-          controller: _scroll,
-          physics: MagnetScrollPhysics(_stop),
-          slivers: [
-            SliverToBoxAdapter(child: WaveHero(scroll: _scroll)),
-            // At least a screen tall: with few shelves the magnet still has
-            // somewhere to land.
-            SliverToBoxAdapter(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: screen),
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    top: top + kHomeHeaderHeight,
-                    bottom: bottom + 16,
-                  ),
-                  child: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      ForYouSection(),
-                      SimilarToSection(),
-                      DiscoverSection(mode: DiscoverMode.newReleases),
-                      DiscoverSection(mode: DiscoverMode.charts),
-                    ],
+        NotificationListener<ScrollNotification>(
+          onNotification: _holdCrossing,
+          child: CustomScrollView(
+            controller: _scroll,
+            physics: MagnetScrollPhysics(_stop),
+            slivers: [
+              SliverToBoxAdapter(child: WaveHero(scroll: _scroll)),
+              // At least a screen tall: with few shelves the magnet still has
+              // somewhere to land.
+              SliverToBoxAdapter(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: screen),
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      top: top + kHomeHeaderHeight,
+                      bottom: bottom + 16,
+                    ),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ForYouSection(),
+                        SimilarToSection(),
+                        DiscoverSection(mode: DiscoverMode.newReleases),
+                        DiscoverSection(mode: DiscoverMode.charts),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         // It stands still while the screens swap and leaves with the shelves.
         Positioned(

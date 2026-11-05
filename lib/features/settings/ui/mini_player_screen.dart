@@ -103,6 +103,17 @@ class MiniPlayerSettingsScreen extends ConsumerWidget {
           picture: (on, _) => BloomIcon(_miniNeighborsIcon(on)),
           onTap: ctrl.setNeighbors,
         ),
+        const SizedBox(height: 22),
+        SettingsGroupCard(
+          rows: [
+            SettingsToggleRow(
+              title: l.pvMiniFold,
+              subtitle: l.pvMiniFoldSub,
+              value: mini.fold,
+              onChanged: ctrl.setFold,
+            ),
+          ],
+        ),
       ],
     );
   }
