@@ -82,7 +82,8 @@ Future<void> showMergeSheet(
   }
   if (context.mounted) context.go('/library/list/${created.id}');
   toaster.show(
-    l10n.mgMerged(created.name, l10n.tracksCount(tracks.length)),
+    // What it holds: a list keeps one place per track, whatever went in.
+    l10n.mgMerged(created.name, l10n.tracksCount(created.trackIds.length)),
     kind: ToastKind.success,
   );
 }
