@@ -290,6 +290,12 @@ abstract class AppLocalizations {
   /// **'New playlist'**
   String get commonNewPlaylist;
 
+  /// No description provided for @commonPlaylistCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist created · {tracks}'**
+  String commonPlaylistCreated(String tracks);
+
   /// No description provided for @commonCreatePlaylist.
   ///
   /// In en, this message translates to:
@@ -1652,12 +1658,6 @@ abstract class AppLocalizations {
   /// **'Skip'**
   String get cvSkip;
 
-  /// No description provided for @cvCreated.
-  ///
-  /// In en, this message translates to:
-  /// **'Playlist created · {tracks}'**
-  String cvCreated(String tracks);
-
   /// No description provided for @spSwitch.
   ///
   /// In en, this message translates to:
@@ -1727,8 +1727,14 @@ abstract class AppLocalizations {
   /// No description provided for @mgDupsDropped.
   ///
   /// In en, this message translates to:
-  /// **'−{count} repeats'**
+  /// **'{count, plural, one{{count} duplicate removed} other{{count} duplicates removed}}'**
   String mgDupsDropped(int count);
+
+  /// No description provided for @mgDups.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} duplicate} other{{count} duplicates}}'**
+  String mgDups(int count);
 
   /// No description provided for @mgDedup.
   ///
@@ -1747,12 +1753,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No other playlists'**
   String get mgNothingToMerge;
-
-  /// No description provided for @mgMerged.
-  ///
-  /// In en, this message translates to:
-  /// **'“{name}” collected — {tracks}'**
-  String mgMerged(String name, String tracks);
 
   /// No description provided for @tlFindDups.
   ///

@@ -35,24 +35,70 @@ void main() {
     expect(merged.map((t) => t.id), ['a', 'b', 'c']);
   });
 
-  test('without collapsing a track lands as many times as it occurs', () {
-    final merged = mergeTracks([
-      _list(['a']),
-      _list(['a']),
-    ], dedup: false);
+  test('one id has one place, with the choice on or off', () {
+    for (final dedup in [true, false]) {
+      final merged = mergeTracks([
+        _list(['a']),
+        _list(['a']),
+      ], dedup: dedup);
 
-    expect(merged.map((t) => t.id), ['a', 'a']);
+      expect(merged.map((t) => t.id), ['a'], reason: 'dedup: $dedup');
+    }
   });
 
-  test('the repeat count counts what gets removed', () {
+  group('one song in several entries', () {
+    Track song(String id, {String? cover}) => Track(
+      id: id,
+      name: 'Night  ',
+      artist: 'ONE',
+      duration: const Duration(seconds: 200),
+      source: MusicSource.soundcloud,
+      cover: cover,
+    );
     final lists = [
-      _list(['a', 'b']),
-      _list(['b', 'c']),
-      _list(['a']),
+      [song('sc:1'), _track('b')],
+      [song('ym:1'), _track('c')],
     ];
 
-    expect(mergeDupCount(lists), 2);
-    expect(mergeTracks(lists, dedup: true).length, 3);
+    test('the choice decides: both copies, or one in the first place', () {
+      expect(mergeTracks(lists, dedup: false).map((t) => t.id), [
+        'sc:1',
+        'b',
+        'ym:1',
+        'c',
+      ]);
+      expect(mergeTracks(lists, dedup: true).map((t) => t.id), [
+        'sc:1',
+        'b',
+        'c',
+      ]);
+      expect(mergeDupCount(lists), 1);
+    });
+
+    test('the copy with a cover wins, then the most played', () {
+      final withCover = mergeTracks([
+        [song('sc:1')],
+        [song('ym:1', cover: 'x')],
+      ], dedup: true);
+      expect(withCover.single.id, 'ym:1');
+
+      final played = mergeTracks(
+        lists,
+        dedup: true,
+        plays: (id) => id == 'ym:1' ? 3 : 1,
+      );
+      expect(played.map((t) => t.id), ['ym:1', 'b', 'c']);
+
+      final kept = mergeTracks(
+        [
+          [song('sc:1', cover: 'x')],
+          [song('ym:1')],
+        ],
+        dedup: true,
+        plays: (id) => id == 'ym:1' ? 9 : 0,
+      );
+      expect(kept.single.id, 'sc:1');
+    });
   });
 
   test('empty lists break nothing', () {

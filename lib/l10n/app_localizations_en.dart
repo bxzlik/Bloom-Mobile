@@ -105,6 +105,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonNewPlaylist => 'New playlist';
 
   @override
+  String commonPlaylistCreated(String tracks) {
+    return 'Playlist created · $tracks';
+  }
+
+  @override
   String get commonCreatePlaylist => 'Create playlist';
 
   @override
@@ -919,11 +924,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cvSkip => 'Skip';
 
   @override
-  String cvCreated(String tracks) {
-    return 'Playlist created · $tracks';
-  }
-
-  @override
   String get spSwitch => 'Switch source';
 
   @override
@@ -966,7 +966,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String mgDupsDropped(int count) {
-    return '−$count repeats';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count duplicates removed',
+      one: '$count duplicate removed',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String mgDups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count duplicates',
+      one: '$count duplicate',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -977,11 +994,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mgNothingToMerge => 'No other playlists';
-
-  @override
-  String mgMerged(String name, String tracks) {
-    return '“$name” collected — $tracks';
-  }
 
   @override
   String get tlFindDups => 'Find duplicates';

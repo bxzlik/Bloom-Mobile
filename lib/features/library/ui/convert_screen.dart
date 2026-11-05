@@ -228,7 +228,7 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
     toaster.show(
       // What it holds, not what went in: two tracks may have found the same one.
       // No name: the page behind says it, and a made-up one is too long here.
-      l10n.cvCreated(l10n.tracksCount(created.trackIds.length)),
+      l10n.commonPlaylistCreated(l10n.tracksCount(created.trackIds.length)),
       action: ToastAction(
         fn: () {
           if (router.state.uri.path == location) router.go('/library');

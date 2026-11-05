@@ -3,8 +3,11 @@
 /// default), Delete sources (off by default), and a line counting the result.
 ///
 /// The sheet creates nothing: it returns a decision and the caller builds the
-/// playlist, since navigation lives outside the sheet.
+/// playlist, since navigation lives outside the sheet. The toast can undo it all,
+/// the deleted sources coming back too.
 library;
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,7 +15,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
+import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
+import '../../../core/store/play_stats.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
@@ -44,6 +49,8 @@ Future<void> showMergeSheet(
   UserPlaylist source,
 ) async {
   final l10n = context.l;
+  // Taken now: the screen that asked may be gone once the sheet closes.
+  final router = GoRouter.of(context);
   // Nothing to merge with: I say so at once rather than an empty sheet.
   final others = _mergeable(ref.read(libraryProvider), source);
   if (others.isEmpty) {
@@ -64,27 +71,54 @@ Future<void> showMergeSheet(
 
   final lib = ref.read(libraryProvider);
   final library = ref.read(libraryProvider.notifier);
-  final picked = [
-    for (final id in plan.ids)
-      ...lib.playlists.where((p) => p.id == id).map(lib.tracksOf),
+  final lists = [
+    for (final id in [source.id, ...plan.ids])
+      ...lib.playlists.where((p) => p.id == id),
   ];
-  final tracks = mergeTracks([
-    lib.tracksOf(source),
-    ...picked,
-  ], dedup: plan.dedup);
+  final tracks = mergeTracks(
+    [for (final list in lists) lib.tracksOf(list)],
+    dedup: plan.dedup,
+    plays: ref.read(playStatsProvider).playCount,
+  );
 
-  final created = library.createPlaylist(plan.name, tracks: tracks);
-  if (plan.deleteSources) {
-    library.deletePlaylist(source.id);
-    for (final id in plan.ids) {
-      library.deletePlaylist(id);
-    }
+  // The first with a picture of its own lends it. With none the new one is a
+  // collage, like them: empty, not null, or it would take its first track's.
+  final cover = await coverForCopy(
+    lists
+        .map((list) => list.cover ?? '')
+        .where((c) => c.isNotEmpty)
+        .firstOrNull,
+  );
+  final created = library.createPlaylist(
+    plan.name,
+    tracks: tracks,
+    cover: cover ?? '',
+  );
+  final gone = plan.deleteSources ? lists : const <UserPlaylist>[];
+  for (final list in gone) {
+    library.deletePlaylist(list.id);
   }
-  if (context.mounted) context.go('/library/list/${created.id}');
+  final location = '/library/list/${created.id}';
+  router.go(location);
   toaster.show(
-    // What it holds: a list keeps one place per track, whatever went in.
-    l10n.mgMerged(created.name, l10n.tracksCount(created.trackIds.length)),
-    kind: ToastKind.success,
+    // What it holds: a list keeps one place per track, whatever went in. No name:
+    // the page behind says it.
+    l10n.commonPlaylistCreated(l10n.tracksCount(created.trackIds.length)),
+    action: ToastAction(
+      fn: () {
+        if (router.state.uri.path == location) router.go('/library');
+        library.deletePlaylist(created.id);
+        unawaited(deleteCover(created.cover));
+        gone.forEach(library.restorePlaylist);
+      },
+      // Own pictures go only when there's nothing left to undo, or the sources
+      // would come back with none.
+      onExpire: () {
+        for (final list in gone) {
+          unawaited(deleteCover(list.cover));
+        }
+      },
+    ),
   );
 }
 
@@ -171,9 +205,11 @@ class _MergeBodyState extends ConsumerState<_MergeBody> {
               ? context.l.mgPickHint
               : context.l.mgResult(context.l.tracksCount(total)),
           padding: const EdgeInsets.fromLTRB(kSheetEdge, 2, kSheetEdge, 8),
-          trailing: _dedup && dups > 0
+          trailing: dups > 0
               ? Text(
-                  context.l.mgDupsDropped(dups),
+                  _dedup
+                      ? context.l.mgDupsDropped(dups)
+                      : context.l.mgDups(dups),
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: t.accent),

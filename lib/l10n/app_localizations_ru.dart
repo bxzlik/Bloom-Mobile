@@ -105,6 +105,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonNewPlaylist => 'Новый плейлист';
 
   @override
+  String commonPlaylistCreated(String tracks) {
+    return 'Плейлист создан · $tracks';
+  }
+
+  @override
   String get commonCreatePlaylist => 'Создать плейлист';
 
   @override
@@ -937,11 +942,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get cvSkip => 'Пропустить';
 
   @override
-  String cvCreated(String tracks) {
-    return 'Плейлист создан · $tracks';
-  }
-
-  @override
   String get spSwitch => 'Сменить площадку';
 
   @override
@@ -984,7 +984,28 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String mgDupsDropped(int count) {
-    return '−$count повторов';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count дублей убрано',
+      many: '$count дублей убрано',
+      few: '$count дубля убрано',
+      one: '$count дубль убран',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String mgDups(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count дублей',
+      many: '$count дублей',
+      few: '$count дубля',
+      one: '$count дубль',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -995,11 +1016,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get mgNothingToMerge => 'Нет других плейлистов';
-
-  @override
-  String mgMerged(String name, String tracks) {
-    return '«$name» собран — $tracks';
-  }
 
   @override
   String get tlFindDups => 'Найти дубли';
