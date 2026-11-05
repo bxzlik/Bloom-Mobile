@@ -937,8 +937,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get cvSkip => 'Пропустить';
 
   @override
-  String cvCreated(String name, String tracks) {
-    return 'Создан «$name» ($tracks)';
+  String cvCreated(String tracks) {
+    return 'Плейлист создан · $tracks';
   }
 
   @override

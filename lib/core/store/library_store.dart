@@ -469,9 +469,12 @@ class LibraryController extends Notifier<LibraryState> {
   /// Deletes a track everywhere: library, likes, all playlists. The play log
   /// stays: that it played then remains true, and the database keeps the
   /// snapshot for history.
-  void deleteTrack(String trackId) {
+  void deleteTrack(String trackId) => deleteTracks([trackId]);
+
+  /// Several at once, as one write: a refresh per track shows on a long list.
+  void deleteTracks(List<String> trackIds) {
     _db.tx(() {
-      _removeFrom(kLibList, [trackId]);
+      _removeFrom(kLibList, trackIds);
       _store.prune();
     });
     _refresh();

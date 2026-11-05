@@ -919,8 +919,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cvSkip => 'Skip';
 
   @override
-  String cvCreated(String name, String tracks) {
-    return 'Created “$name” ($tracks)';
+  String cvCreated(String tracks) {
+    return 'Playlist created · $tracks';
   }
 
   @override

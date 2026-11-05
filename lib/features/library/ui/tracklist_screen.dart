@@ -990,9 +990,7 @@ void _deletePlaylistWithTracks(
     for (final track in tracks) track.id,
   ]);
 
-  for (final track in tracks) {
-    lib.deleteTrack(track.id);
-  }
+  lib.deleteTracks([for (final track in tracks) track.id]);
   lib.deletePlaylist(playlist.id);
 
   toaster.show(

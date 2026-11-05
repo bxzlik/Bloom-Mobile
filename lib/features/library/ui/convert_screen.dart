@@ -202,6 +202,12 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
     // the tree and can't reach them.
     final router = GoRouter.of(context);
     final library = ref.read(libraryProvider.notifier);
+    final lib = ref.read(libraryProvider);
+    // Undo takes these out again: they are here only because of this copy.
+    final fresh = [
+      for (final track in tracks)
+        if (!lib.isInLib(track.id)) track.id,
+    ];
     final name = _name.text.trim().isEmpty ? _autoName : _name.text.trim();
 
     final cover = await coverForCopy(widget.playlist.cover);
@@ -220,11 +226,14 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
     Navigator.of(context).pop();
     router.go(location);
     toaster.show(
-      l10n.cvCreated(created.name, l10n.tracksCount(tracks.length)),
+      // What it holds, not what went in: two tracks may have found the same one.
+      // No name: the page behind says it, and a made-up one is too long here.
+      l10n.cvCreated(l10n.tracksCount(created.trackIds.length)),
       action: ToastAction(
         fn: () {
           if (router.state.uri.path == location) router.go('/library');
           library.deletePlaylist(created.id);
+          library.deleteTracks(fresh);
           unawaited(deleteCover(created.cover));
         },
       ),
@@ -296,28 +305,32 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
             ),
             if (!_scanning) ...[
               const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: BigTabs<bool>(
-                      size: 18,
-                      current: _showAll,
-                      onPick: (all) => setState(() => _showAll = all),
-                      tabs: [
-                        BigTab(false, l.cvUnclear, count: unclear.length),
-                        BigTab(true, l.commonAllTracks, count: _items.length),
-                      ],
-                    ),
-                  ),
-                  if (canTakeBest)
-                    BloomButton(
-                      label: l.cvTakeBest,
-                      height: 32,
-                      onTap: () => setState(
-                        () => _chosen = convertTakeBest(_items, _chosen),
+              // Its own height: the list must stay put when the button goes.
+              SizedBox(
+                height: 32,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: BigTabs<bool>(
+                        size: 18,
+                        current: _showAll,
+                        onPick: (all) => setState(() => _showAll = all),
+                        tabs: [
+                          BigTab(false, l.cvUnclear, count: unclear.length),
+                          BigTab(true, l.commonAllTracks, count: _items.length),
+                        ],
                       ),
                     ),
-                ],
+                    if (canTakeBest)
+                      BloomButton(
+                        label: l.cvTakeBest,
+                        height: 32,
+                        onTap: () => setState(
+                          () => _chosen = convertTakeBest(_items, _chosen),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ],
             Expanded(

@@ -84,7 +84,9 @@ Future<_Page> _open(
   WidgetTester tester, {
   String? cover,
   Future<void>? wait,
+  List<Track>? tracks,
 }) async {
+  final source = tracks ?? _source;
   final store = JsonStore.memory();
   final container = ProviderContainer(
     overrides: [
@@ -98,7 +100,7 @@ Future<_Page> _open(
   addTearDown(container.dispose);
   final playlist = container
       .read(libraryProvider.notifier)
-      .createPlaylist('Вечеринка', tracks: _source, cover: cover ?? '');
+      .createPlaylist('Вечеринка', tracks: source, cover: cover ?? '');
 
   final router = GoRouter(
     initialLocation: '/library',
@@ -112,7 +114,7 @@ Future<_Page> _open(
                 MaterialPageRoute(
                   builder: (_) => ConvertScreen(
                     playlist: playlist,
-                    tracks: _source,
+                    tracks: source,
                     target: MusicSource.ytmusic,
                   ),
                 ),
@@ -254,16 +256,46 @@ void main() {
     expect(copy.cover, 'https://example.com/a.jpg');
     expect(copy.trackIds.toSet(), {'ytm:1', 'sc:2', 'sc:3'});
     expect(page.router.state.uri.path, '/library/list/${copy.id}');
-    expect(find.text('Создан «Копия» (3 трека)'), findsOneWidget);
+    expect(find.text('Плейлист создан · 3 трека'), findsOneWidget);
+
+    expect(page.lib.isInLib('ytm:1'), isTrue);
 
     await tester.tap(find.text('Отменить'));
     await tester.pump();
+    expect(page.lib.isInLib('ytm:1'), isFalse);
     expect(page.lib.playlists.map((p) => p.name), ['Вечеринка']);
     expect(page.router.state.uri.path, '/library');
     await tester.pumpAndSettle();
   });
 
-  testWidgets('undoing the copy keeps what the library had', (tester) async {
+  testWidgets('the toast counts what the copy holds, not what went in', (
+    tester,
+  ) async {
+    final page = await _open(
+      tester,
+      tracks: [_track('sc:1', 'Ночь'), _track('sc:4', 'Ночь')],
+    );
+
+    await tester.tap(find.text('Создать плейлист'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final copy = page.lib.playlists.singleWhere((p) => p.name != 'Вечеринка');
+    expect(copy.trackIds, ['ytm:1']);
+    expect(find.text('Плейлист создан · 1 трек'), findsOneWidget);
+    await tester.pumpAndSettle(const Duration(seconds: 6));
+  });
+
+  testWidgets('the tabs stay put when Take the best goes', (tester) async {
+    await _open(tester);
+    final before = tester.getTopLeft(find.text('Утро'));
+
+    await _tapText(tester, 'Взять лучшие');
+
+    expect(tester.getTopLeft(find.text('Утро')), before);
+  });
+
+  testWidgets('undo takes out only what the copy brought', (tester) async {
     final page = await _open(tester);
 
     await tester.tap(find.text('Создать плейлист'));
@@ -273,9 +305,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(page.lib.isInLib('sc:1'), isTrue);
-    // What it found stays in all tracks: a playlist's removal never takes
-    // tracks with it.
-    expect(page.lib.isInLib('ytm:1'), isTrue);
+    expect(page.lib.isInLib('sc:3'), isTrue);
+    expect(page.lib.isInLib('ytm:1'), isFalse);
+    expect(page.lib.playlists.single.trackIds.length, 3);
   });
 
   testWidgets('a source with no picture gives a copy with none', (

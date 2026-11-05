@@ -1655,8 +1655,8 @@ abstract class AppLocalizations {
   /// No description provided for @cvCreated.
   ///
   /// In en, this message translates to:
-  /// **'Created “{name}” ({tracks})'**
-  String cvCreated(String name, String tracks);
+  /// **'Playlist created · {tracks}'**
+  String cvCreated(String tracks);
 
   /// No description provided for @spSwitch.
   ///

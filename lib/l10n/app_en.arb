@@ -418,8 +418,8 @@
   "cvSearchFailed": "The source didn’t answer",
   "cvKeepOriginal": "Keep the original",
   "cvSkip": "Skip",
-  "cvCreated": "Created “{name}” ({tracks})",
-  "@cvCreated": { "placeholders": { "name": { "type": "String" }, "tracks": { "type": "String" } } },
+  "cvCreated": "Playlist created · {tracks}",
+  "@cvCreated": { "placeholders": { "tracks": { "type": "String" } } },
 
   "@_switchPlatform": {},
   "spSwitch": "Switch source",

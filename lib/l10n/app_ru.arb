@@ -278,7 +278,7 @@
   "cvSearchFailed": "Площадка не ответила",
   "cvKeepOriginal": "Оставить оригинал",
   "cvSkip": "Пропустить",
-  "cvCreated": "Создан «{name}» ({tracks})",
+  "cvCreated": "Плейлист создан · {tracks}",
 
   "spSwitch": "Сменить площадку",
   "spSearching": "Ищем на {source}…",
