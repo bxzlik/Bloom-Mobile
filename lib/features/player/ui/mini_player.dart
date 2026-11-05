@@ -66,6 +66,40 @@ Rect foldedCardRect({required Size screen, required double bottom}) {
   );
 }
 
+/// Room the shell's bars take at the bottom, with the card folded [fold] of the
+/// way: from the open bars ([bottomBarsInset]) down to the folded row.
+double foldedBarsInset(BuildContext context, double fold) {
+  final open = bottomBarsInset(context);
+  if (fold == 0) return open;
+  // A page's padding is the bars' height, so the edge comes from the view's.
+  final edge = math.max(
+    capBottomInset(MediaQuery.viewPaddingOf(context).bottom),
+    kFloatGap,
+  );
+  return lerpDouble(open, math.min(open, edge + kFoldedBarHeight), fold)!;
+}
+
+/// Controls floating over a list stand on the bars: this gives them the bars'
+/// room as it is ([foldedBarsInset]), so they ride down as the card folds
+/// rather than hang over a gap.
+class FoldingBarsInset extends StatelessWidget {
+  const FoldingBarsInset({super.key, required this.builder, this.child});
+
+  final Widget Function(BuildContext context, double inset, Widget? child)
+  builder;
+
+  /// What doesn't depend on the room, built once.
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<double>(
+    valueListenable: barFold,
+    child: child,
+    builder: (context, fold, child) =>
+        builder(context, foldedBarsInset(context, fold), child),
+  );
+}
+
 /// How much of a neighbour's card shows with neighbours on: a narrow strip at
 /// the very edge. Set RIGHT at the edge rather than within the usual margin: a
 /// gap behind it reads as a layout error.

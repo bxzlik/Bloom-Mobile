@@ -24,6 +24,7 @@ import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../features/offline/offline_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../player/ui/mini_player.dart' show FoldingBarsInset;
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/entity_tiles.dart';
@@ -390,33 +391,35 @@ class _ListEditorState extends ConsumerState<ListEditor> {
               ),
             ],
           ),
-          Positioned(
-            left: 12,
-            right: 12,
-            bottom: 12 + inset,
-            child: _renaming
-                ? _RenameBar(
-                    initial: _name,
-                    onCancel: () => setState(() => _renaming = false),
-                    onDone: (value) => setState(() {
-                      final name = value.trim();
-                      if (name.isNotEmpty) _name = name;
-                      _renaming = false;
-                    }),
-                  )
-                : _EditBar(
-                    count: _selected.length,
-                    total: _tracks.length,
-                    allSelected: _allSelected,
-                    // In favourites every row is liked already, so a bin takes
-                    // its place, which also removes the like.
-                    canFav: widget.listId != 'fav',
-                    favOn: _selectedAllFav,
-                    onToggleAll: _tracks.isEmpty ? null : _toggleAll,
-                    onAdd: _addSelectedToPlaylist,
-                    onFav: _favSelected,
-                    onRemove: _removeSelected,
-                  ),
+          FoldingBarsInset(
+            builder: (context, bars, _) => Positioned(
+              left: 12,
+              right: 12,
+              bottom: 12 + bars,
+              child: _renaming
+                  ? _RenameBar(
+                      initial: _name,
+                      onCancel: () => setState(() => _renaming = false),
+                      onDone: (value) => setState(() {
+                        final name = value.trim();
+                        if (name.isNotEmpty) _name = name;
+                        _renaming = false;
+                      }),
+                    )
+                  : _EditBar(
+                      count: _selected.length,
+                      total: _tracks.length,
+                      allSelected: _allSelected,
+                      // In favourites every row is liked already, so a bin takes
+                      // its place, which also removes the like.
+                      canFav: widget.listId != 'fav',
+                      favOn: _selectedAllFav,
+                      onToggleAll: _tracks.isEmpty ? null : _toggleAll,
+                      onAdd: _addSelectedToPlaylist,
+                      onFav: _favSelected,
+                      onRemove: _removeSelected,
+                    ),
+            ),
           ),
         ],
       ),

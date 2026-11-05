@@ -26,6 +26,7 @@ import '../../../features/offline/offline_actions.dart';
 import '../../../features/offline/offline_store.dart';
 import '../../../features/player/play_source.dart';
 import '../../../features/player/player_controller.dart';
+import '../../../features/player/ui/mini_player.dart' show FoldingBarsInset;
 import '../../../features/settings/data_transfer.dart';
 import '../../../features/settings/swipe_store.dart';
 import '../../../shared/ui/atoms.dart';
@@ -341,13 +342,15 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
         ),
         // The Now playing pill lies OUTSIDE the scroll and so stays in place,
         // on the right above the mini player.
-        Positioned(
-          right: 16,
-          bottom: bottomBarsInset(context) + 12,
-          child: NowPlayingJump(
-            controller: _scroll,
-            rowTopOf: rowTopOf,
-            topInset: collapsed,
+        FoldingBarsInset(
+          builder: (context, inset, _) => Positioned(
+            right: 16,
+            bottom: inset + 12,
+            child: NowPlayingJump(
+              controller: _scroll,
+              rowTopOf: rowTopOf,
+              topInset: collapsed,
+            ),
           ),
         ),
       ],

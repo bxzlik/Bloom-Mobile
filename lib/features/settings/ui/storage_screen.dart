@@ -17,6 +17,7 @@ import '../../../core/store/cover_cache.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../features/lyrics/lyrics_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../player/ui/mini_player.dart' show FoldingBarsInset;
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/glass.dart';
@@ -98,12 +99,10 @@ class _StorageState extends ConsumerState<StorageSettingsScreen> {
               ],
             ),
           ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              10,
-              16,
-              12 + bottomBarsInset(context),
+          FoldingBarsInset(
+            builder: (context, bars, child) => Padding(
+              padding: EdgeInsets.fromLTRB(16, 10, 16, 12 + bars),
+              child: child,
             ),
             child: _ClearButton(
               kinds: kinds,

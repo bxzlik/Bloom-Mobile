@@ -41,12 +41,14 @@ const double _kIosBottomInsetCap = 24;
 /// Bottom inset to lay out against, instead of `SafeArea`. Differs only on iOS:
 /// on Android this may be a 48 dp three-button bar, and capping it would sit on
 /// the buttons.
-double bottomSafeInset(BuildContext context) {
-  final inset = MediaQuery.paddingOf(context).bottom;
-  return defaultTargetPlatform == TargetPlatform.iOS
-      ? min(inset, _kIosBottomInsetCap)
-      : inset;
-}
+double bottomSafeInset(BuildContext context) =>
+    capBottomInset(MediaQuery.paddingOf(context).bottom);
+
+/// The system bottom inset as I lay out against it; see [bottomSafeInset].
+double capBottomInset(double inset) =>
+    defaultTargetPlatform == TargetPlatform.iOS
+    ? min(inset, _kIosBottomInsetCap)
+    : inset;
 
 /// Gap between a floating panel and the screen edges.
 const double kFloatGap = 8;

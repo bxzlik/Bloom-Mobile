@@ -22,6 +22,7 @@ import '../../../core/l10n/source_label.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../player/ui/mini_player.dart' show FoldingBarsInset;
 import '../../../shared/ui/big_tabs.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
@@ -360,12 +361,10 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
                       },
                     ),
             ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                16,
-                8,
-                16,
-                12 + bottomBarsInset(context),
+            FoldingBarsInset(
+              builder: (context, bars, child) => Padding(
+                padding: EdgeInsets.fromLTRB(16, 8, 16, 12 + bars),
+                child: child!,
               ),
               child: Row(
                 children: [
