@@ -307,9 +307,14 @@ class _BloomShellState extends ConsumerState<BloomShell>
               : t.bg,
           extendBody: true,
           resizeToAvoidBottomInset: !_holdBody,
-          body: NotificationListener<ScrollNotification>(
-            onNotification: _onScroll,
-            child: shell,
+          // The folded row's edge is read here, above the Scaffold: inside its
+          // body the system inset is already gone.
+          body: FoldedRowEdge(
+            edge: bottomEdgeInset(context),
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _onScroll,
+              child: shell,
+            ),
           ),
           // The bars have their own glass group: they lie over the list, and
           // with a shared snapshot the rows passing under them wouldn't blur.

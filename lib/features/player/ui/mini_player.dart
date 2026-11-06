@@ -71,12 +71,26 @@ Rect foldedCardRect({required Size screen, required double bottom}) {
 double foldedBarsInset(BuildContext context, double fold) {
   final open = bottomBarsInset(context);
   if (fold == 0) return open;
-  // A page's padding is the bars' height, so the edge comes from the view's.
-  final edge = math.max(
-    capBottomInset(MediaQuery.viewPaddingOf(context).bottom),
-    kFloatGap,
-  );
+  final edge = FoldedRowEdge.of(context);
   return lerpDouble(open, math.min(open, edge + kFoldedBarHeight), fold)!;
+}
+
+/// The folded row's margin from the screen edge, as the shell lays it out.
+/// I can't recount it inside a page: the shell's Scaffold strips the system
+/// inset from its body, and on iOS takes it out of `viewPadding` too, so the
+/// page saw 8 instead of 24 and the controls sank onto the row.
+class FoldedRowEdge extends InheritedWidget {
+  const FoldedRowEdge({super.key, required this.edge, required super.child});
+
+  final double edge;
+
+  /// Outside the shell nothing is stripped, so the context's own edge holds.
+  static double of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<FoldedRowEdge>()?.edge ??
+      bottomEdgeInset(context);
+
+  @override
+  bool updateShouldNotify(FoldedRowEdge old) => old.edge != edge;
 }
 
 /// Controls floating over a list stand on the bars: this gives them the bars'
