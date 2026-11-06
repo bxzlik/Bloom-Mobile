@@ -1114,6 +1114,18 @@ Future<YtmEntity> artist(String browseId) async {
       if (a.kind != null) a,
   ];
   final allAlbums = mergeById(carouselAlbums, albums, null, (a) => a.id);
+  // On their own page YTM leaves the artist out of the cards' captions
+  // ("Single • 2021", "2022"): the cards are theirs, as search shows them.
+  YtmRawAlbum owned(YtmRawAlbum a) => a.artist.isNotEmpty
+      ? a
+      : YtmRawAlbum(
+          id: a.id,
+          title: a.title,
+          artist: base.title,
+          cover: a.cover,
+          year: a.year,
+          kind: a.kind,
+        );
 
   return YtmEntity(
     title: base.title,
@@ -1125,7 +1137,7 @@ Future<YtmEntity> artist(String browseId) async {
       singles,
       null,
       (a) => a.id,
-    ),
+    ).map(owned).toList(),
     similarArtists: base.similarArtists,
     description: base.description,
   );
