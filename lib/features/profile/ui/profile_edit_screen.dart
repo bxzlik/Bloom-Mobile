@@ -241,14 +241,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                             ),
                           ),
                           const SizedBox(height: 22),
-                          _Field(
+                          ProfileField(
                             label: context.l.profileNickname,
                             controller: _name,
                             hint: context.l.profileNicknameHint,
                             limit: kNickMax,
                           ),
                           const SizedBox(height: 16),
-                          _Field(
+                          ProfileField(
                             label: context.l.profileAbout,
                             controller: _bio,
                             hint: context.l.profileAboutHint,
@@ -256,7 +256,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                             lines: 4,
                           ),
                           const SizedBox(height: 16),
-                          _Field(
+                          ProfileField(
                             label: context.l.profileStatus,
                             controller: _status,
                             hint: context.l.profileStatusHint,
@@ -505,8 +505,10 @@ class _ImageSheetState extends State<_ImageSheet> {
 }
 
 /// Input: a caption on top, a character count inside the plate on the right.
-class _Field extends StatelessWidget {
-  const _Field({
+/// The gate's new profile takes its nick the same way.
+class ProfileField extends StatelessWidget {
+  const ProfileField({
+    super.key,
     required this.label,
     required this.controller,
     required this.hint,

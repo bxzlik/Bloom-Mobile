@@ -833,10 +833,14 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get fdPathIos => 'Файлы → На iPhone → Bloom';
+  String fdPathIos(String folder) {
+    return 'Файлы → На iPhone → Bloom → $folder';
+  }
 
   @override
-  String get fdPathAndroid => 'Музыка/Bloom';
+  String fdPathAndroid(String folder) {
+    return 'Музыка/Bloom/$folder';
+  }
 
   @override
   String get fdCantDownload => 'Этот трек нельзя скачать';
@@ -3422,4 +3426,138 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get commonFollowHint => 'Артист появится в библиотеке';
+
+  @override
+  String welcomeNamed(String name) {
+    return 'Добро пожаловать, $name!';
+  }
+
+  @override
+  String get setProfile => 'Профиль';
+
+  @override
+  String get gateTitle => 'Кто слушает?';
+
+  @override
+  String get gateAdd => 'Новый профиль';
+
+  @override
+  String get gatePickAvatar => 'Выбрать фото';
+
+  @override
+  String get gateOther => 'Другой профиль';
+
+  @override
+  String get gateForgot => 'Не помню ПИН-код';
+
+  @override
+  String gateForgotTitle(String name) {
+    return 'Удалить профиль «$name»?';
+  }
+
+  @override
+  String get gateForgotText =>
+      'ПИН-код не восстановить: замок снимается только вместе с профилем. Его библиотека, история, настройки и скачанное будут удалены.';
+
+  @override
+  String get gateCreateFirst => 'Создай профиль';
+
+  @override
+  String get gateNext => 'Далее';
+
+  @override
+  String get gateWrong => 'Неверный ПИН-код';
+
+  @override
+  String gateWait(int seconds) {
+    return 'Слишком много попыток. Подожди $seconds с';
+  }
+
+  @override
+  String get gatePinOffer => 'Поставить ПИН-код?';
+
+  @override
+  String get gateSkip => 'Пропустить';
+
+  @override
+  String gateBioReason(String name) {
+    return 'Открыть профиль «$name»';
+  }
+
+  @override
+  String get pinErase => 'Стереть';
+
+  @override
+  String get pinCurrent => 'Текущий ПИН-код';
+
+  @override
+  String get pinNew => 'Новый ПИН-код';
+
+  @override
+  String get pinRepeat => 'Повтори ПИН-код';
+
+  @override
+  String get pinMismatch => 'ПИН-коды не совпадают';
+
+  @override
+  String get profEntry => 'Вход';
+
+  @override
+  String get profPinSet => 'Поставить ПИН-код';
+
+  @override
+  String get profPinOff =>
+      'Профиль открывается сразу. ПИН-код — замок на вход, файлы он не шифрует.';
+
+  @override
+  String get profPinChange => 'Сменить ПИН-код';
+
+  @override
+  String get profPinOn =>
+      'Спрашивается при каждом запуске. Это замок на вход, файлы он не шифрует.';
+
+  @override
+  String get profPinRemove => 'Снять ПИН-код';
+
+  @override
+  String get profPinRemoveSub => 'Профиль будет открываться сразу';
+
+  @override
+  String get profBioTitle => 'Отпечаток или лицо';
+
+  @override
+  String get profBioSub =>
+      'Открывает профиль вместо ПИН-кода. Войдёт и любой, чей отпечаток или лицо знает этот телефон.';
+
+  @override
+  String get profBioConfirm => 'Подтверди, что это ты';
+
+  @override
+  String get profSignOutTitle => 'Выйти из профиля';
+
+  @override
+  String get profSignOutSub => 'Вернуться к выбору профиля';
+
+  @override
+  String get profDeleteTitle => 'Удалить профиль';
+
+  @override
+  String get profDeleteSub =>
+      'Профиль и всё его: библиотека, история, настройки, скачанное';
+
+  @override
+  String get profDeleteConfirm => 'Удалить профиль?';
+
+  @override
+  String get profDeleteBody =>
+      'Библиотека, история, настройки и скачанное этого профиля будут удалены. Музыка, сохранённая в телефон, останется.';
+
+  @override
+  String get profToastSet => 'ПИН-код поставлен';
+
+  @override
+  String get profToastChanged => 'ПИН-код сменён';
+
+  @override
+  String get profToastRemoved => 'ПИН-код снят';
 }

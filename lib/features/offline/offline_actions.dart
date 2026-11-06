@@ -58,8 +58,8 @@ Future<void> downloadListOffline(
   }, kind: result == null || result.busy ? ToastKind.warn : ToastKind.success);
 }
 
-/// Saves a file where it's seen outside Bloom (shared Music/Bloom on Android,
-/// the app's folder in Files on iOS).
+/// Saves a file where it's seen outside Bloom (shared `Music/Bloom/<profile>` on
+/// Android, the profile's folder in Files on iOS).
 Future<void> saveTrackFile(
   AppLocalizations l,
   WidgetRef ref,

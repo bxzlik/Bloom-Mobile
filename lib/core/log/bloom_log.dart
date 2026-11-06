@@ -91,7 +91,7 @@ class BloomLog {
   /// before the first frame.
   Future<void> open() async {
     try {
-      final dir = Directory('${(await appPrivateDir()).path}/logs');
+      final dir = Directory('${(await appRootDir()).path}/logs');
       if (!dir.existsSync()) await dir.create(recursive: true);
       final file = File('${dir.path}/bloom.log');
       _file = file;

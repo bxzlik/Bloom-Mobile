@@ -37,6 +37,12 @@ class SettingsScreen extends StatelessWidget {
           SettingsGroup(
             title: context.l.setGroupApp,
             rows: [
+              // Who's listening: the PIN, signing out, deleting.
+              SettingsRow(
+                icon: Bi.user,
+                title: context.l.setProfile,
+                onTap: () => context.go('/settings/profile'),
+              ),
               SettingsRow(
                 icon: Bi.smartphone,
                 title: context.l.setSystem,

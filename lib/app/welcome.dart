@@ -3,9 +3,11 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/db/db.dart';
 import '../core/l10n/l10n.dart';
+import '../features/profile/profile_store.dart';
 import 'theme/bloom_theme.dart';
 import 'theme/tokens.dart';
 
@@ -33,20 +35,17 @@ class _WelcomeState extends State<Welcome> with TickerProviderStateMixin {
   static const _ms = Duration(milliseconds: 600);
   static const _hold = Duration(milliseconds: 1600);
 
-  late final AnimationController _word = AnimationController(
-    vsync: this,
-    duration: _ms,
-  );
-  late final AnimationController _cover = AnimationController(
-    vsync: this,
-    duration: _ms,
-    value: 1,
-  );
+  // Made in initState even when unused: a lazy one would first be made in
+  // dispose, and its ticker can't look up the tree by then.
+  late final AnimationController _word;
+  late final AnimationController _cover;
   late bool _on = widget.show;
 
   @override
   void initState() {
     super.initState();
+    _word = AnimationController(vsync: this, duration: _ms);
+    _cover = AnimationController(vsync: this, duration: _ms, value: 1);
     if (!_on) return;
     _word.forward().then((_) {
       if (mounted) Future.delayed(_hold, _leave);
@@ -103,15 +102,28 @@ class _WelcomeState extends State<Welcome> with TickerProviderStateMixin {
                     child: child,
                   ),
                 ),
-                child: Text(
-                  context.l.welcomeTitle,
-                  textAlign: TextAlign.center,
-                  style: bloomText(
-                    size: 40,
-                    weight: 700,
-                    color: t.text,
-                    letterSpacing: -0.6,
-                  ),
+                // By the profile's name, when it has one.
+                child: Consumer(
+                  builder: (context, ref, _) {
+                    final name = ref.watch(
+                      profileProvider.select((p) => p.name.trim()),
+                    );
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        name.isEmpty
+                            ? context.l.welcomeTitle
+                            : context.l.welcomeNamed(name),
+                        textAlign: TextAlign.center,
+                        style: bloomText(
+                          size: 40,
+                          weight: 700,
+                          color: t.text,
+                          letterSpacing: -0.6,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),

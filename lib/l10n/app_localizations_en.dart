@@ -825,10 +825,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get fdPathIos => 'Files → On My iPhone → Bloom';
+  String fdPathIos(String folder) {
+    return 'Files → On My iPhone → Bloom → $folder';
+  }
 
   @override
-  String get fdPathAndroid => 'Music/Bloom';
+  String fdPathAndroid(String folder) {
+    return 'Music/Bloom/$folder';
+  }
 
   @override
   String get fdCantDownload => 'Can’t download this track';
@@ -3348,4 +3352,138 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonFollowHint => 'The artist joins your library';
+
+  @override
+  String welcomeNamed(String name) {
+    return 'Welcome, $name!';
+  }
+
+  @override
+  String get setProfile => 'Profile';
+
+  @override
+  String get gateTitle => 'Who\'s listening?';
+
+  @override
+  String get gateAdd => 'New profile';
+
+  @override
+  String get gatePickAvatar => 'Choose a photo';
+
+  @override
+  String get gateOther => 'Another profile';
+
+  @override
+  String get gateForgot => 'I forgot the PIN';
+
+  @override
+  String gateForgotTitle(String name) {
+    return 'Delete the profile “$name”?';
+  }
+
+  @override
+  String get gateForgotText =>
+      'A PIN can\'t be recovered: the lock only goes along with the profile. Its library, history, settings and downloads will be deleted.';
+
+  @override
+  String get gateCreateFirst => 'Create a profile';
+
+  @override
+  String get gateNext => 'Next';
+
+  @override
+  String get gateWrong => 'Wrong PIN';
+
+  @override
+  String gateWait(int seconds) {
+    return 'Too many tries. Wait $seconds s';
+  }
+
+  @override
+  String get gatePinOffer => 'Set a PIN?';
+
+  @override
+  String get gateSkip => 'Skip';
+
+  @override
+  String gateBioReason(String name) {
+    return 'Open the profile “$name”';
+  }
+
+  @override
+  String get pinErase => 'Erase';
+
+  @override
+  String get pinCurrent => 'Current PIN';
+
+  @override
+  String get pinNew => 'New PIN';
+
+  @override
+  String get pinRepeat => 'Repeat the PIN';
+
+  @override
+  String get pinMismatch => 'The PINs don\'t match';
+
+  @override
+  String get profEntry => 'Signing in';
+
+  @override
+  String get profPinSet => 'Set a PIN';
+
+  @override
+  String get profPinOff =>
+      'The profile opens straight away. A PIN locks the way in; it doesn\'t encrypt the files.';
+
+  @override
+  String get profPinChange => 'Change the PIN';
+
+  @override
+  String get profPinOn =>
+      'Asked at every launch. It locks the way in; it doesn\'t encrypt the files.';
+
+  @override
+  String get profPinRemove => 'Remove the PIN';
+
+  @override
+  String get profPinRemoveSub => 'The profile will open straight away';
+
+  @override
+  String get profBioTitle => 'Fingerprint or face';
+
+  @override
+  String get profBioSub =>
+      'Opens the profile in place of the PIN. Anyone whose fingerprint or face this phone knows gets in too.';
+
+  @override
+  String get profBioConfirm => 'Confirm it\'s you';
+
+  @override
+  String get profSignOutTitle => 'Sign out';
+
+  @override
+  String get profSignOutSub => 'Back to the profile choice';
+
+  @override
+  String get profDeleteTitle => 'Delete the profile';
+
+  @override
+  String get profDeleteSub =>
+      'The profile and everything of it: library, history, settings, downloads';
+
+  @override
+  String get profDeleteConfirm => 'Delete the profile?';
+
+  @override
+  String get profDeleteBody =>
+      'This profile\'s library, history, settings and downloads will be deleted. Music saved to the phone stays.';
+
+  @override
+  String get profToastSet => 'PIN set';
+
+  @override
+  String get profToastChanged => 'PIN changed';
+
+  @override
+  String get profToastRemoved => 'PIN removed';
 }

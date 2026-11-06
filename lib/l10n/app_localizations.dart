@@ -1499,14 +1499,14 @@ abstract class AppLocalizations {
   /// No description provided for @fdPathIos.
   ///
   /// In en, this message translates to:
-  /// **'Files → On My iPhone → Bloom'**
-  String get fdPathIos;
+  /// **'Files → On My iPhone → Bloom → {folder}'**
+  String fdPathIos(String folder);
 
   /// No description provided for @fdPathAndroid.
   ///
   /// In en, this message translates to:
-  /// **'Music/Bloom'**
-  String get fdPathAndroid;
+  /// **'Music/Bloom/{folder}'**
+  String fdPathAndroid(String folder);
 
   /// No description provided for @fdCantDownload.
   ///
@@ -5731,6 +5731,246 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The artist joins your library'**
   String get commonFollowHint;
+
+  /// No description provided for @welcomeNamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome, {name}!'**
+  String welcomeNamed(String name);
+
+  /// No description provided for @setProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get setProfile;
+
+  /// No description provided for @gateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Who\'s listening?'**
+  String get gateTitle;
+
+  /// No description provided for @gateAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'New profile'**
+  String get gateAdd;
+
+  /// No description provided for @gatePickAvatar.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a photo'**
+  String get gatePickAvatar;
+
+  /// No description provided for @gateOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Another profile'**
+  String get gateOther;
+
+  /// No description provided for @gateForgot.
+  ///
+  /// In en, this message translates to:
+  /// **'I forgot the PIN'**
+  String get gateForgot;
+
+  /// No description provided for @gateForgotTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the profile “{name}”?'**
+  String gateForgotTitle(String name);
+
+  /// No description provided for @gateForgotText.
+  ///
+  /// In en, this message translates to:
+  /// **'A PIN can\'t be recovered: the lock only goes along with the profile. Its library, history, settings and downloads will be deleted.'**
+  String get gateForgotText;
+
+  /// No description provided for @gateCreateFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a profile'**
+  String get gateCreateFirst;
+
+  /// No description provided for @gateNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get gateNext;
+
+  /// No description provided for @gateWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong PIN'**
+  String get gateWrong;
+
+  /// No description provided for @gateWait.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many tries. Wait {seconds} s'**
+  String gateWait(int seconds);
+
+  /// No description provided for @gatePinOffer.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a PIN?'**
+  String get gatePinOffer;
+
+  /// No description provided for @gateSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get gateSkip;
+
+  /// No description provided for @gateBioReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the profile “{name}”'**
+  String gateBioReason(String name);
+
+  /// No description provided for @pinErase.
+  ///
+  /// In en, this message translates to:
+  /// **'Erase'**
+  String get pinErase;
+
+  /// No description provided for @pinCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Current PIN'**
+  String get pinCurrent;
+
+  /// No description provided for @pinNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New PIN'**
+  String get pinNew;
+
+  /// No description provided for @pinRepeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat the PIN'**
+  String get pinRepeat;
+
+  /// No description provided for @pinMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The PINs don\'t match'**
+  String get pinMismatch;
+
+  /// No description provided for @profEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing in'**
+  String get profEntry;
+
+  /// No description provided for @profPinSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a PIN'**
+  String get profPinSet;
+
+  /// No description provided for @profPinOff.
+  ///
+  /// In en, this message translates to:
+  /// **'The profile opens straight away. A PIN locks the way in; it doesn\'t encrypt the files.'**
+  String get profPinOff;
+
+  /// No description provided for @profPinChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change the PIN'**
+  String get profPinChange;
+
+  /// No description provided for @profPinOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Asked at every launch. It locks the way in; it doesn\'t encrypt the files.'**
+  String get profPinOn;
+
+  /// No description provided for @profPinRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the PIN'**
+  String get profPinRemove;
+
+  /// No description provided for @profPinRemoveSub.
+  ///
+  /// In en, this message translates to:
+  /// **'The profile will open straight away'**
+  String get profPinRemoveSub;
+
+  /// No description provided for @profBioTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fingerprint or face'**
+  String get profBioTitle;
+
+  /// No description provided for @profBioSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens the profile in place of the PIN. Anyone whose fingerprint or face this phone knows gets in too.'**
+  String get profBioSub;
+
+  /// No description provided for @profBioConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm it\'s you'**
+  String get profBioConfirm;
+
+  /// No description provided for @profSignOutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get profSignOutTitle;
+
+  /// No description provided for @profSignOutSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the profile choice'**
+  String get profSignOutSub;
+
+  /// No description provided for @profDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the profile'**
+  String get profDeleteTitle;
+
+  /// No description provided for @profDeleteSub.
+  ///
+  /// In en, this message translates to:
+  /// **'The profile and everything of it: library, history, settings, downloads'**
+  String get profDeleteSub;
+
+  /// No description provided for @profDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the profile?'**
+  String get profDeleteConfirm;
+
+  /// No description provided for @profDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This profile\'s library, history, settings and downloads will be deleted. Music saved to the phone stays.'**
+  String get profDeleteBody;
+
+  /// No description provided for @profToastSet.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN set'**
+  String get profToastSet;
+
+  /// No description provided for @profToastChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN changed'**
+  String get profToastChanged;
+
+  /// No description provided for @profToastRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN removed'**
+  String get profToastRemoved;
 }
 
 class _AppLocalizationsDelegate

@@ -60,6 +60,7 @@ dependencies:
   # recognition on both platforms are more than a couple of lines to write
   # myself.
   mobile_scanner: ^7.4.2
+  local_auth: ^3.0.2
 
 dev_dependencies:
   flutter_test:

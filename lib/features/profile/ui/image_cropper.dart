@@ -32,23 +32,33 @@ Future<String?> pickAndCropImage(
   double output = 720,
   String prefix = 'img',
 }) async {
-  final path = await pickImageFile();
-  if (path == null || !context.mounted) return null;
-
-  final bytes = await Navigator.of(context, rootNavigator: true)
-      .push<Uint8List>(
-        MaterialPageRoute(
-          fullscreenDialog: true,
-          builder: (_) => _CropPage(
-            path: path,
-            shape: shape,
-            aspect: aspect,
-            output: output,
-          ),
-        ),
-      );
+  final bytes = await pickAndCropBytes(
+    context,
+    shape: shape,
+    aspect: aspect,
+    output: output,
+  );
   if (bytes == null) return null;
   return saveLocalImage(bytes, prefix: prefix);
+}
+
+/// The same, with the crop handed back unsaved: a new profile's picture waits
+/// for its folder.
+Future<Uint8List?> pickAndCropBytes(
+  BuildContext context, {
+  required CropShape shape,
+  double aspect = 1,
+  double output = 720,
+}) async {
+  final path = await pickImageFile();
+  if (path == null || !context.mounted) return null;
+  return Navigator.of(context, rootNavigator: true).push<Uint8List>(
+    MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (_) =>
+          _CropPage(path: path, shape: shape, aspect: aspect, output: output),
+    ),
+  );
 }
 
 class _CropPage extends StatefulWidget {

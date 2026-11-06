@@ -9,7 +9,7 @@ import android.provider.MediaStore
 import java.io.File
 
 /**
- * Saves a downloaded track to the phone's shared storage, Music/Bloom.
+ * Saves a downloaded track to the phone's shared storage, Music/Bloom/<profile>.
  *
  * Unlike the offline copy inside the app, this file sits in the media library:
  * other players see it and it outlives the app.
@@ -28,7 +28,8 @@ object MediaStoreSaver {
      * Puts [source] in the media library as [filename].
      *
      * [title]/[artist] go to media library fields: a CDN file may have no tags,
-     * and players would show "Unknown". Returns the path to show the user.
+     * and players would show "Unknown". [profile] is the track's own folder
+     * inside Bloom: each profile's music apart. Returns the path to show the user.
      */
     fun save(
         context: Context,
@@ -37,20 +38,22 @@ object MediaStoreSaver {
         mime: String,
         title: String?,
         artist: String?,
+        profile: String?,
     ): String {
+        val folder = if (profile.isNullOrBlank()) FOLDER else FOLDER + File.separator + profile
         // A cover takes the same route into Pictures: the gallery wouldn't show
         // it from Music.
         if (mime.startsWith("image/")) {
             return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                saveImageViaMediaStore(context, source, filename, mime)
+                saveImageViaMediaStore(context, source, filename, mime, folder)
             } else {
-                saveViaPublicDir(context, source, filename, Environment.DIRECTORY_PICTURES)
+                saveViaPublicDir(context, source, filename, Environment.DIRECTORY_PICTURES, folder)
             }
         }
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            saveViaMediaStore(context, source, filename, mime, title, artist)
+            saveViaMediaStore(context, source, filename, mime, title, artist, folder)
         } else {
-            saveViaPublicDir(context, source, filename, Environment.DIRECTORY_MUSIC)
+            saveViaPublicDir(context, source, filename, Environment.DIRECTORY_MUSIC, folder)
         }
     }
 
@@ -59,9 +62,10 @@ object MediaStoreSaver {
         source: File,
         filename: String,
         mime: String,
+        folder: String,
     ): String {
         val resolver = context.contentResolver
-        val relative = Environment.DIRECTORY_PICTURES + File.separator + FOLDER
+        val relative = Environment.DIRECTORY_PICTURES + File.separator + folder
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, filename)
             put(MediaStore.Images.Media.MIME_TYPE, mime)
@@ -95,9 +99,10 @@ object MediaStoreSaver {
         mime: String,
         title: String?,
         artist: String?,
+        folder: String,
     ): String {
         val resolver = context.contentResolver
-        val relative = Environment.DIRECTORY_MUSIC + File.separator + FOLDER
+        val relative = Environment.DIRECTORY_MUSIC + File.separator + folder
         val values = ContentValues().apply {
             put(MediaStore.Audio.Media.DISPLAY_NAME, filename)
             put(MediaStore.Audio.Media.MIME_TYPE, mime)
@@ -137,10 +142,11 @@ object MediaStoreSaver {
         source: File,
         filename: String,
         publicDir: String,
+        folder: String = FOLDER,
     ): String {
         val dir = File(
             Environment.getExternalStoragePublicDirectory(publicDir),
-            FOLDER,
+            folder,
         )
         if (!dir.exists() && !dir.mkdirs()) {
             throw IllegalStateException("couldn't create folder ${dir.path}")

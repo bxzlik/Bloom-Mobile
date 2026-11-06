@@ -70,3 +70,9 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // The launch themes are AppCompat ones: the fingerprint prompt falls over
+    // on old Android without them.
+    implementation("androidx.appcompat:appcompat:1.7.0")
+}

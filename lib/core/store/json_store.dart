@@ -21,15 +21,26 @@ final jsonStoreProvider = Provider<JsonStore>(
 const Duration _saveDelay = Duration(milliseconds: 400);
 
 class JsonStore {
-  JsonStore._(this._file, this._data);
+  JsonStore._(this._file, this._data, {bool frozen = false}) : _frozen = frozen;
 
   final File _file;
   final Map<String, dynamic> _data;
   Timer? _debounce;
 
+  /// Read, never written: the gate looks as a profile did and changes nothing
+  /// there.
+  final bool _frozen;
+
   static Future<JsonStore> open({String name = 'bloom.json'}) async {
     final dir = await appPrivateDir();
-    final file = File('${dir.path}/$name');
+    return _read(File('${dir.path}/$name'));
+  }
+
+  /// Another profile's file, only to look at.
+  static Future<JsonStore> peek(String path) async =>
+      _read(File(path), frozen: true);
+
+  static Future<JsonStore> _read(File file, {bool frozen = false}) async {
     Map<String, dynamic> data = {};
     try {
       if (file.existsSync()) {
@@ -40,7 +51,7 @@ class JsonStore {
       // A broken or foreign file: start clean, but DON'T delete it; it stays on
       // disk in case the user wants a look.
     }
-    return JsonStore._(file, data);
+    return JsonStore._(file, data, frozen: frozen);
   }
 
   /// Store in memory, for tests and a first launch with no file system.
@@ -89,7 +100,7 @@ class JsonStore {
   /// Writes at once (app close, tests).
   Future<void> flush() async {
     _debounce?.cancel();
-    if (_file.path.isEmpty) return; // in-memory
+    if (_file.path.isEmpty || _frozen) return; // in-memory or looked at
     try {
       final tmp = File('${_file.path}.tmp');
       await tmp.writeAsString(jsonEncode(_data), flush: true);

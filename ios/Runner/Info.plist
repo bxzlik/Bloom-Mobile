@@ -34,6 +34,8 @@
 	     com.apple.developer.networking.multicast entitlement, which I don't have,
 	     so here the computer is found by the addresses in the QR code; pairing by
 	     code uses the same discovery and may not see it on iOS. -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>Bloom opens a locked profile with Face ID when you turn it on.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Bloom reads the pairing QR code from your computer's screen.</string>
 	<key>NSLocalNetworkUsageDescription</key>

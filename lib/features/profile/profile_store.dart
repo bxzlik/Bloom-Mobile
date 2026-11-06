@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/db/db.dart';
+import '../../core/profiles/profiles.dart';
 import '../../core/l10n/l10n.dart';
 
 /// Profile banner with no picture: the tone of the most played track's cover
@@ -189,11 +190,28 @@ class ProfileController extends Notifier<UserProfile> {
     // The home header reads the profile at launch: that's when member since
     // gets set, not on the first visit to the profile page.
     ref.read(profileSinceProvider);
-    return UserProfile.fromJson(_db.getMap(_kCard));
+    final card = _db.getMap(_kCard);
+    if (card.isEmpty) {
+      // A new profile, or one after "reset everything": the name and photo
+      // the gate has for it.
+      final seed = Profiles.maybe?.seed();
+      if (seed != null && (seed.name.isNotEmpty || seed.avatar != null)) {
+        final first = UserProfile(name: seed.name, avatar: seed.avatar);
+        _db.set(_kCard, first.toJson());
+        return first;
+      }
+    }
+    return UserProfile.fromJson(card);
   }
 
   /// Re-reads from kv: a profile came from another device.
-  void reload() => state = UserProfile.fromJson(_db.getMap(_kCard));
+  void reload() {
+    state = UserProfile.fromJson(_db.getMap(_kCard));
+    _mirror();
+  }
+
+  /// The gate shows the card's name and photo.
+  void _mirror() => Profiles.maybe?.mirror(state.name, state.avatar);
 
   /// Writes the whole profile: edits go as a draft in the editor and arrive
   /// here in one piece on Save. Written normalized, as it'll read next time.
@@ -202,6 +220,7 @@ class ProfileController extends Notifier<UserProfile> {
     if (card == state) return;
     _db.set(_kCard, card.toJson());
     state = card;
+    _mirror();
   }
 }
 

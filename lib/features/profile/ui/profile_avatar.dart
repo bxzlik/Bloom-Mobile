@@ -31,24 +31,6 @@ class ProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
-    final image = coverImage(profile.avatar);
-    // No own picture: as with an empty cover, a solid dark fill and a muted
-    // mark on top. The mark is a figure rather than Bloom's: a logo in a face's
-    // place reads as a track with no cover.
-    final Widget face = image == null
-        ? ColoredBox(
-            color: t.coverEmpty,
-            child: Center(
-              child: BloomIcon(
-                Bi.userBold,
-                size: size * 0.46,
-                color: t.text.withValues(alpha: 0.22),
-              ),
-            ),
-          )
-        : Image(image: image, fit: BoxFit.cover);
-
     return SizedBox(
       width: size,
       height: size,
@@ -56,7 +38,43 @@ class ProfileAvatar extends StatelessWidget {
         tag: flightTag,
         shape: BorderRadius.circular(size / 2),
         // No ring around the avatar, accent or coloured.
-        child: ClipOval(child: face),
+        child: AvatarFace(image: coverImage(profile.avatar), size: size),
+      ),
+    );
+  }
+}
+
+/// The round face itself, from any picture: the gate shows profiles that
+/// aren't open.
+class AvatarFace extends StatelessWidget {
+  const AvatarFace({super.key, required this.image, required this.size});
+
+  final ImageProvider? image;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final image = this.image;
+    // No own picture: as with an empty cover, a solid dark fill and a muted
+    // mark on top. The mark is a figure rather than Bloom's: a logo in a face's
+    // place reads as a track with no cover.
+    return SizedBox(
+      width: size,
+      height: size,
+      child: ClipOval(
+        child: image == null
+            ? ColoredBox(
+                color: t.coverEmpty,
+                child: Center(
+                  child: BloomIcon(
+                    Bi.userBold,
+                    size: size * 0.46,
+                    color: t.text.withValues(alpha: 0.22),
+                  ),
+                ),
+              )
+            : Image(image: image, fit: BoxFit.cover),
       ),
     );
   }

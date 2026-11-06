@@ -5,17 +5,18 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
-import com.ryanheise.audioservice.AudioServiceActivity
+import com.ryanheise.audioservice.AudioServiceFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 /**
- * AudioServiceActivity, not FlutterActivity: otherwise audio_service can't
- * bring the activity up from the notification or the lock screen.
+ * audio_service's activity, not FlutterActivity: otherwise it can't bring the
+ * activity up from the notification or the lock screen. The fragment one,
+ * because the fingerprint prompt is a fragment.
  */
-class MainActivity : AudioServiceActivity() {
+class MainActivity : AudioServiceFragmentActivity() {
 
     /** System file dialogs (SAF): customization presets and own tracks. */
     private val files by lazy { FilesChannel(this) }
@@ -55,7 +56,7 @@ class MainActivity : AudioServiceActivity() {
             "bloom/downloads",
         ).setMethodCallHandler { call, result ->
             when (call.method) {
-                // A downloaded track to shared storage (Music/Bloom). Dart
+                // A downloaded track to shared storage (Music/Bloom/<profile>). Dart
                 // already wrote it to a file, so the path is enough: no need to
                 // push megabytes through the channel.
                 "save" -> saveToMusic(call, result)
@@ -196,6 +197,7 @@ class MainActivity : AudioServiceActivity() {
                 mime = call.argument<String>("mime") ?: "audio/mpeg",
                 title = call.argument<String>("title"),
                 artist = call.argument<String>("artist"),
+                profile = call.argument<String>("profile"),
             )
             if (call.argument<Boolean>("deleteSource") == true) source.delete()
             result.success(path)

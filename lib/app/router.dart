@@ -27,6 +27,7 @@ import '../features/settings/ui/lastfm_screen.dart';
 import '../features/settings/ui/logs_screen.dart';
 import '../features/settings/ui/mini_player_screen.dart';
 import '../features/settings/ui/player_screen.dart';
+import '../features/settings/ui/profile_settings_screen.dart';
 import '../features/settings/ui/settings_screen.dart';
 import '../features/settings/ui/soundcloud_screen.dart';
 import '../features/settings/ui/storage_screen.dart';
@@ -120,7 +121,18 @@ GoRoute get _profileEditRoute => GoRoute(
   builder: (_, _) => const _Page(ProfileEditScreen()),
 );
 
-final GoRouter bloomRouter = GoRouter(
+/// One per open profile: a profile switch builds a fresh one, or the next
+/// profile would open on the pages the last one left.
+GoRouter get bloomRouter => _router ??= _build();
+GoRouter? _router;
+
+/// Drops the router with its pages, for the next profile.
+void resetRouter() {
+  _router?.dispose();
+  _router = null;
+}
+
+GoRouter _build() => GoRouter(
   navigatorKey: _rootKey,
   initialLocation: '/home',
   routes: [
@@ -229,6 +241,10 @@ final GoRouter bloomRouter = GoRouter(
                       builder: (_, _) => const _Page(LogsScreen()),
                     ),
                   ],
+                ),
+                GoRoute(
+                  path: 'profile',
+                  builder: (_, _) => const _Page(ProfileSettingsScreen()),
                 ),
                 GoRoute(
                   path: 'audio',

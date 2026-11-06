@@ -1,11 +1,12 @@
 /// Saving as a file. An offline copy lives inside the app, while this file
 /// lands where the user finds it without Bloom.
 ///
-/// The platform decides where. On Android, shared Music/Bloom: system players
-/// see it and it survives uninstalling. Shared storage takes writes only
-/// through MediaStore, so Kotlin does it ([MediaStoreSaver]). On iOS, the app's
-/// `Documents`, shown in Files: there's no shared library for third-party apps,
-/// so the file stays in the sandbox but in view. No native code, it's an
+/// The platform decides where, in the profile's own folder. On Android, shared
+/// `Music/Bloom/<profile>`: system players see it and it survives
+/// uninstalling. Shared storage takes writes only through MediaStore, so
+/// Kotlin does it ([MediaStoreSaver]). On iOS, the app's `Documents/<profile>`,
+/// shown in Files: there's no shared library for third-party apps, so the file
+/// stays in the sandbox but in view. No native code, it's an
 /// ordinary directory.
 ///
 /// No where to save dialog on purpose: it's painful on a phone and works badly
@@ -22,6 +23,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../app/providers.dart';
 import '../../core/entities/entities.dart';
+import '../../core/profiles/profiles.dart';
 import '../../core/store/app_dirs.dart';
 import '../../core/store/cover_store.dart';
 import '../../core/l10n/l10n.dart';
@@ -33,8 +35,10 @@ const MethodChannel _channel = MethodChannel('bloom/downloads');
 bool get canSaveFiles => Platform.isAndroid || Platform.isIOS;
 
 /// Where, in plain words, for the toast and captions.
-String saveTargetLabel(AppLocalizations l) =>
-    Platform.isIOS ? l.fdPathIos : l.fdPathAndroid;
+String saveTargetLabel(AppLocalizations l) {
+  final folder = Profiles.maybe?.downloadFolder ?? '';
+  return Platform.isIOS ? l.fdPathIos(folder) : l.fdPathAndroid(folder);
+}
 
 /// Saves a track as a file. Returns a path to show the user; `null` means it
 /// landed in the default place, and the UI names that (see [saveTargetLabel]).
@@ -91,13 +95,14 @@ Future<String?> saveTrackAsFile(
     'title': track.name,
     'artist': track.artist,
     'deleteSource': deleteSource,
+    'profile': Profiles.instance.downloadFolder,
   });
   return saved;
 }
 
-/// Saves a cover, next to tracks: on Android Pictures/Bloom (a gallery doesn't
-/// show pictures in Music), on iOS the same folder in Files. Returns a path as
-/// [saveTrackAsFile] does.
+/// Saves a cover, next to tracks: on Android `Pictures/Bloom/<profile>` (a
+/// gallery doesn't show pictures in Music), on iOS the same folder in Files.
+/// Returns a path as [saveTrackAsFile] does.
 ///
 /// A track keeps a small cover for list rows, so I ask for a large version of
 /// the picture first, and take it as is if that fails.
@@ -138,6 +143,7 @@ Future<String?> saveCoverAsFile(Track track) async {
       _ => 'image/jpeg',
     },
     'deleteSource': true,
+    'profile': Profiles.instance.downloadFolder,
   });
 }
 
@@ -203,7 +209,7 @@ Future<String?> _saveToVisibleDir(
   String filename,
   bool deleteSource,
 ) async {
-  final dir = await appVisibleDir();
+  final dir = await appVisibleDir(Profiles.instance.downloadFolder);
   if (!dir.existsSync()) await dir.create(recursive: true);
 
   // Two tracks may share a name, so they're separated, as in the offline cache.
