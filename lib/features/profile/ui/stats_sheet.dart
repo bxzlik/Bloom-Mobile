@@ -250,7 +250,8 @@ class _TopTrack extends ConsumerWidget {
     final track = row.track;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => ref.read(playbackProvider.notifier).play(track),
+      onTap: () =>
+          ref.read(playbackProvider.notifier).play(track, from: 'stats'),
       onLongPress: () => showTrackActions(context, ref, track),
       child: SizedBox(
         height: 36,

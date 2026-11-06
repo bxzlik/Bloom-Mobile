@@ -264,6 +264,19 @@ class PlaybackController extends Notifier<PlaybackState>
   /// [_load]), so a repeat's second round doesn't count again.
   bool _credited = false;
 
+  /// What of the current track really sounded, ms: no pauses, no seeks…
+  int _soundedMs = 0;
+
+  /// …counted up to this position (-1: no tick yet, it never played).
+  int _lastTickMs = -1;
+
+  /// The current track's play row once counted, for its sounded time.
+  int _playRow = 0;
+
+  /// Track id → where it was started from, a [sourceWord]: a track queued from
+  /// search into a playlist's queue keeps its own.
+  final Map<String, String> _from = {};
+
   /// The queue as it was before clearing (the clear button, or removing the
   /// last track), restored on resume. A new queue resets it; clearing again
   /// doesn't overwrite the full queue with a cut one.
@@ -299,6 +312,9 @@ class PlaybackController extends Notifier<PlaybackState>
       handler.player.playingStream.listen((playing) {
         _stateDirty();
         _reportToPc();
+        // The process may be killed while paused: the counted play keeps
+        // what sounded so far.
+        if (!playing) _flushHeard();
         // Sound just played: the played here mark lands at the moment of pause.
         if (!playing && BloomDb.now() - _audibleAt < 6000) {
           _audibleAt = 0;
@@ -530,10 +546,19 @@ class PlaybackController extends Notifier<PlaybackState>
 
   void _onPosition(Duration position) {
     // Sound really plays, not getting ready on load.
-    if (_player.playing && _player.processingState == ProcessingState.ready) {
-      _markAudible();
-    }
+    final sounding =
+        _player.playing && _player.processingState == ProcessingState.ready;
+    if (sounding) _markAudible();
     if (_st.loading) return;
+    // Small steps forward are sound; a seek jumps further or back.
+    final at = position.inMilliseconds;
+    if (sounding &&
+        _lastTickMs >= 0 &&
+        at > _lastTickMs &&
+        at - _lastTickMs < 2000) {
+      _soundedMs += at - _lastTickMs;
+    }
+    _lastTickMs = at;
     _maybeCredit(position);
     ref.read(lastfmProvider.notifier).onProgress(position, _player.duration);
   }
@@ -556,13 +581,68 @@ class PlaybackController extends Notifier<PlaybackState>
     _credited = true;
     // The "track X at time T" log: history, profile stats and days, the level,
     // wave seeds and Wrapped all derive from it.
-    ref.read(playLogProvider.notifier).log(track);
+    _playRow = ref
+        .read(playLogProvider.notifier)
+        .log(track, source: _fromOf(track), heardMs: _soundedMs);
     // In the wave the track is now heard, and its stock is due a check.
     ref.read(waveProvider.notifier).onCounted(track);
     // The queue's last track counted: I ask for a continuation early, so the
     // batch is there at the end and the change goes the usual way, with no
     // pause.
     _maybeAutoSimilar();
+  }
+
+  /// The log's word for where [track] came from.
+  String _fromOf(Track track) =>
+      _from[track.id] ?? sourceWord(_st.source?.toJson());
+
+  /// Added to the queue by hand from a track's menu, unless the caller says
+  /// where from.
+  static String _queuedFrom(PlaySource? source) =>
+      source == null ? 'queue' : sourceWord(source.toJson());
+
+  void _noteFrom(Iterable<Track> tracks, String word) {
+    for (final t in tracks) {
+      _from[t.id] = word;
+    }
+  }
+
+  /// The counted play gets what has sounded so far; counting goes on.
+  void _flushHeard() {
+    if (!_credited || _playRow <= 0) return;
+    _playRow = ref
+        .read(playLogProvider.notifier)
+        .setHeard(_playRow, _soundedMs);
+  }
+
+  /// The current track is being left for [next]: a counted play gets its
+  /// sounded time, an uncounted one the listener moved on from goes down as a
+  /// skip. Then the count starts over.
+  void _settle(Track next) {
+    final prev = _st.track;
+    if (prev != null) {
+      if (_credited) {
+        _flushHeard();
+      } else if (prev.id != next.id &&
+          prev.id == _loadedId &&
+          _lastTickMs >= 0) {
+        // It really played: an auto-skipped one never opened, a session
+        // restored on pause never ticked.
+        ref
+            .read(playLogProvider.notifier)
+            .skip(
+              prev,
+              heardMs: _soundedMs,
+              posMs: _lastTickMs,
+              source: _fromOf(prev),
+            );
+      }
+    }
+    // The same track again (a restart after stop) goes on counting.
+    if (prev?.id == next.id && !_credited) return;
+    _soundedMs = 0;
+    _lastTickMs = -1;
+    _playRow = 0;
   }
 
   /// Auto similar: when the queue's last track is counted, ends or gets next
@@ -603,7 +683,15 @@ class PlaybackController extends Notifier<PlaybackState>
   ///
   /// With shuffle on the new queue is shuffled at once: queue order is playback
   /// order, or the flag would be up with tracks in sequence.
-  Future<void> playQueue(List<Track> tracks, int index, {PlaySource? source}) {
+  ///
+  /// [from] is the play log's word for where it came from when [source] doesn't
+  /// tell (a lone track of an album page has no source).
+  Future<void> playQueue(
+    List<Track> tracks,
+    int index, {
+    PlaySource? source,
+    String? from,
+  }) {
     if (_pc case final pc?) return pc.playQueue(tracks, index, source: source);
     if (_st.shuffle && tracks.length > 1) {
       return _start(
@@ -611,9 +699,10 @@ class PlaybackController extends Notifier<PlaybackState>
         0,
         source: source,
         orig: tracks,
+        from: from,
       );
     }
-    return _start(tracks, index, source: source, orig: null);
+    return _start(tracks, index, source: source, orig: null, from: from);
   }
 
   /// Shuffle from a list card: turns shuffle on and starts from a random track,
@@ -640,8 +729,13 @@ class PlaybackController extends Notifier<PlaybackState>
     Duration? startAt,
     bool autoplay = true,
     List<Track>? preClear,
+    String? from,
   }) async {
     if (tracks.isEmpty) return;
+    // Left before the state moves on: [_load] would see the new queue's track.
+    _settle(tracks[index]);
+    _from.clear();
+    _noteFrom(tracks, from ?? sourceWord(source?.toJson()));
     _origQueue = orig;
     // A new queue leaves nothing to be before clearing. Except a restored cut
     // one: the full one stays, or the first snapshot write loses it and a
@@ -659,8 +753,8 @@ class PlaybackController extends Notifier<PlaybackState>
   }
 
   /// One track is a queue of itself, and the pill shows it.
-  Future<void> play(Track track) =>
-      playQueue([track], 0, source: PlainSource.single(track));
+  Future<void> play(Track track, {String? from}) =>
+      playQueue([track], 0, source: PlainSource.single(track), from: from);
 
   /// Sets a wave queue. Apart from [playQueue] for shuffle's sake: the wave
   /// picks its own order, and reshuffling would throw away its work. So the
@@ -697,6 +791,8 @@ class PlaybackController extends Notifier<PlaybackState>
         if (have.add(t.id)) t,
     ];
     if (add.isEmpty) return 0;
+    // Only the wave adds this way: its picks and a continuation.
+    _noteFrom(add, 'wave');
     final q = [..._st.queue, ...add];
     final orig = _origQueue;
     if (orig != null) _origQueue = [...orig, ...add];
@@ -783,6 +879,7 @@ class PlaybackController extends Notifier<PlaybackState>
     // heard is how much it was liked. Counted before the state changes, while
     // position and duration are still its own.
     _reportWaveTrackEnd(track);
+    _settle(track);
     // Which way the display moves is worked out here, on the real change: the
     // player's and mini player's animation layers must go one way, and by
     // repaint the old index is lost.
@@ -979,6 +1076,7 @@ class PlaybackController extends Notifier<PlaybackState>
       return;
     }
     if (_st.repeat == PlayerRepeat.one) {
+      if (_st.track case final track?) _settle(track);
       _credited = false; // the next round counts anew
       if (_st.track case final track?) {
         ref.read(lastfmProvider.notifier).onTrackStart(track);
@@ -1181,6 +1279,7 @@ class PlaybackController extends Notifier<PlaybackState>
     if (batch.isEmpty) return 0;
     if (_st.queue.isEmpty) {
       unawaited(playQueue(batch, 0, source: source));
+      _noteFrom(batch, _queuedFrom(source));
       return batch.length;
     }
     final have = {for (final t in _st.queue) t.id};
@@ -1189,6 +1288,7 @@ class PlaybackController extends Notifier<PlaybackState>
         if (!have.contains(t.id)) t,
     ];
     if (add.isEmpty) return 0;
+    _noteFrom(add, _queuedFrom(source));
     final q = [..._st.queue, ...add];
     // The pre-shuffle snapshot grows too, or turning shuffle off would drop the
     // added tracks.
@@ -1209,8 +1309,10 @@ class PlaybackController extends Notifier<PlaybackState>
     if (batch.isEmpty) return 0;
     if (_st.queue.isEmpty) {
       unawaited(playQueue(batch, 0, source: source));
+      _noteFrom(batch, _queuedFrom(source));
       return batch.length;
     }
+    _noteFrom(batch, _queuedFrom(source));
     final current = _st.track;
     final (q, index) = queueWithNextAll(_st.queue, _st.index, batch);
     if (identical(q, _st.queue)) return 0;

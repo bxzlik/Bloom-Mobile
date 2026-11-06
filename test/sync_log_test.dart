@@ -11,6 +11,7 @@ import 'package:bloom/core/db/track_store.dart';
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/store/json_store.dart';
 import 'package:bloom/core/store/library_store.dart';
+import 'package:bloom/core/store/play_log.dart';
 import 'package:bloom/core/sync/sync_log.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -65,12 +66,30 @@ class _Device {
       r['track_id'] as String,
   ];
 
-  void play(String id, int ts) {
+  void play(String id, int ts, {int heard = 0, String source = ''}) {
     TrackStore(db).put([_track(id)]);
-    db.exec('INSERT INTO plays (ts, track_id) VALUES (?, ?)', [ts, id]);
+    db.exec(
+      'INSERT INTO plays (ts, track_id, heard_ms, source) VALUES (?, ?, ?, ?)',
+      [ts, id, heard, source],
+    );
+  }
+
+  void skip(
+    String id,
+    int ts, {
+    int heard = 0,
+    int pos = 0,
+    String source = '',
+  }) {
+    TrackStore(db).put([_track(id)]);
+    db.exec(
+      'INSERT INTO skips (ts, track_id, heard_ms, pos_ms, source) VALUES (?, ?, ?, ?, ?)',
+      [ts, id, heard, pos, source],
+    );
   }
 
   int get plays => count('SELECT count(*) FROM plays');
+  int get skips => count('SELECT count(*) FROM skips');
   int marks(String kind) =>
       count('SELECT count(*) FROM changes WHERE kind = ?', [kind]);
 }
@@ -83,12 +102,10 @@ Map<String, Object?> _wire(Map<String, Object?> m) =>
 int _sync(_Device pc, _Device phone, {int limit = 2000, Set<String>? touched}) {
   var rounds = 0;
   for (var more = true; more; rounds++) {
-    final at = pc.log.got(phone.id);
     final out = _wire(
       phone.log.outgoing(
         pc.id,
-        seq: at.seq,
-        play: at.play,
+        from: pc.log.got(phone.id),
         ownOnly: true,
         limit: limit,
       ),
@@ -97,9 +114,8 @@ int _sync(_Device pc, _Device phone, {int limit = 2000, Set<String>? touched}) {
     more = out['more'] as bool;
   }
   for (var more = true; more; rounds++) {
-    final at = phone.log.got(pc.id);
     final out = _wire(
-      pc.log.outgoing(phone.id, seq: at.seq, play: at.play, limit: limit),
+      pc.log.outgoing(phone.id, from: phone.log.got(pc.id), limit: limit),
     );
     expect(phone.log.apply(out, touched: touched), isTrue);
     more = out['more'] as bool;
@@ -302,6 +318,65 @@ void main() {
     expect(a.count('SELECT count(*) FROM plays WHERE device = ?', [a.id]), 0);
   });
 
+  test('sounded time, sources and skips travel; a later figure replaces', () {
+    final pc = _Device(), phone = _Device();
+    phone.play('sc:1', 1000, heard: 160000, source: 'search');
+    phone.skip('sc:2', 2000, heard: 4000, pos: 4200, source: 'wave');
+    pc.skip('sc:3', 3000, heard: 1000, pos: 61000, source: 'library');
+    final touched = <String>{};
+    _sync(pc, phone, touched: touched);
+    expect(touched, contains('skips'));
+    for (final d in [pc, phone]) {
+      expect(d.plays, 1);
+      expect(d.skips, 2);
+      expect(
+        d.db.value("SELECT heard_ms || ' ' || source FROM plays"),
+        '160000 search',
+      );
+      expect(
+        d.db.value("SELECT pos_ms FROM skips WHERE track_id = 'sc:3'"),
+        61000,
+      );
+    }
+    // Left later: the play goes out again in a new row and replaces the old.
+    final row = phone.db.value('SELECT id FROM plays') as int;
+    phone.db.exec(
+      "INSERT INTO plays (ts, track_id, device, heard_ms, source) SELECT ts, track_id, device, 179000, source FROM plays WHERE id = ?",
+      [row],
+    );
+    phone.db.exec('DELETE FROM plays WHERE id = ?', [row]);
+    _sync(pc, phone);
+    expect(pc.plays, 1);
+    expect(pc.db.value('SELECT heard_ms FROM plays'), 179000);
+    _sync(pc, phone);
+    expect(pc.db.value('SELECT heard_ms FROM plays'), 179000);
+  });
+
+  test('a source map becomes one word of the set', () {
+    expect(sourceWord({'kind': 'wave', 'mode': 'personal'}), 'wave');
+    expect(sourceWord({'kind': 'playlist', 'id': 'lib'}), 'library');
+    expect(sourceWord({'kind': 'playlist', 'id': 'fav'}), 'favorites');
+    expect(sourceWord({'kind': 'playlist', 'id': 'pl_1'}), 'playlist');
+    expect(sourceWord({'kind': 'history'}), 'history');
+    expect(
+      sourceWord({'kind': 'collection', 'id': 'ym:album:1'}),
+      'collection',
+    );
+    expect(sourceWord({'kind': 'search', 'id': 'search:x'}), 'search');
+    expect(sourceWord({'kind': 'discover', 'id': 'discover:charts'}), 'chart');
+    expect(
+      sourceWord({'kind': 'discover', 'id': 'discover:newReleases'}),
+      'home',
+    );
+    expect(sourceWord({'kind': 'similarTo', 'id': 'similarTo:seed'}), 'home');
+    expect(sourceWord({'kind': 'forYou', 'id': 'forYou'}), 'forYou');
+    expect(sourceWord({'kind': 'wrapped', 'id': 'wrapped:month'}), 'wrapped');
+    expect(sourceWord({'kind': 'track', 'id': 'track:sc:1'}), 'other');
+    expect(sourceWord({'kind': 'track', 'from': 'search'}), 'search');
+    expect(sourceWord({'kind': 'nonsense'}), 'other');
+    expect(sourceWord(null), 'other');
+  });
+
   test("the computer's packet is accepted, mine goes to the computer", () {
     final payload =
         jsonDecode(File('test/fixtures/sync_from_pc.json').readAsStringSync())
@@ -321,8 +396,21 @@ void main() {
         'track',
         'rekey',
         'plays',
+        'skips',
         'days',
       ]),
+    );
+    expect(
+      phone.db.value(
+        "SELECT heard_ms || ' ' || source FROM plays WHERE track_id = 'sc:1'",
+      ),
+      '170000 playlist',
+    );
+    expect(
+      phone.db.value(
+        "SELECT heard_ms || ' ' || pos_ms || ' ' || source FROM skips",
+      ),
+      '12000 15000 wave',
     );
 
     final road =
@@ -360,7 +448,8 @@ void main() {
     // the computer's side to apply.
     phone.lib.toggleFav(_track('ytm:7'));
     phone.lib.createPlaylist('Phone list', tracks: [_track('ytm:7')]);
-    phone.play('ytm:7', 9000);
+    phone.play('ytm:7', 9000, heard: 150000, source: 'search');
+    phone.skip('ytm:7', 9500, heard: 9000, pos: 9500, source: 'wave');
     phone.db.exec("INSERT INTO days (day, app_ms) VALUES ('2026-10-02', 77)");
     phone.lib.replaceTrack('sc:1', _track('ytm:1'));
     final out = phone.log.outgoing(payload['device'] as String, ownOnly: true);

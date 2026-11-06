@@ -260,7 +260,8 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
     final rows = [
       SliverList.builder(
         itemCount: _tracks.length,
-        itemBuilder: (context, i) => DetailRow(track: _tracks[i]),
+        itemBuilder: (context, i) =>
+            DetailRow(track: _tracks[i], from: 'artist'),
       ),
       SliverToBoxAdapter(child: _footer()),
       // The bars float over the page: the end clears them.
@@ -343,7 +344,8 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
           actionLabel: _hasMore ? l.artistShowAll : null,
           onAction: _showAll,
         ),
-        for (final track in popular.take(_popularRows)) DetailRow(track: track),
+        for (final track in popular.take(_popularRows))
+          DetailRow(track: track, from: 'artist'),
       ],
       if (data.albums.isNotEmpty) ...[
         SectionTitle(l.commonAlbums, side: 8),

@@ -246,6 +246,27 @@ const List<List<String>> kMigrations = [
     'DROP TABLE days',
     'ALTER TABLE days_v2 RENAME TO days',
   ],
+  [
+    // How much of a counted play really sounded (pauses and seeks left out; 0
+    // means not known), and where it was started from (see `sourceWord`).
+    'ALTER TABLE plays ADD COLUMN heard_ms INTEGER NOT NULL DEFAULT 0',
+    "ALTER TABLE plays ADD COLUMN source TEXT NOT NULL DEFAULT ''",
+    // Tracks the listener moved away from before they counted: how much
+    // sounded and the second they were left at. Copied between devices as
+    // plays are.
+    r'''CREATE TABLE skips (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts INTEGER NOT NULL,
+            track_id TEXT NOT NULL REFERENCES tracks(id) ON UPDATE CASCADE ON DELETE CASCADE,
+            heard_ms INTEGER NOT NULL DEFAULT 0,
+            pos_ms INTEGER NOT NULL DEFAULT 0,
+            source TEXT NOT NULL DEFAULT '',
+            device TEXT NOT NULL DEFAULT ''
+        )''',
+    'CREATE INDEX skips_ts ON skips(ts)',
+    'CREATE INDEX skips_track ON skips(track_id, ts)',
+    'CREATE INDEX skips_device ON skips(device, ts)',
+  ],
 ];
 
 /// Opened at launch and overridden in `main()`; in tests, [BloomDb.memory].

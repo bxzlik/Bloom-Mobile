@@ -64,6 +64,7 @@ class TrackRow extends ConsumerWidget {
     required this.queue,
     required this.index,
     this.source,
+    this.from,
     this.dragIndex,
     this.mark,
     this.number,
@@ -73,6 +74,10 @@ class TrackRow extends ConsumerWidget {
   final Track track;
   final List<Track> queue;
   final int index;
+
+  /// Where the play log says it came from when [source] doesn't tell; see
+  /// `sourceWord`.
+  final String? from;
 
   /// Track number instead of a cover; see [TrackRowShell.number].
   final int? number;
@@ -99,7 +104,7 @@ class TrackRow extends ConsumerWidget {
       active: ref.watch(playbackProvider).track?.id == track.id,
       onTap: () => ref
           .read(playbackProvider.notifier)
-          .playQueue(queue, index, source: source),
+          .playQueue(queue, index, source: source, from: from),
       // The sheet learns the library section from the list's source; it has no
       // other sign of where the row is from, and Remove from playlist depends
       // on it.

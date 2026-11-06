@@ -122,7 +122,7 @@ class PcController extends Notifier<PcState> {
   bool _again = false;
 
   /// How far the computer took ours after the last round.
-  ({int seq, int play})? _pushed;
+  SyncCursor? _pushed;
 
   @override
   PcState build() {
@@ -263,9 +263,7 @@ class PcController extends Notifier<PcState> {
       return;
     }
     if (link == null) return;
-    final got = SyncLog(_db).got(link.device);
-    final seq = e.data['seq'], play = e.data['play'];
-    if ((seq is num && seq > got.seq) || (play is num && play > got.play)) {
+    if (SyncCursor.fromJson(e.data).ahead(SyncLog(_db).got(link.device))) {
       sync();
     }
   }
@@ -275,7 +273,7 @@ class PcController extends Notifier<PcState> {
   /// schedule rather than search on every edit.
   void _onWrite(SqliteUpdate u) {
     if (_live == null) return;
-    if (u.tableName != 'changes' && u.tableName != 'plays') return;
+    if (!const {'changes', 'plays', 'skips'}.contains(u.tableName)) return;
     _settle?.cancel();
     _settle = Timer(_kEditSettle, () {
       final link = state.link, pushed = _pushed;
@@ -283,7 +281,7 @@ class PcController extends Notifier<PcState> {
       // A round's writes (what came from the computer) land here too, but they
       // aren't mine.
       final own = SyncLog(_db).head(link.device, ownOnly: true);
-      if (own.seq > pushed.seq || own.play > pushed.play) sync();
+      if (own.ahead(pushed)) sync();
     });
   }
 

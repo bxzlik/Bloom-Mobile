@@ -20,8 +20,38 @@ const String _kDevice = 'sync.device';
 const String _kGot = 'sync.got';
 const String _kCleared = 'stats.cleared';
 const String _kSince = 'profile.since';
-const int _kFormat = 1;
+const int _kFormat = 2;
 const String _tab = '\t';
+
+/// How far a peer has read: the last change, play and skip it has.
+class SyncCursor {
+  const SyncCursor({this.seq = 0, this.play = 0, this.skip = 0});
+
+  factory SyncCursor.fromJson(Object? m) => m is Map
+      ? SyncCursor(
+          seq: _int(m['seq']),
+          play: _int(m['play']),
+          skip: _int(m['skip']),
+        )
+      : const SyncCursor();
+
+  final int seq, play, skip;
+
+  /// Something past [c] in any of the three.
+  bool ahead(SyncCursor c) => seq > c.seq || play > c.play || skip > c.skip;
+
+  Map<String, int> toJson() => {'seq': seq, 'play': play, 'skip': skip};
+
+  @override
+  bool operator ==(Object other) =>
+      other is SyncCursor &&
+      other.seq == seq &&
+      other.play == play &&
+      other.skip == skip;
+
+  @override
+  int get hashCode => Object.hash(seq, play, skip);
+}
 
 /// Kinds in order of taking: a track before what's on it, a playlist before its
 /// tracks, a move to a new id before lists see it.
@@ -70,18 +100,17 @@ class SyncLog {
     return id;
   }
 
-  /// What goes to [peer]: changes after cursor [seq], plays after cursor [play]
-  /// (at most [limit] each; `more` means ask again from the returned cursors),
-  /// all app days and the tracks all this refers to. [ownOnly] is only what was
-  /// made here: the phone sends so, while the computer passes on what others
-  /// sent too.
+  /// What goes to [peer]: changes, plays and skips past [from] (at most [limit]
+  /// each; `more` means ask again from the returned cursors), all app days and
+  /// the tracks all this refers to. [ownOnly] is only what was made here: the
+  /// phone sends so, while the computer passes on what others sent too.
   Map<String, Object?> outgoing(
     String peer, {
-    int seq = 0,
-    int play = 0,
+    SyncCursor from = const SyncCursor(),
     bool ownOnly = false,
     int limit = 2000,
   }) {
+    final seq = from.seq, play = from.play;
     final me = device();
     String origin(Object? d) => _str(d).isEmpty ? me : d as String;
     final own = ownOnly ? 1 : 0;
@@ -133,7 +162,7 @@ class SyncLog {
     final plays = <Map<String, Object?>>[];
     var lastPlay = play;
     for (final p in db.select(
-      '''SELECT id, ts, track_id, device FROM plays
+      '''SELECT id, ts, track_id, device, heard_ms, source FROM plays
         WHERE id > ? AND device != ? AND (? = 0 OR device = '') AND track_id NOT LIKE 'lf:%' ORDER BY id LIMIT ?''',
       [play, peer, own, limit],
     )) {
@@ -143,6 +172,27 @@ class SyncLog {
         'ts': p['ts'],
         'track': p['track_id'],
         'device': origin(p['device']),
+        'heard': p['heard_ms'],
+        'source': p['source'],
+      });
+    }
+
+    final skips = <Map<String, Object?>>[];
+    var lastSkip = from.skip;
+    for (final s in db.select(
+      '''SELECT id, ts, track_id, device, heard_ms, pos_ms, source FROM skips
+        WHERE id > ? AND device != ? AND (? = 0 OR device = '') AND track_id NOT LIKE 'lf:%' ORDER BY id LIMIT ?''',
+      [from.skip, peer, own, limit],
+    )) {
+      lastSkip = s['id'] as int;
+      refs.add(s['track_id'] as String);
+      skips.add({
+        'ts': s['ts'],
+        'track': s['track_id'],
+        'device': origin(s['device']),
+        'heard': s['heard_ms'],
+        'pos': s['pos_ms'],
+        'source': s['source'],
       });
     }
 
@@ -172,18 +222,23 @@ class SyncLog {
       'device': me,
       'seq': lastSeq,
       'play': lastPlay,
-      'more': scanned.length == limit || plays.length == limit,
+      'skip': lastSkip,
+      'more':
+          scanned.length == limit ||
+          plays.length == limit ||
+          skips.length == limit,
       'changes': changes,
       'tracks': tracks,
       'plays': plays,
+      'skips': skips,
       'days': days,
     };
   }
 
   /// Takes what [outgoing] gave on another device, in one transaction, and
   /// remembers its cursors ([got]). [touched] gets kinds changed here: list,
-  /// item, follow, dislike, kv, track, rekey, plays, days. `false`: the parcel
-  /// isn't for us (broken or our own).
+  /// item, follow, dislike, kv, track, rekey, plays, skips, days. `false`: the
+  /// parcel isn't for us (broken or our own).
   bool apply(Map<String, Object?> payload, {Set<String>? touched}) {
     final me = device();
     final from = _str(payload['device']);
@@ -196,6 +251,7 @@ class SyncLog {
     final moves = _Moves(db);
     final changes = (payload['changes'] as List?) ?? const [];
     final plays = (payload['plays'] as List?) ?? const [];
+    final skips = (payload['skips'] as List?) ?? const [];
     db.tx(() {
       var cleared = false;
 
@@ -248,6 +304,33 @@ class SyncLog {
       final before = db.value('SELECT count(*) FROM plays') as int;
       for (final v in plays) {
         if (v is! Map) continue;
+        final ts = _int(v['ts']), heard = _int(v['heard']);
+        final track = moves.of(_str(v['track']));
+        final by = _str(v['device']);
+        if (by.isEmpty ||
+            by == me ||
+            track.isEmpty ||
+            _isLocal(track) ||
+            ts < clearedAt) {
+          continue;
+        }
+        // A play comes again once its sounded time is known: the copy with
+        // more of it wins.
+        db.exec(
+          'DELETE FROM plays WHERE device = ? AND ts = ? AND heard_ms < ?',
+          [by, ts, heard],
+        );
+        db.exec(
+          '''INSERT INTO plays (ts, track_id, device, heard_ms, source) SELECT ?, ?, ?, ?, ?
+            WHERE NOT EXISTS (SELECT 1 FROM plays WHERE device = ? AND ts = ?) AND EXISTS (SELECT 1 FROM tracks WHERE id = ?)''',
+          [ts, track, by, heard, _str(v['source']), by, ts, track],
+        );
+      }
+      if (db.value('SELECT count(*) FROM plays') != before) did.add('plays');
+
+      final skipsBefore = db.value('SELECT count(*) FROM skips') as int;
+      for (final v in skips) {
+        if (v is! Map) continue;
         final ts = _int(v['ts']);
         final track = moves.of(_str(v['track']));
         final by = _str(v['device']);
@@ -259,12 +342,24 @@ class SyncLog {
           continue;
         }
         db.exec(
-          '''INSERT INTO plays (ts, track_id, device) SELECT ?, ?, ?
-            WHERE NOT EXISTS (SELECT 1 FROM plays WHERE device = ? AND ts = ?) AND EXISTS (SELECT 1 FROM tracks WHERE id = ?)''',
-          [ts, track, by, by, ts, track],
+          '''INSERT INTO skips (ts, track_id, device, heard_ms, pos_ms, source) SELECT ?, ?, ?, ?, ?, ?
+            WHERE NOT EXISTS (SELECT 1 FROM skips WHERE device = ? AND ts = ?) AND EXISTS (SELECT 1 FROM tracks WHERE id = ?)''',
+          [
+            ts,
+            track,
+            by,
+            _int(v['heard']),
+            _int(v['pos']),
+            _str(v['source']),
+            by,
+            ts,
+            track,
+          ],
         );
       }
-      if (db.value('SELECT count(*) FROM plays') != before) did.add('plays');
+      if (db.value('SELECT count(*) FROM skips') != skipsBefore) {
+        did.add('skips');
+      }
 
       final clearedDay = clearedAt > 0
           ? dayKey(DateTime.fromMillisecondsSinceEpoch(clearedAt))
@@ -289,43 +384,36 @@ class SyncLog {
       if (cleared) TrackStore(db).prune();
 
       final all = db.getMap(_kGot);
-      all[from] = {'seq': _int(payload['seq']), 'play': _int(payload['play'])};
+      all[from] = SyncCursor.fromJson(payload).toJson();
       db.set(_kGot, all);
     });
     if (!db.committed) return false;
     touched?.addAll(did);
     logInfo(
       'sync',
-      'took from ${from.substring(0, min(8, from.length))} · ${changes.length} changes, ${plays.length} plays · ${did.join(' ')}',
+      'took from ${from.substring(0, min(8, from.length))} · ${changes.length} changes, ${plays.length} plays, ${skips.length} skips · ${did.join(' ')}',
     );
     return true;
   }
 
   /// How far [peer]'s parcels got.
-  ({int seq, int play}) got(String peer) {
-    final at = db.getMap(_kGot)[peer];
-    return at is Map
-        ? (seq: _int(at['seq']), play: _int(at['play']))
-        : (seq: 0, play: 0);
-  }
+  SyncCursor got(String peer) => SyncCursor.fromJson(db.getMap(_kGot)[peer]);
 
   /// How far [outgoing] would go for [peer]. With [ownOnly], only what was made
   /// here: past the computer's cursor means there's something to give.
-  ({int seq, int play}) head(String peer, {bool ownOnly = false}) {
+  SyncCursor head(String peer, {bool ownOnly = false}) {
     final own = ownOnly ? 1 : 0;
     // From the end: the scan stops at the first fitting row.
-    return (
-      seq: _int(
-        db.value(
-          "SELECT seq FROM changes WHERE device != ? AND (? = 0 OR device = '') ORDER BY seq DESC LIMIT 1",
-          [peer, own],
-        ),
+    int last(String sql) => _int(db.value(sql, [peer, own]));
+    return SyncCursor(
+      seq: last(
+        "SELECT seq FROM changes WHERE device != ? AND (? = 0 OR device = '') ORDER BY seq DESC LIMIT 1",
       ),
-      play: _int(
-        db.value(
-          "SELECT id FROM plays WHERE device != ? AND (? = 0 OR device = '') AND track_id NOT LIKE 'lf:%' ORDER BY id DESC LIMIT 1",
-          [peer, own],
-        ),
+      play: last(
+        "SELECT id FROM plays WHERE device != ? AND (? = 0 OR device = '') AND track_id NOT LIKE 'lf:%' ORDER BY id DESC LIMIT 1",
+      ),
+      skip: last(
+        "SELECT id FROM skips WHERE device != ? AND (? = 0 OR device = '') AND track_id NOT LIKE 'lf:%' ORDER BY id DESC LIMIT 1",
       ),
     );
   }
@@ -576,6 +664,7 @@ class SyncLog {
   /// What a stats clear on another device also removes here.
   void _clearBefore(int at, int banked) {
     db.exec('DELETE FROM plays WHERE ts < ?', [at]);
+    db.exec('DELETE FROM skips WHERE ts < ?', [at]);
     db.exec(
       "DELETE FROM days WHERE day < date(? / 1000, 'unixepoch', 'localtime')",
       [at],

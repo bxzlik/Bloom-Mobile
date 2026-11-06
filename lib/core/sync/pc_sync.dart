@@ -36,7 +36,7 @@ class SyncRound {
   final PcLink link;
 
   /// How far the computer took ours, compared with [SyncLog.head] (`ownOnly`).
-  final ({int seq, int play}) pushed;
+  final SyncCursor pushed;
 
   /// Kinds changed here ([SyncLog.apply]).
   final Set<String> touched;
@@ -66,14 +66,9 @@ Future<SyncRound> syncWithPc(PcLink link, BloomDb db, String coversDir) async {
 
   // ── ours to the computer ──
   var sent = 0;
-  var cursor = hello['got'] is Map ? hello['got'] as Map : const {};
+  var cursor = SyncCursor.fromJson(hello['got']);
   while (true) {
-    final out = log.outgoing(
-      link.device,
-      seq: _int(cursor['seq']),
-      play: _int(cursor['play']),
-      ownOnly: true,
-    );
+    final out = log.outgoing(link.device, from: cursor, ownOnly: true);
     final names = pictures.toWire(out);
     _shift(out, skew);
     if (names.isNotEmpty) {
@@ -95,8 +90,11 @@ Future<SyncRound> syncWithPc(PcLink link, BloomDb db, String coversDir) async {
       body: out,
       timeout: const Duration(seconds: 60),
     );
-    sent += (out['changes'] as List).length + (out['plays'] as List).length;
-    cursor = res['got'] is Map ? res['got'] as Map : const {};
+    sent +=
+        (out['changes'] as List).length +
+        (out['plays'] as List).length +
+        (out['skips'] as List).length;
+    cursor = SyncCursor.fromJson(res['got']);
     if (out['more'] != true) break;
   }
 
@@ -108,7 +106,7 @@ Future<SyncRound> syncWithPc(PcLink link, BloomDb db, String coversDir) async {
     final payload = await client.json(
       'POST',
       '/v1/sync/pull',
-      body: {'seq': from.seq, 'play': from.play},
+      body: from.toJson(),
       timeout: const Duration(seconds: 60),
     );
     for (final name in pictures.wanted(payload)) {
@@ -128,7 +126,8 @@ Future<SyncRound> syncWithPc(PcLink link, BloomDb db, String coversDir) async {
     }
     took +=
         ((payload['changes'] as List?) ?? const []).length +
-        ((payload['plays'] as List?) ?? const []).length;
+        ((payload['plays'] as List?) ?? const []).length +
+        ((payload['skips'] as List?) ?? const []).length;
     if (payload['more'] != true) break;
   }
   logInfo(
@@ -140,7 +139,7 @@ Future<SyncRound> syncWithPc(PcLink link, BloomDb db, String coversDir) async {
     touched: touched,
     sent: sent,
     took: took,
-    pushed: (seq: _int(cursor['seq']), play: _int(cursor['play'])),
+    pushed: cursor,
   );
 }
 

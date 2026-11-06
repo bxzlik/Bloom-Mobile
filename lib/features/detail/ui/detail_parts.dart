@@ -13,16 +13,29 @@ import '../../../shared/ui/skeleton.dart';
 /// A track of the page. It plays alone: its queue isn't the page's, so the
 /// header's "Play" stays "Play".
 class DetailRow extends StatelessWidget {
-  const DetailRow({super.key, required this.track, this.number});
+  const DetailRow({
+    super.key,
+    required this.track,
+    required this.from,
+    this.number,
+  });
 
   final Track track;
+
+  /// The page's kind for the play log: `collection` or `artist`.
+  final String from;
 
   /// An album's: its place instead of the cover they all share.
   final int? number;
 
   @override
-  Widget build(BuildContext context) =>
-      TrackRow(track: track, queue: [track], index: 0, number: number);
+  Widget build(BuildContext context) => TrackRow(
+    track: track,
+    queue: [track],
+    index: 0,
+    from: from,
+    number: number,
+  );
 }
 
 /// "About": three lines, a tap opens the rest and closes it again.

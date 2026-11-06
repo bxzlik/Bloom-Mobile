@@ -262,6 +262,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
                 itemCount: _tracks.length,
                 itemBuilder: (context, i) => DetailRow(
                   track: _tracks[i],
+                  from: 'collection',
                   number: _set.isAlbum ? i + 1 : null,
                 ),
               ),

@@ -116,6 +116,7 @@ class TrackStore {
           [to, from],
         );
         db.exec('UPDATE plays SET track_id = ? WHERE track_id = ?', [to, from]);
+        db.exec('UPDATE skips SET track_id = ? WHERE track_id = ?', [to, from]);
         db.exec('UPDATE files SET track_id = ? WHERE track_id = ?', [to, from]);
         db.exec('UPDATE session_tracks SET track_id = ? WHERE track_id = ?', [
           to,
@@ -146,6 +147,7 @@ class TrackStore {
       '''DELETE FROM tracks WHERE
         NOT EXISTS (SELECT 1 FROM list_tracks WHERE track_id = tracks.id) AND
         NOT EXISTS (SELECT 1 FROM plays WHERE track_id = tracks.id) AND
+        NOT EXISTS (SELECT 1 FROM skips WHERE track_id = tracks.id) AND
         NOT EXISTS (SELECT 1 FROM session_tracks WHERE track_id = tracks.id) AND
         NOT EXISTS (SELECT 1 FROM dislikes WHERE track_id = tracks.id) AND
         NOT EXISTS (SELECT 1 FROM files WHERE track_id = tracks.id AND folder IS NOT NULL)''',
