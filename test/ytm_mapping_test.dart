@@ -529,6 +529,49 @@ void main() {
       expect(e.ownerAvatar, endsWith('ava=w544-h544'));
       expect(e.tracks.single.artist, 'Артист Шапки');
       expect(e.tracks.single.cover, endsWith('cov=w544-h544'));
+      // One name, no page behind it.
+      expect(e.artists, [(id: '', name: 'Артист Шапки')]);
+    });
+
+    test('album: a joint line gives every artist with their page', () {
+      Map<String, dynamic> artistRun(String name, String id) => {
+        'text': name,
+        'navigationEndpoint': {
+          'browseEndpoint': {
+            'browseId': id,
+            'browseEndpointContextSupportedConfigs': {
+              'browseEndpointContextMusicConfig': {
+                'pageType': 'MUSIC_PAGE_TYPE_ARTIST',
+              },
+            },
+          },
+        },
+      };
+      final page = {
+        'header': {
+          'musicResponsiveHeaderRenderer': {
+            'title': {
+              'runs': [
+                {'text': 'Collision Course'},
+              ],
+            },
+            'straplineTextOne': {
+              'runs': [
+                artistRun('Jay-Z', 'UCjay'),
+                {'text': ' & '},
+                artistRun('Linkin Park', 'UClp'),
+              ],
+            },
+          },
+        },
+      };
+
+      final e = parseAlbumPage(page);
+      expect(e.subtitle, 'Jay-Z & Linkin Park');
+      expect(e.artists, [
+        (id: 'UCjay', name: 'Jay-Z'),
+        (id: 'UClp', name: 'Linkin Park'),
+      ]);
     });
 
     test(

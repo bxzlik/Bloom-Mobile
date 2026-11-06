@@ -90,7 +90,19 @@ Playlist albumFromYm(YmRawAlbum a) => Playlist(
   sourceUrl: 'https://music.yandex.ru/album/${a.id}',
   isAlbum: true,
   source: MusicSource.yandex,
+  artists: _links(a.artists),
+  artistAvatars: _faces(a.artists),
 );
+
+/// An album's artists as links to their pages, and their faces by name.
+List<ArtistLink> _links(List<YmRawArtist> list) => [
+  for (final a in list) (name: a.name, id: ymArtistId(a.id)),
+];
+
+Map<String, String> _faces(List<YmRawArtist> list) => {
+  for (final a in list)
+    if (a.cover.isNotEmpty) a.name: a.cover,
+};
 
 Playlist playlistFromYm(YmRawPlaylist p) => Playlist(
   id: ymPlaylistId(p.owner, p.kind),
@@ -222,6 +234,8 @@ class YandexProvider extends MusicProvider {
     isAlbum: isAlbum,
     sourceUrl: sourceUrl,
     source: MusicSource.yandex,
+    artists: _links(e.artists),
+    artistAvatars: _faces(e.artists),
   );
 
   @override

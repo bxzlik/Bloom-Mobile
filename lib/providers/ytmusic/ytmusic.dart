@@ -1058,6 +1058,7 @@ YtmEntity parseAlbumPage(Object? v) {
     tracks: tracks,
     year: h == null ? '' : headerYear(h),
     ownerAvatar: h == null ? '' : headerStraplineAvatar(h),
+    artists: h == null ? const [] : headerArtists(h),
   );
 }
 
@@ -1085,9 +1086,10 @@ YtmEntity parsePlaylistPage(Object? v) {
 }
 
 /// Artist: popular (top songs shelf), with releases and similar from carousels.
-/// The header gives only 5–10 songs and 10 releases. Full lists come from the
-/// more buttons: a `VL…` playlist on the songs shelf (≈100 tracks), `MPAD…`
-/// with `params` on the singles carousel. Both are independent, so parallel.
+/// The header gives only 5–10 songs and 10 of each release kind. Full lists
+/// come from the more buttons: a `VL…` playlist on the songs shelf (≈100
+/// tracks), `MPAD…` with `params` on the albums and the singles carousels.
+/// All are independent, so parallel.
 Future<YtmEntity> artist(String browseId) async {
   final v = await browse(browseId);
   final base = parseArtistPage(v);
@@ -1096,17 +1098,34 @@ Future<YtmEntity> artist(String browseId) async {
     _moreTracks(
       shelfMore(v, const ['Top songs', 'Songs', 'Популярные треки', 'Песни']),
     ),
+    _moreAlbums(shelfMore(v, const ['Albums', 'Альбомы'])),
     _moreAlbums(shelfMore(v, const ['Singles & EPs', 'Синглы и EP', 'Синглы'])),
   ]);
   final fullSongs = more[0] as List<YtmRawTrack>;
-  final singles = more[1] as List<YtmRawAlbum>;
+  final albums = more[1] as List<YtmRawAlbum>;
+  final singles = more[2] as List<YtmRawAlbum>;
+  // The albums before the singles, as the carousels have them.
+  final carouselAlbums = [
+    for (final a in base.albums)
+      if (a.kind == null) a,
+  ];
+  final rest = [
+    for (final a in base.albums)
+      if (a.kind != null) a,
+  ];
+  final allAlbums = mergeById(carouselAlbums, albums, null, (a) => a.id);
 
   return YtmEntity(
     title: base.title,
     cover: base.cover,
     tracks: fullSongs,
     popularTracks: base.popularTracks,
-    albums: mergeById(base.albums, singles, null, (a) => a.id),
+    albums: mergeById(
+      mergeById(allAlbums, rest, null, (a) => a.id),
+      singles,
+      null,
+      (a) => a.id,
+    ),
     similarArtists: base.similarArtists,
     description: base.description,
   );
@@ -1336,6 +1355,24 @@ String headerSubtitle(Object? h) {
 
   final strapline = join(at(h, ['straplineTextOne']));
   return strapline.isNotEmpty ? strapline : join(at(h, ['subtitle']));
+}
+
+/// A joint album's artists from the header's line: "A & B" is a run each, a
+/// page behind each one that has it.
+List<({String id, String name})> headerArtists(Object? h) {
+  final runs = at(h, ['straplineTextOne', 'runs']);
+  if (runs is! List) return const [];
+  return [
+    for (final r in runs)
+      if (str(at(r, ['text'])).trim() case final name
+          when name.isNotEmpty && !const {'&', ',', '•'}.contains(name))
+        (
+          id: pageType(r) == 'MUSIC_PAGE_TYPE_ARTIST'
+              ? itemBrowseId(r) ?? ''
+              : '',
+          name: name,
+        ),
+  ];
 }
 
 /// Artist's or owner's avatar from the header: `straplineThumbnail` is the only

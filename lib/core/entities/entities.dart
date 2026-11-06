@@ -386,6 +386,14 @@ class Playlist {
   /// URL for reloading from the source.
   final String? sourceUrl;
 
+  /// An album's artists with their pages, as the platform lists them; empty
+  /// for a playlist, or when only [ownerName] is known. Not saved: the page
+  /// gets them again.
+  final List<ArtistLink> artists;
+
+  /// Their faces by name, where the platform gave them; the rest are looked up.
+  final Map<String, String> artistAvatars;
+
   const Playlist({
     required this.id,
     required this.title,
@@ -401,6 +409,8 @@ class Playlist {
     this.isAlbum = false,
     this.duration,
     this.sourceUrl,
+    this.artists = const [],
+    this.artistAvatars = const {},
   });
 
   Map<String, dynamic> toJson() => {

@@ -241,6 +241,15 @@ class YtmusicProvider extends MusicProvider {
         isAlbum: true,
         sourceUrl: 'https://music.youtube.com/browse/$browseId',
         source: MusicSource.ytmusic,
+        artists: [
+          for (final a in e.artists)
+            (name: a.name, id: a.id.isEmpty ? null : ytmArtistId(a.id)),
+        ],
+        // Only the first one's face is in the header; the rest are looked up.
+        artistAvatars: {
+          if (e.artists.isNotEmpty && e.ownerAvatar.isNotEmpty)
+            e.artists.first.name: e.ownerAvatar,
+        },
       ),
       tracks: tracks,
     );

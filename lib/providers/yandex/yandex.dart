@@ -284,6 +284,7 @@ YmRawAlbum? parseAlbum(Object? node) {
     artistId: (first is Map ? idStr(first['id']) : null) ?? '',
     artistCover: _artistPhoto(first),
     albumType: node['type'] as String? ?? '',
+    artists: _parseAll(artists, parseArtist, 1 << 30),
   );
 }
 
@@ -516,6 +517,7 @@ Future<YmEntity> album(String id) async {
     ownerAvatar: (artists is List && artists.isNotEmpty)
         ? coverFrom(artists.first)
         : '',
+    artists: _parseAll(artists, parseArtist, 1 << 30),
   );
 }
 
@@ -556,6 +558,29 @@ YmTracksPage parseArtistTracksPage(Object? result, int page) {
   );
 }
 
+/// All of an artist's own releases, newest first, page by page. Five pages of
+/// 100 is past anyone's discography.
+Future<List<YmRawAlbum>> _directAlbums(String id) async {
+  const size = 100;
+  final out = <YmRawAlbum>[];
+  for (var page = 0; page < 5; page++) {
+    final v = await apiGet('/artists/$id/direct-albums', {
+      'page': '$page',
+      'page-size': '$size',
+      'sort-by': 'year',
+    });
+    final r = v['result'];
+    final raw = r is Map ? r['albums'] : null;
+    final got = raw is List ? raw.length : 0;
+    out.addAll(_parseAll(raw, parseAlbum, got));
+    // perPage comes back cut to the total, not as asked: the total decides.
+    final pager = r is Map ? r['pager'] : null;
+    final total = pager is Map ? (pager['total'] as num?)?.toInt() ?? 0 : 0;
+    if (got == 0 || page * size + got >= total) break;
+  }
+  return out;
+}
+
 Future<YmEntity> artist(String id) async {
   final v = await apiGet('/artists/$id/brief-info');
   final r = v['result'];
@@ -577,11 +602,14 @@ Future<YmEntity> artist(String id) async {
   }
 
   // First discography page; more load by page number. Best effort: if the
-  // endpoint gave nothing, at least popular remains.
-  final first = await artistTracksPage(
-    id,
-    0,
-  ).catchError((_) => const YmTracksPage());
+  // endpoint gave nothing, at least popular remains. The releases at the same
+  // time: brief-info's albums are a handful (9 of 58), direct-albums has all.
+  final pages = await Future.wait<Object>([
+    artistTracksPage(id, 0).catchError((_) => const YmTracksPage()),
+    _directAlbums(id).catchError((_) => const <YmRawAlbum>[]),
+  ]);
+  final first = pages[0] as YmTracksPage;
+  final all = pages[1] as List<YmRawAlbum>;
 
   return YmEntity(
     title: (a is Map ? a['name'] as String? : null) ?? providerText.artist,
@@ -591,7 +619,8 @@ Future<YmEntity> artist(String id) async {
     tracksNextPage: first.nextPage,
     tracksTotal: first.total,
     popularTracks: popularTracks,
-    albums: _parseAll(r['albums'], parseAlbum, 18),
+    // Not answered: the handful is better than none.
+    albums: all.isNotEmpty ? all : _parseAll(r['albums'], parseAlbum, 1 << 30),
     // Similar artists: brief-info gives ready artist objects.
     similarArtists: _parseAll(r['similarArtists'], parseArtist, 18),
   );

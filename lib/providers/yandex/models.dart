@@ -119,6 +119,9 @@ class YmRawAlbum {
   /// usual album.
   final String albumType;
 
+  /// Every artist of a joint album, each with their page and face.
+  final List<YmRawArtist> artists;
+
   const YmRawAlbum({
     required this.id,
     required this.title,
@@ -130,6 +133,7 @@ class YmRawAlbum {
     this.artistId = '',
     this.artistCover = '',
     this.albumType = '',
+    this.artists = const [],
   });
 }
 
@@ -174,6 +178,9 @@ class YmEntity {
   /// `artists[0]`).
   final String ownerAvatar;
 
+  /// Album only: every artist, for the header's line.
+  final List<YmRawArtist> artists;
+
   /// Artist only: similar artists from brief-info.
   final List<YmRawArtist> similarArtists;
 
@@ -187,6 +194,7 @@ class YmEntity {
     this.year = '',
     this.releaseDate = '',
     this.ownerAvatar = '',
+    this.artists = const [],
     this.similarArtists = const [],
     this.tracksNextPage,
     this.tracksTotal,

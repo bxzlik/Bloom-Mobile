@@ -23,6 +23,8 @@ import '../../../shared/ui/detail_hero.dart';
 import '../../../shared/ui/track_actions.dart';
 import '../../../shared/util/artists.dart';
 import '../../../shared/util/format.dart';
+import '../../player/ui/artist_avatars.dart';
+import '../artists_sheet.dart';
 import '../detail_nav.dart';
 import 'detail_parts.dart';
 import '../../../shared/ui/subpage_header.dart';
@@ -91,6 +93,13 @@ class _SetScreenState extends ConsumerState<SetScreen> {
           duration: content.playlist.duration ?? widget.set.duration,
           sourceUrl: content.playlist.sourceUrl ?? widget.set.sourceUrl,
           source: content.playlist.source,
+          artists: content.playlist.artists.isNotEmpty
+              ? content.playlist.artists
+              : widget.set.artists,
+          artistAvatars: {
+            ...widget.set.artistAvatars,
+            ...content.playlist.artistAvatars,
+          },
         );
         _tracks = content.tracks;
       });
@@ -126,6 +135,25 @@ class _SetScreenState extends ConsumerState<SetScreen> {
       if (track.artist.toLowerCase() == name) return ownArtistAvatar(track);
     }
     return null;
+  }
+
+  /// An album's artists as a track's line, so the header shows them as the
+  /// player does: every face, and a tap opens one or asks which. Null for a
+  /// playlist, or when the platform named no artists.
+  Track? _ownerTrack() {
+    final artists = _set.artists;
+    if (!_set.isAlbum || artists.isEmpty) return null;
+    return Track(
+      id: _set.id,
+      name: _set.title,
+      artist: artists.map((a) => a.name).join(', '),
+      duration: Duration.zero,
+      source: _set.source,
+      cover: _set.cover,
+      artists: artists,
+      artistId: artists.first.id,
+      artistAvatar: artists.length == 1 ? _ownerAvatar() : null,
+    );
   }
 
   void _openOwner() {
@@ -169,6 +197,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
     final t = context.bloom;
     final queue = _tracks;
     final saved = _savedIn(ref.watch(libraryProvider), _set);
+    final artists = _ownerTrack();
 
     return BloomPage(
       body: CustomScrollView(
@@ -176,9 +205,22 @@ class _SetScreenState extends ConsumerState<SetScreen> {
           DetailHero(
             image: _set.cover,
             title: _set.title,
-            owner: _set.ownerName,
+            owner: artists?.artist ?? _set.ownerName,
             ownerAvatar: _ownerAvatar(),
-            onOwner: _ownerLink() == null ? null : _openOwner,
+            ownerFaces: artists == null
+                ? null
+                : TrackArtistAvatars(
+                    track: artists,
+                    known: _set.artistAvatars,
+                    size: 24,
+                  ),
+            onOwner: artists != null
+                ? (canOpenTrackArtist(artists)
+                      ? () => openTrackArtist(context, ref, artists)
+                      : null)
+                : _ownerLink() == null
+                ? null
+                : _openOwner,
             subtitle: _subtitle(),
             flight: widget.flight,
             onMenu: _menu,

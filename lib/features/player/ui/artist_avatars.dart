@@ -1,7 +1,9 @@
-/// The track's artists' avatars, stacked before their names in the player.
+/// The track's artists' avatars, stacked before their names in the player and
+/// in an album's header.
 ///
-/// Only the uploader's picture comes with the track; the rest are looked up by
-/// name ([findArtistCached]), the same lookup the artist sheet uses.
+/// Only the uploader's picture comes with the track (an album hands over the
+/// faces its platform gave); the rest are looked up by name
+/// ([findArtistCached]), the same lookup the artist sheet uses.
 ///
 /// While looking and loading nothing shows, and nothing when not found or
 /// broken: a stand-in next to the name would read as someone's avatar, an
@@ -36,9 +38,21 @@ const double _gap = 2;
 const double _lead = 8;
 
 class TrackArtistAvatars extends ConsumerStatefulWidget {
-  const TrackArtistAvatars({super.key, required this.track});
+  const TrackArtistAvatars({
+    super.key,
+    required this.track,
+    this.known = const {},
+    this.size = _size,
+  });
 
   final Track track;
+
+  /// Faces the platform already gave, by name (an album's artists): taken
+  /// as they are, no lookup.
+  final Map<String, String> known;
+
+  /// Circle diameter; the overlap and the gap stay as they are.
+  final double size;
 
   @override
   ConsumerState<TrackArtistAvatars> createState() => _TrackArtistAvatarsState();
@@ -63,7 +77,8 @@ class _TrackArtistAvatarsState extends ConsumerState<TrackArtistAvatars> {
     super.didUpdateWidget(old);
     // Same track, same line: what was found still stands.
     if (old.track.id == widget.track.id &&
-        old.track.artist == widget.track.artist) {
+        old.track.artist == widget.track.artist &&
+        old.known.length == widget.known.length) {
       return;
     }
     _sync();
@@ -82,7 +97,21 @@ class _TrackArtistAvatarsState extends ConsumerState<TrackArtistAvatars> {
       return;
     }
     if (links.isEmpty) return;
-    unawaited(_resolve(links));
+    final known = [
+      for (final l in links)
+        if (widget.known[l.name] != null) l,
+    ];
+    for (final l in known) {
+      unawaited(_accept(links, l.name, widget.known[l.name]!));
+    }
+    if (known.length < links.length) {
+      unawaited(
+        _resolve(links, [
+          for (final l in links)
+            if (!known.contains(l)) l,
+        ]),
+      );
+    }
   }
 
   /// Puts a picture in the stack only once it has LOADED. A broken link drops
@@ -99,13 +128,14 @@ class _TrackArtistAvatarsState extends ConsumerState<TrackArtistAvatars> {
     setState(() => _urls[name] = url);
   }
 
-  Future<void> _resolve(List<ArtistLink> links) async {
+  /// Looks up [ask] (all of [links] when null); [links] marks the request.
+  Future<void> _resolve(List<ArtistLink> links, [List<ArtistLink>? ask]) async {
     final provider = ref.read(registryProvider).byId(widget.track.source.id);
     // No platform to ask: the names go without pictures.
     if (provider == null) return;
     // The same name twice in a line ("A & A") is looked up once.
     await Future.wait([
-      for (final l in {for (final l in links) l.name: l}.values)
+      for (final l in {for (final l in ask ?? links) l.name: l}.values)
         _one(provider, links, l),
     ]);
   }
@@ -140,12 +170,13 @@ class _TrackArtistAvatarsState extends ConsumerState<TrackArtistAvatars> {
     ];
     if (urls.isEmpty) return const SizedBox.shrink();
 
-    final step = _size - _overlap;
+    final size = widget.size;
+    final step = size - _overlap;
     return Padding(
       padding: const EdgeInsets.only(right: _lead),
       child: SizedBox(
-        width: _size + step * (urls.length - 1),
-        height: _size,
+        width: size + step * (urls.length - 1),
+        height: size,
         child: Stack(
           children: [
             // Drawn from the tail: the first artist stays ON TOP, as first in
@@ -159,7 +190,7 @@ class _TrackArtistAvatarsState extends ConsumerState<TrackArtistAvatars> {
                   clipper: i == 0
                       ? null
                       : _NeighbourBite(step: step, gap: _gap),
-                  child: Cover(url: urls[i], size: _size, circle: true),
+                  child: Cover(url: urls[i], size: size, circle: true),
                 ),
               ),
           ],

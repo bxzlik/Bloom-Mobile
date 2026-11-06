@@ -149,6 +149,10 @@ class YtmEntity {
   /// Artist's or owner's avatar from the header (`straplineThumbnail`).
   final String ownerAvatar;
 
+  /// Album only: every artist of the header's line ("A & B"); id empty for
+  /// one with no page. Only the first one's face is in the header.
+  final List<({String id, String name})> artists;
+
   /// Artist only: bio from the header. Empty if YTM gives none.
   final String description;
 
@@ -162,6 +166,7 @@ class YtmEntity {
     this.similarArtists = const [],
     this.year = '',
     this.ownerAvatar = '',
+    this.artists = const [],
     this.description = '',
   });
 }

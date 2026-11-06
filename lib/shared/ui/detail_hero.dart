@@ -27,6 +27,7 @@ class DetailHero extends StatelessWidget {
     required this.actions,
     this.owner,
     this.ownerAvatar,
+    this.ownerFaces,
     this.onOwner,
     this.onMenu,
     this.flight,
@@ -42,6 +43,10 @@ class DetailHero extends StatelessWidget {
 
   /// The owner's face beside their name.
   final String? ownerAvatar;
+
+  /// In place of [ownerAvatar]: several faces (an album's artists, stacked as
+  /// the player has them).
+  final Widget? ownerFaces;
 
   /// Set when the owner is an artist whose page a tap opens.
   final VoidCallback? onOwner;
@@ -104,7 +109,12 @@ class DetailHero extends StatelessWidget {
           ),
           if (owner case final name? when name.isNotEmpty) ...[
             const SizedBox(height: 6),
-            _Owner(name: name, avatar: ownerAvatar, onTap: onOwner),
+            _Owner(
+              name: name,
+              avatar: ownerAvatar,
+              faces: ownerFaces,
+              onTap: onOwner,
+            ),
           ],
           if (subtitle.isNotEmpty) ...[
             const SizedBox(height: 4),
@@ -127,10 +137,11 @@ class DetailHero extends StatelessWidget {
 /// A collection's owner under its title, with their face; a link when they're
 /// an artist.
 class _Owner extends StatelessWidget {
-  const _Owner({required this.name, this.avatar, this.onTap});
+  const _Owner({required this.name, this.avatar, this.faces, this.onTap});
 
   final String name;
   final String? avatar;
+  final Widget? faces; // keeps its own gap to the name
   final VoidCallback? onTap;
 
   @override
@@ -139,7 +150,9 @@ class _Owner extends StatelessWidget {
     final row = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (avatar case final url? when url.isNotEmpty) ...[
+        if (faces case final f?)
+          f
+        else if (avatar case final url? when url.isNotEmpty) ...[
           Cover(url: url, size: 24, circle: true),
           const SizedBox(width: 8),
         ],
