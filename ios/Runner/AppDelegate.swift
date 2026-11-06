@@ -289,6 +289,9 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
         // Nothing to release: on iOS the file is always my copy, and Dart
         // deletes it.
         result(nil)
+      case "audioInfo":
+        // A local file's sound and the rest of its tags, for track info.
+        self.audioInfo(uri: args["uri"] as? String ?? "", result: result)
       case "appInfo":
         // The build version for the About row.
         let info = Bundle.main.infoDictionary
@@ -500,6 +503,66 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
       }
     }
     return entry
+  }
+
+  /// A local file's sound and the tags its row doesn't need. Keys and the codec
+  /// as a mime type, the same as Android gives; what doesn't read is left out.
+  private func audioInfo(uri: String, result: @escaping FlutterResult) {
+    guard let url = URL(string: uri) else {
+      result(nil)
+      return
+    }
+    DispatchQueue.global(qos: .userInitiated).async {
+      let asset = AVURLAsset(url: url)
+      var out: [String: Any] = [:]
+      if let track = asset.tracks(withMediaType: .audio).first {
+        if track.estimatedDataRate > 0 { out["bitrate"] = Int(track.estimatedDataRate) }
+        if let first = track.formatDescriptions.first {
+          let desc = first as! CMAudioFormatDescription
+          if let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(desc)?.pointee {
+            if asbd.mSampleRate > 0 { out["sampleRate"] = Int(asbd.mSampleRate) }
+            switch asbd.mFormatID {
+            case kAudioFormatMPEGLayer3: out["mime"] = "audio/mpeg"
+            case kAudioFormatFLAC: out["mime"] = "audio/flac"
+            case kAudioFormatMPEG4AAC: out["mime"] = "audio/mp4a-latm"
+            case kAudioFormatAppleLossless: out["mime"] = "audio/alac"
+            case kAudioFormatOpus: out["mime"] = "audio/opus"
+            case kAudioFormatLinearPCM: out["mime"] = "audio/raw"
+            default: break
+            }
+            if asbd.mBitsPerChannel > 0 {
+              out["bits"] = Int(asbd.mBitsPerChannel)
+            } else if asbd.mFormatID == kAudioFormatFLAC || asbd.mFormatID == kAudioFormatAppleLossless {
+              // Lossless formats keep the source depth in the flags: 1…4 = 16, 20, 24, 32.
+              let depths = [1: 16, 2: 20, 3: 24, 4: 32]
+              if let bits = depths[Int(asbd.mFormatFlags)] { out["bits"] = bits }
+            }
+          }
+        }
+      }
+      for item in asset.commonMetadata {
+        guard let value = item.stringValue, !value.isEmpty else { continue }
+        switch item.commonKey {
+        case .some(.commonKeyAlbumName): out["album"] = value
+        case .some(.commonKeyPublisher): out["label"] = value
+        case .some(.commonKeyCreationDate): out["date"] = value
+        default: break
+        }
+      }
+      var authors: [String] = []
+      let writing: [AVMetadataIdentifier] = [
+        .iTunesMetadataComposer, .quickTimeMetadataComposer,
+        .id3MetadataComposer, .id3MetadataLyricist,
+      ]
+      for item in asset.metadata {
+        guard let id = item.identifier, writing.contains(id),
+          let value = item.stringValue, !value.isEmpty, !authors.contains(value)
+        else { continue }
+        authors.append(value)
+      }
+      out["authors"] = authors
+      DispatchQueue.main.async { result(out) }
+    }
   }
 
   /// Saves an embedded cover to the covers folder; `nil` if the write failed.

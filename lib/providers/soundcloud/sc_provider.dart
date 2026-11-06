@@ -211,6 +211,22 @@ class SoundCloudProvider extends MusicProvider {
     return raw == null ? null : trackFromSc(raw);
   }
 
+  /// The full track: rows from lists leave out the release's own data.
+  @override
+  Future<TrackDetails?> trackDetails(Track track, {String lang = 'en'}) async {
+    final raw = await sc.trackById(scNumericId(track.id));
+    if (raw == null) return null;
+    return TrackDetails(
+      album: _blankToNull(raw.album),
+      released: _blankToNull(raw.releaseDate),
+      genres: [?_blankToNull(raw.genre?.trim().toLowerCase() ?? '')],
+      label: _blankToNull(raw.publisher),
+      authors: raw.writers,
+      description: _blankToNull(raw.description.trim()),
+      explicit: raw.explicit,
+    );
+  }
+
   /// Similar for home shelves: related, and if few, the track's station.
   /// Through the queue and cache shared with the wave, or together they hit
   /// 429.

@@ -340,6 +340,14 @@ ScRawTrack mapRawTrack(Object? t) {
     description: _vstr(t, 'description') ?? '',
     explicit: pm != null && _vbool(pm, 'explicit'),
     creditedArtist: (pm == null ? null : _vstr(pm, 'artist')) ?? '',
+    writers: [
+      for (final w
+          in (pm == null ? null : _vstr(pm, 'writer_composer'))?.split(
+                RegExp(r'\s*[,;/]\s*'),
+              ) ??
+              const <String>[])
+        if (w.trim().isNotEmpty) w.trim(),
+    ],
     artistAvatar: user == null ? null : _t300(_vstr(user, 'avatar_url')),
     artistPermalink: user == null ? null : _vstr(user, 'permalink_url'),
     artistVerified: user != null && _vbool(user, 'verified'),

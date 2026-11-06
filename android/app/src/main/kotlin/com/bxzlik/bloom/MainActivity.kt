@@ -95,6 +95,11 @@ class MainActivity : AudioServiceActivity() {
                     uri = call.argument<String>("uri").orEmpty(),
                     result = result,
                 )
+                // A local file's sound and the rest of its tags, for track info.
+                "audioInfo" -> files.audioInfo(
+                    uri = call.argument<String>("uri").orEmpty(),
+                    result = result,
+                )
                 // The build version for the About row. Not worth a package for
                 // two strings.
                 "appInfo" -> appInfo(result)

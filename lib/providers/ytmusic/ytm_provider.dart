@@ -190,6 +190,20 @@ class YtmusicProvider extends MusicProvider {
   }
 
   @override
+  Future<TrackDetails?> trackDetails(Track track, {String lang = 'en'}) async {
+    final videoId = parseYtmTrackId(track.id);
+    if (videoId == null) return null;
+    final card = ytm.releaseCard(await ytm.description(videoId));
+    return TrackDetails(
+      album: _blankToNull(card.album),
+      released: _blankToNull(card.released),
+      label: _blankToNull(card.label),
+      authors: card.authors,
+      description: _blankToNull(card.description),
+    );
+  }
+
+  @override
   Future<ArtistPageData?> getArtist(String id) async {
     final browseId = parseYtmArtistId(id);
     if (browseId == null) return null;

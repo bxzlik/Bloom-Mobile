@@ -23,6 +23,7 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
+import '../../../shared/util/format.dart';
 import '../storage_stats.dart';
 import 'settings_rows.dart';
 import 'settings_sheets.dart';
@@ -143,7 +144,7 @@ class _UsageCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    stats == null ? '—' : _formatSize(l, stats!.bytes),
+                    stats == null ? '—' : formatSize(l, stats!.bytes),
                     style: bloomText(size: 26, weight: 500, color: t.text),
                   ),
                   const SizedBox(height: 4),
@@ -256,7 +257,7 @@ class _CacheRow extends StatelessWidget {
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          stat == null ? '—' : _formatSize(l, bytes),
+                          stat == null ? '—' : formatSize(l, bytes),
                           style: theme.bodySmall?.copyWith(color: t.text2),
                         ),
                       ],
@@ -308,7 +309,7 @@ class _ClearButton extends StatelessWidget {
             ? l.commonClear
             : armed
             ? l.stClearSure
-            : l.stClearSize(_formatSize(l, bytes)),
+            : l.stClearSize(formatSize(l, bytes)),
         tone: armed ? ButtonTone.danger : ButtonTone.ink,
         height: 52,
         busy: busy,
@@ -465,12 +466,3 @@ BloomGlyph _importIcon(LocalImportMode mode) =>
 
 String _importLabel(AppLocalizations l, LocalImportMode mode) =>
     mode == LocalImportMode.inPlace ? l.ltImportInPlace : l.ltImportCopy;
-
-/// Kilobytes for small things, then megabytes and gigabytes with a decimal.
-String _formatSize(AppLocalizations l, int bytes) {
-  final mb = bytes / 1048576;
-  if (mb >= 1024) return l.stGigabytes((mb / 1024).toStringAsFixed(1));
-  if (mb >= 1) return l.stMegabytes(mb.toStringAsFixed(1));
-  final kb = bytes > 0 ? math.max(1, (bytes / 1024).round()) : 0;
-  return l.stKilobytes('$kb');
-}

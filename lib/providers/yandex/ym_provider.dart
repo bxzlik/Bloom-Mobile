@@ -231,6 +231,21 @@ class YandexProvider extends MusicProvider {
     return trackFromYm(await ym.trackOne(numeric));
   }
 
+  @override
+  Future<TrackDetails?> trackDetails(Track track, {String lang = 'en'}) async {
+    final numeric = ymNumericId(track.id);
+    if (numeric.isEmpty || !isEnabled) return null;
+    final info = await ym.trackInfo(numeric, lang);
+    return TrackDetails(
+      album: _blankToNull(info.album),
+      released: _blankToNull(info.released),
+      genres: [?_blankToNull(info.genre)],
+      label: _blankToNull(info.label),
+      authors: info.writers,
+      explicit: info.explicit,
+    );
+  }
+
   /// Similar for home shelves. Artists, albums and playlists also live under
   /// the `ym:` prefix, with no similar and no network trip.
   @override

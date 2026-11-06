@@ -53,7 +53,13 @@ final Map<NavTab, GlobalKey<NavigatorState>> _branchKeys = {
 
 /// The navigator of the open tab. `null` until the shell is built.
 NavigatorState? currentBranchNavigator() {
-  final path = bloomRouter.state.uri.path;
+  // With no route matched yet the router's state throws rather than answers.
+  final String path;
+  try {
+    path = bloomRouter.state.uri.path;
+  } on StateError {
+    return null;
+  }
   final tab = kBranchTabs.firstWhere(
     (tab) => path.startsWith('/${tab.name}'),
     orElse: () => NavTab.home,

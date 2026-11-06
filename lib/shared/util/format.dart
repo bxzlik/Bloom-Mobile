@@ -1,6 +1,8 @@
 /// Formats durations, numbers and release dates.
 library;
 
+import 'dart:math' as math;
+
 import 'package:intl/intl.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -51,6 +53,15 @@ String? releaseDayShort(String? raw, String locale) {
 DateTime? _releaseDay(String? raw) => raw == null
     ? null
     : DateTime.tryParse(raw.length > 10 ? raw.substring(0, 10) : raw);
+
+/// Kilobytes for small things, then megabytes and gigabytes with a decimal.
+String formatSize(AppLocalizations l, int bytes) {
+  final mb = bytes / 1048576;
+  if (mb >= 1024) return l.stGigabytes((mb / 1024).toStringAsFixed(1));
+  if (mb >= 1) return l.stMegabytes(mb.toStringAsFixed(1));
+  final kb = bytes > 0 ? math.max(1, (bytes / 1024).round()) : 0;
+  return l.stKilobytes('$kb');
+}
 
 /// Short event date from a timestamp, for sheet headers (Added, Created).
 /// Unlike [releaseDateLabel] the Russian "г." stays: the line stands alone and

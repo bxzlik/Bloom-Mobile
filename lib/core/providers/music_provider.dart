@@ -164,6 +164,32 @@ class StationPage {
   const StationPage({this.tracks = const [], this.cursor = ''});
 }
 
+/// What a platform knows about a track beyond its row, for the info sheet.
+/// Null and empty mean unknown.
+class TrackDetails {
+  final String? album;
+
+  /// `2019-04-05` or a bare year.
+  final String? released;
+  final List<String> genres;
+  final String? label;
+
+  /// Composers, lyricists, writers.
+  final List<String> authors;
+  final String? description;
+  final bool explicit;
+
+  const TrackDetails({
+    this.album,
+    this.released,
+    this.genres = const [],
+    this.label,
+    this.authors = const [],
+    this.description,
+    this.explicit = false,
+  });
+}
+
 abstract class MusicProvider {
   const MusicProvider();
 
@@ -257,4 +283,9 @@ abstract class MusicProvider {
   /// file (progressive), not a playlist of chunks; throws if the track has
   /// none.
   Future<PlayableStream?> resolveDownload(Track track) async => null;
+
+  /// The track's full record for the info sheet; [lang] names genres where the
+  /// platform gives only codes. `null`: nothing beyond the row.
+  Future<TrackDetails?> trackDetails(Track track, {String lang = 'en'}) async =>
+      null;
 }

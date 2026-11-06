@@ -359,6 +359,123 @@ Future<YmRawTrack> trackOne(String id) async {
   return first;
 }
 
+/// Key of the lyrics request's signature, the same in every client.
+const String _kLyricsKey = 'p93jhgh689SBReK6ghtw62';
+
+/// What the info sheet shows beyond the row: the album with its date, labels
+/// and genre (by name in [lang]), the content mark, and the writers, which come
+/// only with the lyrics.
+Future<
+  ({
+    String album,
+    String released,
+    String label,
+    String genre,
+    List<String> writers,
+    bool explicit,
+  })
+>
+trackInfo(String id, String lang) async {
+  final v = await apiGet('/tracks/$id');
+  final arr = v['result'];
+  final t = arr is List && arr.isNotEmpty && arr.first is Map
+      ? arr.first as Map
+      : const {};
+  final albums = t['albums'];
+  final album = albums is List && albums.isNotEmpty && albums.first is Map
+      ? albums.first as Map
+      : const {};
+  final year = (album['year'] as num?)?.toInt();
+  final date = (album['releaseDate'] as String? ?? '');
+  // Labels come as objects in new answers and as bare names in old ones.
+  final labels = [
+    for (final l in album['labels'] is List ? album['labels'] as List : [])
+      if ((l is Map ? l['name'] : l) case final String n when n.isNotEmpty) n,
+  ];
+  final lyrics = t['lyricsInfo'];
+  final hasLyrics =
+      lyrics is Map &&
+      (lyrics['hasAvailableTextLyrics'] == true ||
+          lyrics['hasAvailableSyncLyrics'] == true);
+  final code = album['genre'] as String? ?? '';
+  final results = await Future.wait([
+    hasLyrics ? _writers(id) : Future.value(const <String>[]),
+    code.isEmpty ? Future.value('') : _genreName(code, lang),
+  ]);
+  return (
+    album: album['title'] as String? ?? '',
+    released: date.length >= 10
+        ? date.substring(0, 10)
+        : (year == null ? '' : '$year'),
+    label: labels.join(', '),
+    genre: results[1] as String,
+    writers: results[0] as List<String>,
+    explicit: t['contentWarning'] == 'explicit',
+  );
+}
+
+/// The lyrics' writers. The request is signed: HMAC of the id and the time.
+Future<List<String>> _writers(String id) async {
+  try {
+    final ts = '${DateTime.now().millisecondsSinceEpoch ~/ 1000}';
+    final sign = base64.encode(
+      Hmac(
+        sha256,
+        utf8.encode(_kLyricsKey),
+      ).convert(utf8.encode('$id$ts')).bytes,
+    );
+    final v = await apiGet('/tracks/$id/lyrics', {
+      'format': 'TEXT',
+      'timeStamp': ts,
+      'sign': sign,
+    });
+    final w = (v['result'] is Map ? v['result'] as Map : const {})['writers'];
+    return [
+      for (final n in w is List ? w : const [])
+        if (n is String && n.trim().isNotEmpty) n.trim(),
+    ];
+  } on YmException {
+    // No lyrics after all, or no answer: the sheet just goes without writers.
+    return const [];
+  }
+}
+
+/// Genre code → names by language; asked once a run.
+Map<String, Map<String, String>>? _genres;
+
+Future<String> _genreName(String code, String lang) async {
+  if (_genres == null) {
+    try {
+      final v = await apiGet('/genres');
+      final all = <String, Map<String, String>>{};
+      // Genres nest: rap → rusrap.
+      void walk(Object? list) {
+        for (final g in list is List ? list : const []) {
+          if (g is! Map) continue;
+          final titles = g['titles'];
+          final names = <String, String>{
+            if (titles is Map)
+              for (final e in titles.entries)
+                if (e.value is Map && (e.value as Map)['title'] is String)
+                  '${e.key}': (e.value as Map)['title'] as String,
+          };
+          if (g['id'] case final String id when names.isNotEmpty) {
+            all[id] = names;
+          }
+          walk(g['subGenres']);
+        }
+      }
+
+      walk(v['result']);
+      if (all.isNotEmpty) _genres = all;
+    } on YmException {
+      return '';
+    }
+  }
+  final names = _genres?[code];
+  return names?[lang] ?? names?['en'] ?? '';
+}
+
 /// Track id from a popularTracks or collection element: a full track object,
 /// `{id, albumId}` or a bare id (string or number).
 String? _trackIdOf(Object? v) => v is Map ? idStr(v['id']) : idStr(v);

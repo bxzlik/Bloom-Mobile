@@ -28,6 +28,9 @@ class ScRawTrack {
   final String description;
   final bool explicit;
   final String creditedArtist;
+
+  /// `writer_composer`, split into names.
+  final List<String> writers;
   final String? artistAvatar;
   final String? artistPermalink;
   final bool artistVerified;
@@ -57,6 +60,7 @@ class ScRawTrack {
     required this.description,
     required this.explicit,
     required this.creditedArtist,
+    this.writers = const [],
     required this.artistAvatar,
     required this.artistPermalink,
     required this.artistVerified,

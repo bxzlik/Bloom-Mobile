@@ -1130,13 +1130,37 @@ class AppLocalizationsRu extends AppLocalizations {
   String get tiDuration => 'Длительность';
 
   @override
-  String get tiPublisher => 'Паблишер';
+  String get tiLabel => 'Лейбл';
+
+  @override
+  String get tiAuthors => 'Авторы';
 
   @override
   String get tiGenres => 'Жанры';
 
   @override
   String get tiDescription => 'Описание';
+
+  @override
+  String get tiQuality => 'Качество';
+
+  @override
+  String tiBits(String value) {
+    return '$value бит';
+  }
+
+  @override
+  String tiKhz(String value) {
+    return '$value кГц';
+  }
+
+  @override
+  String tiKbps(String value) {
+    return '$value кбит/с';
+  }
+
+  @override
+  String get tiSize => 'Размер';
 
   @override
   String get tiFile => 'Файл';

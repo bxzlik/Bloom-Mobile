@@ -275,6 +275,79 @@ Future<void> forgetLocalTracks(Iterable<Track> tracks) async {
   }
 }
 
+/// What the info sheet shows of a local file beyond its row: the tags the row
+/// doesn't keep and what the sound is.
+typedef LocalFileInfo = ({
+  String? album,
+  String? released,
+  String? genre,
+  String? label,
+  List<String> authors,
+  String? codec,
+  bool lossless,
+  int bits,
+  int sampleRate,
+  int bitrate,
+});
+
+/// Reads [track]'s file natively; `null` when it isn't local, is gone or the
+/// platform has no reader.
+Future<LocalFileInfo?> localFileInfo(Track track) async {
+  final uri = localTrackUri(track);
+  if (uri == null) return null;
+  final Map<Object?, Object?>? raw;
+  try {
+    raw = await _channel.invokeMethod<Map<Object?, Object?>>('audioInfo', {
+      'uri': uri.toString(),
+    });
+  } on PlatformException {
+    return null;
+  } on MissingPluginException {
+    return null;
+  }
+  if (raw == null) return null;
+  int number(Object? v) => v is num ? v.toInt() : 0;
+  final codec = _codecOf(_norm(raw['mime']));
+  return (
+    album: _norm(raw['album']),
+    released: _released(_norm(raw['date'])) ?? _year(raw['year']),
+    genre: _norm(raw['genre']),
+    label: _norm(raw['label']),
+    authors: [
+      for (final a
+          in raw['authors'] is List ? raw['authors'] as List : const [])
+        ?_norm(a),
+    ],
+    codec: codec,
+    lossless: const {'FLAC', 'ALAC', 'PCM'}.contains(codec),
+    bits: number(raw['bits']),
+    sampleRate: number(raw['sampleRate']),
+    bitrate: number(raw['bitrate']),
+  );
+}
+
+/// A codec's short name from the mime type both platforms give.
+String? _codecOf(String? mime) => switch (mime) {
+  null => null,
+  'audio/mpeg' => 'MP3',
+  'audio/flac' || 'audio/x-flac' => 'FLAC',
+  'audio/mp4a-latm' || 'audio/aac' => 'AAC',
+  'audio/alac' => 'ALAC',
+  'audio/opus' => 'Opus',
+  'audio/vorbis' => 'Vorbis',
+  'audio/raw' => 'PCM',
+  _ => mime.split('/').last.toUpperCase(),
+};
+
+/// A day from a date tag: `2019-04-05` as is, Android's `20190405T000000.000Z`
+/// rebuilt. Its placeholder 1904 and anything shorter than a day aren't one.
+String? _released(String? raw) {
+  if (raw == null) return null;
+  final m = RegExp(r'^(\d{4})-?(\d{2})-?(\d{2})').firstMatch(raw);
+  if (m == null || m.group(1) == '1904') return null;
+  return '${m.group(1)}-${m.group(2)}-${m.group(3)}';
+}
+
 /// Local tracks among [ids]: a caller usually knows only the ids.
 List<Track> localTracksOf(LibraryState lib, Iterable<String> ids) => [
   for (final id in ids)

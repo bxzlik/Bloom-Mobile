@@ -1096,13 +1096,37 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tiDuration => 'Duration';
 
   @override
-  String get tiPublisher => 'Publisher';
+  String get tiLabel => 'Label';
+
+  @override
+  String get tiAuthors => 'Written by';
 
   @override
   String get tiGenres => 'Genres';
 
   @override
   String get tiDescription => 'Description';
+
+  @override
+  String get tiQuality => 'Quality';
+
+  @override
+  String tiBits(String value) {
+    return '$value-bit';
+  }
+
+  @override
+  String tiKhz(String value) {
+    return '$value kHz';
+  }
+
+  @override
+  String tiKbps(String value) {
+    return '$value kbps';
+  }
+
+  @override
+  String get tiSize => 'Size';
 
   @override
   String get tiFile => 'File';

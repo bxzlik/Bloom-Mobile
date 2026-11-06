@@ -1578,6 +1578,76 @@ Future<YtmRawTrack> track(String videoId) async {
   );
 }
 
+/// The player's description of a video, as its uploader or YouTube wrote it.
+Future<String> description(String videoId) async =>
+    str(at(await player(videoId), ['videoDetails', 'shortDescription']));
+
+/// A song's auto-generated description is a fixed card, paragraphs apart:
+/// `Provided to YouTube by LABEL`, `TITLE · ARTISTS`, `ALBUM`, `℗ YEAR HOLDER`,
+/// `Released on: DATE`, `Role, Role: NAME` lines.
+/// Anything else is the uploader's own text and stays a description.
+({
+  String album,
+  String released,
+  String label,
+  List<String> authors,
+  String description,
+})
+releaseCard(String text) {
+  const provided = 'Provided to YouTube by ';
+  final d = text.trim();
+  if (!d.startsWith(provided)) {
+    return (
+      album: '',
+      released: '',
+      label: '',
+      authors: const [],
+      description: d,
+    );
+  }
+  final blocks = [
+    for (final b in d.split(RegExp(r'\n\s*\n')))
+      if (b.trim().isNotEmpty) b.trim(),
+  ];
+  final album = blocks.length > 3 ? blocks[2] : '';
+  final notAlbum = RegExp(r'^(℗|©|Released on:|Auto-generated)|\n|: ');
+  var released = '';
+  var year = '';
+  final authors = <String>[];
+  const writing = {
+    'writer',
+    'composer',
+    'lyricist',
+    'songwriter',
+    'composer lyricist',
+  };
+  for (final raw in d.split('\n')) {
+    final line = raw.trim();
+    final rel = RegExp(r'^Released on:\s*(\d{4}-\d{2}-\d{2})').firstMatch(line);
+    final p = RegExp(r'^℗\s*(\d{4})').firstMatch(line);
+    final credit = RegExp(r'^([^:]+):\s*(.+)$').firstMatch(line);
+    if (rel != null) {
+      released = rel.group(1)!;
+    } else if (p != null) {
+      year = p.group(1)!;
+    } else if (credit != null) {
+      final writes = credit
+          .group(1)!
+          .split(',')
+          .any((r) => writing.contains(r.trim().toLowerCase()));
+      final name = credit.group(2)!.trim();
+      if (writes && !authors.contains(name)) authors.add(name);
+    }
+  }
+  return (
+    album: notAlbum.hasMatch(album) ? '' : album,
+    released: released.isEmpty ? year : released,
+    label: blocks.first.substring(provided.length).trim(),
+    authors: authors,
+    description: '',
+  );
+}
+
 /// Audio URL for a videoId. m4a/aac preferred (itag 140, the most compatible
 /// container), then the rest by bitrate.
 ///

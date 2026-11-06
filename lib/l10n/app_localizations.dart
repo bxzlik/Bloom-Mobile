@@ -1862,11 +1862,17 @@ abstract class AppLocalizations {
   /// **'Duration'**
   String get tiDuration;
 
-  /// No description provided for @tiPublisher.
+  /// No description provided for @tiLabel.
   ///
   /// In en, this message translates to:
-  /// **'Publisher'**
-  String get tiPublisher;
+  /// **'Label'**
+  String get tiLabel;
+
+  /// No description provided for @tiAuthors.
+  ///
+  /// In en, this message translates to:
+  /// **'Written by'**
+  String get tiAuthors;
 
   /// No description provided for @tiGenres.
   ///
@@ -1879,6 +1885,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Description'**
   String get tiDescription;
+
+  /// No description provided for @tiQuality.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality'**
+  String get tiQuality;
+
+  /// No description provided for @tiBits.
+  ///
+  /// In en, this message translates to:
+  /// **'{value}-bit'**
+  String tiBits(String value);
+
+  /// No description provided for @tiKhz.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} kHz'**
+  String tiKhz(String value);
+
+  /// No description provided for @tiKbps.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} kbps'**
+  String tiKbps(String value);
+
+  /// No description provided for @tiSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Size'**
+  String get tiSize;
 
   /// No description provided for @tiFile.
   ///

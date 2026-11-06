@@ -2,8 +2,11 @@ package com.bxzlik.bloom
 
 import android.app.Activity
 import android.content.Intent
+import android.media.MediaExtractor
+import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Build
 import android.provider.OpenableColumns
 import androidx.core.content.FileProvider
 import io.flutter.plugin.common.MethodChannel
@@ -146,6 +149,76 @@ class FilesChannel(private val activity: Activity) {
             // The permission is already gone, which is what I wanted.
         }
         result.success(null)
+    }
+
+    /**
+     * A local file's sound and the tags its row doesn't need, for the info
+     * sheet. Off the main thread: both readers open the file. Whatever fails
+     * to read is just left out.
+     */
+    fun audioInfo(uri: String, result: MethodChannel.Result) {
+        Thread {
+            val out = HashMap<String, Any?>()
+            val parsed = Uri.parse(uri)
+            val path = if (parsed.scheme == "file") parsed.path else null
+            try {
+                val extractor = MediaExtractor()
+                try {
+                    if (path != null) extractor.setDataSource(path)
+                    else extractor.setDataSource(activity, parsed, null)
+                    for (i in 0 until extractor.trackCount) {
+                        val f = extractor.getTrackFormat(i)
+                        val mime = f.getString(MediaFormat.KEY_MIME) ?: continue
+                        if (!mime.startsWith("audio/")) continue
+                        out["mime"] = mime
+                        intOf(f, MediaFormat.KEY_SAMPLE_RATE)?.let { out["sampleRate"] = it }
+                        intOf(f, MediaFormat.KEY_BIT_RATE)?.let { out["bitrate"] = it }
+                        intOf(f, "bits-per-sample")?.let { out["bits"] = it }
+                        break
+                    }
+                } finally {
+                    extractor.release()
+                }
+            } catch (_: Exception) {
+                // Not a format the extractor knows: the tags may still read.
+            }
+            val r = MediaMetadataRetriever()
+            try {
+                if (path != null) r.setDataSource(path) else r.setDataSource(activity, parsed)
+                fun tag(key: Int) = r.extractMetadata(key)?.trim()?.takeIf { it.isNotEmpty() }
+                out["album"] = tag(MediaMetadataRetriever.METADATA_KEY_ALBUM)
+                out["genre"] = tag(MediaMetadataRetriever.METADATA_KEY_GENRE)
+                out["date"] = tag(MediaMetadataRetriever.METADATA_KEY_DATE)
+                out["year"] = tag(MediaMetadataRetriever.METADATA_KEY_YEAR)
+                out["authors"] = listOfNotNull(
+                    tag(MediaMetadataRetriever.METADATA_KEY_COMPOSER),
+                    tag(MediaMetadataRetriever.METADATA_KEY_WRITER),
+                ).distinct()
+                if (out["bitrate"] == null) {
+                    tag(MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toIntOrNull()?.let { out["bitrate"] = it }
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (out["sampleRate"] == null) {
+                        tag(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)?.toIntOrNull()?.let { out["sampleRate"] = it }
+                    }
+                    if (out["bits"] == null) {
+                        tag(MediaMetadataRetriever.METADATA_KEY_BITS_PER_SAMPLE)?.toIntOrNull()?.let { out["bits"] = it }
+                    }
+                }
+            } catch (_: Exception) {
+                // An unreadable file: what the extractor found stands.
+            } finally {
+                r.release()
+            }
+            activity.runOnUiThread { result.success(out) }
+        }.start()
+    }
+
+    /** An int key of a track's format; some come as longs, some not at all. */
+    private fun intOf(f: MediaFormat, key: String): Int? = try {
+        if (f.containsKey(key)) f.getInteger(key) else null
+    } catch (_: Exception) {
+        null
     }
 
     /** `false` when the previous dialog hasn't answered and this request is refused. */

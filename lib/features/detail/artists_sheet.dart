@@ -60,7 +60,10 @@ Future<void> openTrackArtist(
       title: track.name,
       subtitle: track.artist,
     ),
-    child: _ArtistPicker(track: track, links: links),
+    child: TrackArtistRows(
+      track: track,
+      onPick: (sheet, artist) => Navigator.of(sheet).pop(artist),
+    ),
   );
   // I open the page from the screen's context: the sheet's is gone by now.
   if (picked == null || !context.mounted) return;
@@ -103,19 +106,25 @@ Future<void> openPlayedArtist(
   await openArtist(context, found.id, initial: found);
 }
 
-/// The track's artists: avatar and name. Each is looked up on its own, so a
-/// row shows at once and its picture comes in when found.
-class _ArtistPicker extends ConsumerStatefulWidget {
-  const _ArtistPicker({required this.track, required this.links});
+/// The track's artists on a plate: avatar and name. Each is looked up on its
+/// own, so a row shows at once and its picture comes in when found; a tap on
+/// one that has a page hands it to [onPick].
+class TrackArtistRows extends ConsumerStatefulWidget {
+  const TrackArtistRows({super.key, required this.track, required this.onPick});
 
   final Track track;
-  final List<ArtistLink> links;
+
+  /// With the sheet's context: the picker closes with the artist, track info
+  /// opens their page.
+  final void Function(BuildContext sheet, Artist artist) onPick;
 
   @override
-  ConsumerState<_ArtistPicker> createState() => _ArtistPickerState();
+  ConsumerState<TrackArtistRows> createState() => _TrackArtistRowsState();
 }
 
-class _ArtistPickerState extends ConsumerState<_ArtistPicker> {
+class _TrackArtistRowsState extends ConsumerState<TrackArtistRows> {
+  late final List<ArtistLink> _links = artistLinks(widget.track);
+
   /// A name missing here is still being looked for; null — not found.
   final Map<String, Artist?> _found = {};
 
@@ -124,7 +133,7 @@ class _ArtistPickerState extends ConsumerState<_ArtistPicker> {
     super.initState();
     final source = widget.track.source;
     // Known pages go without a search; only their avatars are looked up.
-    for (final l in widget.links) {
+    for (final l in _links) {
       if (l.id case final id?) {
         _found[l.name] = Artist(id: id, name: l.name, source: source);
       }
@@ -138,7 +147,7 @@ class _ArtistPickerState extends ConsumerState<_ArtistPicker> {
     if (provider == null) {
       if (mounted) {
         setState(() {
-          for (final l in widget.links) {
+          for (final l in _links) {
             _found.putIfAbsent(l.name, () => null);
           }
         });
@@ -147,7 +156,7 @@ class _ArtistPickerState extends ConsumerState<_ArtistPicker> {
     }
     // The same name twice in a line ("A & A") is looked up once.
     await Future.wait([
-      for (final l in {for (final l in widget.links) l.name: l}.values)
+      for (final l in {for (final l in _links) l.name: l}.values)
         _one(provider, l),
     ]);
   }
@@ -174,9 +183,7 @@ class _ArtistPickerState extends ConsumerState<_ArtistPicker> {
 
   @override
   Widget build(BuildContext context) {
-    return SheetPanel(
-      children: [for (final link in widget.links) _row(link.name)],
-    );
+    return SheetPanel(children: [for (final link in _links) _row(link.name)]);
   }
 
   Widget _row(String name) {
@@ -196,7 +203,7 @@ class _ArtistPickerState extends ConsumerState<_ArtistPicker> {
           : artist == null
           ? null
           : const SheetChevron(),
-      onTap: artist == null ? null : () => Navigator.of(context).pop(artist),
+      onTap: artist == null ? null : () => widget.onPick(context, artist),
     );
   }
 }
