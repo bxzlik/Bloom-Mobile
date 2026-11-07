@@ -36,6 +36,7 @@ import '../providers/yandex/ym_auth.dart';
 import 'app.dart';
 import 'gate.dart';
 import 'router.dart';
+import 'screen_fade.dart';
 import 'welcome.dart';
 
 /// What's open of a profile, to close it again.
@@ -49,6 +50,20 @@ class _Run {
 }
 
 _Run? _run;
+
+// The screen up now, to fade out before the next one.
+GlobalKey<ScreenFadeState>? _screen;
+bool _launched = false;
+
+/// Puts a screen up: the gate or a profile's app. Any but the launch's first
+/// comes up out of the background.
+void _show(Widget app, Color bg) {
+  final key = _screen = GlobalKey<ScreenFadeState>();
+  runApp(ScreenFade(key: key, bg: bg, fadeIn: _launched, child: app));
+  _launched = true;
+}
+
+Future<void> _fadeOut() async => _screen?.currentState?.out();
 
 /// A launch, or a return from a profile: the gate if it's needed, then the
 /// profile it gives.
@@ -72,11 +87,13 @@ Future<void> leaveProfile({bool remove = false}) async {
   }
 
   final bg = run.container.read(settingsProvider).tokens.bg;
+  final fade = _fadeOut();
   // Silence first, while the controller can still note what was heard.
   final handler = run.container.read(audioHandlerProvider);
   await handler.stop();
   handler.commands = null;
   run.usage.dispose();
+  await fade;
 
   // The app's tree goes before what it reads: a frame on a disposed container
   // would throw.
@@ -101,8 +118,10 @@ Future<String> _gate(ProfilesStart start) async {
   final container = ProviderContainer(
     overrides: [jsonStoreProvider.overrideWithValue(store)],
   );
-  final id = await runGate(container, start);
-  runApp(_Blank(container.read(settingsProvider).tokens.bg));
+  final bg = container.read(settingsProvider).tokens.bg;
+  final id = await runGate(container, start, (gate) => _show(gate, bg));
+  await _fadeOut();
+  runApp(_Blank(bg));
   await WidgetsBinding.instance.endOfFrame;
   container.dispose();
   return id;
@@ -173,11 +192,12 @@ Future<void> _openProfile(String id) async {
   };
   _run = _Run(container, store, db, usage);
 
-  runApp(
+  _show(
     UncontrolledProviderScope(
       container: container,
       child: BloomApp(firstRun: takeFirstRun(db)),
     ),
+    container.read(settingsProvider).tokens.bg,
   );
 
   // Restoring the last session waits for the first frame: resolving a stream

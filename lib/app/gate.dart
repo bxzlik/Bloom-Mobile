@@ -22,17 +22,28 @@ import '../shared/ui/atoms.dart';
 import '../shared/ui/bloom_icon.dart';
 import '../shared/ui/pin_pad.dart';
 import '../shared/ui/pressable.dart';
+import '../shared/ui/soft_text.dart';
 import 'app.dart' show SpringScroll;
 import 'theme/bloom_theme.dart';
 import 'theme/tokens.dart';
 
-/// Shows the gate until it gives a profile to open.
-Future<String> runGate(ProviderContainer container, ProfilesStart start) {
+/// Shows the gate through [show] until it gives a profile to open.
+Future<String> runGate(
+  ProviderContainer container,
+  ProfilesStart start,
+  void Function(Widget gate) show,
+) {
   final done = Completer<String>();
-  runApp(
+  show(
     UncontrolledProviderScope(
       container: container,
-      child: _GateApp(start: start, onOpen: done.complete),
+      // The gate stays up while it fades out: a late fingerprint mustn't open twice.
+      child: _GateApp(
+        start: start,
+        onOpen: (id) {
+          if (!done.isCompleted) done.complete(id);
+        },
+      ),
     ),
   );
   return done.future;
@@ -533,7 +544,7 @@ class _GateState extends State<_Gate> {
           size: 84,
         ),
         const SizedBox(height: 14),
-        Text(
+        SoftText(
           _first == null ? context.l.gatePinOffer : context.l.pinRepeat,
           style: Theme.of(context).textTheme.titleLarge,
         ),
@@ -603,7 +614,7 @@ class _Note extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
     height: 46,
     child: Center(
-      child: Text(
+      child: SoftText(
         text,
         textAlign: TextAlign.center,
         style: Theme.of(

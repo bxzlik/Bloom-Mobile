@@ -18,6 +18,7 @@ import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/danger_confirm.dart';
 import '../../../shared/ui/pin_pad.dart';
+import '../../../shared/ui/soft_text.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../library/local_tracks.dart';
 import 'settings_rows.dart';
@@ -273,7 +274,7 @@ class _PinSheetState extends State<_PinSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
+          SoftText(
             // The step's question; deleting keeps its own.
             deleting
                 ? l.profDeleteConfirm
@@ -296,7 +297,7 @@ class _PinSheetState extends State<_PinSheet> {
           SizedBox(
             height: 44,
             child: Center(
-              child: Text(
+              child: SoftText(
                 _error,
                 style: theme.bodySmall?.copyWith(color: t.danger),
               ),
