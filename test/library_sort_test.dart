@@ -133,17 +133,17 @@ void main() {
     _container(store).read(libOrderProvider.notifier)
       ..setSort(LibSort.nameDesc)
       ..setTab(LibTab.artists)
-      ..setGrid(true);
+      ..setGrid(false);
 
     final state = _container(store).read(libOrderProvider);
     expect(state.sort, LibSort.nameDesc);
     expect(state.tab, LibTab.artists);
-    expect(state.grid, isTrue);
+    expect(state.grid, isFalse);
   });
 
-  test('with nothing saved: "all" as rows', () {
+  test('with nothing saved: "all" as cards', () {
     final state = _container(JsonStore.memory()).read(libOrderProvider);
     expect(state.tab, LibTab.all);
-    expect(state.grid, isFalse);
+    expect(state.grid, isTrue);
   });
 }

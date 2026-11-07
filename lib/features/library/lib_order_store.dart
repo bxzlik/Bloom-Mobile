@@ -52,13 +52,13 @@ class LibOrderState {
   const LibOrderState({
     this.sort = LibSort.manual,
     this.tab = LibTab.all,
-    this.grid = false,
+    this.grid = true,
   });
 
   final LibSort sort;
   final LibTab tab;
 
-  /// Cards instead of rows.
+  /// Cards instead of rows. Cards by default.
   final bool grid;
 
   LibOrderState copyWith({LibSort? sort, LibTab? tab, bool? grid}) =>
@@ -112,7 +112,7 @@ class LibOrderController extends Notifier<LibOrderState> {
     return LibOrderState(
       sort: _sortFromId(raw['sort']),
       tab: _tabFromId(raw['tab']),
-      grid: raw['grid'] == true,
+      grid: raw['grid'] != false,
     );
   }
 
