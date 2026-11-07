@@ -16,6 +16,7 @@ import 'package:bloom/core/store/json_store.dart';
 import 'package:bloom/features/player/player_controller.dart';
 import 'package:bloom/features/search/search_session.dart';
 import 'package:bloom/features/search/ui/search_layer.dart';
+import 'package:bloom/shared/ui/cover_hero.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -139,6 +140,28 @@ void main() {
     expect(searchOpen.value, isFalse);
     expect(find.byType(EditableText), findsNothing);
     expect(_Page.created, 1);
+  });
+
+  testWidgets('a detail page under the field doesn\'t fade out', (
+    tester,
+  ) async {
+    await _app(tester);
+    unawaited(
+      _navigator.currentState!.push(
+        detailPageRoute<void>((_) => const Text('list')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _open(tester);
+
+    final fades = find.ancestor(
+      of: find.text('list'),
+      matching: find.byType(FadeTransition),
+    );
+    expect(fades, findsWidgets);
+    for (final fade in tester.widgetList<FadeTransition>(fades)) {
+      expect(fade.opacity.value, 1);
+    }
   });
 
   testWidgets('the platform logo keeps its size inside the round button', (

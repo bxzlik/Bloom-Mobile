@@ -108,6 +108,12 @@ class _SearchRoute extends PageRouteBuilder<void> {
     if (overlayEntries.isNotEmpty) overlayEntries.last.opaque = value;
   }
 
+  /// The page under the field stays as it is: a detail page (a list, an
+  /// artist) would otherwise fade itself out as if covered by the next page,
+  /// and leave the dimmed screen empty.
+  @override
+  bool canTransitionFrom(TransitionRoute<dynamic> previousRoute) => false;
+
   void _left() {
     if (_route != this) return;
     _route = null;
