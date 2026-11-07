@@ -12,6 +12,7 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/store/json_store.dart' show jsonStoreProvider;
@@ -38,6 +39,14 @@ abstract class DailyShowcase<T extends Object> extends Notifier<T?> {
 
   /// Builds the shelf. `null` means nothing to show, and a retry follows.
   Future<T?> fetch();
+
+  /// There's anything to build from (seeds). With none, asking again finds
+  /// none either, so no retry waits.
+  bool get worthAsking => true;
+
+  /// A build is under way or waiting for its retry: an empty home isn't
+  /// final yet.
+  final ValueNotifier<bool> working = ValueNotifier(false);
 
   Object? encode(T value);
   T? decode(Object? raw);
@@ -66,7 +75,12 @@ abstract class DailyShowcase<T extends Object> extends Notifier<T?> {
       if (state == null) unawaited(load());
     });
     final cached = _readCache();
-    if (cached == null) scheduleMicrotask(() => unawaited(load()));
+    if (cached == null) {
+      // Busy from the start: until the microtask runs, the first frame would
+      // take the empty shelf for a final one.
+      working.value = true;
+      scheduleMicrotask(() => unawaited(load()));
+    }
     return cached;
   }
 
@@ -89,8 +103,12 @@ abstract class DailyShowcase<T extends Object> extends Notifier<T?> {
     late final Future<void> job;
     job = _load().whenComplete(() {
       // After a reset there's a new build here, not to be touched.
-      if (identical(_pending, job)) _pending = null;
+      if (identical(_pending, job)) {
+        _pending = null;
+        working.value = false;
+      }
     });
+    working.value = true;
     return _pending = job;
   }
 
@@ -119,7 +137,7 @@ abstract class DailyShowcase<T extends Object> extends Notifier<T?> {
         });
         return;
       }
-      if (attempt >= kShowcaseRetries.length) return;
+      if (attempt >= kShowcaseRetries.length || !worthAsking) return;
       await Future<void>.delayed(kShowcaseRetries[attempt]);
       if (_stale(gen)) return;
     }

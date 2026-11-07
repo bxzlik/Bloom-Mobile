@@ -494,6 +494,18 @@ abstract class AppLocalizations {
   /// **'Similar to'**
   String get homeSimilarTo;
 
+  /// No description provided for @homeEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here yet'**
+  String get homeEmpty;
+
+  /// No description provided for @homeEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen to something, and picks for you will show up here.'**
+  String get homeEmptyHint;
+
   /// No description provided for @playerQueue.
   ///
   /// In en, this message translates to:

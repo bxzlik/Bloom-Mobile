@@ -130,6 +130,9 @@ class ForYouController extends DailyShowcase<List<Track>> {
   }
 
   @override
+  bool get worthAsking => pickForYouSeeds(recsInputOf(ref)).isNotEmpty;
+
+  @override
   Object? encode(List<Track> value) => [for (final t in value) t.toJson()];
 
   @override

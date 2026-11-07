@@ -1,7 +1,8 @@
 /// Home, top down: the wave on a screen of its own, then a magnet, then the
 /// shelves: what's picked for the listener ("for you", "similar to") ahead of
 /// what is the same for everyone (releases and the chart). A shelf with nothing
-/// in it yet isn't there at all. One header stands over both screens.
+/// in it yet isn't there at all; with none, and none on the way, the shelves'
+/// screen says so. One header stands over both screens.
 library;
 
 import 'dart:math' as math;
@@ -12,6 +13,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/tokens.dart';
+import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/cover_hero.dart';
@@ -21,6 +23,8 @@ import '../../profile/profile_store.dart';
 import '../../profile/ui/profile_avatar.dart';
 import '../../wave/ui/wave_hero.dart';
 import '../discover_store.dart';
+import '../for_you.dart';
+import '../similar_to.dart';
 import 'for_you_section.dart';
 import 'home_sections.dart';
 import 'magnet_scroll.dart';
@@ -111,13 +115,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       top: top + kHomeHeaderHeight,
                       bottom: bottom + 16,
                     ),
-                    child: const Column(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        ForYouSection(),
-                        SimilarToSection(),
-                        DiscoverSection(mode: DiscoverMode.newReleases),
-                        DiscoverSection(mode: DiscoverMode.charts),
+                        const ForYouSection(),
+                        const SimilarToSection(),
+                        const DiscoverSection(mode: DiscoverMode.newReleases),
+                        const DiscoverSection(mode: DiscoverMode.charts),
+                        _HomeEmpty(
+                          height:
+                              screen - top - kHomeHeaderHeight - bottom - 16,
+                        ),
                       ],
                     ),
                   ),
@@ -163,6 +171,63 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Not a shelf came and none is on its way: a word in the middle of the
+/// shelves' screen in place of a blank one.
+class _HomeEmpty extends ConsumerWidget {
+  const _HomeEmpty({required this.height});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final forYou = ref.watch(forYouProvider);
+    final similar = ref.watch(similarToProvider);
+    final fresh = ref.watch(discoverProvider(DiscoverMode.newReleases));
+    final charts = ref.watch(discoverProvider(DiscoverMode.charts));
+    final some =
+        forYou != null ||
+        similar != null ||
+        fresh.isLoading ||
+        fresh.valueOrNull != null ||
+        charts.isLoading ||
+        charts.valueOrNull != null;
+    if (some) return const SizedBox.shrink();
+    final fy = ref.watch(forYouProvider.notifier).working;
+    final sim = ref.watch(similarToProvider.notifier).working;
+    final theme = Theme.of(context).textTheme;
+    return ListenableBuilder(
+      listenable: Listenable.merge([fy, sim]),
+      builder: (context, _) {
+        if (fy.value || sim.value) return const SizedBox.shrink();
+        return SizedBox(
+          height: math.max(0, height),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    context.l.homeEmpty,
+                    textAlign: TextAlign.center,
+                    style: theme.titleMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    context.l.homeEmptyHint,
+                    textAlign: TextAlign.center,
+                    style: theme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -71,6 +71,8 @@
   "homeForYou": "Для вас",
   "homeForYouAll": "Вся подборка",
   "homeSimilarTo": "Похожие на",
+  "homeEmpty": "Здесь пока пусто",
+  "homeEmptyHint": "Послушай что-нибудь — и тут появятся подборки для тебя.",
 
   "playerQueue": "Очередь",
   "queueSecPlayed": "Прослушано",

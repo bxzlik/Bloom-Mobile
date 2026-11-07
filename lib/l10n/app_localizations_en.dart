@@ -233,6 +233,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeSimilarTo => 'Similar to';
 
   @override
+  String get homeEmpty => 'Nothing here yet';
+
+  @override
+  String get homeEmptyHint =>
+      'Listen to something, and picks for you will show up here.';
+
+  @override
   String get playerQueue => 'Queue';
 
   @override

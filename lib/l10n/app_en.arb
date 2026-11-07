@@ -107,6 +107,8 @@
   "homeForYou": "For you",
   "homeForYouAll": "All picks",
   "homeSimilarTo": "Similar to",
+  "homeEmpty": "Nothing here yet",
+  "homeEmptyHint": "Listen to something, and picks for you will show up here.",
 
   "@_player": {},
   "playerQueue": "Queue",

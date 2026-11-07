@@ -237,6 +237,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get homeSimilarTo => 'Похожие на';
 
   @override
+  String get homeEmpty => 'Здесь пока пусто';
+
+  @override
+  String get homeEmptyHint =>
+      'Послушай что-нибудь — и тут появятся подборки для тебя.';
+
+  @override
   String get playerQueue => 'Очередь';
 
   @override

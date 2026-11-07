@@ -434,6 +434,13 @@ class SimilarToController extends DailyShowcase<SimilarTo> {
   }
 
   @override
+  bool get worthAsking {
+    final input = recsInputOf(ref);
+    return recsTopPlayed(input, limit: _seedPool, minPlays: 2).isNotEmpty ||
+        topArtists(input, _seedPool).isNotEmpty;
+  }
+
+  @override
   Object? encode(SimilarTo value) => {
     'seed': value.seed.toJson(),
     'items': [for (final it in value.items) it.toJson()],
