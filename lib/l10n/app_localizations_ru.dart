@@ -3298,11 +3298,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pcStep1 =>
-      'Открой **Bloom** на компьютере: **Настройки → Интеграции → Телефон** и включи режим.';
+      'Открой **Bloom** на компьютере: **Настройки → Основное → Телефон** и включи режим.';
 
   @override
   String get pcStep2 =>
-      'Нажми **«Подключить телефон»** — появятся QR-код и шестизначный код.';
+      'Нажми **«+»** у строки **«Подключённые устройства»** — появятся QR-код и шестизначный код.';
 
   @override
   String get pcStep3 =>
@@ -3332,7 +3332,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String pcUnpairBody(String name) {
-    return 'Синхронизация с «$name» прекратится. Подключиться снова можно только с компьютера: «Подключить телефон» на его экране.';
+    return 'Синхронизация с «$name» прекратится. Чтобы подключиться снова, нажми «+» в разделе «Телефон» на компьютере.';
   }
 
   @override
@@ -3349,7 +3349,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pcCodeNone =>
-      'Компьютер не найден. Открой на нём «Подключить телефон» — телефон должен быть в той же сети.';
+      'Компьютер не найден. Нажми на нём «+» в разделе «Телефон» — телефон должен быть в той же сети.';
 
   @override
   String get pcCodeRetry => 'Искать снова';

@@ -5489,13 +5489,13 @@ abstract class AppLocalizations {
   /// No description provided for @pcStep1.
   ///
   /// In en, this message translates to:
-  /// **'Open **Bloom** on the computer: **Settings → Integrations → Phone** and turn the mode on.'**
+  /// **'Open **Bloom** on the computer: **Settings → General → Phone** and turn the mode on.'**
   String get pcStep1;
 
   /// No description provided for @pcStep2.
   ///
   /// In en, this message translates to:
-  /// **'Press **Connect a phone** — a QR code and a six-digit code show up.'**
+  /// **'Press **+** on the **Connected devices** line — a QR code and a six-digit code show up.'**
   String get pcStep2;
 
   /// No description provided for @pcStep3.
@@ -5549,7 +5549,7 @@ abstract class AppLocalizations {
   /// No description provided for @pcUnpairBody.
   ///
   /// In en, this message translates to:
-  /// **'Syncing with “{name}” stops. To connect again you\'ll need the computer: Connect a phone on its screen.'**
+  /// **'Syncing with “{name}” stops. To connect again, press + under Phone on the computer.'**
   String pcUnpairBody(String name);
 
   /// No description provided for @pcUnpaired.
@@ -5579,7 +5579,7 @@ abstract class AppLocalizations {
   /// No description provided for @pcCodeNone.
   ///
   /// In en, this message translates to:
-  /// **'No computer found. Open “Connect a phone” on it — the phone must be on the same network.'**
+  /// **'No computer found. Press + under Phone on it — the phone must be on the same network.'**
   String get pcCodeNone;
 
   /// No description provided for @pcCodeRetry.

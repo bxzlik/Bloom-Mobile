@@ -3223,11 +3223,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pcStep1 =>
-      'Open **Bloom** on the computer: **Settings → Integrations → Phone** and turn the mode on.';
+      'Open **Bloom** on the computer: **Settings → General → Phone** and turn the mode on.';
 
   @override
   String get pcStep2 =>
-      'Press **Connect a phone** — a QR code and a six-digit code show up.';
+      'Press **+** on the **Connected devices** line — a QR code and a six-digit code show up.';
 
   @override
   String get pcStep3 =>
@@ -3257,7 +3257,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String pcUnpairBody(String name) {
-    return 'Syncing with “$name” stops. To connect again you\'ll need the computer: Connect a phone on its screen.';
+    return 'Syncing with “$name” stops. To connect again, press + under Phone on the computer.';
   }
 
   @override
@@ -3275,7 +3275,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pcCodeNone =>
-      'No computer found. Open “Connect a phone” on it — the phone must be on the same network.';
+      'No computer found. Press + under Phone on it — the phone must be on the same network.';
 
   @override
   String get pcCodeRetry => 'Search again';

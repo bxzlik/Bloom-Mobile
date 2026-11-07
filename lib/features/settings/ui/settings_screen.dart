@@ -58,6 +58,9 @@ class SettingsScreen extends StatelessWidget {
                 title: context.l.setStorage,
                 onTap: () => context.go('/settings/storage'),
               ),
+              // The computer goes with the app, not the integrations: it's
+              // Bloom itself on the other end.
+              const _PcRow(),
               SettingsRow(
                 icon: Bi.transferHorizontal,
                 title: context.l.setSwipes,
@@ -114,7 +117,6 @@ class _IntegrationsGroup extends ConsumerWidget {
     final off = context.bloom.muted;
     final ymOn = ref.watch(ymAuthProvider.select((s) => s.authed));
     final lfmOn = ref.watch(lastfmProvider.select((s) => s.connected));
-    final pcName = ref.watch(pcProvider.select((s) => s.link?.name));
     return SettingsGroup(
       title: context.l.setGroupIntegrations,
       rows: [
@@ -146,13 +148,23 @@ class _IntegrationsGroup extends ConsumerWidget {
           ),
           onTap: () => context.go('/settings/lastfm'),
         ),
-        SettingsRow(
-          icon: Bi.monitor,
-          title: context.l.setPc,
-          value: pcName,
-          onTap: () => context.go('/settings/pc'),
-        ),
       ],
+    );
+  }
+}
+
+/// The paired computer's name on the right, nothing when there's none.
+class _PcRow extends ConsumerWidget {
+  const _PcRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pcName = ref.watch(pcProvider.select((s) => s.link?.name));
+    return SettingsRow(
+      icon: Bi.monitor,
+      title: context.l.setPc,
+      value: pcName,
+      onTap: () => context.go('/settings/pc'),
     );
   }
 }
